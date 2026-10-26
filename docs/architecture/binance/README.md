@@ -104,23 +104,40 @@ asserts identical output on 10,000 recorded BTC-USDT aggregate trades
   per page. Rows are aggregate trades, ids `a<aggTradeId>` (a separate id
   space from the stream's trade ids; a bootstrap print is one taker order at
   one price, so it can be larger than any single fill the runtime saw); rows
-  at or after the first live trade are dropped so nothing is counted twice.
-  Then the `snapshot` is re-broadcast (every closed bar held, the last 100
-  live trades, the newest 5,000 markers, the pool), the forming bar is
-  re-sent, and a client that opted in through `capabilities` gets the full
-  marker set as `marker_history` (`reset` on the first frame, 5,000 rows each).
-  On BTC-USDT 30 pages are about twenty minutes of tape; on a quiet pair,
-  hours. The runtime's baseline is seven days of storage.
+  at or after the first live trade are dropped so nothing is counted twice. A
+  page is validated whole (every row well formed, ids consecutive, starting
+  at `fromId`): a page with a malformed row is a failed read, retried or
+  ending the walk with the pages before it, never a shorter page that would
+  leave a hole inside claimed coverage. Then the `snapshot` is re-broadcast
+  (every closed bar held, the last 100 live trades, the newest 5,000 markers,
+  the pool), the forming bar is re-sent, and a client that opted in through
+  `capabilities` gets the full marker set as `marker_history` (`reset` on the
+  first frame, 5,000 rows each). On BTC-USDT 30 pages are about twenty
+  minutes of tape; on a quiet pair, hours. The runtime's baseline is seven
+  days of storage.
+- Observed tape and seams: the transport keeps the stretches of tape it has
+  seen in full (the bootstrap's id-contiguous pages, each stream span from its
+  first to its last live trade) and claims coverage only inside one of them.
+  Kline recovery repairs bars, not trades, so the hole between the newest
+  page and the stream's first trade, and the hole between one stream's last
+  trade and the next stream's first, are filled from REST (`aggTrades` from
+  the hole's start by `startTime`, then by id, at most 10 pages, three tries);
+  a closed hole merges the stretches, an unclosable one stays a hole outside
+  every claim. The bootstrap's snapshot waits for the seam to the stream to
+  settle; with no stream delivering, it goes out claiming nothing
+  (`aggressive_prints_from` = now) while still carrying the prints.
 - `aggressive_prints`, `aggressive_prints_floor`, `aggressive_prints_from`:
   the runtime's pool (floor from the 98th percentile of the last 4,096 sizes
   once 200 are seen, never falling; four hours; 20,000 prints). Live trades
   `record`; the bootstrap's newest fifteen minutes `seed` with
-  `calibrate: true`, older rows at the floor; `from` never precedes the oldest
-  row actually read, so `coverageOf` is "thin" over the bootstrap and "all"
-  from connect.
+  `calibrate: true`, older rows at the floor; `aggressive_prints_from` is the
+  start of the continuous observed stretch that reaches now (never before the
+  pool's window), so `coverageOf` is "thin" over the bootstrap and "all" from
+  connect, and nothing is claimed across an open seam.
 - `aggressive_history`: answered from the pool, `complete: true` only for a
-  window from no earlier than the pool's `from` at or above its floor, 10,000
-  trades a page with `CAP_REACHED` and a cursor bound to the request;
+  window inside one observed stretch, within the pool's window, at or above
+  its floor, 10,000 trades a page with `CAP_REACHED` and a cursor bound to
+  the request;
   otherwise `complete: false`, `reason: "STORAGE_UNAVAILABLE"`, which the
   client retries three times and then rests.
 - Degraded: when the first page fails three times, the READY health frame

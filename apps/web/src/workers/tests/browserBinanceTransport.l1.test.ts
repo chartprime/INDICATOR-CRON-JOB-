@@ -16,9 +16,11 @@ import {
   HEALTH_REASON_READY,
   MAX_AGGRESSIVE_HISTORY_TRADES,
   MAX_SNAPSHOT_MARKERS,
+  SEAM_FILL_FAILURES_BEFORE_GIVING_UP,
   STREAM_BACKOFF_INITIAL_MS,
   TAPE_BOOTSTRAP_FAILURES_BEFORE_DEGRADED,
   TAPE_BOOTSTRAP_PAGE,
+  parseAggTradesPage,
   type UpstreamSocket,
 } from "../browserBinanceTransport";
 import { parseServerFrame, type MarkerFrame, type ServerFrame, type TradeFrame } from "../../types/frames";
@@ -49,9 +51,12 @@ function aggTradeRow(trade: TradeFrame): Record<string, unknown> {
   return { a: id, p: String(trade.price), q: String(trade.size), f: id, l: id, T: trade.ts_exchange, m: trade.side === "sell", M: true };
 }
 
-/** Serves the recorded tape as the mirror would: the newest page without fromId, else the 1,000 ids from fromId. */
+/** Serves a tape as the mirror would: the newest page without parameters, the 1,000 ids from `fromId`, or the first 1,000 rows at or after `startTime`. */
 function recordedPage(url: string, rows: readonly TradeFrame[] = recorded): Record<string, unknown>[] {
-  const fromId = new URL(url).searchParams.get("fromId");
+  const params = new URL(url).searchParams;
+  const fromId = params.get("fromId");
+  const startTime = params.get("startTime");
+  if (startTime !== null) return rows.filter((trade) => trade.ts_exchange >= Number(startTime)).slice(0, TAPE_BOOTSTRAP_PAGE).map(aggTradeRow);
   const first = Number(rows[0].trade_id.slice(1));
   const last = Number(rows[rows.length - 1].trade_id.slice(1));
   const start = fromId === null ? Math.max(first, last - TAPE_BOOTSTRAP_PAGE + 1) : Number(fromId);
@@ -59,6 +64,19 @@ function recordedPage(url: string, rows: readonly TradeFrame[] = recorded): Reco
     const id = Number(trade.trade_id.slice(1));
     return id >= start && id < start + TAPE_BOOTSTRAP_PAGE;
   }).map(aggTradeRow);
+}
+
+function historyRequest(requestId: number, fromTs: number, toTs: number, minSize: number, cursor?: string) {
+  return { type: "aggressive_history", request_id: requestId, from_ts: fromTs, to_ts: toTs, min_size: minSize, ...(cursor === undefined ? {} : { cursor }) };
+}
+
+/** Sends one aggressive_history request and returns its reply (or null when the transport drops it). */
+async function askHistory(h: Harness, request: Record<string, unknown>): Promise<Extract<ServerFrame, { type: "aggressive_history" }> | null> {
+  const before = h.frames.length;
+  h.transport.send(JSON.stringify(request));
+  await vi.advanceTimersByTimeAsync(0);
+  const reply = h.parsed().slice(before).find((frame) => frame.type === "aggressive_history");
+  return reply === undefined ? null : reply as Extract<ServerFrame, { type: "aggressive_history" }>;
 }
 
 const klineRow = (openTime: number, close: string) => [openTime, "79500.00", "79600.00", "79400.00", close, "5.000", openTime + 59_999, "0", 50, "2.000", "0", "0"];
@@ -85,6 +103,10 @@ class FakeUpstreamSocket implements UpstreamSocket {
   }
   message(payload: unknown): void {
     this.onmessage?.(new MessageEvent("message", { data: JSON.stringify(payload) }));
+  }
+  drop(): void {
+    this.readyState = 3;
+    this.onclose?.(new CloseEvent("close", { code: 1006 }));
   }
 }
 
@@ -188,7 +210,9 @@ describe("BrowserBinanceTransport tape bootstrap", () => {
     expect(snapshot.markers).toEqual(expected);
     expect(snapshot.markers.every((marker) => marker.trade_id.startsWith("a"))).toBe(true);
 
-    expect(snapshot.aggressive_prints_from).toBe(OLDEST_TS);
+    // No stream delivers yet: the prints from the pages are there, but no
+    // stretch of complete tape reaches now, so the snapshot claims none.
+    expect(snapshot.aggressive_prints_from).toBe(NOW_MS);
     expect(snapshot.aggressive_prints_floor).toBeGreaterThan(0);
     const prints = snapshot.aggressive_prints!;
     expect(prints.length).toBeGreaterThan(100);
@@ -264,9 +288,12 @@ describe("BrowserBinanceTransport tape bootstrap", () => {
       const snapshot = frames[5];
       if (snapshot.type !== "snapshot") throw new Error("expected a snapshot");
       const read = recorded.slice(-2_000);
-      expect(snapshot.aggressive_prints_from).toBe(read[0].ts_exchange);
       expect(snapshot.markers).toEqual(runtimeMarkers(read));
       expect(frames.filter((frame) => frame.type === "health")).toHaveLength(1);
+      // Coverage is the two pages read, not the page that failed.
+      const floor = snapshot.aggressive_prints_floor!;
+      expect(await askHistory(h, historyRequest(1, read[0].ts_exchange, NEWEST_TS + 1, floor))).toMatchObject({ complete: true, reason: null });
+      expect(await askHistory(h, historyRequest(2, recorded[7_000].ts_exchange, NEWEST_TS + 1, floor))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE", trades: [] });
     } finally {
       warn.mockRestore();
     }
@@ -302,16 +329,20 @@ describe("BrowserBinanceTransport tape bootstrap", () => {
       expect(h.parsed().map((frame) => frame.type)).toEqual(["trade", "marker"]);
       h.frames.length = 0;
 
-      // The next retry succeeds: the snapshot goes out and READY is plain again.
+      // The next retry succeeds: READY is plain again, the seam between the
+      // pages and the live trade is read (nothing newer was recorded), and the
+      // snapshot goes out claiming coverage from the oldest page.
       failing = false;
       await vi.advanceTimersByTimeAsync(delay);
       await settle();
       const frames = h.parsed();
-      expect(frames.map((frame) => frame.type)).toEqual(["snapshot", "bar", "marker_history", "health"]);
-      expect(frames[3]).toMatchObject({ recoveryState: "READY", reason: HEALTH_REASON_READY });
-      const snapshot = frames[0];
+      expect(frames.map((frame) => frame.type)).toEqual(["health", "snapshot", "bar", "marker_history"]);
+      expect(frames[0]).toMatchObject({ recoveryState: "READY", reason: HEALTH_REASON_READY });
+      expect(String(h.aggTradesMock.mock.calls.at(-1)![0])).toContain(`startTime=${NEWEST_TS + 1}`);
+      const snapshot = frames[1];
       if (snapshot.type !== "snapshot") throw new Error("expected a snapshot");
       expect(snapshot.trades).toHaveLength(1);
+      expect(snapshot.aggressive_prints_from).toBe(OLDEST_TS);
       expect(snapshot.markers.some((marker) => marker.trade_id === "9000000001")).toBe(true);
     } finally {
       warn.mockRestore();
@@ -357,10 +388,11 @@ describe("BrowserBinanceTransport aggressive_history", () => {
     const snapshot = h.parsed()[5];
     if (snapshot.type !== "snapshot") throw new Error("expected a snapshot");
     h.frames.length = 0;
-    return { h, floor: snapshot.aggressive_prints_floor!, from: snapshot.aggressive_prints_from!, prints: snapshot.aggressive_prints! };
+    // The observed stretch is the recording itself; no stream delivers.
+    return { h, floor: snapshot.aggressive_prints_floor!, from: OLDEST_TS, prints: snapshot.aggressive_prints! };
   }
 
-  it("answers a window the pool covers at its floor completely, in time order", async () => {
+  it("answers a window inside the observed tape at the pool's floor completely, in time order", async () => {
     const { h, floor, from, prints } = await bootstrapped();
     const toTs = OLDEST_TS + 120_000;
     h.transport.send(JSON.stringify({ type: "aggressive_history", request_id: 3, from_ts: from, to_ts: toTs, min_size: floor }));
@@ -383,7 +415,7 @@ describe("BrowserBinanceTransport aggressive_history", () => {
     expect(narrower.trades.every((trade) => trade.size >= floor * 4 && trade.ts_exchange >= from + 60_000)).toBe(true);
   });
 
-  it("is honestly STORAGE_UNAVAILABLE before the bootstrap, before the coverage starts, or below the floor", async () => {
+  it("is honestly STORAGE_UNAVAILABLE before the bootstrap, outside the observed tape, past its end, or below the floor", async () => {
     const early = harness(() => new Promise<Response>(() => {}));
     await openAndSelect(early);
     early.frames.length = 0;
@@ -392,16 +424,17 @@ describe("BrowserBinanceTransport aggressive_history", () => {
     expect(early.parsed()[0]).toMatchObject({ type: "aggressive_history", request_id: 1, complete: false, reason: "STORAGE_UNAVAILABLE", next_cursor: null, trades: [] });
 
     const { h, floor, from } = await bootstrapped();
-    h.transport.send(JSON.stringify({ type: "aggressive_history", request_id: 5, from_ts: from - 1, to_ts: NOW_MS, min_size: floor }));
-    h.transport.send(JSON.stringify({ type: "aggressive_history", request_id: 6, from_ts: from, to_ts: NOW_MS, min_size: floor / 2 }));
+    h.transport.send(JSON.stringify({ type: "aggressive_history", request_id: 5, from_ts: from - 1, to_ts: NEWEST_TS + 1, min_size: floor }));
+    h.transport.send(JSON.stringify({ type: "aggressive_history", request_id: 6, from_ts: from, to_ts: NEWEST_TS + 1, min_size: floor / 2 }));
+    // Past the newest row read: the tape from there to now was never observed.
+    h.transport.send(JSON.stringify({ type: "aggressive_history", request_id: 9, from_ts: from, to_ts: NOW_MS, min_size: floor }));
     // Malformed or stale requests get no reply at all, as the runtime drops them.
     h.transport.send(JSON.stringify({ type: "aggressive_history", request_id: 7, from_ts: from, to_ts: NOW_MS + 120_000, min_size: floor }));
     h.transport.send(JSON.stringify({ type: "aggressive_history", request_id: 8, from_ts: from, to_ts: NOW_MS, min_size: floor, cursor: "bm90LWEtY3Vyc29y" }));
     await vi.advanceTimersByTimeAsync(0);
     const frames = h.parsed();
-    expect(frames.map((frame) => (frame as { request_id: number }).request_id)).toEqual([5, 6]);
-    expect(frames[0]).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE", trades: [] });
-    expect(frames[1]).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE", trades: [] });
+    expect(frames.map((frame) => (frame as { request_id: number }).request_id)).toEqual([5, 6, 9]);
+    for (const frame of frames) expect(frame).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE", trades: [] });
   });
 
   it("pages a window of more than 10,000 prints with CAP_REACHED and a cursor bound to the request", async () => {
@@ -418,8 +451,8 @@ describe("BrowserBinanceTransport aggressive_history", () => {
     expect(snapshot.aggressive_prints).toHaveLength(12_000);
     expect(snapshot.aggressive_prints_floor).toBe(0.25);
     h.frames.length = 0;
-    const from = snapshot.aggressive_prints_from!;
-    const request = { type: "aggressive_history", request_id: 20, from_ts: from, to_ts: NOW_MS, min_size: 0.25 };
+    const from = synthetic[0].ts_exchange;
+    const request = { type: "aggressive_history", request_id: 20, from_ts: from, to_ts: synthetic[synthetic.length - 1].ts_exchange + 1, min_size: 0.25 };
     h.transport.send(JSON.stringify(request));
     await vi.advanceTimersByTimeAsync(0);
     const page1 = h.parsed()[0];
@@ -441,5 +474,205 @@ describe("BrowserBinanceTransport aggressive_history", () => {
     const ids = [...page1.trades, ...page2.trades].map((trade) => trade.trade_id);
     expect(new Set(ids).size).toBe(12_000);
     expect(ids).toEqual(synthetic.map((trade) => trade.trade_id));
+  });
+});
+
+describe("BrowserBinanceTransport tape seams", () => {
+  const SEAM_SIZE = "5.00000";
+  /** Rows the mirror holds after the recording: two inside the seam, one at the live trade's time and one after it. */
+  function seamRows(liveFrom: number): TradeFrame[] {
+    return [NEWEST_TS + 1_000, NEWEST_TS + 2_000, liveFrom, liveFrom + 500].map((ts, index) => ({
+      type: "trade", provider: "BINANCE", symbol: "BTC-USDT", marketKind: "SPOT", ts_exchange: ts, price: 79_530, size: Number(SEAM_SIZE), side: "buy", trade_id: `a${LAST_ID + 1 + index}`,
+    }));
+  }
+
+  it("claims nothing across the seam when the stream connects after the bootstrap, then fills the seam from REST and claims the whole stretch", async () => {
+    const liveFrom = NEWEST_TS + 3_000;
+    const tape = [...recorded, ...seamRows(liveFrom)];
+    let release: (() => void) | null = null;
+    const h = harness((url) => {
+      if (!url.includes("startTime")) return Promise.resolve(jsonResponse(recordedPage(url, recorded)));
+      return new Promise<Response>((resolve) => {
+        release = () => resolve(jsonResponse(recordedPage(url, tape)));
+      });
+    });
+    await openAndSelect(h);
+    await settle();
+    const first = h.parsed()[5];
+    if (first.type !== "snapshot") throw new Error("expected a snapshot");
+    const floor = first.aggressive_prints_floor!;
+    expect(first.aggressive_prints_from).toBe(NOW_MS);
+    expect(await askHistory(h, historyRequest(1, OLDEST_TS, NOW_MS, floor))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE" });
+    expect(await askHistory(h, historyRequest(2, OLDEST_TS, NEWEST_TS + 1, floor))).toMatchObject({ complete: true });
+
+    // The stream connects late; its first trade opens the live span and starts the seam fill.
+    h.stream().open();
+    await vi.advanceTimersByTimeAsync(0);
+    h.frames.length = 0;
+    h.stream().message(liveTrade(9_000_000_001, liveFrom, SEAM_SIZE, false));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(String(h.aggTradesMock.mock.calls.at(-1)![0])).toContain(`startTime=${NEWEST_TS + 1}`);
+    // Until the fill lands, the hole between the newest page and the first
+    // live trade is inside no claim (the live print's size has moved the
+    // floor, so these ask well above it).
+    const aboveFloor = 1;
+    expect(await askHistory(h, historyRequest(3, OLDEST_TS, liveFrom + 1_000, aboveFloor))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE" });
+    expect(await askHistory(h, historyRequest(4, liveFrom, liveFrom + 1_000, aboveFloor))).toMatchObject({ complete: true });
+    expect(h.frames.filter((frame) => frame.type === "snapshot")).toHaveLength(0);
+
+    release!();
+    await settle();
+    const frames = h.parsed();
+    expect(frames.filter((frame) => frame.type === "snapshot")).toHaveLength(1);
+    const snapshot = frames.find((frame) => frame.type === "snapshot")!;
+    if (snapshot.type !== "snapshot") throw new Error("expected a snapshot");
+    expect(snapshot.aggressive_prints_from).toBe(OLDEST_TS);
+    // The seam's own prints are in the pool; the rows at and after the live trade were the stream's and are not.
+    const ids = snapshot.aggressive_prints!.map((print) => print.trade_id);
+    expect(ids).toContain(`a${LAST_ID + 1}`);
+    expect(ids).toContain(`a${LAST_ID + 2}`);
+    expect(ids).not.toContain(`a${LAST_ID + 3}`);
+    expect(ids).toContain("9000000001");
+    const whole = await askHistory(h, historyRequest(5, OLDEST_TS, liveFrom + 1_000, aboveFloor));
+    expect(whole).toMatchObject({ complete: true, reason: null });
+    expect(whole!.trades.map((trade) => trade.trade_id).slice(-3)).toEqual([`a${LAST_ID + 1}`, `a${LAST_ID + 2}`, "9000000001"]);
+  });
+
+  it("keeps a reconnect hole outside every claim when the seam cannot be read, and closes it when it can", async () => {
+    let seamReads = 0;
+    let seamFails = true;
+    const holeRows: TradeFrame[] = [];
+    const h = harness(async (url) => {
+      if (!url.includes("startTime")) return jsonResponse([]);
+      seamReads += 1;
+      if (seamFails) throw new Error("network");
+      return jsonResponse(recordedPage(url, holeRows));
+    });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      await openAndSelect(h);
+      await settle();
+      h.stream().open();
+      await vi.advanceTimersByTimeAsync(0);
+      h.frames.length = 0;
+      const t1 = NOW_MS - 60_000;
+      const t2 = NOW_MS - 50_000;
+      h.stream().message(liveTrade(1, t1, SEAM_SIZE, false));
+      h.stream().message(liveTrade(2, t2, SEAM_SIZE, true));
+      expect(await askHistory(h, historyRequest(1, t1, t2 + 1, 0))).toMatchObject({ complete: true });
+      h.stream().drop();
+      await vi.advanceTimersByTimeAsync(STREAM_BACKOFF_INITIAL_MS);
+      h.stream().open();
+      await vi.advanceTimersByTimeAsync(0);
+      // The closed span is observed up to its last trade only.
+      expect(await askHistory(h, historyRequest(2, t1, t2 + 1, 0))).toMatchObject({ complete: true });
+      expect(await askHistory(h, historyRequest(3, t1, t2 + 2, 0))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE" });
+      const t3 = NOW_MS - 20_000;
+      h.stream().message(liveTrade(3, t3, SEAM_SIZE, false));
+      // Three failed seam reads with backoff: the hole stays open, every claim stops at it.
+      let delay = STREAM_BACKOFF_INITIAL_MS;
+      for (let failure = 1; failure < SEAM_FILL_FAILURES_BEFORE_GIVING_UP; failure += 1) {
+        await settle();
+        await vi.advanceTimersByTimeAsync(delay);
+        delay *= 2;
+      }
+      await settle();
+      expect(seamReads).toBe(SEAM_FILL_FAILURES_BEFORE_GIVING_UP);
+      expect(await askHistory(h, historyRequest(4, t1, t3 + 1, 0))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE", trades: [] });
+      expect(await askHistory(h, historyRequest(5, t3, t3 + 1, 0))).toMatchObject({ complete: true });
+      expect(await askHistory(h, historyRequest(6, t1, t2 + 1, 0))).toMatchObject({ complete: true });
+      expect(h.frames.filter((frame) => frame.type === "snapshot")).toHaveLength(0);
+
+      // A second disconnect whose seam can be read: the mirror holds one print inside the hole.
+      h.stream().drop();
+      await vi.advanceTimersByTimeAsync(STREAM_BACKOFF_INITIAL_MS);
+      h.stream().open();
+      await vi.advanceTimersByTimeAsync(0);
+      const t4 = NOW_MS - 5_000;
+      holeRows.push({ type: "trade", provider: "BINANCE", symbol: "BTC-USDT", marketKind: "SPOT", ts_exchange: t3 + 7_000, price: 79_530, size: 5, side: "sell", trade_id: "a77" });
+      holeRows.push({ type: "trade", provider: "BINANCE", symbol: "BTC-USDT", marketKind: "SPOT", ts_exchange: t4 + 100, price: 79_530, size: 5, side: "sell", trade_id: "a78" });
+      seamFails = false;
+      h.frames.length = 0;
+      h.stream().message(liveTrade(4, t4, SEAM_SIZE, false));
+      await settle();
+      expect(String(h.aggTradesMock.mock.calls.at(-1)![0])).toContain(`startTime=${t3 + 1}`);
+      // The first hole was given up and is not re-read; the second is closed and the snapshot says so.
+      const snapshot = h.parsed().find((frame) => frame.type === "snapshot");
+      if (snapshot === undefined || snapshot.type !== "snapshot") throw new Error("expected a snapshot");
+      expect(snapshot.aggressive_prints_from).toBe(t3);
+      expect(snapshot.aggressive_prints!.map((print) => print.trade_id)).toContain("a77");
+      expect(snapshot.aggressive_prints!.map((print) => print.trade_id)).not.toContain("a78");
+      expect(await askHistory(h, historyRequest(7, t3, t4 + 1, 0))).toMatchObject({ complete: true });
+      expect(await askHistory(h, historyRequest(8, t1, t4 + 1, 0))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE" });
+    } finally {
+      warn.mockRestore();
+    }
+  });
+});
+
+describe("BrowserBinanceTransport page integrity", () => {
+  it("refuses a page with a malformed row, a gap in its ids, more rows than asked or a wrong start", () => {
+    const good = recorded.slice(0, 5).map(aggTradeRow);
+    expect(parseAggTradesPage(good, FIRST_ID)).toHaveLength(5);
+    expect(() => parseAggTradesPage([...good.slice(0, 2), { ...good[2], q: "x" }, ...good.slice(3)], null)).toThrow("malformed row");
+    expect(() => parseAggTradesPage([...good.slice(0, 2), ...good.slice(3)], null)).toThrow("id-contiguous");
+    expect(() => parseAggTradesPage(good, FIRST_ID + 1)).toThrow("fromId");
+    expect(() => parseAggTradesPage(new Array(TAPE_BOOTSTRAP_PAGE + 1).fill(good[0]), null)).toThrow("more rows");
+    expect(() => parseAggTradesPage("nope", null)).toThrow("not an array");
+  });
+
+  it("treats a full page with one malformed row as a failed read: retried, never a shorter page that ends the walk with a hole inside claimed coverage", async () => {
+    let calls = 0;
+    const h = harness(async (url) => {
+      calls += 1;
+      const page = recordedPage(url);
+      if (calls === 1) page[500] = { ...page[500], p: "not-a-price" };
+      return jsonResponse(page);
+    });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      await openAndSelect(h);
+      await settle();
+      // The first attempt failed on its first page: nothing published, nothing claimed.
+      expect(h.aggTradesMock).toHaveBeenCalledTimes(1);
+      expect(h.parsed().map((frame) => frame.type)).toEqual(["selection", "snapshot", "health", "book", "bar"]);
+      expect(await askHistory(h, historyRequest(1, OLDEST_TS, NEWEST_TS + 1, 0))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE" });
+      // The retry reads the same page whole.
+      await vi.advanceTimersByTimeAsync(STREAM_BACKOFF_INITIAL_MS);
+      await settle();
+      expect(h.aggTradesMock).toHaveBeenCalledTimes(12);
+      const snapshot = h.parsed().find((frame) => frame.type === "snapshot" && frame.markers.length > 0);
+      if (snapshot === undefined || snapshot.type !== "snapshot") throw new Error("expected a snapshot");
+      expect(snapshot.markers).toEqual(runtimeMarkers(recorded));
+      expect(await askHistory(h, historyRequest(2, OLDEST_TS, NEWEST_TS + 1, snapshot.aggressive_prints_floor!))).toMatchObject({ complete: true });
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("ends the walk at a later malformed page and claims only the pages validated before it", async () => {
+    let calls = 0;
+    const h = harness(async (url) => {
+      calls += 1;
+      const page = recordedPage(url);
+      if (calls === 2) page.splice(10, 1);
+      return jsonResponse(page);
+    });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      await openAndSelect(h);
+      await settle();
+      expect(h.aggTradesMock).toHaveBeenCalledTimes(2);
+      const snapshot = h.parsed()[5];
+      if (snapshot.type !== "snapshot") throw new Error("expected a snapshot");
+      const read = recorded.slice(-1_000);
+      expect(snapshot.markers).toEqual(runtimeMarkers(read));
+      const floor = snapshot.aggressive_prints_floor!;
+      expect(await askHistory(h, historyRequest(1, read[0].ts_exchange, NEWEST_TS + 1, floor))).toMatchObject({ complete: true });
+      // The page with the missing row is not coverage: a window reaching into it is unavailable.
+      expect(await askHistory(h, historyRequest(2, recorded[8_500].ts_exchange, NEWEST_TS + 1, floor))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE", trades: [] });
+    } finally {
+      warn.mockRestore();
+    }
   });
 });

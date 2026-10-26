@@ -799,3 +799,196 @@ export function relativeVolumeCryptoFixture(options: { seed?: number; baseVolume
     },
   };
 }
+
+/*
+ * Frozen fixtures for the Size-Split Delta build (`pm/cycle2/brief-size-split-delta.md`,
+ * "Frozen fixtures"). The brief lists the draws per bar as large sides, small
+ * sides, close noise and print price noise; it omitted the small sizes, which
+ * are drawn between the small sides and the close noise. Every other choice the
+ * brief leaves open is fixed in the doc comments below.
+ */
+
+export const SIZE_SPLIT_SEED = 20261102;
+export const SIZE_SPLIT_BARS = 300;
+export const SIZE_SPLIT_LARGE_SIZE = 1;
+export const SIZE_SPLIT_LARGE_PER_BAR = 2;
+export const SIZE_SPLIT_SMALL_PER_BAR = 98;
+export const SIZE_SPLIT_SMALL_MIN = 0.01;
+export const SIZE_SPLIT_SMALL_SPAN = 0.039;
+export const SIZE_SPLIT_REGIME_LENGTH = 30;
+/** The planted extreme is forced beyond the previous 20 closes (the default marker window). */
+export const SIZE_SPLIT_EXTREME_LOOKBACK = 20;
+export const SIZE_SPLIT_EXTREME_STEP = 30;
+export const SIZE_SPLIT_START_PRICE = 60_000;
+/** Bars `45 + 30 j`, `j = 0..7`. */
+export const SIZE_SPLIT_PLANTED_INDICES: readonly number[] = Object.freeze(Array.from({ length: 8 }, (_, j) => 45 + 30 * j));
+export const SIZE_SPLIT_REGIME_BARS = 600;
+/** Bars `60 + 55 j`, `j = 0..9`, planted only when price follows the large tier. */
+export const SIZE_SPLIT_REGIME_PLANTED_INDICES: readonly number[] = Object.freeze(Array.from({ length: 10 }, (_, j) => 60 + 55 * j));
+export const SIZE_SPLIT_REGIME_SEEDS: readonly number[] = Object.freeze([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+
+export type SizeSplitPriceFollows = "large" | "small" | "none";
+
+export interface SizeSplitLabels {
+  regime: "sizeSplit" | "sizeSplitRegime";
+  seed: number;
+  priceFollows: SizeSplitPriceFollows;
+  /** Bars where the generator forced the large prints to oppose a forced strict new extreme. */
+  plantedIndices: number[];
+  /** The regime sign at each planted bar: +1 means price was forced to a new high while the large prints sold. */
+  direction: (1 | -1)[];
+  /** The regime sign of every bar. */
+  regimeSign: (1 | -1)[];
+}
+
+export interface SizeSplitFixture {
+  bars: BarFrame[];
+  /** Every print of the series, in time order. */
+  prints: TradeFrame[];
+  /** The prints of each bar, in time order. */
+  printsByBar: TradeFrame[][];
+  labels: SizeSplitLabels;
+}
+
+interface SizeSplitGeneratorOptions {
+  seed: number;
+  count: number;
+  planted: readonly number[];
+  priceFollows: SizeSplitPriceFollows;
+  /** Probability that a large print takes the regime's side on an unplanted bar. */
+  largeSideProbability: number;
+  regime: SizeSplitLabels["regime"];
+}
+
+function regimeSignAt(index: number): 1 | -1 {
+  return Math.floor(index / SIZE_SPLIT_REGIME_LENGTH) % 2 === 0 ? 1 : -1;
+}
+
+/**
+ * The shared generator. Per bar, in this order: 2 large sides, 98 small sides,
+ * 98 small sizes, 1 close-noise draw, 100 print price-noise draws (consumed in
+ * time order, the first and last prints taking no noise so the candle opens at
+ * the previous close and closes exactly at the target). Large prints trade at
+ * 85 and 90 percent of the bar, small prints evenly spread. On a planted bar
+ * `p` and the two before it both large prints take the side opposite to the
+ * regime; on `p` itself the target close is the strict extreme of the previous
+ * 20 closes plus 30 in the regime's direction and the small prints follow the
+ * regime with probability 0.9. The candle's volume is the exact sum of the
+ * print sizes (no rounding), so the tape share reads 1.
+ */
+function generateSizeSplit(options: SizeSplitGeneratorOptions): SizeSplitFixture {
+  const random = mulberry32(options.seed);
+  const planted = new Set(options.planted);
+  const plantedWindow = new Set<number>();
+  for (const index of options.planted) for (let back = 0; back <= 2; back += 1) plantedWindow.add(index - back);
+  const bars: BarFrame[] = [];
+  const prints: TradeFrame[] = [];
+  const printsByBar: TradeFrame[][] = [];
+  const closes: number[] = [];
+  const regimeSign: (1 | -1)[] = [];
+  const direction: (1 | -1)[] = [];
+  let open = SIZE_SPLIT_START_PRICE;
+  for (let index = 0; index < options.count; index += 1) {
+    const d = regimeSignAt(index);
+    regimeSign.push(d);
+    const tsOpen = FIXTURE_T0 + index * MINUTE_MS;
+    const largeSides: Side[] = [];
+    for (let j = 0; j < SIZE_SPLIT_LARGE_PER_BAR; j += 1) {
+      const u = random();
+      const side = plantedWindow.has(index) ? -d : u < options.largeSideProbability ? d : -d;
+      largeSides.push(side > 0 ? "buy" : "sell");
+    }
+    const buyProbability = planted.has(index) ? (d > 0 ? 0.9 : 0.1) : 0.5 - 0.15 * d;
+    const smallSides: Side[] = [];
+    for (let j = 0; j < SIZE_SPLIT_SMALL_PER_BAR; j += 1) smallSides.push(random() < buyProbability ? "buy" : "sell");
+    const smallSizes: number[] = [];
+    for (let j = 0; j < SIZE_SPLIT_SMALL_PER_BAR; j += 1) smallSizes.push(SIZE_SPLIT_SMALL_MIN + SIZE_SPLIT_SMALL_SPAN * random());
+    const closeNoise = random() - 0.5;
+    const netLarge = largeSides.reduce((sum, side) => sum + (side === "buy" ? 1 : -1), 0);
+    let netSmall = 0;
+    for (let j = 0; j < SIZE_SPLIT_SMALL_PER_BAR; j += 1) netSmall += smallSides[j] === "buy" ? smallSizes[j] : -smallSizes[j];
+    let target: number;
+    if (options.priceFollows === "large") target = open + 25 * netLarge + 10 * closeNoise;
+    else if (options.priceFollows === "small") target = open + 60 * netSmall + 10 * closeNoise;
+    else target = open + 30 * closeNoise;
+    if (planted.has(index)) {
+      const window = closes.slice(Math.max(0, index - SIZE_SPLIT_EXTREME_LOOKBACK), index);
+      target = d > 0 ? Math.max(...window) + SIZE_SPLIT_EXTREME_STEP : Math.min(...window) - SIZE_SPLIT_EXTREME_STEP;
+      direction.push(d);
+    }
+    target = round(target);
+    const unsorted: { ts: number; size: number; side: Side; id: string }[] = [];
+    unsorted.push({ ts: tsOpen + Math.floor(MINUTE_MS * 0.85), size: SIZE_SPLIT_LARGE_SIZE, side: largeSides[0], id: `${options.regime}-${options.seed}-${index}-L0` });
+    unsorted.push({ ts: tsOpen + Math.floor(MINUTE_MS * 0.9), size: SIZE_SPLIT_LARGE_SIZE, side: largeSides[1], id: `${options.regime}-${options.seed}-${index}-L1` });
+    for (let j = 0; j < SIZE_SPLIT_SMALL_PER_BAR; j += 1) {
+      unsorted.push({ ts: tsOpen + Math.floor(((j + 0.5) / SIZE_SPLIT_SMALL_PER_BAR) * MINUTE_MS), size: smallSizes[j], side: smallSides[j], id: `${options.regime}-${options.seed}-${index}-S${j}` });
+    }
+    unsorted.sort((a, b) => a.ts - b.ts);
+    const barPrints: TradeFrame[] = [];
+    let volume = 0;
+    let buy = 0;
+    let high = -Infinity;
+    let low = Infinity;
+    for (let k = 0; k < unsorted.length; k += 1) {
+      const entry = unsorted[k];
+      const noise = 2 * (random() - 0.5);
+      let price: number;
+      if (k === 0) price = open;
+      else if (k === unsorted.length - 1) price = target;
+      else price = round(open + ((target - open) * (entry.ts - tsOpen)) / MINUTE_MS + noise);
+      const print = tradeFrame(entry.ts, price, entry.size, entry.side, BINANCE_PERP, entry.id);
+      barPrints.push(print);
+      volume += entry.size;
+      if (entry.side === "buy") buy += entry.size;
+      high = Math.max(high, price);
+      low = Math.min(low, price);
+    }
+    const bar: BarFrame = {
+      type: "bar",
+      ...BINANCE_PERP,
+      interval_ms: MINUTE_MS,
+      ts_open: tsOpen,
+      open,
+      high,
+      low,
+      close: target,
+      volume,
+      buy_volume: buy,
+      sell_volume: volume - buy,
+      trade_count: barPrints.length,
+      closed: true,
+    } as BarFrame;
+    bars.push(bar);
+    prints.push(...barPrints);
+    printsByBar.push(barPrints);
+    closes.push(target);
+    open = target;
+  }
+  return {
+    bars,
+    prints,
+    printsByBar,
+    labels: { regime: options.regime, seed: options.seed, priceFollows: options.priceFollows, plantedIndices: [...options.planted], direction, regimeSign },
+  };
+}
+
+/** The mechanism fixture: 300 bars, large side with the regime at 0.8, price follows the large tier, 8 planted divergences. */
+export function sizeSplitFixture(): SizeSplitFixture {
+  return generateSizeSplit({ seed: SIZE_SPLIT_SEED, count: SIZE_SPLIT_BARS, planted: SIZE_SPLIT_PLANTED_INDICES, priceFollows: "large", largeSideProbability: 0.8, regime: "sizeSplit" });
+}
+
+/**
+ * The regime generator: 600 bars, large side with the regime at 0.65, the
+ * target close chosen by `priceFollows`; `"large"` plants 10 events per seed at
+ * bars `60 + 55 j`, `"small"` and `"none"` plant nothing and carry no labels.
+ */
+export function sizeSplitRegimeBars(options: { seed: number; priceFollows: SizeSplitPriceFollows }): SizeSplitFixture {
+  return generateSizeSplit({
+    seed: options.seed,
+    count: SIZE_SPLIT_REGIME_BARS,
+    planted: options.priceFollows === "large" ? SIZE_SPLIT_REGIME_PLANTED_INDICES : [],
+    priceFollows: options.priceFollows,
+    largeSideProbability: 0.65,
+    regime: "sizeSplitRegime",
+  });
+}

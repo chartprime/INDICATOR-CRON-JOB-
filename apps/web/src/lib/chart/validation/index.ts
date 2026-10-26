@@ -11,3 +11,4 @@ export * from "./markerBudget";
 export * from "./syntheticTape";
 export * from "./fakeL2";
 export * from "./perfProbe";
+export * from "./sizeSplitReference";

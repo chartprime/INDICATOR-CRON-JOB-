@@ -141,6 +141,38 @@ describe("binance-connection", () => {
     expect(instances.every((instance) => instance.options.perMessageDeflate === false)).toBe(true);
   });
 
+  test("endpoints.spotWsBaseUrl moves only the SPOT route to the mirror; the PERPETUAL routes keep their fixed origins", () => {
+    const { WebSocketImpl, instances } = createFakeWebSocketImpl();
+    const connection = createBinanceConnection({
+      webSocketImpl: WebSocketImpl,
+      endpoints: { spotWsBaseUrl: "wss://data-stream.binance.vision:9443" },
+    });
+
+    connection.connect();
+
+    expect(instances.map((instance) => instance.url).sort()).toEqual([
+      "wss://data-stream.binance.vision:9443/stream",
+      "wss://fstream.binance.com/market/stream",
+      "wss://fstream.binance.com/public/stream",
+    ]);
+    expect(() => createBinanceConnection({ webSocketImpl: WebSocketImpl, endpoints: { spotWsBaseUrl: "https://wrong" } }))
+      .toThrow(/TT_BINANCE_SPOT_WS_BASE_URL/);
+  });
+
+  test("endpoints.spotRestBaseUrl sends the SPOT depth snapshot to the mirror", async () => {
+    const { WebSocketImpl, instances } = createFakeWebSocketImpl();
+    const fetchImpl = jest.fn(async () => new Response(JSON.stringify({ lastUpdateId: 100, bids: [], asks: [] }), { status: 200 }));
+    const connection = createBinanceConnection({
+      webSocketImpl: WebSocketImpl,
+      fetchImpl,
+      endpoints: { spotRestBaseUrl: "https://data-api.binance.vision" },
+    });
+    connectAndOpenAll(connection, instances);
+    connection.subscribe({ symbol: "BTCUSDT", marketKind: "SPOT", eventType: "DEPTH" }, "c1");
+    await flushUntil(() => fetchImpl.mock.calls.length > 0);
+    expect(fetchImpl.mock.calls[0][0]).toBe("https://data-api.binance.vision/api/v3/depth?symbol=BTCUSDT&limit=5000");
+  });
+
   test("getStatus reports CONNECTING, then CONNECTED, then DISCONNECTED per route independently", () => {
     const { WebSocketImpl, instances } = createFakeWebSocketImpl();
     const connection = createBinanceConnection({ webSocketImpl: WebSocketImpl });
@@ -1972,7 +2004,7 @@ describe("binance-connection", () => {
 
         connection.subscribe({ symbol: "BTCUSDT", marketKind: "SPOT", eventType: "DEPTH" }, "consumer-a");
         await flushAsync();
-        expect(connection.getDepthSnapshot("SPOT", "BTCUSDT")).toEqual({ ok: false, reason: "HTTP_ERROR" });
+        expect(connection.getDepthSnapshot("SPOT", "BTCUSDT")).toMatchObject({ ok: false, reason: "HTTP_ERROR", status: 500 });
         expect(fetchImpl).toHaveBeenCalledTimes(1);
 
         await jest.advanceTimersByTimeAsync(1500);
@@ -2001,8 +2033,8 @@ describe("binance-connection", () => {
 
         connection.subscribe({ symbol: "BTCUSDT", marketKind: "SPOT", eventType: "DEPTH" }, "consumer-a");
         await flushAsync();
-        expect(connection.getDepthSnapshot("SPOT", "BTCUSDT")).toEqual({
-          ok: false, reason: "RATE_LIMITED", retryAfterMs: 5000,
+        expect(connection.getDepthSnapshot("SPOT", "BTCUSDT")).toMatchObject({
+          ok: false, reason: "RATE_LIMITED", retryAfterMs: 5000, status: 429,
         });
         expect(fetchImpl).toHaveBeenCalledTimes(1);
 

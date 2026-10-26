@@ -137,6 +137,29 @@ describe("validator agrees with the parsers it guards", () => {
     for (const value of ["0", "-1", "1e9", "400GiB", "01", "99999999999999999999"]) expect(valueIsValid(item, value)).toBe(false);
   });
 
+  test("the spot endpoint overrides accept bare origins of their own scheme only, matching binance-config's rule", () => {
+    const ws = byName.get("TT_BINANCE_SPOT_WS_BASE_URL");
+    expect(valueIsValid(ws, "wss://data-stream.binance.vision:9443")).toBe(true);
+    expect(valueIsValid(ws, "ws://127.0.0.1:9001")).toBe(true);
+    expect(valueIsValid(ws, "https://stream.binance.com")).toBe(false);
+    expect(valueIsValid(ws, "wss://stream.binance.com/stream")).toBe(false);
+    expect(valueIsValid(ws, "wss://user:pw@stream.binance.com")).toBe(false);
+    const rest = byName.get("TT_BINANCE_SPOT_REST_BASE_URL");
+    expect(valueIsValid(rest, "https://data-api.binance.vision")).toBe(true);
+    expect(valueIsValid(rest, "http://127.0.0.1:8099")).toBe(true);
+    expect(valueIsValid(rest, "wss://data-api.binance.vision")).toBe(false);
+    expect(valueIsValid(rest, "https://data-api.binance.vision/api")).toBe(false);
+  });
+
+  test("the REST poll interval is capped at 20000 ms so two polls a minute fall outside the finalisation grace", () => {
+    const item = byName.get("TT_BINANCE_REST_POLL_MS");
+    expect(valueIsValid(item, "250")).toBe(true);
+    expect(valueIsValid(item, "20000")).toBe(true);
+    expect(valueIsValid(item, "20001")).toBe(false);
+    expect(valueIsValid(item, "60000")).toBe(false);
+    expect(valueIsValid(item, "249")).toBe(false);
+  });
+
   test("flags are 0 or 1 only, so TT_VPIN_ENABLED=false can no longer silently mean enabled", () => {
     const item = byName.get("TT_VPIN_ENABLED");
     expect(valueIsValid(item, "0")).toBe(true);

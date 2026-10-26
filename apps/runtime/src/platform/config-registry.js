@@ -63,6 +63,11 @@ const CONFIG_REGISTRY = Object.freeze([
 
   entry("TT_VPIN_ENABLED", [TERMINAL_C], { kind: "flag", where: ".env", doc: "0 disables VPIN warm-up and live polling (default on)" }),
   entry("BINANCE_TRADE_QUEUE_DEPTH", [TERMINAL_C], { kind: "number", integer: true, gt: 0, where: ".env", doc: "Binance trade queue depth before overflow (default 5000)" }),
+  entry("TT_BINANCE_SPOT_WS_BASE_URL", [TERMINAL_C], { kind: "wsOrigin", where: ".env", doc: "Binance spot stream origin (default wss://stream.binance.com); the market-data mirror wss://data-stream.binance.vision:9443 is not geo-blocked. USD-M perpetuals keep their fixed origin" }),
+  entry("TT_BINANCE_SPOT_REST_BASE_URL", [TERMINAL_C], { kind: "origin", where: ".env", doc: "Binance spot REST origin for depth snapshots and candle backfill (default https://api.binance.com); the market-data mirror https://data-api.binance.vision is not geo-blocked. USD-M perpetuals keep their fixed origin" }),
+  entry("TT_BINANCE_TRANSPORT", [TERMINAL_C], { kind: "enum", values: ["ws", "rest"], where: ".env", doc: "Binance transport: ws streams every trade and depth diff (default); rest polls the spot REST API for 1m candles only, with no tape and no order book, for a host that cannot open a WebSocket" }),
+  entry("TT_BINANCE_REST_POLL_MS", [TERMINAL_C], { kind: "number", integer: true, min: 250, max: 20_000, where: ".env", doc: "REST transport: milliseconds between polls of a pair's candles (default 1000; at most 20000, so at least two polls a minute fall outside the one-second finalisation grace); the weight budget may lengthen it up to that cap" }),
+  entry("TT_BINANCE_REST_WEIGHT_BUDGET", [TERMINAL_C], { kind: "number", integer: true, min: 100, max: 5000, where: ".env", doc: "REST transport: Binance REQUEST_WEIGHT reserved per minute before each request (default 4000); the exchange limit is 6000, so at most 5000" }),
   entry("L2_MEMORY_DEBUG", [TERMINAL_C], { kind: "flag", where: ".env", doc: "1 logs L2 memory debugging" }),
   entry("L2_ICEBERG", [TERMINAL_C], { kind: "flag", where: ".env", doc: "0 turns the Iceberg Detector off (default on): no trackers, no history restore or save, no host fill; the channel still answers with empty pages" }),
   entry("L2_ICEBERG_HISTORY", [TERMINAL_C], { kind: "flag", where: ".env", doc: "0 keeps iceberg histories in memory only, never on disk, and asks the host for nothing (default on)" }),
@@ -269,6 +274,7 @@ function describeExpected(item) {
     case "isoTime": return "an ISO date-time";
     case "url": return "an absolute http(s) URL";
     case "origin": return "an http(s) origin without path, query or credentials";
+    case "wsOrigin": return "a ws(s) origin without path, query or credentials";
     case "tailscaleOrigin": return "an https *.ts.net origin without path, query or credentials";
     case "number": {
       const parts = [item.integer ? "a whole number" : "a number"];
@@ -295,6 +301,15 @@ function isBareOrigin(url) {
     && (url.pathname === "/" || url.pathname === "");
 }
 
+function parseWsUrl(raw) {
+  try {
+    const url = new URL(raw);
+    return url.protocol === "ws:" || url.protocol === "wss:" ? url : null;
+  } catch {
+    return null;
+  }
+}
+
 function valueIsValid(item, raw) {
   const value = raw.trim();
   switch (item.kind) {
@@ -315,6 +330,10 @@ function valueIsValid(item, raw) {
       return parseHttpUrl(value) !== null;
     case "origin": {
       const url = parseHttpUrl(value);
+      return url !== null && isBareOrigin(url);
+    }
+    case "wsOrigin": {
+      const url = parseWsUrl(value);
       return url !== null && isBareOrigin(url);
     }
     case "tailscaleOrigin": {

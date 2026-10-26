@@ -53,6 +53,11 @@ generated from `apps/runtime/src/platform/config-registry.js`, and
 | `TT_DXFEED_TOKEN_TIMEOUT_MS` | terminal-c, dxfeed-collector, operator | a number, above 0 |  | .env | Deadline for one broker token request (default 30000) |
 | `TT_VPIN_ENABLED` | terminal-c | 0 or 1 |  | .env | 0 disables VPIN warm-up and live polling (default on) |
 | `BINANCE_TRADE_QUEUE_DEPTH` | terminal-c | a whole number, above 0 |  | .env | Binance trade queue depth before overflow (default 5000) |
+| `TT_BINANCE_SPOT_WS_BASE_URL` | terminal-c | a ws(s) origin without path, query or credentials |  | .env | Binance spot stream origin (default wss://stream.binance.com); the market-data mirror wss://data-stream.binance.vision:9443 is not geo-blocked. USD-M perpetuals keep their fixed origin |
+| `TT_BINANCE_SPOT_REST_BASE_URL` | terminal-c | an http(s) origin without path, query or credentials |  | .env | Binance spot REST origin for depth snapshots and candle backfill (default https://api.binance.com); the market-data mirror https://data-api.binance.vision is not geo-blocked. USD-M perpetuals keep their fixed origin |
+| `TT_BINANCE_TRANSPORT` | terminal-c | ws or rest |  | .env | Binance transport: ws streams every trade and depth diff (default); rest polls the spot REST API for 1m candles only, with no tape and no order book, for a host that cannot open a WebSocket |
+| `TT_BINANCE_REST_POLL_MS` | terminal-c | a whole number, at least 250, at most 20000 |  | .env | REST transport: milliseconds between polls of a pair's candles (default 1000; at most 20000, so at least two polls a minute fall outside the one-second finalisation grace); the weight budget may lengthen it up to that cap |
+| `TT_BINANCE_REST_WEIGHT_BUDGET` | terminal-c | a whole number, at least 100, at most 5000 |  | .env | REST transport: Binance REQUEST_WEIGHT reserved per minute before each request (default 4000); the exchange limit is 6000, so at most 5000 |
 | `L2_MEMORY_DEBUG` | terminal-c | 0 or 1 |  | .env | 1 logs L2 memory debugging |
 | `L2_ICEBERG` | terminal-c | 0 or 1 |  | .env | 0 turns the Iceberg Detector off (default on): no trackers, no history restore or save, no host fill; the channel still answers with empty pages |
 | `L2_ICEBERG_HISTORY` | terminal-c | 0 or 1 |  | .env | 0 keeps iceberg histories in memory only, never on disk, and asks the host for nothing (default on) |
@@ -123,6 +128,84 @@ generated from `apps/runtime/src/platform/config-registry.js`, and
 | `L2_AGGRESSIVE_PERCENTILE` | terminal-c | a number, above 0, at most 1 |  | .env | Percentile a cluster must reach before it is sent (default 0.9) |
 | `L2_AGGRESSIVE_FLOOR` | terminal-c | a number, above 0, at most 10000000 |  | .env | Fixed reporting floor in base units instead of the percentile |
 | `L2_AGGRESSIVE_MIN` | terminal-c | a number, at least 0, at most 10000000 |  | .env | Floor under the calibrated floor, in base units |
+
+### Binance REST transport (`TT_BINANCE_TRANSPORT=rest`)
+
+For a host that cannot open a WebSocket (a cloud container whose proxy refuses
+upgrades, a region Binance's primary API blocks). Spot only; set
+`TT_BINANCE_SPOT_REST_BASE_URL=https://data-api.binance.vision` beside it when
+`api.binance.com` is blocked. Nothing changes while the setting is absent.
+
+**What it serves: 1m candles**, from `/api/v3/klines`, each with open, high,
+low, close, volume, taker-buy volume (the sided candle flow) and trade count,
+forming and closed. Every `TT_BINANCE_REST_POLL_MS` the previous and the
+forming bar are read. Every row is classified by its own open and close time
+against the exchange clock as it stood when the request was sent, never by
+its position, by the machine clock or by the time of receipt: a bar is final
+only when the request left one second or more after its close time on the
+exchange (the exchange may build a row before the candle closes, so a row
+received after the close is kept forming until a later poll confirms it), and
+it is emitted closed exactly once; the forming bar is re-sent only when one of
+its seven fields changed; a response from an older poll never overwrites a
+newer one. The candle backfill applies the same rule to its pages. The
+exchange clock comes from the `exchangeInfo` probe that brings the route up
+(`serverTime`) and is re-read from `/api/v3/time` once a minute; a failed
+refresh keeps the last offset. After an outage of more than one bar the poller
+catches up from the last confirmed close, in pages of up to 1000 candles, at
+most 10 pages back to back before it yields for one cadence and continues; the
+health reason reads `catching up` until it is current. A page that starts past
+the next expected minute does not move the cursor: the exchange is asked again
+from the first missing minute, three times, with the reason still `catching
+up`; if it never supplies the interval, the cursor moves past it and the reason
+reads `history incomplete (N min missing)` for the rest of the session. The
+cursor's first request fixes the earliest minute it is responsible for, so a
+pause before the first confirmed close is caught up too, never skipped. A
+response is an observation of the pair only when it carries an expected
+candle (the next one or later, the forming one included); an empty page, or
+one holding only candles already confirmed, leaves the cursor where it is,
+does not refresh the feed, and keeps it degraded with the reason `awaiting
+candles` until the exchange supplies what is expected. The poll interval is
+capped at 20 s so that at least two polls a minute fall outside the grace.
+
+**What it does not serve.** There is no tape and no order book. No trade frame
+is sent; the book is `UNAVAILABLE` with reason `REST_NO_DEPTH`. Unavailable:
+time and sales, Large Trade Bubbles and large-trade markers, aggressive-print
+clusters, every `ctx.ticks` and `ctx.trades` indicator (VWAP bands on prints,
+tick intensity), VPIN, the DOM, the Passive Liquidity heatmap and its walls,
+the L2 memory indicators (liquidity voids, L2 feed status), the Iceberg
+Detector, Exhaustion, Initiative Continuation, the `l2_*` channels and
+`bandHistory`. Works: candles and every resampled timeframe, `buy_volume` and
+`sell_volume` from taker-buy volume (`barSides`), `trade_count`, the candle
+backfill and Historical Mode candles, and every candle-only indicator (RSI,
+relative volume, structure, volatility, candle flow).
+
+**Health.** The feed's reason reads `Polled spot candles · no tape · no order
+book`, with `· rate limited` (a 429 or an IP ban: polling paused for
+`Retry-After`), `· poll failed` (the last poll failed or the route is down),
+`· catching up`, `· awaiting candles`, `· slow polling (weight budget)` or
+`· history incomplete (N min missing)` appended while they apply.
+The health frame's state follows the candle feed; the tape and depth feeds
+are reported unavailable and do not change that state. `/health` reports
+`delivery.transport: "rest"`, the cadence, the weight used and the exchange
+clock offset.
+
+**Weight.** The guarantee is this runtime's reserved dispatch budget: every
+request reserves its weight before it is sent (klines 2, `exchangeInfo` 20 for
+the connect probe and for each tick-size lookup, `time` 1, candle backfill 2
+per page), against `TT_BINANCE_REST_WEIGHT_BUDGET` per calendar minute
+(default 4000, at most 5000; the exchange limit is 6000). The exchange's own
+`x-mbx-used-weight-1m` raises the count when it is higher, and reservations
+keep adding on top of it. One gate holds every request, polls, clock refresh,
+backfill pages and tick-size lookups alike, during a rate-limit pause or an IP
+ban, and a 429 or 418 on any of them pauses all of them. The steady cadence plans on 90 % of the
+budget and is lengthened in whole multiples of the poll interval when the
+pairs would not fit; the reason then says `slow polling`. The budget is never
+exceeded to keep a cadence. One pair at 1 s costs about 121 of 4000 per minute.
+
+**Proxy.** Node's built-in `fetch` ignores `HTTPS_PROXY` unless
+`NODE_USE_ENV_PROXY=1` is set (Node 22.21 and later; the project pins 24.21.0).
+A custom CA is read from `NODE_EXTRA_CA_CERTS`, not from `SSL_CERT_FILE`. The
+stream transport (`ws`) never used a proxy and still does not.
 
 ## Collectors
 

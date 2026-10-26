@@ -954,3 +954,93 @@ describe("server/app (real HTTP + real ws client, fake Binance socket)", () => {
     expect((await post("https://elsewhere.example")).status).toBe(403);
   });
 });
+
+describe("server/app on the REST transport (TT_BINANCE_TRANSPORT=rest)", () => {
+  const MINUTE = 60_000;
+
+  function restFakeFetch() {
+    return jest.fn(async (url) => {
+      const u = new URL(url);
+      if (u.pathname === "/api/v3/exchangeInfo" || u.pathname === "/api/v3/time") {
+        return jsonResponse({ serverTime: Date.now(), symbols: [] });
+      }
+      if (u.pathname === "/api/v3/klines") {
+        const startTime = Number(u.searchParams.get("startTime"));
+        const limit = Number(u.searchParams.get("limit"));
+        const currentOpen = Math.floor(Date.now() / MINUTE) * MINUTE;
+        const rows = [];
+        for (let openTime = startTime; openTime <= currentOpen && rows.length < limit; openTime += MINUTE) {
+          // The forming bar's close moves every second so the chart sees revisions.
+          const close = openTime === currentOpen ? `6427${Math.floor(Date.now() / 1000) % 10}.00` : "64275.00";
+          rows.push([openTime, "64200.00", "64300.50", "64150.25", close, "12.3", openTime + MINUTE - 1, "792345.11", 418, "6.0", "385000.0", "0"]);
+        }
+        return jsonResponse(rows);
+      }
+      return new Response("{}", { status: 404 });
+    });
+  }
+
+  test("starts on the REST poller without opening any Binance WebSocket, serves candles, and reports the tape and book unavailable with the transport's reason", async () => {
+    const fetchImpl = restFakeFetch();
+    const { WebSocketImpl, instances } = createFakeWebSocketImpl();
+    const app = createApp({
+      port: 0,
+      host: "127.0.0.1",
+      symbol: "BTCUSDT",
+      webSocketImpl: WebSocketImpl,
+      fetchImpl,
+      telemetry: () => {},
+      binanceTransport: "rest",
+      binanceEndpoints: { spotRestBaseUrl: "https://data-api.binance.vision" },
+      dbPath: noStorageDbPath(),
+      dxfeedDbPath: noStorageDbPath(),
+      volumeProfileCachePath: ":memory:",
+      dxfeedBrokerUrl: "",
+    });
+    let client;
+    try {
+      await app.start();
+      expect(instances).toHaveLength(0);
+      expect(fetchImpl.mock.calls[0][0]).toBe("https://data-api.binance.vision/api/v3/exchangeInfo?symbol=BTCUSDT");
+      const port = app.httpServer.address().port;
+      const health = await (await fetch(`http://127.0.0.1:${port}/health`)).json();
+      expect(health.status).toEqual({ SPOT: { public: "CONNECTED" }, PERPETUAL: { public: "DISCONNECTED", market: "DISCONNECTED" } });
+      expect(health.delivery).toMatchObject({ transport: "rest", routeState: "CONNECTED", klineCadenceMs: 1000 });
+
+      client = new WebSocket(`ws://127.0.0.1:${port}/ws`);
+      const seen = [];
+      client.on("message", (data) => seen.push(JSON.parse(data.toString())));
+      const has = (type) => seen.some((frame) => frame.type === type);
+      const deadline = Date.now() + 8000;
+      while (!(has("health") && has("book") && has("bar")) && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      expect(seen.find((frame) => frame.type === "selection")).toEqual({ type: "selection", provider: "BINANCE", symbol: "BTC-USDT", marketKind: "SPOT" });
+      expect(seen.find((frame) => frame.type === "book")).toEqual({
+        type: "book", provider: "BINANCE", symbol: "BTC-USDT", marketKind: "SPOT", status: "UNAVAILABLE", reason: "REST_NO_DEPTH",
+      });
+      expect(seen.find((frame) => frame.type === "health")).toMatchObject({
+        type: "health", provider: "BINANCE", symbol: "BTC-USDT", marketKind: "SPOT", recoveryState: "READY", stale: false,
+        reason: "Polled spot candles · no tape · no order book",
+      });
+      const bar = seen.find((frame) => frame.type === "bar");
+      expect(bar).toMatchObject({ type: "bar", provider: "BINANCE", symbol: "BTC-USDT", marketKind: "SPOT", interval_ms: MINUTE, closed: false, trade_count: 418, buy_volume: 6 });
+      expect(seen.filter((frame) => frame.type === "trade")).toEqual([]);
+      // Every request went through the connection's gate: the probe, the
+      // backfill pages and the polls were all reserved (the tick-size lookup's
+      // gating is covered in the connection suite with the real resolver).
+      const delivery = (await (await fetch(`http://127.0.0.1:${port}/health`)).json()).delivery;
+      const exchangeInfoCalls = fetchImpl.mock.calls.filter(([url]) => String(url).includes("/exchangeInfo")).length;
+      expect(exchangeInfoCalls).toBeGreaterThanOrEqual(1);
+      expect(delivery.weight.reservations).toBeGreaterThanOrEqual(delivery.polls + exchangeInfoCalls);
+      expect(delivery.gatedRequests).toBe(0);
+    } finally {
+      client?.close();
+      await app.stop();
+    }
+  }, 30_000);
+
+  test("createApp refuses an unknown transport before opening anything", () => {
+    expect(() => createApp({ binanceTransport: "http", webSocketImpl: class {} })).toThrow(/ws or rest/);
+  });
+});

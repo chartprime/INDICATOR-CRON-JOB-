@@ -1,7 +1,7 @@
 const { fetchKlines, MAX_KLINES_PER_REQUEST } = require("./binance-http-client");
 const { parseKlineRows } = require("./binance-event-normalizer");
 const { assertAllowedMarketKind, assertAllowedSymbol, safeTelemetrySymbol, safeTelemetryMarketKind } = require("./binance-subscription-guard");
-const { isAllowedCandleInterval, candleIntervalMsFor } = require("./binance-config");
+const { isAllowedCandleInterval, candleIntervalMsFor, restBaseUrlFor, DEFAULT_BINANCE_ENDPOINTS } = require("./binance-config");
 const { emitTelemetry } = require("../../platform/telemetry");
 
 const DEFAULT_DAYS = 7;
@@ -9,15 +9,50 @@ const DEFAULT_PAGE_DELAY_MS = 250;
 const DEFAULT_MAX_PAGES = 60;
 const MAX_BACKFILL_PAGES = 10_000;
 
-function delay(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+/** Resolves true after `ms`, or false at once when `signal` aborts first. */
+function delay(ms, signal) {
+  return new Promise((resolve) => {
+    if (signal?.aborted) {
+      resolve(false);
+      return;
+    }
+    const timer = setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve(true);
+    }, ms);
+    function onAbort() {
+      clearTimeout(timer);
+      resolve(false);
+    }
+    signal?.addEventListener("abort", onAbort, { once: true });
+  });
 }
 
-function createBinanceKlineBackfill({ fetchImpl = globalThis.fetch, telemetry } = {}) {
+/**
+ * `now` is the clock candles are classified against and `finalizeGraceMs` the
+ * time after a candle's close before it counts as final: the stream transport
+ * uses the machine clock with no grace, the REST transport its synchronised
+ * exchange clock with the same grace as its live polling, so a candle the
+ * exchange still has open is never stored as closed history.
+ */
+function createBinanceKlineBackfill({
+  fetchImpl = globalThis.fetch,
+  fetchKlinesImpl = fetchKlines,
+  telemetry,
+  endpoints = DEFAULT_BINANCE_ENDPOINTS,
+  now = () => Date.now(),
+  finalizeGraceMs = 0,
+} = {}) {
+  if (typeof fetchKlinesImpl !== "function") throw new Error("createBinanceKlineBackfill: fetchKlinesImpl must be a function");
+  if (typeof now !== "function") throw new Error("createBinanceKlineBackfill: now must be a function");
+  if (!Number.isSafeInteger(finalizeGraceMs) || finalizeGraceMs < 0) {
+    throw new Error("createBinanceKlineBackfill: finalizeGraceMs must be a non-negative safe integer");
+  }
+
   async function fetchRecentBars(
     marketKind,
     symbol,
-    { days = DEFAULT_DAYS, interval, intervalMs, pageDelayMs = DEFAULT_PAGE_DELAY_MS, maxPages = DEFAULT_MAX_PAGES } = {},
+    { days = DEFAULT_DAYS, interval, intervalMs, pageDelayMs = DEFAULT_PAGE_DELAY_MS, maxPages = DEFAULT_MAX_PAGES, signal } = {},
   ) {
     assertAllowedMarketKind(marketKind);
     assertAllowedSymbol(symbol);
@@ -39,11 +74,20 @@ function createBinanceKlineBackfill({ fetchImpl = globalThis.fetch, telemetry } 
     if (!Number.isInteger(maxPages) || maxPages <= 0 || maxPages > MAX_BACKFILL_PAGES) {
       throw new Error(`fetchRecentBars: maxPages must be a positive integer <= ${MAX_BACKFILL_PAGES}`);
     }
+    if (signal !== undefined && !(signal instanceof AbortSignal)) {
+      throw new Error("fetchRecentBars: signal must be an AbortSignal when provided");
+    }
 
     const rows = [];
     let retryAfterMs;
-    const startedAtMs = Date.now();
-    const closedBoundaryAt = (atMs) => Math.floor(atMs / intervalMs) * intervalMs;
+    const startedAtMs = now();
+    // The first open time that is not final: a candle is final once its close
+    // time plus the grace has passed on the clock given to this backfill, as
+    // that clock stood when the page was requested.
+    const closedBoundaryAt = (atMs) => Math.floor((atMs + 1 - finalizeGraceMs) / intervalMs) * intervalMs;
+    // The exchange's current (forming) candle at the same moment: a page may
+    // end with it and with the not-yet-final candle before it, never beyond.
+    const currentOpenAt = (atMs) => Math.floor(atMs / intervalMs) * intervalMs;
     const lookbackMs = days * 24 * 60 * 60 * 1000;
     if (!Number.isSafeInteger(lookbackMs) || lookbackMs > startedAtMs) {
       throw new Error("fetchRecentBars: days resolves outside the supported epoch range");
@@ -54,17 +98,25 @@ function createBinanceKlineBackfill({ fetchImpl = globalThis.fetch, telemetry } 
     let caughtUp = false;
 
     while (pagesFetched < maxPages) {
-      const closedBoundary = closedBoundaryAt(Date.now());
+      if (signal?.aborted) {
+        failureReason = "ABORTED";
+        break;
+      }
+      const dispatchedAtMs = now();
+      const closedBoundary = closedBoundaryAt(dispatchedAtMs);
+      const currentOpen = currentOpenAt(dispatchedAtMs);
       if (cursor >= closedBoundary) {
         caughtUp = true;
         break;
       }
 
-      const result = await fetchKlines(marketKind, symbol, {
+      const result = await fetchKlinesImpl(marketKind, symbol, {
         interval,
         startTime: cursor,
         limit: MAX_KLINES_PER_REQUEST,
         fetchImpl,
+        baseUrl: restBaseUrlFor(marketKind, endpoints),
+        signal,
       });
       pagesFetched += 1;
 
@@ -105,14 +157,15 @@ function createBinanceKlineBackfill({ fetchImpl = globalThis.fetch, telemetry } 
         failureReason = "PAGE_START_MISMATCH";
         break;
       }
-      if (page[page.length - 1].openTime > closedBoundary) {
+      if (page[page.length - 1].openTime > currentOpen) {
         failureReason = "PAGE_TIME_RANGE_INVALID";
         break;
       }
 
-      const closedPage = page[page.length - 1].openTime === closedBoundary
-        ? page.slice(0, -1)
-        : page;
+      // Keep the candles that were final when the page was requested; the
+      // trailing ones (the forming candle, and the previous one inside its
+      // grace) are left to the live feed.
+      const closedPage = page.filter((row) => row.openTime < closedBoundary);
       if (closedPage.length === 0) {
         failureReason = "INCOMPLETE_PAGE";
         break;
@@ -138,12 +191,13 @@ function createBinanceKlineBackfill({ fetchImpl = globalThis.fetch, telemetry } 
         failureReason = "INCOMPLETE_PAGE";
         break;
       }
-      if (cursor < closedBoundary) {
-        await delay(pageDelayMs);
+      if (cursor < closedBoundary && !(await delay(pageDelayMs, signal))) {
+        failureReason = "ABORTED";
+        break;
       }
     }
 
-    if (failureReason === null && !caughtUp && cursor < closedBoundaryAt(Date.now())) {
+    if (failureReason === null && !caughtUp && cursor < closedBoundaryAt(now())) {
       failureReason = "MAX_PAGES_REACHED";
     }
 

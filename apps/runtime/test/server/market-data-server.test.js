@@ -2112,6 +2112,49 @@ describe("server/market-data-server", () => {
     }
   });
 
+  test("a transport's own health reason reaches the health frame, and a feed it declares unserved does not drag the state down", () => {
+    const reason = "Polled spot candles · no tape · no order book";
+    const connection = {
+      getOrderBook: () => ({ status: "UNAVAILABLE", reason: "REST_NO_DEPTH" }),
+      getFeedHealth: (_marketKind, _symbol, eventType) =>
+        eventType === "KLINE"
+          ? { stale: false, recoveryState: "READY", transport: "rest", served: true, reason }
+          : { stale: true, recoveryState: "UNAVAILABLE", transport: "rest", served: false, reason },
+    };
+    const server = createMarketDataServer({ connection, symbol: "BTCUSDT" });
+    const client = fakeClient();
+    server.handleClientConnected(client);
+    expect(client.sent.find((frame) => frame.type === "health")).toEqual({
+      type: "health",
+      provider: "BINANCE",
+      symbol: "BTC-USDT",
+      marketKind: "SPOT",
+      recoveryState: "READY",
+      stale: false,
+      reason,
+      recordingStale: true,
+    });
+    expect(client.sent.find((frame) => frame.type === "book")).toMatchObject({ status: "UNAVAILABLE", reason: "REST_NO_DEPTH" });
+  });
+
+  test("a served feed that is degraded still decides the state, with the transport's reason beside it", () => {
+    const connection = {
+      getOrderBook: () => undefined,
+      getFeedHealth: (_marketKind, _symbol, eventType) =>
+        eventType === "KLINE"
+          ? { stale: true, recoveryState: "RECOVERING", served: true, reason: "Polled spot candles · no tape · no order book · poll failed" }
+          : { stale: true, recoveryState: "UNAVAILABLE", served: false, reason: "Polled spot candles · no tape · no order book" },
+    };
+    const server = createMarketDataServer({ connection, symbol: "BTCUSDT" });
+    const client = fakeClient();
+    server.handleClientConnected(client);
+    expect(client.sent.find((frame) => frame.type === "health")).toMatchObject({
+      recoveryState: "RECOVERING",
+      stale: true,
+      reason: "Polled spot candles · no tape · no order book · poll failed",
+    });
+  });
+
   test("an out-of-range cached book cannot escape the initial-client send path", () => {
     const connection = {
       getOrderBook: () => ({

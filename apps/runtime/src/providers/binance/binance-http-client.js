@@ -10,6 +10,12 @@ const DEPTH_SNAPSHOT_PATHS = Object.freeze({
   PERPETUAL: "/fapi/v1/depth",
 });
 
+const SERVER_TIME_PATHS = Object.freeze({
+  SPOT: "/api/v3/time",
+  PERPETUAL: "/fapi/v1/time",
+});
+
+
 const DEPTH_SNAPSHOT_LIMITS = Object.freeze({
   SPOT: "5000",
   PERPETUAL: "1000",
@@ -170,7 +176,9 @@ function decodeJson(bytes) {
   }
 }
 
-async function timedGetJson(url, { fetchImpl, timeoutMs, maxResponseBytes }) {
+// `signal` lets a caller cancel the request (a subscription ending while its
+// poll is in flight); the result is then ABORTED rather than TIMEOUT.
+async function timedGetJson(url, { fetchImpl, timeoutMs, maxResponseBytes, signal }) {
   if (typeof fetchImpl !== "function") {
     return failure("FETCH_UNAVAILABLE");
   }
@@ -180,8 +188,16 @@ async function timedGetJson(url, { fetchImpl, timeoutMs, maxResponseBytes }) {
   if (!Number.isSafeInteger(maxResponseBytes) || maxResponseBytes <= 0) {
     throw new Error("timedGetJson: maxResponseBytes must be a positive safe integer");
   }
+  if (signal !== undefined && !(signal instanceof AbortSignal)) {
+    throw new Error("timedGetJson: signal must be an AbortSignal when provided");
+  }
+  if (signal?.aborted) {
+    return failure("ABORTED");
+  }
 
   const controller = new AbortController();
+  const onExternalAbort = () => controller.abort();
+  signal?.addEventListener("abort", onExternalAbort, { once: true });
   let timer;
   let settleDeadline;
   const deadline = new Promise((resolve) => {
@@ -192,17 +208,19 @@ async function timedGetJson(url, { fetchImpl, timeoutMs, maxResponseBytes }) {
     }, timeoutMs);
   });
 
-  const attempt = performGetRequest({ controller, fetchImpl, maxResponseBytes, url });
+  const attempt = performGetRequest({ controller, fetchImpl, maxResponseBytes, url, signal });
 
   try {
-    return await Promise.race([attempt, deadline]);
+    const result = await Promise.race([attempt, deadline]);
+    return signal?.aborted ? failure("ABORTED") : result;
   } finally {
     clearTimeout(timer);
     settleDeadline(failure("TIMEOUT"));
+    signal?.removeEventListener("abort", onExternalAbort);
   }
 }
 
-async function performGetRequest({ controller, fetchImpl, maxResponseBytes, url }) {
+async function performGetRequest({ controller, fetchImpl, maxResponseBytes, url, signal }) {
   let response;
   try {
     response = await Reflect.apply(fetchImpl, undefined, [
@@ -210,7 +228,10 @@ async function performGetRequest({ controller, fetchImpl, maxResponseBytes, url 
       { method: "GET", redirect: "error", signal: controller.signal },
     ]);
   } catch (error) {
-    return error?.name === "AbortError" ? failure("TIMEOUT") : failure("NETWORK_ERROR");
+    if (error?.name === "AbortError") {
+      return signal?.aborted ? failure("ABORTED") : failure("TIMEOUT");
+    }
+    return failure("NETWORK_ERROR");
   }
 
   if (!isGenuineResponse(response)) {
@@ -228,11 +249,19 @@ async function performGetRequest({ controller, fetchImpl, maxResponseBytes, url 
 
   if (status < 200 || status >= 300) {
     await discardResponseBody(response);
+    const frozenHeaders = Object.freeze(headers);
+    // 429 is a rate limit the caller waits out; 418 is an IP ban that stops
+    // every request for the whole Retry-After window. Both keep their status
+    // and headers (Retry-After, x-mbx-used-weight-1m) for the caller's budget.
     if (status === 429 || status === 418) {
       const retryAfterMs = parseRetryAfterMs(headers);
-      return failure("RATE_LIMITED", retryAfterMs === undefined ? {} : { retryAfterMs });
+      return failure(status === 418 ? "IP_BANNED" : "RATE_LIMITED", {
+        status,
+        headers: frozenHeaders,
+        ...(retryAfterMs === undefined ? {} : { retryAfterMs }),
+      });
     }
-    return failure("HTTP_ERROR");
+    return failure("HTTP_ERROR", { status, headers: frozenHeaders });
   }
 
   const read = await readBoundedBody(response, maxResponseBytes);
@@ -253,18 +282,20 @@ async function fetchDepthSnapshot(marketKind, symbol, options = {}) {
     fetchImpl = globalThis.fetch,
     timeoutMs = DEFAULT_TIMEOUT_MS,
     maxResponseBytes = DEFAULT_MAX_RESPONSE_BYTES,
+    baseUrl: baseUrlOverride,
+    signal,
   } = options;
 
   assertAllowedMarketKind(marketKind);
   assertAllowedSymbol(symbol);
 
-  const baseUrl = restBaseUrlFor(marketKind);
+  const baseUrl = baseUrlOverride ?? restBaseUrlFor(marketKind);
   const path = DEPTH_SNAPSHOT_PATHS[marketKind];
   const url = new URL(path, baseUrl);
   url.searchParams.set("symbol", symbol);
   url.searchParams.set("limit", DEPTH_SNAPSHOT_LIMITS[marketKind]);
 
-  return timedGetJson(url, { fetchImpl, timeoutMs, maxResponseBytes });
+  return timedGetJson(url, { fetchImpl, timeoutMs, maxResponseBytes, signal });
 }
 
 async function fetchKlines(marketKind, symbol, options = {}) {
@@ -275,6 +306,8 @@ async function fetchKlines(marketKind, symbol, options = {}) {
     fetchImpl = globalThis.fetch,
     timeoutMs = DEFAULT_TIMEOUT_MS,
     maxResponseBytes = DEFAULT_MAX_RESPONSE_BYTES,
+    baseUrl: baseUrlOverride,
+    signal,
   } = options;
 
   assertAllowedMarketKind(marketKind);
@@ -289,7 +322,7 @@ async function fetchKlines(marketKind, symbol, options = {}) {
     throw new Error(`fetchKlines: limit must be a positive integer <= ${MAX_KLINES_PER_REQUEST}`);
   }
 
-  const baseUrl = restBaseUrlFor(marketKind);
+  const baseUrl = baseUrlOverride ?? restBaseUrlFor(marketKind);
   const path = KLINES_PATHS[marketKind];
   const url = new URL(path, baseUrl);
   url.searchParams.set("symbol", symbol);
@@ -297,7 +330,24 @@ async function fetchKlines(marketKind, symbol, options = {}) {
   url.searchParams.set("startTime", String(startTime));
   url.searchParams.set("limit", String(limit));
 
-  return timedGetJson(url, { fetchImpl, timeoutMs, maxResponseBytes });
+  return timedGetJson(url, { fetchImpl, timeoutMs, maxResponseBytes, signal });
+}
+
+async function fetchServerTime(marketKind, options = {}) {
+  const {
+    fetchImpl = globalThis.fetch,
+    timeoutMs = DEFAULT_TIMEOUT_MS,
+    maxResponseBytes = DEFAULT_MAX_RESPONSE_BYTES,
+    baseUrl: baseUrlOverride,
+    signal,
+  } = options;
+
+  assertAllowedMarketKind(marketKind);
+
+  const baseUrl = baseUrlOverride ?? restBaseUrlFor(marketKind);
+  const url = new URL(SERVER_TIME_PATHS[marketKind], baseUrl);
+
+  return timedGetJson(url, { fetchImpl, timeoutMs, maxResponseBytes, signal });
 }
 
 async function fetchExchangeInfo(marketKind, symbol, options = {}) {
@@ -305,22 +355,25 @@ async function fetchExchangeInfo(marketKind, symbol, options = {}) {
     fetchImpl = globalThis.fetch,
     timeoutMs = DEFAULT_TIMEOUT_MS,
     maxResponseBytes = DEFAULT_MAX_RESPONSE_BYTES,
+    baseUrl: baseUrlOverride,
+    signal,
   } = options;
 
   assertAllowedMarketKind(marketKind);
   assertAllowedSymbol(symbol);
 
-  const baseUrl = restBaseUrlFor(marketKind);
+  const baseUrl = baseUrlOverride ?? restBaseUrlFor(marketKind);
   const path = EXCHANGE_INFO_PATHS[marketKind];
   const url = new URL(path, baseUrl);
   url.searchParams.set("symbol", symbol);
 
-  return timedGetJson(url, { fetchImpl, timeoutMs, maxResponseBytes });
+  return timedGetJson(url, { fetchImpl, timeoutMs, maxResponseBytes, signal });
 }
 
 module.exports = {
   fetchDepthSnapshot,
   fetchKlines,
+  fetchServerTime,
   fetchExchangeInfo,
   MAX_KLINES_PER_REQUEST,
   parseRetryAfterMs,

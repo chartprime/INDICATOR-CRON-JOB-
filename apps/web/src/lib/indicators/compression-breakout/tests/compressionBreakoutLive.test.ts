@@ -74,9 +74,20 @@ describe.skipIf(!available)("compressionBreakout -- live observation on BTC-USDT
       }
       expect(live.faulted).toBe(false);
       const replay = replayCapture(compressionBreakoutSeamDef, retained, COMPRESSION_BREAKOUT_DEFAULT_SETTINGS);
-      const outputDiffs = diffOutputs(live.outputs, replay.outputs);
-      // Amendment 1: equality is required from the first quiet bar; here the whole retained series is compared and the
-      // disagreements, if any, are reported with their first index so the policy can be checked against them.
+      // Amendment 1: the rollover dropped the oldest bars the live instance saw, so the replay starts cold; equality is
+      // required from the first retained bar at which the live instance holds no active and no held range once the
+      // denominators and the trend window lie inside retention. Differences before it are reported, not judged.
+      const warm = Math.max(2 * COMPRESSION_BREAKOUT_DEFAULT_SETTINGS.rangeLength, 20, COMPRESSION_BREAKOUT_DEFAULT_SETTINGS.trendSlow + 5);
+      let quiet = -1;
+      for (let index = warm; index < retained.length; index += 1) {
+        if (live.outputs.activeHigh[index] === null && live.outputs.heldCount[index] === 0) {
+          quiet = index;
+          break;
+        }
+      }
+      const allDiffs = diffOutputs(live.outputs, replay.outputs);
+      const preQuiet = allDiffs.filter((diff) => quiet === -1 || diff.index < quiet).length;
+      const outputDiffs = quiet === -1 ? allDiffs : allDiffs.filter((diff) => diff.index >= quiet);
       const firstDiff = outputDiffs.length === 0 ? -1 : Math.min(...outputDiffs.map((diff) => diff.index));
       const productLive = (() => {
         const s = openLiveSession(compressionBreakoutIndicator, COMPRESSION_BREAKOUT_DEFAULT_SETTINGS, {}, recording.snapshotBars);
@@ -90,7 +101,8 @@ describe.skipIf(!available)("compressionBreakout -- live observation on BTC-USDT
       const productReplay = replayCapture(compressionBreakoutIndicator, retained, COMPRESSION_BREAKOUT_DEFAULT_SETTINGS);
       const confirmedLive = productLive.markers.filter((call) => !call.color.startsWith("rgba("));
       const confirmedReplay = productReplay.markers.filter((call) => !call.color.startsWith("rgba("));
-      const markerDiff = diffMarkers(confirmedLive, confirmedReplay);
+      const quietTime = quiet === -1 ? -Infinity : retained[quiet].ts_open;
+      const markerDiff = diffMarkers(confirmedLive.filter((call) => call.time >= quietTime), confirmedReplay.filter((call) => call.time >= quietTime));
       const budget1m = markerBudgetOf(confirmedReplay, retained.length, productReplay.faulted);
       const fiveMinute = resampleBars(retained, 5 * 60_000);
       const replay5m = replayCapture(compressionBreakoutIndicator, fiveMinute, COMPRESSION_BREAKOUT_DEFAULT_SETTINGS);
@@ -103,7 +115,7 @@ describe.skipIf(!available)("compressionBreakout -- live observation on BTC-USDT
         "",
         `Recorded ${recording.startedAt} to ${recording.endedAt}: snapshot ${recording.snapshotBars.length} bars, ${frames.length} bar frames (${closes} closes, ${new Set(frames.map((frame) => frame.ts_open)).size} distinct open times), mutations ${JSON.stringify(Object.fromEntries([...new Set(mutations)].map((kind) => [kind, mutations.filter((m) => m === kind).length])))}.`,
         "",
-        `Live versus replay of the ${retained.length} retained bars: ${outputDiffs.length} seam disagreements${firstDiff >= 0 ? ` (first at index ${firstDiff})` : ""}, confirmed markers live-only ${markerDiff.leftOnly.length}, replay-only ${markerDiff.rightOnly.length}; faulted: ${live.faulted || replay.faulted}.`,
+        `Live versus replay of the ${retained.length} retained bars (the rollover dropped ${recording.snapshotBars.length + closes - retained.length} older bars the live instance had seen): first quiet bar at retained index ${quiet} (${quiet === -1 ? "none" : new Date(retained[quiet].ts_open).toISOString()}), ${retained.length - Math.max(quiet, 0)} bars compared after it with ${outputDiffs.length} seam disagreements${firstDiff >= 0 ? ` (first at index ${firstDiff})` : ""}; ${preQuiet} seam cells differ before the quiet bar (the replay starts cold); confirmed markers after the quiet bar live-only ${markerDiff.leftOnly.length}, replay-only ${markerDiff.rightOnly.length}; later snapshot re-sends during the run: ${(recording as Recording & { laterSnapshots?: unknown[] }).laterSnapshots?.length ?? 0}; faulted: ${live.faulted || replay.faulted}.`,
         "",
         `Ranges opened over the retained series: ${rangesOpened}. Markers: ${budget1m.total} on 1m (${budget1m.per1000Bars.toFixed(1)} per 1,000, max ${budget1m.maxPerBar} per bar); ${budget5m.total} on resampled 5m over ${fiveMinute.length} bars (${budget5m.per1000Bars.toFixed(1)} per 1,000).`,
         "",
@@ -116,6 +128,8 @@ describe.skipIf(!available)("compressionBreakout -- live observation on BTC-USDT
       const plainEvents = eventsOf(plain.outputs, retained);
       for (let index = 0; index < Math.max(productEvents.length, plainEvents.length); index += 1) report.push(`| ${productEvents[index] ?? ""} | ${plainEvents[index] ?? ""} |`);
       report.push("");
+      expect(quiet).toBeGreaterThan(-1);
+      expect(retained.length - quiet).toBeGreaterThan(0);
       expect(outputDiffs).toEqual([]);
       expect(markerDiff.leftOnly).toEqual([]);
       expect(markerDiff.rightOnly).toEqual([]);

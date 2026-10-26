@@ -8,448 +8,1159 @@ Live versus replay of the 10080 retained bars (the rollover dropped 30 older bar
 
 Ranges opened over the retained series: 20. Markers: 7 on 1m (0.7 per 1,000, max 1 per bar); 4 on resampled 5m over 2016 bars (2.0 per 1,000).
 
-Events, product (left) and plain frozen-range baseline (right):
+Density of every def on the same bars (confirmed markers; the two timing comparators mark every event):
 
-| Product | Plain frozen range |
-|---|---|
-| 10-19 20:50 break ↓ grade 1 basis 3 | 10-19 21:14 break ↑ grade 3 basis 3 |
-| 10-19 20:55 held outside | 10-19 21:16 failed |
-| 10-20 19:21 break ↓ grade 3 basis 3 | 10-19 21:52 break ↓ grade 0 basis 3 |
-| 10-20 19:26 held outside | 10-19 21:57 held outside |
-| 10-22 03:12 break ↓ grade 0 basis 3 | 10-19 23:07 break ↓ grade 1 basis 3 |
-| 10-22 03:14 failed | 10-19 23:12 held outside |
-| 10-22 07:50 break ↓ grade 3 basis 3 | 10-19 23:56 break ↓ grade 0 basis 3 |
-| 10-22 07:52 failed | 10-20 00:01 held outside |
-| 10-23 13:04 break ↓ grade 0 basis 3 | 10-20 01:09 break ↓ grade 3 basis 3 |
-| 10-23 13:09 held outside | 10-20 01:14 held outside |
-| 10-24 04:51 break ↑ grade 0 basis 3 | 10-20 01:46 break ↑ grade 3 basis 3 |
-| 10-24 04:56 held outside | 10-20 01:49 failed |
-| 10-24 06:56 break ↓ grade 0 basis 3 | 10-20 02:04 break ↓ grade 1 basis 3 |
-| 10-24 06:59 failed | 10-20 02:05 failed |
-| 10-24 19:47 break ↓ grade 3 basis 3 | 10-20 02:50 break ↑ grade 3 basis 3 |
-| 10-24 19:48 failed | 10-20 02:51 failed |
-| 10-25 07:35 break ↑ grade 1 basis 3 | 10-20 03:08 break ↑ grade 3 basis 3 |
-| 10-25 07:40 held outside | 10-20 03:13 held outside |
-| 10-26 10:01 break ↓ grade 3 basis 3 | 10-20 03:36 break ↑ grade 3 basis 3 |
-| 10-26 10:03 failed | 10-20 03:41 failed |
-|  | 10-20 04:20 break ↑ grade 1 basis 3 |
-|  | 10-20 04:23 failed |
-|  | 10-20 04:52 break ↓ grade 0 basis 3 |
-|  | 10-20 04:53 failed |
-|  | 10-20 05:05 break ↓ grade 1 basis 3 |
-|  | 10-20 05:10 failed |
-|  | 10-20 05:30 break ↓ grade 1 basis 3 |
-|  | 10-20 05:32 failed |
-|  | 10-20 05:56 break ↓ grade 0 basis 3 |
-|  | 10-20 06:01 held outside |
-|  | 10-20 06:13 break ↓ grade 0 basis 3 |
-|  | 10-20 06:14 failed |
-|  | 10-20 06:40 break ↑ grade 0 basis 3 |
-|  | 10-20 06:45 failed |
-|  | 10-20 07:16 break ↓ grade 1 basis 3 |
-|  | 10-20 07:17 failed |
-|  | 10-20 07:53 break ↓ grade 0 basis 3 |
-|  | 10-20 07:54 failed |
-|  | 10-20 08:27 break ↑ grade 0 basis 3 |
-|  | 10-20 08:28 failed |
-|  | 10-20 08:50 break ↓ grade 3 basis 3 |
-|  | 10-20 08:51 failed |
-|  | 10-20 09:15 break ↓ grade 0 basis 3 |
-|  | 10-20 09:16 failed |
-|  | 10-20 09:36 break ↓ grade 2 basis 3 |
-|  | 10-20 09:38 failed |
-|  | 10-20 09:46 break ↓ grade 0 basis 3 |
-|  | 10-20 09:47 failed |
-|  | 10-20 09:57 break ↑ grade 0 basis 3 |
-|  | 10-20 10:02 held outside |
-|  | 10-20 10:42 break ↓ grade 0 basis 3 |
-|  | 10-20 10:43 failed |
-|  | 10-20 11:01 break ↑ grade 1 basis 3 |
-|  | 10-20 11:02 failed |
-|  | 10-20 11:19 break ↓ grade 0 basis 3 |
-|  | 10-20 11:24 failed |
-|  | 10-20 11:40 break ↑ grade 1 basis 3 |
-|  | 10-20 11:42 failed |
-|  | 10-20 12:08 break ↓ grade 3 basis 3 |
-|  | 10-20 12:13 held outside |
-|  | 10-20 12:44 break ↑ grade 0 basis 3 |
-|  | 10-20 12:45 failed |
-|  | 10-20 13:14 break ↓ grade 0 basis 3 |
-|  | 10-20 13:15 failed |
-|  | 10-20 13:31 break ↓ grade 3 basis 3 |
-|  | 10-20 13:34 failed |
-|  | 10-20 13:58 break ↑ grade 1 basis 3 |
-|  | 10-20 14:03 held outside |
-|  | 10-20 14:41 break ↑ grade 2 basis 3 |
-|  | 10-20 14:44 failed |
-|  | 10-20 14:57 break ↑ grade 3 basis 3 |
-|  | 10-20 14:58 failed |
-|  | 10-20 15:11 break ↓ grade 0 basis 3 |
-|  | 10-20 15:16 held outside |
-|  | 10-21 00:14 break ↑ grade 1 basis 3 |
-|  | 10-21 00:19 held outside |
-|  | 10-21 01:00 break ↓ grade 3 basis 3 |
-|  | 10-21 01:05 held outside |
-|  | 10-21 01:50 break ↑ grade 2 basis 3 |
-|  | 10-21 01:51 failed |
-|  | 10-21 02:13 break ↓ grade 3 basis 3 |
-|  | 10-21 02:18 held outside |
-|  | 10-21 02:31 break ↓ grade 0 basis 3 |
-|  | 10-21 02:32 failed |
-|  | 10-21 05:03 break ↑ grade 2 basis 3 |
-|  | 10-21 05:08 held outside |
-|  | 10-21 05:41 break ↓ grade 3 basis 3 |
-|  | 10-21 05:46 failed |
-|  | 10-21 07:28 break ↑ grade 3 basis 3 |
-|  | 10-21 07:33 held outside |
-|  | 10-21 07:52 break ↑ grade 0 basis 3 |
-|  | 10-21 07:53 failed |
-|  | 10-21 08:28 break ↑ grade 3 basis 3 |
-|  | 10-21 08:29 failed |
-|  | 10-21 08:43 break ↑ grade 3 basis 3 |
-|  | 10-21 08:44 failed |
-|  | 10-21 13:04 break ↑ grade 3 basis 3 |
-|  | 10-21 13:09 held outside |
-|  | 10-21 13:34 break ↓ grade 1 basis 3 |
-|  | 10-21 13:38 failed |
-|  | 10-21 13:47 break ↑ grade 3 basis 3 |
-|  | 10-21 13:52 failed |
-|  | 10-21 14:23 break ↑ grade 2 basis 3 |
-|  | 10-21 14:28 failed |
-|  | 10-21 15:09 break ↑ grade 0 basis 3 |
-|  | 10-21 15:12 failed |
-|  | 10-21 16:39 break ↑ grade 3 basis 3 |
-|  | 10-21 16:40 failed |
-|  | 10-21 16:51 break ↓ grade 0 basis 3 |
-|  | 10-21 16:56 held outside |
-|  | 10-21 17:34 break ↑ grade 1 basis 3 |
-|  | 10-21 17:39 held outside |
-|  | 10-21 17:58 break ↑ grade 0 basis 3 |
-|  | 10-21 17:59 failed |
-|  | 10-21 18:22 break ↑ grade 1 basis 3 |
-|  | 10-21 18:27 held outside |
-|  | 10-21 18:47 break ↓ grade 3 basis 3 |
-|  | 10-21 18:52 held outside |
-|  | 10-21 21:27 break ↑ grade 1 basis 3 |
-|  | 10-21 21:29 failed |
-|  | 10-21 21:42 break ↑ grade 0 basis 3 |
-|  | 10-21 21:43 failed |
-|  | 10-21 22:00 break ↓ grade 3 basis 3 |
-|  | 10-21 22:05 held outside |
-|  | 10-21 22:17 break ↓ grade 1 basis 3 |
-|  | 10-21 22:22 held outside |
-|  | 10-21 22:43 break ↓ grade 3 basis 3 |
-|  | 10-21 22:48 held outside |
-|  | 10-21 22:59 break ↓ grade 3 basis 3 |
-|  | 10-21 23:00 failed |
-|  | 10-21 23:36 break ↓ grade 0 basis 3 |
-|  | 10-21 23:37 failed |
-|  | 10-22 00:39 break ↑ grade 0 basis 3 |
-|  | 10-22 00:44 held outside |
-|  | 10-22 01:00 break ↓ grade 3 basis 3 |
-|  | 10-22 01:05 held outside |
-|  | 10-22 01:16 break ↑ grade 0 basis 3 |
-|  | 10-22 01:17 failed |
-|  | 10-22 01:34 break ↓ grade 3 basis 3 |
-|  | 10-22 01:39 held outside |
-|  | 10-22 01:52 break ↓ grade 0 basis 3 |
-|  | 10-22 01:57 held outside |
-|  | 10-22 02:17 break ↓ grade 0 basis 3 |
-|  | 10-22 02:22 held outside |
-|  | 10-22 03:23 break ↓ grade 0 basis 3 |
-|  | 10-22 03:28 held outside |
-|  | 10-22 03:43 break ↑ grade 0 basis 3 |
-|  | 10-22 03:48 held outside |
-|  | 10-22 04:00 break ↑ grade 2 basis 3 |
-|  | 10-22 04:01 failed |
-|  | 10-22 04:35 break ↓ grade 1 basis 3 |
-|  | 10-22 04:40 held outside |
-|  | 10-22 05:02 break ↑ grade 1 basis 3 |
-|  | 10-22 05:04 failed |
-|  | 10-22 05:28 break ↑ grade 1 basis 3 |
-|  | 10-22 05:29 failed |
-|  | 10-22 05:50 break ↓ grade 1 basis 3 |
-|  | 10-22 05:55 held outside |
-|  | 10-22 06:07 break ↑ grade 3 basis 3 |
-|  | 10-22 06:09 failed |
-|  | 10-22 06:26 break ↓ grade 3 basis 3 |
-|  | 10-22 06:31 held outside |
-|  | 10-22 06:44 break ↓ grade 0 basis 3 |
-|  | 10-22 06:49 held outside |
-|  | 10-22 07:03 break ↓ grade 1 basis 3 |
-|  | 10-22 07:04 failed |
-|  | 10-22 07:26 break ↓ grade 0 basis 3 |
-|  | 10-22 07:27 failed |
-|  | 10-22 07:50 break ↓ grade 3 basis 3 |
-|  | 10-22 07:52 failed |
-|  | 10-22 08:10 break ↓ grade 0 basis 3 |
-|  | 10-22 08:11 failed |
-|  | 10-22 08:19 break ↓ grade 2 basis 3 |
-|  | 10-22 08:24 held outside |
-|  | 10-22 08:58 break ↓ grade 3 basis 3 |
-|  | 10-22 09:03 held outside |
-|  | 10-22 10:00 break ↑ grade 2 basis 3 |
-|  | 10-22 10:05 held outside |
-|  | 10-22 10:23 break ↑ grade 1 basis 3 |
-|  | 10-22 10:24 failed |
-|  | 10-22 10:34 break ↑ grade 1 basis 3 |
-|  | 10-22 10:35 failed |
-|  | 10-22 10:56 break ↓ grade 3 basis 3 |
-|  | 10-22 10:57 failed |
-|  | 10-22 11:15 break ↓ grade 3 basis 3 |
-|  | 10-22 11:16 failed |
-|  | 10-22 11:47 break ↓ grade 1 basis 3 |
-|  | 10-22 11:52 held outside |
-|  | 10-22 12:18 break ↑ grade 0 basis 3 |
-|  | 10-22 12:19 failed |
-|  | 10-22 12:35 break ↓ grade 0 basis 3 |
-|  | 10-22 12:36 failed |
-|  | 10-22 12:58 break ↓ grade 0 basis 3 |
-|  | 10-22 12:59 failed |
-|  | 10-22 13:13 break ↓ grade 3 basis 3 |
-|  | 10-22 13:15 failed |
-|  | 10-22 16:45 break ↓ grade 2 basis 3 |
-|  | 10-22 16:50 held outside |
-|  | 10-23 01:36 break ↓ grade 0 basis 3 |
-|  | 10-23 01:38 failed |
-|  | 10-23 02:31 break ↑ grade 3 basis 3 |
-|  | 10-23 02:36 held outside |
-|  | 10-23 03:52 break ↑ grade 1 basis 3 |
-|  | 10-23 03:55 failed |
-|  | 10-23 04:07 break ↓ grade 1 basis 3 |
-|  | 10-23 04:12 held outside |
-|  | 10-23 04:28 break ↓ grade 1 basis 3 |
-|  | 10-23 04:31 failed |
-|  | 10-23 04:56 break ↓ grade 0 basis 3 |
-|  | 10-23 05:01 failed |
-|  | 10-23 05:50 break ↑ grade 0 basis 3 |
-|  | 10-23 05:51 failed |
-|  | 10-23 06:10 break ↑ grade 0 basis 3 |
-|  | 10-23 06:11 failed |
-|  | 10-23 07:15 break ↓ grade 1 basis 3 |
-|  | 10-23 07:16 failed |
-|  | 10-23 07:43 break ↓ grade 1 basis 3 |
-|  | 10-23 07:48 held outside |
-|  | 10-23 08:15 break ↑ grade 3 basis 3 |
-|  | 10-23 08:20 held outside |
-|  | 10-23 09:38 break ↓ grade 3 basis 3 |
-|  | 10-23 09:40 failed |
-|  | 10-23 10:12 break ↑ grade 2 basis 3 |
-|  | 10-23 10:17 held outside |
-|  | 10-23 11:02 break ↓ grade 0 basis 3 |
-|  | 10-23 11:03 failed |
-|  | 10-23 11:50 break ↑ grade 0 basis 3 |
-|  | 10-23 11:51 failed |
-|  | 10-23 12:07 break ↓ grade 1 basis 3 |
-|  | 10-23 12:08 failed |
-|  | 10-23 12:25 break ↑ grade 3 basis 3 |
-|  | 10-23 12:26 failed |
-|  | 10-23 13:23 break ↑ grade 3 basis 3 |
-|  | 10-23 13:27 failed |
-|  | 10-23 13:40 break ↑ grade 3 basis 3 |
-|  | 10-23 13:45 held outside |
-|  | 10-23 14:12 break ↓ grade 0 basis 3 |
-|  | 10-23 14:14 failed |
-|  | 10-23 22:45 break ↓ grade 0 basis 3 |
-|  | 10-23 22:50 held outside |
-|  | 10-23 23:10 break ↓ grade 3 basis 3 |
-|  | 10-23 23:11 failed |
-|  | 10-23 23:21 break ↑ grade 0 basis 3 |
-|  | 10-23 23:26 held outside |
-|  | 10-23 23:45 break ↑ grade 3 basis 3 |
-|  | 10-23 23:50 held outside |
-|  | 10-24 00:18 break ↓ grade 0 basis 3 |
-|  | 10-24 00:23 held outside |
-|  | 10-24 00:35 break ↓ grade 0 basis 3 |
-|  | 10-24 00:37 failed |
-|  | 10-24 01:49 break ↑ grade 0 basis 3 |
-|  | 10-24 01:54 held outside |
-|  | 10-24 02:09 break ↑ grade 1 basis 3 |
-|  | 10-24 02:10 failed |
-|  | 10-24 02:59 break ↑ grade 3 basis 3 |
-|  | 10-24 03:04 held outside |
-|  | 10-24 03:48 break ↓ grade 1 basis 3 |
-|  | 10-24 03:53 held outside |
-|  | 10-24 04:21 break ↓ grade 1 basis 3 |
-|  | 10-24 04:22 failed |
-|  | 10-24 05:11 break ↓ grade 0 basis 3 |
-|  | 10-24 05:13 failed |
-|  | 10-24 05:43 break ↓ grade 1 basis 3 |
-|  | 10-24 05:44 failed |
-|  | 10-24 06:02 break ↓ grade 1 basis 3 |
-|  | 10-24 06:04 failed |
-|  | 10-24 07:02 break ↑ grade 3 basis 3 |
-|  | 10-24 07:07 held outside |
-|  | 10-24 07:31 break ↓ grade 1 basis 3 |
-|  | 10-24 07:32 failed |
-|  | 10-24 07:55 break ↓ grade 3 basis 3 |
-|  | 10-24 08:00 failed |
-|  | 10-24 08:38 break ↓ grade 3 basis 3 |
-|  | 10-24 08:43 held outside |
-|  | 10-24 09:04 break ↓ grade 0 basis 3 |
-|  | 10-24 09:05 failed |
-|  | 10-24 09:19 break ↓ grade 2 basis 3 |
-|  | 10-24 09:24 held outside |
-|  | 10-24 09:37 break ↓ grade 3 basis 3 |
-|  | 10-24 09:39 failed |
-|  | 10-24 10:03 break ↑ grade 0 basis 3 |
-|  | 10-24 10:05 failed |
-|  | 10-24 10:32 break ↑ grade 3 basis 3 |
-|  | 10-24 10:37 held outside |
-|  | 10-24 12:20 break ↑ grade 3 basis 3 |
-|  | 10-24 12:21 failed |
-|  | 10-24 12:46 break ↑ grade 3 basis 3 |
-|  | 10-24 12:49 failed |
-|  | 10-24 13:18 break ↓ grade 3 basis 3 |
-|  | 10-24 13:21 failed |
-|  | 10-24 13:32 break ↓ grade 1 basis 3 |
-|  | 10-24 13:34 failed |
-|  | 10-24 14:11 break ↓ grade 1 basis 3 |
-|  | 10-24 14:16 held outside |
-|  | 10-24 14:25 break ↓ grade 0 basis 3 |
-|  | 10-24 14:28 failed |
-|  | 10-24 15:09 break ↓ grade 3 basis 3 |
-|  | 10-24 15:10 failed |
-|  | 10-24 16:56 break ↑ grade 0 basis 3 |
-|  | 10-24 16:58 failed |
-|  | 10-24 18:00 break ↑ grade 0 basis 3 |
-|  | 10-24 18:01 failed |
-|  | 10-24 18:10 break ↑ grade 3 basis 3 |
-|  | 10-24 18:15 held outside |
-|  | 10-24 18:52 break ↑ grade 2 basis 3 |
-|  | 10-24 18:53 failed |
-|  | 10-24 21:10 break ↓ grade 1 basis 3 |
-|  | 10-24 21:12 failed |
-|  | 10-24 22:35 break ↑ grade 3 basis 3 |
-|  | 10-24 22:40 held outside |
-|  | 10-24 23:30 break ↑ grade 3 basis 3 |
-|  | 10-24 23:35 held outside |
-|  | 10-24 23:48 break ↑ grade 0 basis 3 |
-|  | 10-24 23:53 held outside |
-|  | 10-25 00:01 break ↓ grade 1 basis 3 |
-|  | 10-25 00:06 held outside |
-|  | 10-25 00:14 break ↓ grade 0 basis 3 |
-|  | 10-25 00:19 held outside |
-|  | 10-25 00:28 break ↑ grade 1 basis 3 |
-|  | 10-25 00:33 held outside |
-|  | 10-25 00:49 break ↑ grade 0 basis 3 |
-|  | 10-25 00:50 failed |
-|  | 10-25 01:00 break ↓ grade 1 basis 3 |
-|  | 10-25 01:05 held outside |
-|  | 10-25 01:32 break ↓ grade 0 basis 3 |
-|  | 10-25 01:36 failed |
-|  | 10-25 02:05 break ↑ grade 2 basis 3 |
-|  | 10-25 02:10 held outside |
-|  | 10-25 02:39 break ↑ grade 3 basis 3 |
-|  | 10-25 02:42 failed |
-|  | 10-25 03:17 break ↑ grade 2 basis 3 |
-|  | 10-25 03:22 held outside |
-|  | 10-25 03:47 break ↓ grade 1 basis 3 |
-|  | 10-25 03:52 held outside |
-|  | 10-25 04:38 break ↑ grade 2 basis 3 |
-|  | 10-25 04:39 failed |
-|  | 10-25 05:23 break ↓ grade 1 basis 3 |
-|  | 10-25 05:28 held outside |
-|  | 10-25 06:50 break ↓ grade 3 basis 3 |
-|  | 10-25 06:55 held outside |
-|  | 10-25 07:06 break ↑ grade 3 basis 3 |
-|  | 10-25 07:07 failed |
-|  | 10-25 07:35 break ↑ grade 1 basis 3 |
-|  | 10-25 07:40 held outside |
-|  | 10-25 08:17 break ↓ grade 3 basis 3 |
-|  | 10-25 08:22 held outside |
-|  | 10-25 09:12 break ↓ grade 3 basis 3 |
-|  | 10-25 09:17 held outside |
-|  | 10-25 11:22 break ↑ grade 0 basis 3 |
-|  | 10-25 11:23 failed |
-|  | 10-25 11:43 break ↑ grade 1 basis 3 |
-|  | 10-25 11:48 held outside |
-|  | 10-25 12:25 break ↓ grade 3 basis 3 |
-|  | 10-25 12:30 held outside |
-|  | 10-25 13:28 break ↓ grade 3 basis 3 |
-|  | 10-25 13:33 held outside |
-|  | 10-25 13:41 break ↑ grade 3 basis 3 |
-|  | 10-25 13:42 failed |
-|  | 10-25 14:50 break ↑ grade 3 basis 3 |
-|  | 10-25 14:55 held outside |
-|  | 10-25 16:55 break ↑ grade 3 basis 3 |
-|  | 10-25 17:00 held outside |
-|  | 10-25 17:21 break ↑ grade 3 basis 3 |
-|  | 10-25 17:22 failed |
-|  | 10-25 18:09 break ↓ grade 3 basis 3 |
-|  | 10-25 18:14 held outside |
-|  | 10-25 18:29 break ↓ grade 0 basis 3 |
-|  | 10-25 18:30 failed |
-|  | 10-25 18:43 break ↓ grade 3 basis 3 |
-|  | 10-25 18:45 failed |
-|  | 10-25 19:05 break ↓ grade 1 basis 3 |
-|  | 10-25 19:10 held outside |
-|  | 10-25 20:02 break ↓ grade 2 basis 3 |
-|  | 10-25 20:06 failed |
-|  | 10-25 20:14 break ↑ grade 3 basis 3 |
-|  | 10-25 20:16 failed |
-|  | 10-25 20:45 break ↓ grade 1 basis 3 |
-|  | 10-25 20:46 failed |
-|  | 10-25 21:24 break ↓ grade 3 basis 3 |
-|  | 10-25 21:26 failed |
-|  | 10-25 21:44 break ↓ grade 1 basis 3 |
-|  | 10-25 21:49 held outside |
-|  | 10-25 23:26 break ↓ grade 3 basis 3 |
-|  | 10-25 23:31 held outside |
-|  | 10-26 01:37 break ↓ grade 3 basis 3 |
-|  | 10-26 01:42 held outside |
-|  | 10-26 03:50 break ↓ grade 3 basis 3 |
-|  | 10-26 03:54 failed |
-|  | 10-26 04:04 break ↑ grade 0 basis 3 |
-|  | 10-26 04:07 failed |
-|  | 10-26 04:36 break ↑ grade 2 basis 3 |
-|  | 10-26 04:37 failed |
-|  | 10-26 04:53 break ↑ grade 3 basis 3 |
-|  | 10-26 04:54 failed |
-|  | 10-26 05:25 break ↑ grade 3 basis 3 |
-|  | 10-26 05:28 failed |
-|  | 10-26 06:10 break ↓ grade 0 basis 3 |
-|  | 10-26 06:11 failed |
-|  | 10-26 06:24 break ↓ grade 2 basis 3 |
-|  | 10-26 06:29 held outside |
-|  | 10-26 07:00 break ↑ grade 3 basis 3 |
-|  | 10-26 07:04 failed |
-|  | 10-26 07:30 break ↓ grade 3 basis 3 |
-|  | 10-26 07:31 failed |
-|  | 10-26 07:43 break ↑ grade 1 basis 3 |
-|  | 10-26 07:44 failed |
-|  | 10-26 08:02 break ↓ grade 1 basis 3 |
-|  | 10-26 08:07 held outside |
-|  | 10-26 08:27 break ↑ grade 3 basis 3 |
-|  | 10-26 08:32 held outside |
-|  | 10-26 09:17 break ↑ grade 3 basis 3 |
-|  | 10-26 09:18 failed |
-|  | 10-26 09:43 break ↑ grade 0 basis 3 |
-|  | 10-26 09:48 held outside |
-|  | 10-26 09:57 break ↑ grade 2 basis 3 |
-|  | 10-26 09:58 failed |
-|  | 10-26 10:48 break ↓ grade 0 basis 3 |
-|  | 10-26 10:49 failed |
-|  | 10-26 10:58 break ↓ grade 3 basis 3 |
-|  | 10-26 11:03 failed |
-|  | 10-26 11:53 break ↑ grade 3 basis 3 |
-|  | 10-26 11:57 failed |
-|  | 10-26 12:10 break ↓ grade 0 basis 3 |
-|  | 10-26 12:11 failed |
-|  | 10-26 13:01 break ↓ grade 3 basis 3 |
-|  | 10-26 13:06 held outside |
-|  | 10-26 13:21 break ↓ grade 0 basis 3 |
-|  | 10-26 13:26 held outside |
-|  | 10-26 14:19 break ↑ grade 3 basis 3 |
-|  | 10-26 14:20 failed |
-|  | 10-26 14:48 break ↑ grade 3 basis 3 |
-|  | 10-26 14:50 failed |
-|  | 10-26 16:00 break ↓ grade 0 basis 3 |
-|  | 10-26 16:01 failed |
-|  | 10-26 16:14 break ↓ grade 0 basis 3 |
-|  | 10-26 16:19 held outside |
-|  | 10-26 17:00 break ↑ grade 3 basis 3 |
-|  | 10-26 17:05 held outside |
+| Def | Events on 1m | Markers on 1m | per 1,000 | Markers on 5m | per 1,000 |
+|---|---|---|---|---|---|
+| Product (width ≤ 2×, min 6) | 20 | 7 | 0.7 | 4 | 2.0 |
+| Plain frozen range (no width qualifier) | 438 | 234 | 23.2 | 55 | 27.3 |
+| Squeeze-qualified variant (the squeeze qualifier on this machine) | 82 | 43 | 4.3 | 22 | 10.9 |
+| TTM release (timing and density only) | 16 | 16 | 1.6 | 11 | 5.5 |
+| Bollinger crossing (timing and density only) | 573 | 573 | 56.8 | 119 | 59.0 |
+
+### BTC-USDT: Product (20 events)
+
+- 10-19 20:50 break ↓ grade 1 basis 3
+- 10-19 20:55 held outside
+- 10-20 19:21 break ↓ grade 3 basis 3
+- 10-20 19:26 held outside
+- 10-22 03:12 break ↓ grade 0 basis 3
+- 10-22 03:14 failed
+- 10-22 07:50 break ↓ grade 3 basis 3
+- 10-22 07:52 failed
+- 10-23 13:04 break ↓ grade 0 basis 3
+- 10-23 13:09 held outside
+- 10-24 04:51 break ↑ grade 0 basis 3
+- 10-24 04:56 held outside
+- 10-24 06:56 break ↓ grade 0 basis 3
+- 10-24 06:59 failed
+- 10-24 19:47 break ↓ grade 3 basis 3
+- 10-24 19:48 failed
+- 10-25 07:35 break ↑ grade 1 basis 3
+- 10-25 07:40 held outside
+- 10-26 10:01 break ↓ grade 3 basis 3
+- 10-26 10:03 failed
+
+### BTC-USDT: Plain frozen range (no width qualifier) (438 events)
+
+- 10-19 21:14 break ↑ grade 3 basis 3
+- 10-19 21:16 failed
+- 10-19 21:52 break ↓ grade 0 basis 3
+- 10-19 21:57 held outside
+- 10-19 23:07 break ↓ grade 1 basis 3
+- 10-19 23:12 held outside
+- 10-19 23:56 break ↓ grade 0 basis 3
+- 10-20 00:01 held outside
+- 10-20 01:09 break ↓ grade 3 basis 3
+- 10-20 01:14 held outside
+- 10-20 01:46 break ↑ grade 3 basis 3
+- 10-20 01:49 failed
+- 10-20 02:04 break ↓ grade 1 basis 3
+- 10-20 02:05 failed
+- 10-20 02:50 break ↑ grade 3 basis 3
+- 10-20 02:51 failed
+- 10-20 03:08 break ↑ grade 3 basis 3
+- 10-20 03:13 held outside
+- 10-20 03:36 break ↑ grade 3 basis 3
+- 10-20 03:41 failed
+- 10-20 04:20 break ↑ grade 1 basis 3
+- 10-20 04:23 failed
+- 10-20 04:52 break ↓ grade 0 basis 3
+- 10-20 04:53 failed
+- 10-20 05:05 break ↓ grade 1 basis 3
+- 10-20 05:10 failed
+- 10-20 05:30 break ↓ grade 1 basis 3
+- 10-20 05:32 failed
+- 10-20 05:56 break ↓ grade 0 basis 3
+- 10-20 06:01 held outside
+- 10-20 06:13 break ↓ grade 0 basis 3
+- 10-20 06:14 failed
+- 10-20 06:40 break ↑ grade 0 basis 3
+- 10-20 06:45 failed
+- 10-20 07:16 break ↓ grade 1 basis 3
+- 10-20 07:17 failed
+- 10-20 07:53 break ↓ grade 0 basis 3
+- 10-20 07:54 failed
+- 10-20 08:27 break ↑ grade 0 basis 3
+- 10-20 08:28 failed
+- 10-20 08:50 break ↓ grade 3 basis 3
+- 10-20 08:51 failed
+- 10-20 09:15 break ↓ grade 0 basis 3
+- 10-20 09:16 failed
+- 10-20 09:36 break ↓ grade 2 basis 3
+- 10-20 09:38 failed
+- 10-20 09:46 break ↓ grade 0 basis 3
+- 10-20 09:47 failed
+- 10-20 09:57 break ↑ grade 0 basis 3
+- 10-20 10:02 held outside
+- 10-20 10:42 break ↓ grade 0 basis 3
+- 10-20 10:43 failed
+- 10-20 11:01 break ↑ grade 1 basis 3
+- 10-20 11:02 failed
+- 10-20 11:19 break ↓ grade 0 basis 3
+- 10-20 11:24 failed
+- 10-20 11:40 break ↑ grade 1 basis 3
+- 10-20 11:42 failed
+- 10-20 12:08 break ↓ grade 3 basis 3
+- 10-20 12:13 held outside
+- 10-20 12:44 break ↑ grade 0 basis 3
+- 10-20 12:45 failed
+- 10-20 13:14 break ↓ grade 0 basis 3
+- 10-20 13:15 failed
+- 10-20 13:31 break ↓ grade 3 basis 3
+- 10-20 13:34 failed
+- 10-20 13:58 break ↑ grade 1 basis 3
+- 10-20 14:03 held outside
+- 10-20 14:41 break ↑ grade 2 basis 3
+- 10-20 14:44 failed
+- 10-20 14:57 break ↑ grade 3 basis 3
+- 10-20 14:58 failed
+- 10-20 15:11 break ↓ grade 0 basis 3
+- 10-20 15:16 held outside
+- 10-21 00:14 break ↑ grade 1 basis 3
+- 10-21 00:19 held outside
+- 10-21 01:00 break ↓ grade 3 basis 3
+- 10-21 01:05 held outside
+- 10-21 01:50 break ↑ grade 2 basis 3
+- 10-21 01:51 failed
+- 10-21 02:13 break ↓ grade 3 basis 3
+- 10-21 02:18 held outside
+- 10-21 02:31 break ↓ grade 0 basis 3
+- 10-21 02:32 failed
+- 10-21 05:03 break ↑ grade 2 basis 3
+- 10-21 05:08 held outside
+- 10-21 05:41 break ↓ grade 3 basis 3
+- 10-21 05:46 failed
+- 10-21 07:28 break ↑ grade 3 basis 3
+- 10-21 07:33 held outside
+- 10-21 07:52 break ↑ grade 0 basis 3
+- 10-21 07:53 failed
+- 10-21 08:28 break ↑ grade 3 basis 3
+- 10-21 08:29 failed
+- 10-21 08:43 break ↑ grade 3 basis 3
+- 10-21 08:44 failed
+- 10-21 13:04 break ↑ grade 3 basis 3
+- 10-21 13:09 held outside
+- 10-21 13:34 break ↓ grade 1 basis 3
+- 10-21 13:38 failed
+- 10-21 13:47 break ↑ grade 3 basis 3
+- 10-21 13:52 failed
+- 10-21 14:23 break ↑ grade 2 basis 3
+- 10-21 14:28 failed
+- 10-21 15:09 break ↑ grade 0 basis 3
+- 10-21 15:12 failed
+- 10-21 16:39 break ↑ grade 3 basis 3
+- 10-21 16:40 failed
+- 10-21 16:51 break ↓ grade 0 basis 3
+- 10-21 16:56 held outside
+- 10-21 17:34 break ↑ grade 1 basis 3
+- 10-21 17:39 held outside
+- 10-21 17:58 break ↑ grade 0 basis 3
+- 10-21 17:59 failed
+- 10-21 18:22 break ↑ grade 1 basis 3
+- 10-21 18:27 held outside
+- 10-21 18:47 break ↓ grade 3 basis 3
+- 10-21 18:52 held outside
+- 10-21 21:27 break ↑ grade 1 basis 3
+- 10-21 21:29 failed
+- 10-21 21:42 break ↑ grade 0 basis 3
+- 10-21 21:43 failed
+- 10-21 22:00 break ↓ grade 3 basis 3
+- 10-21 22:05 held outside
+- 10-21 22:17 break ↓ grade 1 basis 3
+- 10-21 22:22 held outside
+- 10-21 22:43 break ↓ grade 3 basis 3
+- 10-21 22:48 held outside
+- 10-21 22:59 break ↓ grade 3 basis 3
+- 10-21 23:00 failed
+- 10-21 23:36 break ↓ grade 0 basis 3
+- 10-21 23:37 failed
+- 10-22 00:39 break ↑ grade 0 basis 3
+- 10-22 00:44 held outside
+- 10-22 01:00 break ↓ grade 3 basis 3
+- 10-22 01:05 held outside
+- 10-22 01:16 break ↑ grade 0 basis 3
+- 10-22 01:17 failed
+- 10-22 01:34 break ↓ grade 3 basis 3
+- 10-22 01:39 held outside
+- 10-22 01:52 break ↓ grade 0 basis 3
+- 10-22 01:57 held outside
+- 10-22 02:17 break ↓ grade 0 basis 3
+- 10-22 02:22 held outside
+- 10-22 03:23 break ↓ grade 0 basis 3
+- 10-22 03:28 held outside
+- 10-22 03:43 break ↑ grade 0 basis 3
+- 10-22 03:48 held outside
+- 10-22 04:00 break ↑ grade 2 basis 3
+- 10-22 04:01 failed
+- 10-22 04:35 break ↓ grade 1 basis 3
+- 10-22 04:40 held outside
+- 10-22 05:02 break ↑ grade 1 basis 3
+- 10-22 05:04 failed
+- 10-22 05:28 break ↑ grade 1 basis 3
+- 10-22 05:29 failed
+- 10-22 05:50 break ↓ grade 1 basis 3
+- 10-22 05:55 held outside
+- 10-22 06:07 break ↑ grade 3 basis 3
+- 10-22 06:09 failed
+- 10-22 06:26 break ↓ grade 3 basis 3
+- 10-22 06:31 held outside
+- 10-22 06:44 break ↓ grade 0 basis 3
+- 10-22 06:49 held outside
+- 10-22 07:03 break ↓ grade 1 basis 3
+- 10-22 07:04 failed
+- 10-22 07:26 break ↓ grade 0 basis 3
+- 10-22 07:27 failed
+- 10-22 07:50 break ↓ grade 3 basis 3
+- 10-22 07:52 failed
+- 10-22 08:10 break ↓ grade 0 basis 3
+- 10-22 08:11 failed
+- 10-22 08:19 break ↓ grade 2 basis 3
+- 10-22 08:24 held outside
+- 10-22 08:58 break ↓ grade 3 basis 3
+- 10-22 09:03 held outside
+- 10-22 10:00 break ↑ grade 2 basis 3
+- 10-22 10:05 held outside
+- 10-22 10:23 break ↑ grade 1 basis 3
+- 10-22 10:24 failed
+- 10-22 10:34 break ↑ grade 1 basis 3
+- 10-22 10:35 failed
+- 10-22 10:56 break ↓ grade 3 basis 3
+- 10-22 10:57 failed
+- 10-22 11:15 break ↓ grade 3 basis 3
+- 10-22 11:16 failed
+- 10-22 11:47 break ↓ grade 1 basis 3
+- 10-22 11:52 held outside
+- 10-22 12:18 break ↑ grade 0 basis 3
+- 10-22 12:19 failed
+- 10-22 12:35 break ↓ grade 0 basis 3
+- 10-22 12:36 failed
+- 10-22 12:58 break ↓ grade 0 basis 3
+- 10-22 12:59 failed
+- 10-22 13:13 break ↓ grade 3 basis 3
+- 10-22 13:15 failed
+- 10-22 16:45 break ↓ grade 2 basis 3
+- 10-22 16:50 held outside
+- 10-23 01:36 break ↓ grade 0 basis 3
+- 10-23 01:38 failed
+- 10-23 02:31 break ↑ grade 3 basis 3
+- 10-23 02:36 held outside
+- 10-23 03:52 break ↑ grade 1 basis 3
+- 10-23 03:55 failed
+- 10-23 04:07 break ↓ grade 1 basis 3
+- 10-23 04:12 held outside
+- 10-23 04:28 break ↓ grade 1 basis 3
+- 10-23 04:31 failed
+- 10-23 04:56 break ↓ grade 0 basis 3
+- 10-23 05:01 failed
+- 10-23 05:50 break ↑ grade 0 basis 3
+- 10-23 05:51 failed
+- 10-23 06:10 break ↑ grade 0 basis 3
+- 10-23 06:11 failed
+- 10-23 07:15 break ↓ grade 1 basis 3
+- 10-23 07:16 failed
+- 10-23 07:43 break ↓ grade 1 basis 3
+- 10-23 07:48 held outside
+- 10-23 08:15 break ↑ grade 3 basis 3
+- 10-23 08:20 held outside
+- 10-23 09:38 break ↓ grade 3 basis 3
+- 10-23 09:40 failed
+- 10-23 10:12 break ↑ grade 2 basis 3
+- 10-23 10:17 held outside
+- 10-23 11:02 break ↓ grade 0 basis 3
+- 10-23 11:03 failed
+- 10-23 11:50 break ↑ grade 0 basis 3
+- 10-23 11:51 failed
+- 10-23 12:07 break ↓ grade 1 basis 3
+- 10-23 12:08 failed
+- 10-23 12:25 break ↑ grade 3 basis 3
+- 10-23 12:26 failed
+- 10-23 13:23 break ↑ grade 3 basis 3
+- 10-23 13:27 failed
+- 10-23 13:40 break ↑ grade 3 basis 3
+- 10-23 13:45 held outside
+- 10-23 14:12 break ↓ grade 0 basis 3
+- 10-23 14:14 failed
+- 10-23 22:45 break ↓ grade 0 basis 3
+- 10-23 22:50 held outside
+- 10-23 23:10 break ↓ grade 3 basis 3
+- 10-23 23:11 failed
+- 10-23 23:21 break ↑ grade 0 basis 3
+- 10-23 23:26 held outside
+- 10-23 23:45 break ↑ grade 3 basis 3
+- 10-23 23:50 held outside
+- 10-24 00:18 break ↓ grade 0 basis 3
+- 10-24 00:23 held outside
+- 10-24 00:35 break ↓ grade 0 basis 3
+- 10-24 00:37 failed
+- 10-24 01:49 break ↑ grade 0 basis 3
+- 10-24 01:54 held outside
+- 10-24 02:09 break ↑ grade 1 basis 3
+- 10-24 02:10 failed
+- 10-24 02:59 break ↑ grade 3 basis 3
+- 10-24 03:04 held outside
+- 10-24 03:48 break ↓ grade 1 basis 3
+- 10-24 03:53 held outside
+- 10-24 04:21 break ↓ grade 1 basis 3
+- 10-24 04:22 failed
+- 10-24 05:11 break ↓ grade 0 basis 3
+- 10-24 05:13 failed
+- 10-24 05:43 break ↓ grade 1 basis 3
+- 10-24 05:44 failed
+- 10-24 06:02 break ↓ grade 1 basis 3
+- 10-24 06:04 failed
+- 10-24 07:02 break ↑ grade 3 basis 3
+- 10-24 07:07 held outside
+- 10-24 07:31 break ↓ grade 1 basis 3
+- 10-24 07:32 failed
+- 10-24 07:55 break ↓ grade 3 basis 3
+- 10-24 08:00 failed
+- 10-24 08:38 break ↓ grade 3 basis 3
+- 10-24 08:43 held outside
+- 10-24 09:04 break ↓ grade 0 basis 3
+- 10-24 09:05 failed
+- 10-24 09:19 break ↓ grade 2 basis 3
+- 10-24 09:24 held outside
+- 10-24 09:37 break ↓ grade 3 basis 3
+- 10-24 09:39 failed
+- 10-24 10:03 break ↑ grade 0 basis 3
+- 10-24 10:05 failed
+- 10-24 10:32 break ↑ grade 3 basis 3
+- 10-24 10:37 held outside
+- 10-24 12:20 break ↑ grade 3 basis 3
+- 10-24 12:21 failed
+- 10-24 12:46 break ↑ grade 3 basis 3
+- 10-24 12:49 failed
+- 10-24 13:18 break ↓ grade 3 basis 3
+- 10-24 13:21 failed
+- 10-24 13:32 break ↓ grade 1 basis 3
+- 10-24 13:34 failed
+- 10-24 14:11 break ↓ grade 1 basis 3
+- 10-24 14:16 held outside
+- 10-24 14:25 break ↓ grade 0 basis 3
+- 10-24 14:28 failed
+- 10-24 15:09 break ↓ grade 3 basis 3
+- 10-24 15:10 failed
+- 10-24 16:56 break ↑ grade 0 basis 3
+- 10-24 16:58 failed
+- 10-24 18:00 break ↑ grade 0 basis 3
+- 10-24 18:01 failed
+- 10-24 18:10 break ↑ grade 3 basis 3
+- 10-24 18:15 held outside
+- 10-24 18:52 break ↑ grade 2 basis 3
+- 10-24 18:53 failed
+- 10-24 21:10 break ↓ grade 1 basis 3
+- 10-24 21:12 failed
+- 10-24 22:35 break ↑ grade 3 basis 3
+- 10-24 22:40 held outside
+- 10-24 23:30 break ↑ grade 3 basis 3
+- 10-24 23:35 held outside
+- 10-24 23:48 break ↑ grade 0 basis 3
+- 10-24 23:53 held outside
+- 10-25 00:01 break ↓ grade 1 basis 3
+- 10-25 00:06 held outside
+- 10-25 00:14 break ↓ grade 0 basis 3
+- 10-25 00:19 held outside
+- 10-25 00:28 break ↑ grade 1 basis 3
+- 10-25 00:33 held outside
+- 10-25 00:49 break ↑ grade 0 basis 3
+- 10-25 00:50 failed
+- 10-25 01:00 break ↓ grade 1 basis 3
+- 10-25 01:05 held outside
+- 10-25 01:32 break ↓ grade 0 basis 3
+- 10-25 01:36 failed
+- 10-25 02:05 break ↑ grade 2 basis 3
+- 10-25 02:10 held outside
+- 10-25 02:39 break ↑ grade 3 basis 3
+- 10-25 02:42 failed
+- 10-25 03:17 break ↑ grade 2 basis 3
+- 10-25 03:22 held outside
+- 10-25 03:47 break ↓ grade 1 basis 3
+- 10-25 03:52 held outside
+- 10-25 04:38 break ↑ grade 2 basis 3
+- 10-25 04:39 failed
+- 10-25 05:23 break ↓ grade 1 basis 3
+- 10-25 05:28 held outside
+- 10-25 06:50 break ↓ grade 3 basis 3
+- 10-25 06:55 held outside
+- 10-25 07:06 break ↑ grade 3 basis 3
+- 10-25 07:07 failed
+- 10-25 07:35 break ↑ grade 1 basis 3
+- 10-25 07:40 held outside
+- 10-25 08:17 break ↓ grade 3 basis 3
+- 10-25 08:22 held outside
+- 10-25 09:12 break ↓ grade 3 basis 3
+- 10-25 09:17 held outside
+- 10-25 11:22 break ↑ grade 0 basis 3
+- 10-25 11:23 failed
+- 10-25 11:43 break ↑ grade 1 basis 3
+- 10-25 11:48 held outside
+- 10-25 12:25 break ↓ grade 3 basis 3
+- 10-25 12:30 held outside
+- 10-25 13:28 break ↓ grade 3 basis 3
+- 10-25 13:33 held outside
+- 10-25 13:41 break ↑ grade 3 basis 3
+- 10-25 13:42 failed
+- 10-25 14:50 break ↑ grade 3 basis 3
+- 10-25 14:55 held outside
+- 10-25 16:55 break ↑ grade 3 basis 3
+- 10-25 17:00 held outside
+- 10-25 17:21 break ↑ grade 3 basis 3
+- 10-25 17:22 failed
+- 10-25 18:09 break ↓ grade 3 basis 3
+- 10-25 18:14 held outside
+- 10-25 18:29 break ↓ grade 0 basis 3
+- 10-25 18:30 failed
+- 10-25 18:43 break ↓ grade 3 basis 3
+- 10-25 18:45 failed
+- 10-25 19:05 break ↓ grade 1 basis 3
+- 10-25 19:10 held outside
+- 10-25 20:02 break ↓ grade 2 basis 3
+- 10-25 20:06 failed
+- 10-25 20:14 break ↑ grade 3 basis 3
+- 10-25 20:16 failed
+- 10-25 20:45 break ↓ grade 1 basis 3
+- 10-25 20:46 failed
+- 10-25 21:24 break ↓ grade 3 basis 3
+- 10-25 21:26 failed
+- 10-25 21:44 break ↓ grade 1 basis 3
+- 10-25 21:49 held outside
+- 10-25 23:26 break ↓ grade 3 basis 3
+- 10-25 23:31 held outside
+- 10-26 01:37 break ↓ grade 3 basis 3
+- 10-26 01:42 held outside
+- 10-26 03:50 break ↓ grade 3 basis 3
+- 10-26 03:54 failed
+- 10-26 04:04 break ↑ grade 0 basis 3
+- 10-26 04:07 failed
+- 10-26 04:36 break ↑ grade 2 basis 3
+- 10-26 04:37 failed
+- 10-26 04:53 break ↑ grade 3 basis 3
+- 10-26 04:54 failed
+- 10-26 05:25 break ↑ grade 3 basis 3
+- 10-26 05:28 failed
+- 10-26 06:10 break ↓ grade 0 basis 3
+- 10-26 06:11 failed
+- 10-26 06:24 break ↓ grade 2 basis 3
+- 10-26 06:29 held outside
+- 10-26 07:00 break ↑ grade 3 basis 3
+- 10-26 07:04 failed
+- 10-26 07:30 break ↓ grade 3 basis 3
+- 10-26 07:31 failed
+- 10-26 07:43 break ↑ grade 1 basis 3
+- 10-26 07:44 failed
+- 10-26 08:02 break ↓ grade 1 basis 3
+- 10-26 08:07 held outside
+- 10-26 08:27 break ↑ grade 3 basis 3
+- 10-26 08:32 held outside
+- 10-26 09:17 break ↑ grade 3 basis 3
+- 10-26 09:18 failed
+- 10-26 09:43 break ↑ grade 0 basis 3
+- 10-26 09:48 held outside
+- 10-26 09:57 break ↑ grade 2 basis 3
+- 10-26 09:58 failed
+- 10-26 10:48 break ↓ grade 0 basis 3
+- 10-26 10:49 failed
+- 10-26 10:58 break ↓ grade 3 basis 3
+- 10-26 11:03 failed
+- 10-26 11:53 break ↑ grade 3 basis 3
+- 10-26 11:57 failed
+- 10-26 12:10 break ↓ grade 0 basis 3
+- 10-26 12:11 failed
+- 10-26 13:01 break ↓ grade 3 basis 3
+- 10-26 13:06 held outside
+- 10-26 13:21 break ↓ grade 0 basis 3
+- 10-26 13:26 held outside
+- 10-26 14:19 break ↑ grade 3 basis 3
+- 10-26 14:20 failed
+- 10-26 14:48 break ↑ grade 3 basis 3
+- 10-26 14:50 failed
+- 10-26 16:00 break ↓ grade 0 basis 3
+- 10-26 16:01 failed
+- 10-26 16:14 break ↓ grade 0 basis 3
+- 10-26 16:19 held outside
+- 10-26 17:00 break ↑ grade 3 basis 3
+- 10-26 17:05 held outside
+
+### BTC-USDT: Squeeze-qualified variant (the squeeze qualifier on this machine) (82 events)
+
+- 10-20 07:56 break ↓ grade 2 basis 3
+- 10-20 07:57 failed
+- 10-20 08:26 break ↑ grade 1 basis 3
+- 10-20 08:28 failed
+- 10-20 13:31 break ↓ grade 3 basis 3
+- 10-20 13:34 failed
+- 10-20 15:12 break ↓ grade 3 basis 3
+- 10-20 15:17 held outside
+- 10-20 21:17 break ↑ grade 3 basis 3
+- 10-20 21:18 failed
+- 10-20 22:54 break ↑ grade 1 basis 3
+- 10-20 22:58 failed
+- 10-21 07:26 break ↑ grade 3 basis 3
+- 10-21 07:31 held outside
+- 10-21 08:28 break ↑ grade 3 basis 3
+- 10-21 08:29 failed
+- 10-21 10:13 break ↓ grade 1 basis 3
+- 10-21 10:18 held outside
+- 10-21 12:28 break ↑ grade 3 basis 3
+- 10-21 12:30 failed
+- 10-21 13:30 break ↓ grade 3 basis 3
+- 10-21 13:35 held outside
+- 10-21 15:19 break ↓ grade 0 basis 3
+- 10-21 15:21 failed
+- 10-21 16:19 break ↑ grade 0 basis 3
+- 10-21 16:24 held outside
+- 10-21 20:35 break ↑ grade 1 basis 3
+- 10-21 20:40 held outside
+- 10-21 22:00 break ↓ grade 3 basis 3
+- 10-21 22:05 held outside
+- 10-21 22:43 break ↓ grade 3 basis 3
+- 10-21 22:48 held outside
+- 10-22 00:38 break ↑ grade 0 basis 3
+- 10-22 00:43 held outside
+- 10-22 03:23 break ↓ grade 0 basis 3
+- 10-22 03:28 held outside
+- 10-22 04:34 break ↓ grade 1 basis 3
+- 10-22 04:39 held outside
+- 10-22 07:50 break ↓ grade 3 basis 3
+- 10-22 07:52 failed
+- 10-22 22:03 break ↑ grade 1 basis 3
+- 10-22 22:04 failed
+- 10-23 03:52 break ↑ grade 1 basis 3
+- 10-23 03:55 failed
+- 10-23 11:27 break ↑ grade 0 basis 3
+- 10-23 11:28 failed
+- 10-23 14:11 break ↓ grade 3 basis 3
+- 10-23 14:16 held outside
+- 10-23 15:10 break ↓ grade 0 basis 3
+- 10-23 15:11 failed
+- 10-23 15:35 break ↑ grade 0 basis 3
+- 10-23 15:36 failed
+- 10-23 17:52 break ↓ grade 3 basis 3
+- 10-23 17:53 failed
+- 10-23 20:12 break ↑ grade 0 basis 3
+- 10-23 20:15 failed
+- 10-23 23:45 break ↑ grade 3 basis 3
+- 10-23 23:50 held outside
+- 10-24 01:10 break ↑ grade 0 basis 3
+- 10-24 01:13 failed
+- 10-24 07:01 break ↑ grade 1 basis 3
+- 10-24 07:06 held outside
+- 10-24 15:57 break ↑ grade 1 basis 3
+- 10-24 16:02 failed
+- 10-24 18:00 break ↑ grade 0 basis 3
+- 10-24 18:01 failed
+- 10-24 21:05 break ↓ grade 3 basis 3
+- 10-24 21:10 held outside
+- 10-25 16:01 break ↓ grade 2 basis 3
+- 10-25 16:02 failed
+- 10-25 17:21 break ↑ grade 3 basis 3
+- 10-25 17:22 failed
+- 10-26 02:45 break ↓ grade 0 basis 3
+- 10-26 02:46 failed
+- 10-26 03:01 break ↑ grade 3 basis 3
+- 10-26 03:06 held outside
+- 10-26 03:46 break ↓ grade 0 basis 3
+- 10-26 03:47 failed
+- 10-26 06:08 break ↓ grade 0 basis 3
+- 10-26 06:13 failed
+- 10-26 14:10 break ↑ grade 2 basis 3
+- 10-26 14:12 failed
+
+### BTC-USDT: TTM release (timing and density only) (16 events)
+
+- 10-19 20:50 event ↓
+- 10-20 07:10 event ↓
+- 10-20 17:39 event ↑
+- 10-20 19:21 event ↓
+- 10-21 08:18 event ↓
+- 10-21 10:13 event ↓
+- 10-21 12:29 event ↑
+- 10-21 20:09 event ↑
+- 10-21 20:34 event ↑
+- 10-22 02:55 event ↓
+- 10-22 04:34 event ↓
+- 10-22 07:50 event ↓
+- 10-22 22:01 event ↑
+- 10-23 15:02 event ↓
+- 10-24 19:34 event ↑
+- 10-26 03:01 event ↑
+
+### BTC-USDT: Bollinger crossing (timing and density only) (573 events)
+
+- 10-19 18:24 event ↓
+- 10-19 18:45 event ↑
+- 10-19 19:07 event ↓
+- 10-19 19:23 event ↑
+- 10-19 19:42 event ↑
+- 10-19 19:50 event ↓
+- 10-19 20:12 event ↑
+- 10-19 20:17 event ↑
+- 10-19 20:50 event ↓
+- 10-19 21:00 event ↑
+- 10-19 21:12 event ↑
+- 10-19 21:35 event ↓
+- 10-19 22:00 event ↑
+- 10-19 22:16 event ↑
+- 10-19 22:19 event ↑
+- 10-19 22:58 event ↓
+- 10-19 23:07 event ↓
+- 10-19 23:15 event ↓
+- 10-19 23:17 event ↓
+- 10-19 23:26 event ↑
+- 10-19 23:48 event ↓
+- 10-20 00:05 event ↓
+- 10-20 00:08 event ↓
+- 10-20 00:10 event ↓
+- 10-20 00:16 event ↓
+- 10-20 00:22 event ↓
+- 10-20 01:07 event ↓
+- 10-20 01:34 event ↑
+- 10-20 01:38 event ↑
+- 10-20 01:46 event ↑
+- 10-20 02:04 event ↓
+- 10-20 02:06 event ↓
+- 10-20 02:46 event ↑
+- 10-20 02:50 event ↑
+- 10-20 03:06 event ↑
+- 10-20 03:32 event ↑
+- 10-20 03:36 event ↑
+- 10-20 03:54 event ↑
+- 10-20 03:57 event ↑
+- 10-20 05:06 event ↓
+- 10-20 05:36 event ↓
+- 10-20 05:57 event ↓
+- 10-20 05:59 event ↓
+- 10-20 06:20 event ↑
+- 10-20 06:30 event ↑
+- 10-20 07:05 event ↓
+- 10-20 07:10 event ↓
+- 10-20 07:15 event ↓
+- 10-20 07:25 event ↓
+- 10-20 07:30 event ↓
+- 10-20 07:53 event ↓
+- 10-20 07:56 event ↓
+- 10-20 08:01 event ↓
+- 10-20 08:25 event ↑
+- 10-20 08:35 event ↑
+- 10-20 08:50 event ↓
+- 10-20 09:00 event ↑
+- 10-20 09:37 event ↓
+- 10-20 09:46 event ↓
+- 10-20 09:55 event ↑
+- 10-20 09:58 event ↑
+- 10-20 10:33 event ↓
+- 10-20 11:00 event ↑
+- 10-20 11:19 event ↓
+- 10-20 11:38 event ↑
+- 10-20 12:08 event ↓
+- 10-20 12:23 event ↑
+- 10-20 13:00 event ↓
+- 10-20 13:23 event ↑
+- 10-20 13:31 event ↓
+- 10-20 13:33 event ↓
+- 10-20 13:36 event ↑
+- 10-20 13:58 event ↑
+- 10-20 14:07 event ↑
+- 10-20 14:36 event ↑
+- 10-20 14:41 event ↑
+- 10-20 15:12 event ↓
+- 10-20 15:40 event ↑
+- 10-20 16:12 event ↓
+- 10-20 16:17 event ↓
+- 10-20 16:31 event ↑
+- 10-20 16:33 event ↑
+- 10-20 16:47 event ↑
+- 10-20 17:38 event ↑
+- 10-20 17:41 event ↑
+- 10-20 17:48 event ↑
+- 10-20 17:56 event ↓
+- 10-20 18:25 event ↓
+- 10-20 18:43 event ↓
+- 10-20 19:21 event ↓
+- 10-20 19:41 event ↑
+- 10-20 20:00 event ↓
+- 10-20 20:30 event ↑
+- 10-20 20:33 event ↑
+- 10-20 20:37 event ↑
+- 10-20 20:57 event ↑
+- 10-20 21:05 event ↑
+- 10-20 21:07 event ↑
+- 10-20 21:15 event ↑
+- 10-20 21:49 event ↑
+- 10-20 21:54 event ↑
+- 10-20 22:07 event ↑
+- 10-20 22:29 event ↓
+- 10-20 22:49 event ↑
+- 10-20 22:53 event ↑
+- 10-20 23:07 event ↓
+- 10-20 23:37 event ↓
+- 10-20 23:42 event ↑
+- 10-21 00:01 event ↓
+- 10-21 00:15 event ↑
+- 10-21 00:56 event ↓
+- 10-21 00:59 event ↓
+- 10-21 01:23 event ↑
+- 10-21 01:27 event ↑
+- 10-21 01:45 event ↑
+- 10-21 01:47 event ↑
+- 10-21 02:13 event ↓
+- 10-21 02:51 event ↑
+- 10-21 03:10 event ↓
+- 10-21 03:12 event ↓
+- 10-21 03:31 event ↑
+- 10-21 04:31 event ↑
+- 10-21 04:40 event ↓
+- 10-21 05:00 event ↑
+- 10-21 05:24 event ↓
+- 10-21 05:41 event ↓
+- 10-21 06:30 event ↑
+- 10-21 06:50 event ↓
+- 10-21 07:06 event ↓
+- 10-21 07:11 event ↑
+- 10-21 07:26 event ↑
+- 10-21 08:18 event ↓
+- 10-21 08:24 event ↑
+- 10-21 08:27 event ↑
+- 10-21 08:43 event ↑
+- 10-21 08:49 event ↑
+- 10-21 09:32 event ↑
+- 10-21 09:44 event ↓
+- 10-21 10:03 event ↓
+- 10-21 10:13 event ↓
+- 10-21 10:33 event ↑
+- 10-21 10:42 event ↑
+- 10-21 11:04 event ↑
+- 10-21 11:24 event ↑
+- 10-21 11:51 event ↑
+- 10-21 12:28 event ↑
+- 10-21 13:04 event ↑
+- 10-21 13:30 event ↓
+- 10-21 13:47 event ↑
+- 10-21 14:23 event ↑
+- 10-21 14:26 event ↑
+- 10-21 14:48 event ↑
+- 10-21 14:51 event ↑
+- 10-21 15:09 event ↑
+- 10-21 15:19 event ↓
+- 10-21 16:07 event ↑
+- 10-21 16:09 event ↑
+- 10-21 16:20 event ↑
+- 10-21 16:38 event ↑
+- 10-21 17:02 event ↓
+- 10-21 17:20 event ↑
+- 10-21 17:38 event ↑
+- 10-21 18:02 event ↑
+- 10-21 18:20 event ↓
+- 10-21 18:23 event ↑
+- 10-21 18:47 event ↓
+- 10-21 19:01 event ↓
+- 10-21 19:30 event ↑
+- 10-21 19:33 event ↑
+- 10-21 19:59 event ↓
+- 10-21 20:04 event ↑
+- 10-21 20:33 event ↑
+- 10-21 20:40 event ↑
+- 10-21 21:21 event ↑
+- 10-21 21:27 event ↑
+- 10-21 22:00 event ↓
+- 10-21 22:17 event ↓
+- 10-21 22:41 event ↓
+- 10-21 22:48 event ↓
+- 10-21 23:02 event ↓
+- 10-21 23:04 event ↓
+- 10-21 23:07 event ↓
+- 10-21 23:29 event ↓
+- 10-21 23:31 event ↓
+- 10-21 23:48 event ↓
+- 10-21 23:51 event ↓
+- 10-22 00:33 event ↑
+- 10-22 00:59 event ↓
+- 10-22 01:16 event ↑
+- 10-22 01:32 event ↓
+- 10-22 01:38 event ↓
+- 10-22 01:40 event ↓
+- 10-22 01:59 event ↓
+- 10-22 02:17 event ↓
+- 10-22 02:54 event ↓
+- 10-22 03:27 event ↓
+- 10-22 03:30 event ↓
+- 10-22 03:34 event ↓
+- 10-22 03:43 event ↑
+- 10-22 04:34 event ↓
+- 10-22 04:38 event ↓
+- 10-22 05:11 event ↓
+- 10-22 05:28 event ↑
+- 10-22 05:50 event ↓
+- 10-22 05:55 event ↓
+- 10-22 06:21 event ↓
+- 10-22 06:24 event ↓
+- 10-22 07:03 event ↓
+- 10-22 07:06 event ↓
+- 10-22 07:08 event ↓
+- 10-22 07:12 event ↓
+- 10-22 07:47 event ↑
+- 10-22 07:49 event ↓
+- 10-22 08:02 event ↓
+- 10-22 08:10 event ↓
+- 10-22 08:20 event ↓
+- 10-22 08:23 event ↓
+- 10-22 08:37 event ↓
+- 10-22 08:58 event ↓
+- 10-22 09:00 event ↓
+- 10-22 09:12 event ↓
+- 10-22 09:47 event ↑
+- 10-22 09:50 event ↑
+- 10-22 10:01 event ↑
+- 10-22 10:34 event ↑
+- 10-22 10:38 event ↑
+- 10-22 11:01 event ↓
+- 10-22 11:15 event ↓
+- 10-22 11:21 event ↓
+- 10-22 11:47 event ↓
+- 10-22 11:49 event ↓
+- 10-22 12:05 event ↓
+- 10-22 12:30 event ↓
+- 10-22 12:34 event ↓
+- 10-22 12:58 event ↓
+- 10-22 13:13 event ↓
+- 10-22 13:33 event ↑
+- 10-22 13:40 event ↓
+- 10-22 14:32 event ↑
+- 10-22 14:41 event ↑
+- 10-22 14:43 event ↑
+- 10-22 15:04 event ↓
+- 10-22 15:06 event ↓
+- 10-22 15:08 event ↓
+- 10-22 16:09 event ↑
+- 10-22 16:12 event ↓
+- 10-22 16:31 event ↓
+- 10-22 16:47 event ↓
+- 10-22 17:18 event ↑
+- 10-22 17:36 event ↓
+- 10-22 17:57 event ↓
+- 10-22 18:01 event ↓
+- 10-22 18:19 event ↑
+- 10-22 18:44 event ↑
+- 10-22 19:09 event ↓
+- 10-22 19:11 event ↓
+- 10-22 19:20 event ↑
+- 10-22 20:33 event ↓
+- 10-22 20:47 event ↓
+- 10-22 20:49 event ↓
+- 10-22 21:07 event ↑
+- 10-22 21:34 event ↓
+- 10-22 22:01 event ↑
+- 10-22 22:18 event ↓
+- 10-22 22:36 event ↑
+- 10-22 22:43 event ↓
+- 10-22 23:06 event ↑
+- 10-22 23:18 event ↓
+- 10-22 23:34 event ↓
+- 10-22 23:45 event ↑
+- 10-23 00:00 event ↓
+- 10-23 00:04 event ↓
+- 10-23 00:10 event ↓
+- 10-23 00:13 event ↓
+- 10-23 00:30 event ↑
+- 10-23 00:43 event ↑
+- 10-23 01:05 event ↓
+- 10-23 01:35 event ↓
+- 10-23 01:46 event ↑
+- 10-23 02:21 event ↑
+- 10-23 02:23 event ↑
+- 10-23 02:26 event ↑
+- 10-23 02:31 event ↑
+- 10-23 02:54 event ↑
+- 10-23 03:16 event ↓
+- 10-23 03:19 event ↓
+- 10-23 03:45 event ↑
+- 10-23 03:52 event ↑
+- 10-23 04:28 event ↓
+- 10-23 04:33 event ↓
+- 10-23 04:57 event ↓
+- 10-23 05:07 event ↑
+- 10-23 05:26 event ↓
+- 10-23 05:50 event ↑
+- 10-23 06:16 event ↑
+- 10-23 07:01 event ↓
+- 10-23 07:32 event ↑
+- 10-23 07:45 event ↓
+- 10-23 07:50 event ↓
+- 10-23 08:09 event ↑
+- 10-23 08:12 event ↑
+- 10-23 08:39 event ↑
+- 10-23 08:55 event ↓
+- 10-23 09:00 event ↓
+- 10-23 09:23 event ↓
+- 10-23 10:06 event ↑
+- 10-23 10:08 event ↑
+- 10-23 10:12 event ↑
+- 10-23 10:29 event ↓
+- 10-23 10:49 event ↑
+- 10-23 11:00 event ↓
+- 10-23 11:26 event ↑
+- 10-23 11:35 event ↑
+- 10-23 11:42 event ↑
+- 10-23 12:01 event ↓
+- 10-23 12:07 event ↓
+- 10-23 12:09 event ↓
+- 10-23 12:25 event ↑
+- 10-23 13:05 event ↓
+- 10-23 13:07 event ↓
+- 10-23 13:21 event ↑
+- 10-23 13:40 event ↑
+- 10-23 14:10 event ↓
+- 10-23 14:16 event ↓
+- 10-23 14:19 event ↓
+- 10-23 14:36 event ↑
+- 10-23 15:02 event ↓
+- 10-23 15:43 event ↓
+- 10-23 16:14 event ↓
+- 10-23 16:24 event ↓
+- 10-23 16:33 event ↑
+- 10-23 16:36 event ↑
+- 10-23 17:12 event ↑
+- 10-23 17:19 event ↑
+- 10-23 17:23 event ↓
+- 10-23 17:58 event ↑
+- 10-23 18:30 event ↓
+- 10-23 18:46 event ↓
+- 10-23 19:08 event ↓
+- 10-23 19:10 event ↓
+- 10-23 19:34 event ↓
+- 10-23 19:56 event ↓
+- 10-23 20:11 event ↑
+- 10-23 20:27 event ↑
+- 10-23 20:44 event ↑
+- 10-23 21:29 event ↓
+- 10-23 22:00 event ↑
+- 10-23 22:30 event ↓
+- 10-23 22:47 event ↓
+- 10-23 22:55 event ↓
+- 10-23 23:45 event ↑
+- 10-24 00:07 event ↓
+- 10-24 00:14 event ↓
+- 10-24 00:21 event ↓
+- 10-24 01:15 event ↑
+- 10-24 01:37 event ↓
+- 10-24 02:16 event ↓
+- 10-24 02:19 event ↓
+- 10-24 02:59 event ↑
+- 10-24 03:02 event ↑
+- 10-24 03:49 event ↓
+- 10-24 04:00 event ↑
+- 10-24 04:53 event ↑
+- 10-24 05:04 event ↓
+- 10-24 05:06 event ↓
+- 10-24 05:20 event ↓
+- 10-24 05:43 event ↓
+- 10-24 06:02 event ↓
+- 10-24 06:05 event ↓
+- 10-24 07:00 event ↑
+- 10-24 07:54 event ↓
+- 10-24 08:17 event ↑
+- 10-24 08:38 event ↓
+- 10-24 08:40 event ↓
+- 10-24 09:26 event ↓
+- 10-24 09:37 event ↓
+- 10-24 10:16 event ↓
+- 10-24 10:32 event ↑
+- 10-24 10:52 event ↓
+- 10-24 11:22 event ↓
+- 10-24 11:56 event ↓
+- 10-24 12:00 event ↓
+- 10-24 12:12 event ↑
+- 10-24 12:16 event ↑
+- 10-24 12:47 event ↑
+- 10-24 13:18 event ↓
+- 10-24 13:31 event ↓
+- 10-24 13:53 event ↑
+- 10-24 14:05 event ↑
+- 10-24 14:11 event ↓
+- 10-24 15:01 event ↓
+- 10-24 15:09 event ↓
+- 10-24 15:16 event ↓
+- 10-24 15:19 event ↓
+- 10-24 15:57 event ↑
+- 10-24 16:12 event ↑
+- 10-24 16:21 event ↓
+- 10-24 16:39 event ↑
+- 10-24 16:49 event ↑
+- 10-24 17:10 event ↓
+- 10-24 17:48 event ↑
+- 10-24 17:52 event ↑
+- 10-24 18:10 event ↑
+- 10-24 18:55 event ↑
+- 10-24 19:28 event ↑
+- 10-24 19:34 event ↑
+- 10-24 19:47 event ↓
+- 10-24 19:59 event ↓
+- 10-24 20:01 event ↑
+- 10-24 20:04 event ↑
+- 10-24 20:29 event ↓
+- 10-24 20:38 event ↑
+- 10-24 20:59 event ↓
+- 10-24 21:01 event ↓
+- 10-24 21:44 event ↓
+- 10-24 22:01 event ↑
+- 10-24 22:30 event ↑
+- 10-24 22:35 event ↑
+- 10-24 23:00 event ↑
+- 10-24 23:02 event ↑
+- 10-24 23:17 event ↓
+- 10-24 23:30 event ↑
+- 10-25 00:01 event ↓
+- 10-25 00:27 event ↑
+- 10-25 00:49 event ↑
+- 10-25 01:01 event ↓
+- 10-25 01:23 event ↑
+- 10-25 01:39 event ↑
+- 10-25 01:43 event ↑
+- 10-25 01:46 event ↑
+- 10-25 02:06 event ↑
+- 10-25 02:17 event ↓
+- 10-25 02:37 event ↑
+- 10-25 03:09 event ↑
+- 10-25 03:16 event ↑
+- 10-25 03:47 event ↓
+- 10-25 03:51 event ↓
+- 10-25 03:55 event ↓
+- 10-25 04:02 event ↓
+- 10-25 04:37 event ↑
+- 10-25 05:01 event ↓
+- 10-25 05:21 event ↓
+- 10-25 05:29 event ↓
+- 10-25 05:33 event ↓
+- 10-25 05:38 event ↓
+- 10-25 06:09 event ↑
+- 10-25 06:37 event ↓
+- 10-25 06:51 event ↓
+- 10-25 07:06 event ↑
+- 10-25 07:36 event ↑
+- 10-25 07:39 event ↑
+- 10-25 07:41 event ↑
+- 10-25 08:00 event ↓
+- 10-25 08:19 event ↓
+- 10-25 08:22 event ↓
+- 10-25 08:53 event ↓
+- 10-25 09:12 event ↓
+- 10-25 09:17 event ↓
+- 10-25 09:42 event ↑
+- 10-25 10:11 event ↑
+- 10-25 10:45 event ↓
+- 10-25 11:00 event ↑
+- 10-25 11:43 event ↑
+- 10-25 11:47 event ↑
+- 10-25 12:25 event ↓
+- 10-25 12:28 event ↓
+- 10-25 13:04 event ↓
+- 10-25 13:19 event ↓
+- 10-25 13:25 event ↓
+- 10-25 13:27 event ↓
+- 10-25 13:41 event ↑
+- 10-25 14:01 event ↓
+- 10-25 14:03 event ↓
+- 10-25 14:14 event ↑
+- 10-25 14:18 event ↓
+- 10-25 14:35 event ↑
+- 10-25 14:40 event ↑
+- 10-25 14:50 event ↑
+- 10-25 14:55 event ↑
+- 10-25 15:00 event ↑
+- 10-25 15:22 event ↓
+- 10-25 15:54 event ↓
+- 10-25 16:00 event ↓
+- 10-25 16:03 event ↓
+- 10-25 16:22 event ↓
+- 10-25 16:24 event ↓
+- 10-25 16:52 event ↑
+- 10-25 17:18 event ↑
+- 10-25 17:21 event ↑
+- 10-25 17:43 event ↑
+- 10-25 17:56 event ↑
+- 10-25 18:09 event ↓
+- 10-25 19:06 event ↓
+- 10-25 19:54 event ↓
+- 10-25 20:03 event ↓
+- 10-25 20:14 event ↑
+- 10-25 20:32 event ↓
+- 10-25 20:43 event ↓
+- 10-25 20:48 event ↓
+- 10-25 20:50 event ↓
+- 10-25 21:08 event ↑
+- 10-25 21:24 event ↓
+- 10-25 21:45 event ↓
+- 10-25 22:01 event ↑
+- 10-25 22:57 event ↓
+- 10-25 23:02 event ↓
+- 10-25 23:04 event ↓
+- 10-25 23:18 event ↓
+- 10-25 23:26 event ↓
+- 10-25 23:30 event ↓
+- 10-26 00:25 event ↑
+- 10-26 00:47 event ↓
+- 10-26 01:24 event ↑
+- 10-26 01:39 event ↓
+- 10-26 01:44 event ↓
+- 10-26 02:20 event ↓
+- 10-26 02:22 event ↓
+- 10-26 02:45 event ↓
+- 10-26 03:01 event ↑
+- 10-26 03:05 event ↑
+- 10-26 03:30 event ↓
+- 10-26 03:50 event ↓
+- 10-26 04:03 event ↑
+- 10-26 04:15 event ↑
+- 10-26 04:53 event ↑
+- 10-26 05:22 event ↑
+- 10-26 05:25 event ↑
+- 10-26 05:49 event ↑
+- 10-26 06:00 event ↑
+- 10-26 06:05 event ↓
+- 10-26 06:07 event ↓
+- 10-26 06:27 event ↓
+- 10-26 06:58 event ↑
+- 10-26 07:28 event ↓
+- 10-26 07:43 event ↑
+- 10-26 08:02 event ↓
+- 10-26 08:06 event ↓
+- 10-26 08:10 event ↓
+- 10-26 08:58 event ↓
+- 10-26 09:17 event ↑
+- 10-26 09:21 event ↑
+- 10-26 10:00 event ↓
+- 10-26 10:21 event ↓
+- 10-26 10:26 event ↓
+- 10-26 10:47 event ↓
+- 10-26 10:58 event ↓
+- 10-26 11:05 event ↓
+- 10-26 11:08 event ↓
+- 10-26 11:24 event ↑
+- 10-26 11:27 event ↑
+- 10-26 11:39 event ↑
+- 10-26 11:53 event ↑
+- 10-26 12:27 event ↑
+- 10-26 13:00 event ↓
+- 10-26 13:04 event ↓
+- 10-26 13:22 event ↓
+- 10-26 13:30 event ↓
+- 10-26 13:35 event ↓
+- 10-26 14:09 event ↑
+- 10-26 14:48 event ↑
+- 10-26 14:53 event ↑
+- 10-26 15:17 event ↑
+- 10-26 15:36 event ↑
+- 10-26 15:52 event ↓
+- 10-26 15:54 event ↓
+- 10-26 15:56 event ↓
+- 10-26 16:16 event ↓
+- 10-26 16:26 event ↓
+- 10-26 16:49 event ↑
+- 10-26 16:57 event ↑
+- 10-26 17:00 event ↑
+- 10-26 17:27 event ↓
+- 10-26 17:29 event ↓
 
 ## ETH-USDT
 
@@ -459,462 +1170,1254 @@ Live versus replay of the 10080 retained bars (the rollover dropped 30 older bar
 
 Ranges opened over the retained series: 26. Markers: 7 on 1m (0.7 per 1,000, max 1 per bar); 3 on resampled 5m over 2016 bars (1.5 per 1,000).
 
-Events, product (left) and plain frozen-range baseline (right):
+Density of every def on the same bars (confirmed markers; the two timing comparators mark every event):
 
-| Product | Plain frozen range |
-|---|---|
-| 10-19 23:07 break ↓ grade 0 basis 3 | 10-19 22:01 break ↑ grade 3 basis 3 |
-| 10-19 23:12 failed | 10-19 22:02 failed |
-| 10-20 14:56 break ↑ grade 2 basis 3 | 10-19 22:16 break ↑ grade 3 basis 3 |
-| 10-20 15:00 failed | 10-19 22:21 held outside |
-| 10-21 20:00 break ↓ grade 3 basis 3 | 10-19 23:17 break ↓ grade 0 basis 3 |
-| 10-21 20:02 failed | 10-19 23:18 failed |
-| 10-22 22:01 break ↑ grade 1 basis 3 | 10-19 23:27 break ↑ grade 0 basis 3 |
-| 10-22 22:06 held outside | 10-19 23:28 failed |
-| 10-24 04:38 break ↑ grade 1 basis 3 | 10-20 00:05 break ↓ grade 1 basis 3 |
-| 10-24 04:43 held outside | 10-20 00:10 held outside |
-| 10-24 15:00 break ↓ grade 0 basis 3 | 10-20 01:08 break ↓ grade 2 basis 3 |
-| 10-24 15:05 held outside | 10-20 01:13 held outside |
-| 10-24 15:56 break ↑ grade 2 basis 3 | 10-20 02:48 break ↑ grade 2 basis 3 |
-| 10-24 16:01 held outside | 10-20 02:49 failed |
-| 10-25 07:41 break ↑ grade 3 basis 3 | 10-20 03:08 break ↑ grade 3 basis 3 |
-| 10-25 07:43 failed | 10-20 03:13 held outside |
-| 10-25 10:12 break ↑ grade 3 basis 3 | 10-20 03:33 break ↑ grade 0 basis 3 |
-| 10-25 10:17 held outside | 10-20 03:35 failed |
-| 10-25 18:02 break ↓ grade 1 basis 3 | 10-20 03:46 break ↑ grade 2 basis 3 |
-| 10-25 18:03 failed | 10-20 03:51 held outside |
-|  | 10-20 04:20 break ↑ grade 1 basis 3 |
-|  | 10-20 04:22 failed |
-|  | 10-20 05:06 break ↓ grade 2 basis 3 |
-|  | 10-20 05:10 failed |
-|  | 10-20 05:19 break ↓ grade 0 basis 3 |
-|  | 10-20 05:22 failed |
-|  | 10-20 05:57 break ↓ grade 3 basis 3 |
-|  | 10-20 06:02 held outside |
-|  | 10-20 06:13 break ↓ grade 0 basis 3 |
-|  | 10-20 06:16 failed |
-|  | 10-20 06:30 break ↑ grade 0 basis 3 |
-|  | 10-20 06:31 failed |
-|  | 10-20 06:40 break ↑ grade 2 basis 3 |
-|  | 10-20 06:45 held outside |
-|  | 10-20 07:16 break ↓ grade 1 basis 3 |
-|  | 10-20 07:17 failed |
-|  | 10-20 07:25 break ↓ grade 1 basis 3 |
-|  | 10-20 07:27 failed |
-|  | 10-20 07:56 break ↓ grade 0 basis 3 |
-|  | 10-20 07:57 failed |
-|  | 10-20 08:50 break ↓ grade 3 basis 3 |
-|  | 10-20 08:51 failed |
-|  | 10-20 12:23 break ↑ grade 3 basis 3 |
-|  | 10-20 12:28 failed |
-|  | 10-20 12:44 break ↑ grade 0 basis 3 |
-|  | 10-20 12:45 failed |
-|  | 10-20 13:31 break ↓ grade 3 basis 3 |
-|  | 10-20 13:34 failed |
-|  | 10-20 13:49 break ↑ grade 0 basis 3 |
-|  | 10-20 13:50 failed |
-|  | 10-20 13:58 break ↑ grade 3 basis 3 |
-|  | 10-20 14:03 held outside |
-|  | 10-20 14:56 break ↑ grade 2 basis 3 |
-|  | 10-20 15:00 failed |
-|  | 10-20 15:12 break ↓ grade 3 basis 3 |
-|  | 10-20 15:17 held outside |
-|  | 10-20 19:23 break ↓ grade 3 basis 3 |
-|  | 10-20 19:28 failed |
-|  | 10-20 19:44 break ↑ grade 0 basis 3 |
-|  | 10-20 19:49 held outside |
-|  | 10-20 20:33 break ↑ grade 0 basis 3 |
-|  | 10-20 20:38 held outside |
-|  | 10-20 20:46 break ↑ grade 0 basis 3 |
-|  | 10-20 20:51 held outside |
-|  | 10-20 21:55 break ↑ grade 3 basis 3 |
-|  | 10-20 21:57 failed |
-|  | 10-20 23:07 break ↓ grade 3 basis 3 |
-|  | 10-20 23:12 failed |
-|  | 10-20 23:22 break ↓ grade 0 basis 3 |
-|  | 10-20 23:27 held outside |
-|  | 10-21 00:01 break ↓ grade 1 basis 3 |
-|  | 10-21 00:02 failed |
-|  | 10-21 00:15 break ↑ grade 3 basis 3 |
-|  | 10-21 00:20 held outside |
-|  | 10-21 00:51 break ↑ grade 3 basis 3 |
-|  | 10-21 00:55 failed |
-|  | 10-21 01:49 break ↑ grade 3 basis 3 |
-|  | 10-21 01:54 held outside |
-|  | 10-21 02:14 break ↓ grade 2 basis 3 |
-|  | 10-21 02:16 failed |
-|  | 10-21 03:08 break ↓ grade 0 basis 3 |
-|  | 10-21 03:10 failed |
-|  | 10-21 03:19 break ↓ grade 1 basis 3 |
-|  | 10-21 03:21 failed |
-|  | 10-21 03:32 break ↑ grade 1 basis 3 |
-|  | 10-21 03:37 failed |
-|  | 10-21 03:54 break ↓ grade 0 basis 3 |
-|  | 10-21 03:59 held outside |
-|  | 10-21 04:40 break ↓ grade 0 basis 3 |
-|  | 10-21 04:45 failed |
-|  | 10-21 05:01 break ↑ grade 3 basis 3 |
-|  | 10-21 05:06 held outside |
-|  | 10-21 05:41 break ↓ grade 3 basis 3 |
-|  | 10-21 05:46 failed |
-|  | 10-21 06:01 break ↓ grade 0 basis 3 |
-|  | 10-21 06:03 failed |
-|  | 10-21 06:21 break ↓ grade 0 basis 3 |
-|  | 10-21 06:22 failed |
-|  | 10-21 06:30 break ↑ grade 1 basis 3 |
-|  | 10-21 06:35 held outside |
-|  | 10-21 07:28 break ↑ grade 2 basis 3 |
-|  | 10-21 07:33 held outside |
-|  | 10-21 07:52 break ↑ grade 2 basis 3 |
-|  | 10-21 07:56 failed |
-|  | 10-21 08:45 break ↑ grade 2 basis 3 |
-|  | 10-21 08:46 failed |
-|  | 10-21 10:13 break ↓ grade 1 basis 3 |
-|  | 10-21 10:18 held outside |
-|  | 10-21 10:44 break ↑ grade 3 basis 3 |
-|  | 10-21 10:47 failed |
-|  | 10-21 10:56 break ↑ grade 0 basis 3 |
-|  | 10-21 10:57 failed |
-|  | 10-21 11:22 break ↑ grade 0 basis 3 |
-|  | 10-21 11:27 held outside |
-|  | 10-21 11:35 break ↓ grade 2 basis 3 |
-|  | 10-21 11:36 failed |
-|  | 10-21 11:49 break ↑ grade 0 basis 3 |
-|  | 10-21 11:54 held outside |
-|  | 10-21 13:01 break ↑ grade 3 basis 3 |
-|  | 10-21 13:03 failed |
-|  | 10-21 13:34 break ↓ grade 3 basis 3 |
-|  | 10-21 13:39 failed |
-|  | 10-21 14:47 break ↑ grade 3 basis 3 |
-|  | 10-21 14:52 held outside |
-|  | 10-21 15:04 break ↑ grade 3 basis 3 |
-|  | 10-21 15:09 held outside |
-|  | 10-21 15:33 break ↑ grade 2 basis 3 |
-|  | 10-21 15:35 failed |
-|  | 10-21 16:39 break ↑ grade 3 basis 3 |
-|  | 10-21 16:40 failed |
-|  | 10-21 18:51 break ↓ grade 3 basis 3 |
-|  | 10-21 18:52 failed |
-|  | 10-21 23:02 break ↓ grade 3 basis 3 |
-|  | 10-21 23:07 held outside |
-|  | 10-21 23:28 break ↓ grade 0 basis 3 |
-|  | 10-21 23:30 failed |
-|  | 10-21 23:44 break ↓ grade 2 basis 3 |
-|  | 10-21 23:45 failed |
-|  | 10-22 00:05 break ↑ grade 0 basis 3 |
-|  | 10-22 00:10 held outside |
-|  | 10-22 01:01 break ↓ grade 3 basis 3 |
-|  | 10-22 01:03 failed |
-|  | 10-22 01:38 break ↓ grade 3 basis 3 |
-|  | 10-22 01:43 held outside |
-|  | 10-22 02:05 break ↓ grade 0 basis 3 |
-|  | 10-22 02:08 failed |
-|  | 10-22 02:18 break ↓ grade 2 basis 3 |
-|  | 10-22 02:23 held outside |
-|  | 10-22 03:23 break ↓ grade 0 basis 3 |
-|  | 10-22 03:25 failed |
-|  | 10-22 03:43 break ↑ grade 0 basis 3 |
-|  | 10-22 03:48 held outside |
-|  | 10-22 04:00 break ↑ grade 3 basis 3 |
-|  | 10-22 04:05 held outside |
-|  | 10-22 04:38 break ↓ grade 1 basis 3 |
-|  | 10-22 04:40 failed |
-|  | 10-22 04:59 break ↑ grade 0 basis 3 |
-|  | 10-22 05:04 failed |
-|  | 10-22 05:15 break ↓ grade 3 basis 3 |
-|  | 10-22 05:19 failed |
-|  | 10-22 05:43 break ↓ grade 0 basis 3 |
-|  | 10-22 05:48 held outside |
-|  | 10-22 06:08 break ↑ grade 0 basis 3 |
-|  | 10-22 06:09 failed |
-|  | 10-22 06:45 break ↓ grade 0 basis 3 |
-|  | 10-22 06:46 failed |
-|  | 10-22 07:10 break ↓ grade 2 basis 3 |
-|  | 10-22 07:11 failed |
-|  | 10-22 08:02 break ↓ grade 3 basis 3 |
-|  | 10-22 08:07 held outside |
-|  | 10-22 08:23 break ↓ grade 0 basis 3 |
-|  | 10-22 08:26 failed |
-|  | 10-22 08:34 break ↓ grade 3 basis 3 |
-|  | 10-22 08:39 held outside |
-|  | 10-22 09:03 break ↓ grade 3 basis 3 |
-|  | 10-22 09:06 failed |
-|  | 10-22 10:01 break ↑ grade 3 basis 3 |
-|  | 10-22 10:05 failed |
-|  | 10-22 11:54 break ↓ grade 3 basis 3 |
-|  | 10-22 11:59 held outside |
-|  | 10-22 12:27 break ↑ grade 0 basis 3 |
-|  | 10-22 12:30 failed |
-|  | 10-22 13:06 break ↓ grade 3 basis 3 |
-|  | 10-22 13:07 failed |
-|  | 10-22 13:24 break ↑ grade 0 basis 3 |
-|  | 10-22 13:26 failed |
-|  | 10-22 13:52 break ↓ grade 0 basis 3 |
-|  | 10-22 13:53 failed |
-|  | 10-22 14:44 break ↑ grade 3 basis 3 |
-|  | 10-22 14:45 failed |
-|  | 10-22 15:10 break ↓ grade 2 basis 3 |
-|  | 10-22 15:15 held outside |
-|  | 10-22 16:41 break ↓ grade 0 basis 3 |
-|  | 10-22 16:46 held outside |
-|  | 10-22 19:32 break ↑ grade 2 basis 3 |
-|  | 10-22 19:33 failed |
-|  | 10-22 19:46 break ↓ grade 3 basis 3 |
-|  | 10-22 19:48 failed |
-|  | 10-22 20:49 break ↓ grade 1 basis 3 |
-|  | 10-22 20:52 failed |
-|  | 10-22 21:07 break ↑ grade 0 basis 3 |
-|  | 10-22 21:12 held outside |
-|  | 10-23 01:46 break ↑ grade 1 basis 3 |
-|  | 10-23 01:48 failed |
-|  | 10-23 02:31 break ↑ grade 3 basis 3 |
-|  | 10-23 02:36 held outside |
-|  | 10-23 02:57 break ↑ grade 3 basis 3 |
-|  | 10-23 02:58 failed |
-|  | 10-23 03:16 break ↓ grade 3 basis 3 |
-|  | 10-23 03:21 held outside |
-|  | 10-23 03:52 break ↑ grade 1 basis 3 |
-|  | 10-23 03:53 failed |
-|  | 10-23 04:04 break ↓ grade 0 basis 3 |
-|  | 10-23 04:06 failed |
-|  | 10-23 04:27 break ↓ grade 3 basis 3 |
-|  | 10-23 04:32 held outside |
-|  | 10-23 04:48 break ↓ grade 3 basis 3 |
-|  | 10-23 04:53 held outside |
-|  | 10-23 05:09 break ↑ grade 0 basis 3 |
-|  | 10-23 05:11 failed |
-|  | 10-23 05:42 break ↑ grade 0 basis 3 |
-|  | 10-23 05:46 failed |
-|  | 10-23 06:14 break ↑ grade 2 basis 3 |
-|  | 10-23 06:19 held outside |
-|  | 10-23 06:50 break ↑ grade 3 basis 3 |
-|  | 10-23 06:52 failed |
-|  | 10-23 07:15 break ↓ grade 3 basis 3 |
-|  | 10-23 07:16 failed |
-|  | 10-23 07:50 break ↓ grade 0 basis 3 |
-|  | 10-23 07:55 held outside |
-|  | 10-23 08:15 break ↑ grade 3 basis 3 |
-|  | 10-23 08:20 held outside |
-|  | 10-23 09:23 break ↓ grade 3 basis 3 |
-|  | 10-23 09:28 held outside |
-|  | 10-23 11:01 break ↓ grade 3 basis 3 |
-|  | 10-23 11:03 failed |
-|  | 10-23 11:42 break ↑ grade 3 basis 3 |
-|  | 10-23 11:45 failed |
-|  | 10-23 12:09 break ↓ grade 1 basis 3 |
-|  | 10-23 12:14 held outside |
-|  | 10-23 12:38 break ↑ grade 0 basis 3 |
-|  | 10-23 12:43 failed |
-|  | 10-23 13:15 break ↓ grade 1 basis 3 |
-|  | 10-23 13:16 failed |
-|  | 10-23 13:41 break ↑ grade 0 basis 3 |
-|  | 10-23 13:46 held outside |
-|  | 10-23 14:13 break ↓ grade 2 basis 3 |
-|  | 10-23 14:14 failed |
-|  | 10-23 22:47 break ↓ grade 3 basis 3 |
-|  | 10-23 22:52 held outside |
-|  | 10-23 23:49 break ↑ grade 2 basis 3 |
-|  | 10-23 23:50 failed |
-|  | 10-24 00:21 break ↓ grade 3 basis 3 |
-|  | 10-24 00:22 failed |
-|  | 10-24 00:35 break ↓ grade 0 basis 3 |
-|  | 10-24 00:37 failed |
-|  | 10-24 01:11 break ↑ grade 0 basis 3 |
-|  | 10-24 01:12 failed |
-|  | 10-24 01:30 break ↓ grade 3 basis 3 |
-|  | 10-24 01:32 failed |
-|  | 10-24 01:51 break ↑ grade 0 basis 3 |
-|  | 10-24 01:56 held outside |
-|  | 10-24 02:08 break ↑ grade 1 basis 3 |
-|  | 10-24 02:11 failed |
-|  | 10-24 03:01 break ↑ grade 1 basis 3 |
-|  | 10-24 03:06 held outside |
-|  | 10-24 03:48 break ↓ grade 1 basis 3 |
-|  | 10-24 03:53 held outside |
-|  | 10-24 05:18 break ↓ grade 1 basis 3 |
-|  | 10-24 05:23 held outside |
-|  | 10-24 07:02 break ↑ grade 3 basis 3 |
-|  | 10-24 07:05 failed |
-|  | 10-24 07:18 break ↑ grade 0 basis 3 |
-|  | 10-24 07:20 failed |
-|  | 10-24 07:31 break ↓ grade 3 basis 3 |
-|  | 10-24 07:33 failed |
-|  | 10-24 07:55 break ↓ grade 3 basis 3 |
-|  | 10-24 08:00 held outside |
-|  | 10-24 08:38 break ↓ grade 3 basis 3 |
-|  | 10-24 08:39 failed |
-|  | 10-24 09:03 break ↓ grade 3 basis 3 |
-|  | 10-24 09:05 failed |
-|  | 10-24 09:16 break ↓ grade 1 basis 3 |
-|  | 10-24 09:21 held outside |
-|  | 10-24 09:35 break ↓ grade 2 basis 3 |
-|  | 10-24 09:40 failed |
-|  | 10-24 09:51 break ↑ grade 3 basis 3 |
-|  | 10-24 09:56 held outside |
-|  | 10-24 10:31 break ↑ grade 0 basis 3 |
-|  | 10-24 10:36 held outside |
-|  | 10-24 12:02 break ↓ grade 2 basis 3 |
-|  | 10-24 12:03 failed |
-|  | 10-24 12:16 break ↑ grade 1 basis 3 |
-|  | 10-24 12:21 held outside |
-|  | 10-24 12:33 break ↑ grade 0 basis 3 |
-|  | 10-24 12:34 failed |
-|  | 10-24 12:47 break ↑ grade 2 basis 3 |
-|  | 10-24 12:49 failed |
-|  | 10-24 13:17 break ↓ grade 0 basis 3 |
-|  | 10-24 13:22 held outside |
-|  | 10-24 13:39 break ↓ grade 0 basis 3 |
-|  | 10-24 13:40 failed |
-|  | 10-24 13:53 break ↑ grade 2 basis 3 |
-|  | 10-24 13:54 failed |
-|  | 10-24 14:11 break ↓ grade 3 basis 3 |
-|  | 10-24 14:16 held outside |
-|  | 10-24 15:03 break ↓ grade 3 basis 3 |
-|  | 10-24 15:08 held outside |
-|  | 10-24 15:16 break ↓ grade 3 basis 3 |
-|  | 10-24 15:21 held outside |
-|  | 10-24 18:58 break ↑ grade 3 basis 3 |
-|  | 10-24 18:59 failed |
-|  | 10-24 20:00 break ↑ grade 3 basis 3 |
-|  | 10-24 20:05 held outside |
-|  | 10-24 21:07 break ↓ grade 3 basis 3 |
-|  | 10-24 21:12 held outside |
-|  | 10-24 23:04 break ↑ grade 0 basis 3 |
-|  | 10-24 23:05 failed |
-|  | 10-24 23:16 break ↓ grade 0 basis 3 |
-|  | 10-24 23:19 failed |
-|  | 10-24 23:31 break ↑ grade 3 basis 3 |
-|  | 10-24 23:36 held outside |
-|  | 10-25 00:48 break ↑ grade 3 basis 3 |
-|  | 10-25 00:50 failed |
-|  | 10-25 01:07 break ↓ grade 2 basis 3 |
-|  | 10-25 01:12 held outside |
-|  | 10-25 01:47 break ↑ grade 3 basis 3 |
-|  | 10-25 01:52 failed |
-|  | 10-25 02:06 break ↑ grade 0 basis 3 |
-|  | 10-25 02:08 failed |
-|  | 10-25 02:17 break ↓ grade 3 basis 3 |
-|  | 10-25 02:18 failed |
-|  | 10-25 02:36 break ↑ grade 0 basis 3 |
-|  | 10-25 02:41 held outside |
-|  | 10-25 03:55 break ↓ grade 0 basis 3 |
-|  | 10-25 03:56 failed |
-|  | 10-25 04:10 break ↑ grade 1 basis 3 |
-|  | 10-25 04:12 failed |
-|  | 10-25 04:21 break ↑ grade 3 basis 3 |
-|  | 10-25 04:22 failed |
-|  | 10-25 04:55 break ↑ grade 1 basis 3 |
-|  | 10-25 04:56 failed |
-|  | 10-25 05:23 break ↓ grade 1 basis 3 |
-|  | 10-25 05:28 held outside |
-|  | 10-25 06:04 break ↓ grade 1 basis 3 |
-|  | 10-25 06:05 failed |
-|  | 10-25 06:44 break ↓ grade 3 basis 3 |
-|  | 10-25 06:46 failed |
-|  | 10-25 08:28 break ↓ grade 3 basis 3 |
-|  | 10-25 08:31 failed |
-|  | 10-25 08:54 break ↓ grade 3 basis 3 |
-|  | 10-25 08:55 failed |
-|  | 10-25 09:12 break ↓ grade 3 basis 3 |
-|  | 10-25 09:17 held outside |
-|  | 10-25 11:44 break ↑ grade 3 basis 3 |
-|  | 10-25 11:46 failed |
-|  | 10-25 12:29 break ↓ grade 3 basis 3 |
-|  | 10-25 12:30 failed |
-|  | 10-25 13:11 break ↑ grade 0 basis 3 |
-|  | 10-25 13:12 failed |
-|  | 10-25 13:23 break ↓ grade 0 basis 3 |
-|  | 10-25 13:28 held outside |
-|  | 10-25 13:41 break ↑ grade 3 basis 3 |
-|  | 10-25 13:42 failed |
-|  | 10-25 14:50 break ↑ grade 3 basis 3 |
-|  | 10-25 14:55 held outside |
-|  | 10-25 15:39 break ↑ grade 3 basis 3 |
-|  | 10-25 15:40 failed |
-|  | 10-25 16:55 break ↑ grade 3 basis 3 |
-|  | 10-25 17:00 held outside |
-|  | 10-25 17:21 break ↑ grade 3 basis 3 |
-|  | 10-25 17:24 failed |
-|  | 10-25 19:06 break ↓ grade 3 basis 3 |
-|  | 10-25 19:11 held outside |
-|  | 10-25 19:28 break ↓ grade 3 basis 3 |
-|  | 10-25 19:30 failed |
-|  | 10-25 20:01 break ↓ grade 3 basis 3 |
-|  | 10-25 20:06 held outside |
-|  | 10-25 20:20 break ↑ grade 0 basis 3 |
-|  | 10-25 20:22 failed |
-|  | 10-25 20:44 break ↓ grade 3 basis 3 |
-|  | 10-25 20:46 failed |
-|  | 10-25 21:04 break ↓ grade 2 basis 3 |
-|  | 10-25 21:05 failed |
-|  | 10-25 21:23 break ↓ grade 0 basis 3 |
-|  | 10-25 21:28 held outside |
-|  | 10-25 21:45 break ↓ grade 3 basis 3 |
-|  | 10-25 21:50 held outside |
-|  | 10-25 23:26 break ↓ grade 3 basis 3 |
-|  | 10-25 23:28 failed |
-|  | 10-26 01:44 break ↓ grade 3 basis 3 |
-|  | 10-26 01:48 failed |
-|  | 10-26 02:42 break ↓ grade 0 basis 3 |
-|  | 10-26 02:43 failed |
-|  | 10-26 03:01 break ↑ grade 1 basis 3 |
-|  | 10-26 03:06 held outside |
-|  | 10-26 03:53 break ↓ grade 3 basis 3 |
-|  | 10-26 03:54 failed |
-|  | 10-26 04:11 break ↑ grade 0 basis 3 |
-|  | 10-26 04:16 held outside |
-|  | 10-26 04:52 break ↑ grade 2 basis 3 |
-|  | 10-26 04:55 failed |
-|  | 10-26 06:00 break ↑ grade 2 basis 3 |
-|  | 10-26 06:01 failed |
-|  | 10-26 06:23 break ↓ grade 1 basis 3 |
-|  | 10-26 06:28 held outside |
-|  | 10-26 07:00 break ↑ grade 3 basis 3 |
-|  | 10-26 07:02 failed |
-|  | 10-26 07:30 break ↓ grade 3 basis 3 |
-|  | 10-26 07:31 failed |
-|  | 10-26 07:43 break ↑ grade 3 basis 3 |
-|  | 10-26 07:48 held outside |
-|  | 10-26 08:02 break ↓ grade 1 basis 3 |
-|  | 10-26 08:07 held outside |
-|  | 10-26 08:27 break ↑ grade 1 basis 3 |
-|  | 10-26 08:28 failed |
-|  | 10-26 09:28 break ↑ grade 0 basis 3 |
-|  | 10-26 09:30 failed |
-|  | 10-26 09:46 break ↑ grade 0 basis 3 |
-|  | 10-26 09:47 failed |
-|  | 10-26 09:56 break ↑ grade 1 basis 3 |
-|  | 10-26 09:59 failed |
-|  | 10-26 10:59 break ↓ grade 0 basis 3 |
-|  | 10-26 11:02 failed |
-|  | 10-26 11:10 break ↓ grade 3 basis 3 |
-|  | 10-26 11:15 held outside |
-|  | 10-26 11:27 break ↑ grade 3 basis 3 |
-|  | 10-26 11:29 failed |
-|  | 10-26 11:39 break ↑ grade 0 basis 3 |
-|  | 10-26 11:43 failed |
-|  | 10-26 11:53 break ↑ grade 3 basis 3 |
-|  | 10-26 11:58 held outside |
-|  | 10-26 12:38 break ↓ grade 1 basis 3 |
-|  | 10-26 12:43 held outside |
-|  | 10-26 13:01 break ↓ grade 3 basis 3 |
-|  | 10-26 13:03 failed |
-|  | 10-26 13:21 break ↓ grade 0 basis 3 |
-|  | 10-26 13:26 held outside |
-|  | 10-26 13:56 break ↓ grade 0 basis 3 |
-|  | 10-26 13:58 failed |
-|  | 10-26 14:16 break ↑ grade 0 basis 3 |
-|  | 10-26 14:17 failed |
-|  | 10-26 15:00 break ↑ grade 0 basis 3 |
-|  | 10-26 15:02 failed |
-|  | 10-26 15:18 break ↑ grade 3 basis 3 |
-|  | 10-26 15:23 held outside |
-|  | 10-26 16:00 break ↓ grade 1 basis 3 |
-|  | 10-26 16:01 failed |
-|  | 10-26 16:14 break ↓ grade 0 basis 3 |
-|  | 10-26 16:19 held outside |
-|  | 10-26 16:28 break ↓ grade 0 basis 3 |
-|  | 10-26 16:33 held outside |
-|  | 10-26 17:00 break ↑ grade 3 basis 3 |
-|  | 10-26 17:01 failed |
+| Def | Events on 1m | Markers on 1m | per 1,000 | Markers on 5m | per 1,000 |
+|---|---|---|---|---|---|
+| Product (width ≤ 2×, min 6) | 20 | 7 | 0.7 | 3 | 1.5 |
+| Plain frozen range (no width qualifier) | 454 | 249 | 24.7 | 50 | 24.8 |
+| Squeeze-qualified variant (the squeeze qualifier on this machine) | 134 | 71 | 7.0 | 31 | 15.4 |
+| TTM release (timing and density only) | 29 | 29 | 2.9 | 19 | 9.4 |
+| Bollinger crossing (timing and density only) | 589 | 589 | 58.4 | 125 | 62.0 |
+
+### ETH-USDT: Product (20 events)
+
+- 10-19 23:07 break ↓ grade 0 basis 3
+- 10-19 23:12 failed
+- 10-20 14:56 break ↑ grade 2 basis 3
+- 10-20 15:00 failed
+- 10-21 20:00 break ↓ grade 3 basis 3
+- 10-21 20:02 failed
+- 10-22 22:01 break ↑ grade 1 basis 3
+- 10-22 22:06 held outside
+- 10-24 04:38 break ↑ grade 1 basis 3
+- 10-24 04:43 held outside
+- 10-24 15:00 break ↓ grade 0 basis 3
+- 10-24 15:05 held outside
+- 10-24 15:56 break ↑ grade 2 basis 3
+- 10-24 16:01 held outside
+- 10-25 07:41 break ↑ grade 3 basis 3
+- 10-25 07:43 failed
+- 10-25 10:12 break ↑ grade 3 basis 3
+- 10-25 10:17 held outside
+- 10-25 18:02 break ↓ grade 1 basis 3
+- 10-25 18:03 failed
+
+### ETH-USDT: Plain frozen range (no width qualifier) (454 events)
+
+- 10-19 22:01 break ↑ grade 3 basis 3
+- 10-19 22:02 failed
+- 10-19 22:16 break ↑ grade 3 basis 3
+- 10-19 22:21 held outside
+- 10-19 23:17 break ↓ grade 0 basis 3
+- 10-19 23:18 failed
+- 10-19 23:27 break ↑ grade 0 basis 3
+- 10-19 23:28 failed
+- 10-20 00:05 break ↓ grade 1 basis 3
+- 10-20 00:10 held outside
+- 10-20 01:08 break ↓ grade 2 basis 3
+- 10-20 01:13 held outside
+- 10-20 02:48 break ↑ grade 2 basis 3
+- 10-20 02:49 failed
+- 10-20 03:08 break ↑ grade 3 basis 3
+- 10-20 03:13 held outside
+- 10-20 03:33 break ↑ grade 0 basis 3
+- 10-20 03:35 failed
+- 10-20 03:46 break ↑ grade 2 basis 3
+- 10-20 03:51 held outside
+- 10-20 04:20 break ↑ grade 1 basis 3
+- 10-20 04:22 failed
+- 10-20 05:06 break ↓ grade 2 basis 3
+- 10-20 05:10 failed
+- 10-20 05:19 break ↓ grade 0 basis 3
+- 10-20 05:22 failed
+- 10-20 05:57 break ↓ grade 3 basis 3
+- 10-20 06:02 held outside
+- 10-20 06:13 break ↓ grade 0 basis 3
+- 10-20 06:16 failed
+- 10-20 06:30 break ↑ grade 0 basis 3
+- 10-20 06:31 failed
+- 10-20 06:40 break ↑ grade 2 basis 3
+- 10-20 06:45 held outside
+- 10-20 07:16 break ↓ grade 1 basis 3
+- 10-20 07:17 failed
+- 10-20 07:25 break ↓ grade 1 basis 3
+- 10-20 07:27 failed
+- 10-20 07:56 break ↓ grade 0 basis 3
+- 10-20 07:57 failed
+- 10-20 08:50 break ↓ grade 3 basis 3
+- 10-20 08:51 failed
+- 10-20 12:23 break ↑ grade 3 basis 3
+- 10-20 12:28 failed
+- 10-20 12:44 break ↑ grade 0 basis 3
+- 10-20 12:45 failed
+- 10-20 13:31 break ↓ grade 3 basis 3
+- 10-20 13:34 failed
+- 10-20 13:49 break ↑ grade 0 basis 3
+- 10-20 13:50 failed
+- 10-20 13:58 break ↑ grade 3 basis 3
+- 10-20 14:03 held outside
+- 10-20 14:56 break ↑ grade 2 basis 3
+- 10-20 15:00 failed
+- 10-20 15:12 break ↓ grade 3 basis 3
+- 10-20 15:17 held outside
+- 10-20 19:23 break ↓ grade 3 basis 3
+- 10-20 19:28 failed
+- 10-20 19:44 break ↑ grade 0 basis 3
+- 10-20 19:49 held outside
+- 10-20 20:33 break ↑ grade 0 basis 3
+- 10-20 20:38 held outside
+- 10-20 20:46 break ↑ grade 0 basis 3
+- 10-20 20:51 held outside
+- 10-20 21:55 break ↑ grade 3 basis 3
+- 10-20 21:57 failed
+- 10-20 23:07 break ↓ grade 3 basis 3
+- 10-20 23:12 failed
+- 10-20 23:22 break ↓ grade 0 basis 3
+- 10-20 23:27 held outside
+- 10-21 00:01 break ↓ grade 1 basis 3
+- 10-21 00:02 failed
+- 10-21 00:15 break ↑ grade 3 basis 3
+- 10-21 00:20 held outside
+- 10-21 00:51 break ↑ grade 3 basis 3
+- 10-21 00:55 failed
+- 10-21 01:49 break ↑ grade 3 basis 3
+- 10-21 01:54 held outside
+- 10-21 02:14 break ↓ grade 2 basis 3
+- 10-21 02:16 failed
+- 10-21 03:08 break ↓ grade 0 basis 3
+- 10-21 03:10 failed
+- 10-21 03:19 break ↓ grade 1 basis 3
+- 10-21 03:21 failed
+- 10-21 03:32 break ↑ grade 1 basis 3
+- 10-21 03:37 failed
+- 10-21 03:54 break ↓ grade 0 basis 3
+- 10-21 03:59 held outside
+- 10-21 04:40 break ↓ grade 0 basis 3
+- 10-21 04:45 failed
+- 10-21 05:01 break ↑ grade 3 basis 3
+- 10-21 05:06 held outside
+- 10-21 05:41 break ↓ grade 3 basis 3
+- 10-21 05:46 failed
+- 10-21 06:01 break ↓ grade 0 basis 3
+- 10-21 06:03 failed
+- 10-21 06:21 break ↓ grade 0 basis 3
+- 10-21 06:22 failed
+- 10-21 06:30 break ↑ grade 1 basis 3
+- 10-21 06:35 held outside
+- 10-21 07:28 break ↑ grade 2 basis 3
+- 10-21 07:33 held outside
+- 10-21 07:52 break ↑ grade 2 basis 3
+- 10-21 07:56 failed
+- 10-21 08:45 break ↑ grade 2 basis 3
+- 10-21 08:46 failed
+- 10-21 10:13 break ↓ grade 1 basis 3
+- 10-21 10:18 held outside
+- 10-21 10:44 break ↑ grade 3 basis 3
+- 10-21 10:47 failed
+- 10-21 10:56 break ↑ grade 0 basis 3
+- 10-21 10:57 failed
+- 10-21 11:22 break ↑ grade 0 basis 3
+- 10-21 11:27 held outside
+- 10-21 11:35 break ↓ grade 2 basis 3
+- 10-21 11:36 failed
+- 10-21 11:49 break ↑ grade 0 basis 3
+- 10-21 11:54 held outside
+- 10-21 13:01 break ↑ grade 3 basis 3
+- 10-21 13:03 failed
+- 10-21 13:34 break ↓ grade 3 basis 3
+- 10-21 13:39 failed
+- 10-21 14:47 break ↑ grade 3 basis 3
+- 10-21 14:52 held outside
+- 10-21 15:04 break ↑ grade 3 basis 3
+- 10-21 15:09 held outside
+- 10-21 15:33 break ↑ grade 2 basis 3
+- 10-21 15:35 failed
+- 10-21 16:39 break ↑ grade 3 basis 3
+- 10-21 16:40 failed
+- 10-21 18:51 break ↓ grade 3 basis 3
+- 10-21 18:52 failed
+- 10-21 23:02 break ↓ grade 3 basis 3
+- 10-21 23:07 held outside
+- 10-21 23:28 break ↓ grade 0 basis 3
+- 10-21 23:30 failed
+- 10-21 23:44 break ↓ grade 2 basis 3
+- 10-21 23:45 failed
+- 10-22 00:05 break ↑ grade 0 basis 3
+- 10-22 00:10 held outside
+- 10-22 01:01 break ↓ grade 3 basis 3
+- 10-22 01:03 failed
+- 10-22 01:38 break ↓ grade 3 basis 3
+- 10-22 01:43 held outside
+- 10-22 02:05 break ↓ grade 0 basis 3
+- 10-22 02:08 failed
+- 10-22 02:18 break ↓ grade 2 basis 3
+- 10-22 02:23 held outside
+- 10-22 03:23 break ↓ grade 0 basis 3
+- 10-22 03:25 failed
+- 10-22 03:43 break ↑ grade 0 basis 3
+- 10-22 03:48 held outside
+- 10-22 04:00 break ↑ grade 3 basis 3
+- 10-22 04:05 held outside
+- 10-22 04:38 break ↓ grade 1 basis 3
+- 10-22 04:40 failed
+- 10-22 04:59 break ↑ grade 0 basis 3
+- 10-22 05:04 failed
+- 10-22 05:15 break ↓ grade 3 basis 3
+- 10-22 05:19 failed
+- 10-22 05:43 break ↓ grade 0 basis 3
+- 10-22 05:48 held outside
+- 10-22 06:08 break ↑ grade 0 basis 3
+- 10-22 06:09 failed
+- 10-22 06:45 break ↓ grade 0 basis 3
+- 10-22 06:46 failed
+- 10-22 07:10 break ↓ grade 2 basis 3
+- 10-22 07:11 failed
+- 10-22 08:02 break ↓ grade 3 basis 3
+- 10-22 08:07 held outside
+- 10-22 08:23 break ↓ grade 0 basis 3
+- 10-22 08:26 failed
+- 10-22 08:34 break ↓ grade 3 basis 3
+- 10-22 08:39 held outside
+- 10-22 09:03 break ↓ grade 3 basis 3
+- 10-22 09:06 failed
+- 10-22 10:01 break ↑ grade 3 basis 3
+- 10-22 10:05 failed
+- 10-22 11:54 break ↓ grade 3 basis 3
+- 10-22 11:59 held outside
+- 10-22 12:27 break ↑ grade 0 basis 3
+- 10-22 12:30 failed
+- 10-22 13:06 break ↓ grade 3 basis 3
+- 10-22 13:07 failed
+- 10-22 13:24 break ↑ grade 0 basis 3
+- 10-22 13:26 failed
+- 10-22 13:52 break ↓ grade 0 basis 3
+- 10-22 13:53 failed
+- 10-22 14:44 break ↑ grade 3 basis 3
+- 10-22 14:45 failed
+- 10-22 15:10 break ↓ grade 2 basis 3
+- 10-22 15:15 held outside
+- 10-22 16:41 break ↓ grade 0 basis 3
+- 10-22 16:46 held outside
+- 10-22 19:32 break ↑ grade 2 basis 3
+- 10-22 19:33 failed
+- 10-22 19:46 break ↓ grade 3 basis 3
+- 10-22 19:48 failed
+- 10-22 20:49 break ↓ grade 1 basis 3
+- 10-22 20:52 failed
+- 10-22 21:07 break ↑ grade 0 basis 3
+- 10-22 21:12 held outside
+- 10-23 01:46 break ↑ grade 1 basis 3
+- 10-23 01:48 failed
+- 10-23 02:31 break ↑ grade 3 basis 3
+- 10-23 02:36 held outside
+- 10-23 02:57 break ↑ grade 3 basis 3
+- 10-23 02:58 failed
+- 10-23 03:16 break ↓ grade 3 basis 3
+- 10-23 03:21 held outside
+- 10-23 03:52 break ↑ grade 1 basis 3
+- 10-23 03:53 failed
+- 10-23 04:04 break ↓ grade 0 basis 3
+- 10-23 04:06 failed
+- 10-23 04:27 break ↓ grade 3 basis 3
+- 10-23 04:32 held outside
+- 10-23 04:48 break ↓ grade 3 basis 3
+- 10-23 04:53 held outside
+- 10-23 05:09 break ↑ grade 0 basis 3
+- 10-23 05:11 failed
+- 10-23 05:42 break ↑ grade 0 basis 3
+- 10-23 05:46 failed
+- 10-23 06:14 break ↑ grade 2 basis 3
+- 10-23 06:19 held outside
+- 10-23 06:50 break ↑ grade 3 basis 3
+- 10-23 06:52 failed
+- 10-23 07:15 break ↓ grade 3 basis 3
+- 10-23 07:16 failed
+- 10-23 07:50 break ↓ grade 0 basis 3
+- 10-23 07:55 held outside
+- 10-23 08:15 break ↑ grade 3 basis 3
+- 10-23 08:20 held outside
+- 10-23 09:23 break ↓ grade 3 basis 3
+- 10-23 09:28 held outside
+- 10-23 11:01 break ↓ grade 3 basis 3
+- 10-23 11:03 failed
+- 10-23 11:42 break ↑ grade 3 basis 3
+- 10-23 11:45 failed
+- 10-23 12:09 break ↓ grade 1 basis 3
+- 10-23 12:14 held outside
+- 10-23 12:38 break ↑ grade 0 basis 3
+- 10-23 12:43 failed
+- 10-23 13:15 break ↓ grade 1 basis 3
+- 10-23 13:16 failed
+- 10-23 13:41 break ↑ grade 0 basis 3
+- 10-23 13:46 held outside
+- 10-23 14:13 break ↓ grade 2 basis 3
+- 10-23 14:14 failed
+- 10-23 22:47 break ↓ grade 3 basis 3
+- 10-23 22:52 held outside
+- 10-23 23:49 break ↑ grade 2 basis 3
+- 10-23 23:50 failed
+- 10-24 00:21 break ↓ grade 3 basis 3
+- 10-24 00:22 failed
+- 10-24 00:35 break ↓ grade 0 basis 3
+- 10-24 00:37 failed
+- 10-24 01:11 break ↑ grade 0 basis 3
+- 10-24 01:12 failed
+- 10-24 01:30 break ↓ grade 3 basis 3
+- 10-24 01:32 failed
+- 10-24 01:51 break ↑ grade 0 basis 3
+- 10-24 01:56 held outside
+- 10-24 02:08 break ↑ grade 1 basis 3
+- 10-24 02:11 failed
+- 10-24 03:01 break ↑ grade 1 basis 3
+- 10-24 03:06 held outside
+- 10-24 03:48 break ↓ grade 1 basis 3
+- 10-24 03:53 held outside
+- 10-24 05:18 break ↓ grade 1 basis 3
+- 10-24 05:23 held outside
+- 10-24 07:02 break ↑ grade 3 basis 3
+- 10-24 07:05 failed
+- 10-24 07:18 break ↑ grade 0 basis 3
+- 10-24 07:20 failed
+- 10-24 07:31 break ↓ grade 3 basis 3
+- 10-24 07:33 failed
+- 10-24 07:55 break ↓ grade 3 basis 3
+- 10-24 08:00 held outside
+- 10-24 08:38 break ↓ grade 3 basis 3
+- 10-24 08:39 failed
+- 10-24 09:03 break ↓ grade 3 basis 3
+- 10-24 09:05 failed
+- 10-24 09:16 break ↓ grade 1 basis 3
+- 10-24 09:21 held outside
+- 10-24 09:35 break ↓ grade 2 basis 3
+- 10-24 09:40 failed
+- 10-24 09:51 break ↑ grade 3 basis 3
+- 10-24 09:56 held outside
+- 10-24 10:31 break ↑ grade 0 basis 3
+- 10-24 10:36 held outside
+- 10-24 12:02 break ↓ grade 2 basis 3
+- 10-24 12:03 failed
+- 10-24 12:16 break ↑ grade 1 basis 3
+- 10-24 12:21 held outside
+- 10-24 12:33 break ↑ grade 0 basis 3
+- 10-24 12:34 failed
+- 10-24 12:47 break ↑ grade 2 basis 3
+- 10-24 12:49 failed
+- 10-24 13:17 break ↓ grade 0 basis 3
+- 10-24 13:22 held outside
+- 10-24 13:39 break ↓ grade 0 basis 3
+- 10-24 13:40 failed
+- 10-24 13:53 break ↑ grade 2 basis 3
+- 10-24 13:54 failed
+- 10-24 14:11 break ↓ grade 3 basis 3
+- 10-24 14:16 held outside
+- 10-24 15:03 break ↓ grade 3 basis 3
+- 10-24 15:08 held outside
+- 10-24 15:16 break ↓ grade 3 basis 3
+- 10-24 15:21 held outside
+- 10-24 18:58 break ↑ grade 3 basis 3
+- 10-24 18:59 failed
+- 10-24 20:00 break ↑ grade 3 basis 3
+- 10-24 20:05 held outside
+- 10-24 21:07 break ↓ grade 3 basis 3
+- 10-24 21:12 held outside
+- 10-24 23:04 break ↑ grade 0 basis 3
+- 10-24 23:05 failed
+- 10-24 23:16 break ↓ grade 0 basis 3
+- 10-24 23:19 failed
+- 10-24 23:31 break ↑ grade 3 basis 3
+- 10-24 23:36 held outside
+- 10-25 00:48 break ↑ grade 3 basis 3
+- 10-25 00:50 failed
+- 10-25 01:07 break ↓ grade 2 basis 3
+- 10-25 01:12 held outside
+- 10-25 01:47 break ↑ grade 3 basis 3
+- 10-25 01:52 failed
+- 10-25 02:06 break ↑ grade 0 basis 3
+- 10-25 02:08 failed
+- 10-25 02:17 break ↓ grade 3 basis 3
+- 10-25 02:18 failed
+- 10-25 02:36 break ↑ grade 0 basis 3
+- 10-25 02:41 held outside
+- 10-25 03:55 break ↓ grade 0 basis 3
+- 10-25 03:56 failed
+- 10-25 04:10 break ↑ grade 1 basis 3
+- 10-25 04:12 failed
+- 10-25 04:21 break ↑ grade 3 basis 3
+- 10-25 04:22 failed
+- 10-25 04:55 break ↑ grade 1 basis 3
+- 10-25 04:56 failed
+- 10-25 05:23 break ↓ grade 1 basis 3
+- 10-25 05:28 held outside
+- 10-25 06:04 break ↓ grade 1 basis 3
+- 10-25 06:05 failed
+- 10-25 06:44 break ↓ grade 3 basis 3
+- 10-25 06:46 failed
+- 10-25 08:28 break ↓ grade 3 basis 3
+- 10-25 08:31 failed
+- 10-25 08:54 break ↓ grade 3 basis 3
+- 10-25 08:55 failed
+- 10-25 09:12 break ↓ grade 3 basis 3
+- 10-25 09:17 held outside
+- 10-25 11:44 break ↑ grade 3 basis 3
+- 10-25 11:46 failed
+- 10-25 12:29 break ↓ grade 3 basis 3
+- 10-25 12:30 failed
+- 10-25 13:11 break ↑ grade 0 basis 3
+- 10-25 13:12 failed
+- 10-25 13:23 break ↓ grade 0 basis 3
+- 10-25 13:28 held outside
+- 10-25 13:41 break ↑ grade 3 basis 3
+- 10-25 13:42 failed
+- 10-25 14:50 break ↑ grade 3 basis 3
+- 10-25 14:55 held outside
+- 10-25 15:39 break ↑ grade 3 basis 3
+- 10-25 15:40 failed
+- 10-25 16:55 break ↑ grade 3 basis 3
+- 10-25 17:00 held outside
+- 10-25 17:21 break ↑ grade 3 basis 3
+- 10-25 17:24 failed
+- 10-25 19:06 break ↓ grade 3 basis 3
+- 10-25 19:11 held outside
+- 10-25 19:28 break ↓ grade 3 basis 3
+- 10-25 19:30 failed
+- 10-25 20:01 break ↓ grade 3 basis 3
+- 10-25 20:06 held outside
+- 10-25 20:20 break ↑ grade 0 basis 3
+- 10-25 20:22 failed
+- 10-25 20:44 break ↓ grade 3 basis 3
+- 10-25 20:46 failed
+- 10-25 21:04 break ↓ grade 2 basis 3
+- 10-25 21:05 failed
+- 10-25 21:23 break ↓ grade 0 basis 3
+- 10-25 21:28 held outside
+- 10-25 21:45 break ↓ grade 3 basis 3
+- 10-25 21:50 held outside
+- 10-25 23:26 break ↓ grade 3 basis 3
+- 10-25 23:28 failed
+- 10-26 01:44 break ↓ grade 3 basis 3
+- 10-26 01:48 failed
+- 10-26 02:42 break ↓ grade 0 basis 3
+- 10-26 02:43 failed
+- 10-26 03:01 break ↑ grade 1 basis 3
+- 10-26 03:06 held outside
+- 10-26 03:53 break ↓ grade 3 basis 3
+- 10-26 03:54 failed
+- 10-26 04:11 break ↑ grade 0 basis 3
+- 10-26 04:16 held outside
+- 10-26 04:52 break ↑ grade 2 basis 3
+- 10-26 04:55 failed
+- 10-26 06:00 break ↑ grade 2 basis 3
+- 10-26 06:01 failed
+- 10-26 06:23 break ↓ grade 1 basis 3
+- 10-26 06:28 held outside
+- 10-26 07:00 break ↑ grade 3 basis 3
+- 10-26 07:02 failed
+- 10-26 07:30 break ↓ grade 3 basis 3
+- 10-26 07:31 failed
+- 10-26 07:43 break ↑ grade 3 basis 3
+- 10-26 07:48 held outside
+- 10-26 08:02 break ↓ grade 1 basis 3
+- 10-26 08:07 held outside
+- 10-26 08:27 break ↑ grade 1 basis 3
+- 10-26 08:28 failed
+- 10-26 09:28 break ↑ grade 0 basis 3
+- 10-26 09:30 failed
+- 10-26 09:46 break ↑ grade 0 basis 3
+- 10-26 09:47 failed
+- 10-26 09:56 break ↑ grade 1 basis 3
+- 10-26 09:59 failed
+- 10-26 10:59 break ↓ grade 0 basis 3
+- 10-26 11:02 failed
+- 10-26 11:10 break ↓ grade 3 basis 3
+- 10-26 11:15 held outside
+- 10-26 11:27 break ↑ grade 3 basis 3
+- 10-26 11:29 failed
+- 10-26 11:39 break ↑ grade 0 basis 3
+- 10-26 11:43 failed
+- 10-26 11:53 break ↑ grade 3 basis 3
+- 10-26 11:58 held outside
+- 10-26 12:38 break ↓ grade 1 basis 3
+- 10-26 12:43 held outside
+- 10-26 13:01 break ↓ grade 3 basis 3
+- 10-26 13:03 failed
+- 10-26 13:21 break ↓ grade 0 basis 3
+- 10-26 13:26 held outside
+- 10-26 13:56 break ↓ grade 0 basis 3
+- 10-26 13:58 failed
+- 10-26 14:16 break ↑ grade 0 basis 3
+- 10-26 14:17 failed
+- 10-26 15:00 break ↑ grade 0 basis 3
+- 10-26 15:02 failed
+- 10-26 15:18 break ↑ grade 3 basis 3
+- 10-26 15:23 held outside
+- 10-26 16:00 break ↓ grade 1 basis 3
+- 10-26 16:01 failed
+- 10-26 16:14 break ↓ grade 0 basis 3
+- 10-26 16:19 held outside
+- 10-26 16:28 break ↓ grade 0 basis 3
+- 10-26 16:33 held outside
+- 10-26 17:00 break ↑ grade 3 basis 3
+- 10-26 17:01 failed
+
+### ETH-USDT: Squeeze-qualified variant (the squeeze qualifier on this machine) (134 events)
+
+- 10-19 23:07 break ↓ grade 0 basis 3
+- 10-19 23:12 failed
+- 10-20 07:25 break ↓ grade 1 basis 3
+- 10-20 07:27 failed
+- 10-20 07:56 break ↓ grade 0 basis 3
+- 10-20 07:57 failed
+- 10-20 08:35 break ↑ grade 0 basis 3
+- 10-20 08:36 failed
+- 10-20 14:57 break ↑ grade 3 basis 3
+- 10-20 15:00 failed
+- 10-20 16:33 break ↑ grade 2 basis 3
+- 10-20 16:37 failed
+- 10-20 19:17 break ↓ grade 0 basis 3
+- 10-20 19:22 held outside
+- 10-20 22:30 break ↓ grade 2 basis 3
+- 10-20 22:32 failed
+- 10-20 22:57 break ↓ grade 3 basis 3
+- 10-20 23:02 held outside
+- 10-21 04:40 break ↓ grade 0 basis 3
+- 10-21 04:45 failed
+- 10-21 06:21 break ↓ grade 0 basis 3
+- 10-21 06:22 failed
+- 10-21 06:30 break ↑ grade 1 basis 3
+- 10-21 06:35 held outside
+- 10-21 08:34 break ↓ grade 3 basis 3
+- 10-21 08:39 failed
+- 10-21 09:44 break ↓ grade 3 basis 3
+- 10-21 09:45 failed
+- 10-21 13:01 break ↑ grade 3 basis 3
+- 10-21 13:03 failed
+- 10-21 13:31 break ↓ grade 1 basis 3
+- 10-21 13:36 held outside
+- 10-21 16:32 break ↓ grade 2 basis 3
+- 10-21 16:33 failed
+- 10-21 18:15 break ↑ grade 0 basis 3
+- 10-21 18:18 failed
+- 10-21 21:32 break ↑ grade 0 basis 3
+- 10-21 21:37 failed
+- 10-22 00:48 break ↑ grade 2 basis 3
+- 10-22 00:49 failed
+- 10-22 02:05 break ↓ grade 0 basis 3
+- 10-22 02:08 failed
+- 10-22 03:23 break ↓ grade 0 basis 3
+- 10-22 03:25 failed
+- 10-22 04:35 break ↓ grade 1 basis 3
+- 10-22 04:37 failed
+- 10-22 07:10 break ↓ grade 2 basis 3
+- 10-22 07:11 failed
+- 10-22 08:02 break ↓ grade 3 basis 3
+- 10-22 08:07 held outside
+- 10-22 08:31 break ↓ grade 0 basis 3
+- 10-22 08:32 failed
+- 10-22 10:00 break ↑ grade 3 basis 3
+- 10-22 10:05 held outside
+- 10-22 10:42 break ↓ grade 1 basis 3
+- 10-22 10:46 failed
+- 10-22 11:28 break ↓ grade 0 basis 3
+- 10-22 11:29 failed
+- 10-22 11:54 break ↓ grade 3 basis 3
+- 10-22 11:59 held outside
+- 10-22 15:08 break ↓ grade 1 basis 3
+- 10-22 15:13 held outside
+- 10-22 16:28 break ↓ grade 0 basis 3
+- 10-22 16:29 failed
+- 10-22 19:23 break ↑ grade 0 basis 3
+- 10-22 19:28 held outside
+- 10-22 20:19 break ↓ grade 2 basis 3
+- 10-22 20:20 failed
+- 10-22 22:03 break ↑ grade 3 basis 3
+- 10-22 22:04 failed
+- 10-22 23:10 break ↓ grade 1 basis 3
+- 10-22 23:11 failed
+- 10-23 02:57 break ↑ grade 3 basis 3
+- 10-23 02:58 failed
+- 10-23 09:00 break ↓ grade 1 basis 3
+- 10-23 09:01 failed
+- 10-23 09:23 break ↓ grade 3 basis 3
+- 10-23 09:28 held outside
+- 10-23 10:53 break ↓ grade 0 basis 3
+- 10-23 10:54 failed
+- 10-23 14:12 break ↓ grade 0 basis 3
+- 10-23 14:14 failed
+- 10-23 15:10 break ↓ grade 0 basis 3
+- 10-23 15:11 failed
+- 10-23 16:36 break ↑ grade 3 basis 3
+- 10-23 16:37 failed
+- 10-23 19:57 break ↓ grade 1 basis 3
+- 10-23 20:02 held outside
+- 10-23 21:09 break ↑ grade 3 basis 3
+- 10-23 21:10 failed
+- 10-24 00:14 break ↓ grade 0 basis 3
+- 10-24 00:19 held outside
+- 10-24 06:02 break ↓ grade 1 basis 3
+- 10-24 06:04 failed
+- 10-24 06:51 break ↓ grade 0 basis 3
+- 10-24 06:53 failed
+- 10-24 12:47 break ↑ grade 2 basis 3
+- 10-24 12:49 failed
+- 10-24 16:50 break ↑ grade 3 basis 3
+- 10-24 16:55 held outside
+- 10-24 17:46 break ↑ grade 1 basis 3
+- 10-24 17:51 held outside
+- 10-24 20:00 break ↑ grade 3 basis 3
+- 10-24 20:05 held outside
+- 10-24 21:07 break ↓ grade 3 basis 3
+- 10-24 21:12 held outside
+- 10-25 00:48 break ↑ grade 3 basis 3
+- 10-25 00:50 failed
+- 10-25 05:23 break ↓ grade 1 basis 3
+- 10-25 05:28 held outside
+- 10-25 07:41 break ↑ grade 3 basis 3
+- 10-25 07:43 failed
+- 10-25 09:46 break ↑ grade 0 basis 3
+- 10-25 09:51 held outside
+- 10-25 10:12 break ↑ grade 3 basis 3
+- 10-25 10:17 held outside
+- 10-25 13:23 break ↓ grade 0 basis 3
+- 10-25 13:28 held outside
+- 10-25 15:21 break ↓ grade 0 basis 3
+- 10-25 15:26 held outside
+- 10-25 17:21 break ↑ grade 3 basis 3
+- 10-25 17:24 failed
+- 10-25 18:02 break ↓ grade 1 basis 3
+- 10-25 18:03 failed
+- 10-26 00:32 break ↑ grade 0 basis 3
+- 10-26 00:34 failed
+- 10-26 03:01 break ↑ grade 1 basis 3
+- 10-26 03:06 held outside
+- 10-26 06:00 break ↑ grade 2 basis 3
+- 10-26 06:01 failed
+- 10-26 14:09 break ↑ grade 1 basis 3
+- 10-26 14:12 failed
+- 10-26 16:58 break ↑ grade 3 basis 3
+- 10-26 17:03 held outside
+
+### ETH-USDT: TTM release (timing and density only) (29 events)
+
+- 10-19 22:54 event ↓
+- 10-19 23:04 event ↑
+- 10-20 07:25 event ↓
+- 10-20 07:57 event ↓
+- 10-20 19:14 event ↓
+- 10-21 06:30 event ↑
+- 10-21 12:39 event ↑
+- 10-21 16:03 event ↓
+- 10-21 16:25 event ↓
+- 10-21 19:44 event ↓
+- 10-22 07:41 event ↑
+- 10-22 17:52 event ↓
+- 10-22 18:01 event ↓
+- 10-22 20:16 event ↓
+- 10-22 22:02 event ↑
+- 10-22 23:07 event ↑
+- 10-23 08:51 event ↑
+- 10-23 15:01 event ↓
+- 10-23 15:43 event ↓
+- 10-23 19:58 event ↓
+- 10-24 06:03 event ↓
+- 10-24 06:44 event ↓
+- 10-24 15:54 event ↑
+- 10-24 17:24 event ↑
+- 10-25 00:27 event ↑
+- 10-25 09:45 event ↑
+- 10-25 10:12 event ↑
+- 10-25 17:56 event ↑
+- 10-26 00:32 event ↑
+
+### ETH-USDT: Bollinger crossing (timing and density only) (589 events)
+
+- 10-19 18:21 event ↓
+- 10-19 19:00 event ↓
+- 10-19 19:06 event ↓
+- 10-19 19:23 event ↑
+- 10-19 19:43 event ↑
+- 10-19 19:50 event ↓
+- 10-19 20:51 event ↓
+- 10-19 21:12 event ↑
+- 10-19 21:52 event ↓
+- 10-19 21:55 event ↓
+- 10-19 22:00 event ↑
+- 10-19 22:08 event ↑
+- 10-19 22:16 event ↑
+- 10-19 22:19 event ↑
+- 10-19 23:04 event ↑
+- 10-19 23:07 event ↓
+- 10-19 23:24 event ↑
+- 10-19 23:49 event ↓
+- 10-19 23:51 event ↓
+- 10-20 00:05 event ↓
+- 10-20 00:10 event ↓
+- 10-20 00:17 event ↓
+- 10-20 00:19 event ↓
+- 10-20 00:59 event ↑
+- 10-20 01:04 event ↓
+- 10-20 01:07 event ↓
+- 10-20 01:38 event ↑
+- 10-20 01:46 event ↑
+- 10-20 02:01 event ↓
+- 10-20 02:06 event ↓
+- 10-20 02:46 event ↑
+- 10-20 02:50 event ↑
+- 10-20 03:06 event ↑
+- 10-20 03:33 event ↑
+- 10-20 03:54 event ↑
+- 10-20 03:57 event ↑
+- 10-20 05:06 event ↓
+- 10-20 05:30 event ↓
+- 10-20 05:36 event ↓
+- 10-20 05:57 event ↓
+- 10-20 05:59 event ↓
+- 10-20 06:01 event ↓
+- 10-20 06:20 event ↑
+- 10-20 06:30 event ↑
+- 10-20 07:05 event ↓
+- 10-20 07:16 event ↓
+- 10-20 07:25 event ↓
+- 10-20 07:30 event ↓
+- 10-20 07:53 event ↓
+- 10-20 07:55 event ↓
+- 10-20 08:01 event ↓
+- 10-20 08:06 event ↓
+- 10-20 08:25 event ↑
+- 10-20 08:35 event ↑
+- 10-20 08:50 event ↓
+- 10-20 09:37 event ↓
+- 10-20 09:39 event ↓
+- 10-20 09:58 event ↑
+- 10-20 10:02 event ↑
+- 10-20 10:24 event ↓
+- 10-20 10:33 event ↓
+- 10-20 10:49 event ↑
+- 10-20 11:00 event ↑
+- 10-20 11:18 event ↓
+- 10-20 11:38 event ↑
+- 10-20 12:09 event ↓
+- 10-20 12:19 event ↑
+- 10-20 12:23 event ↑
+- 10-20 12:42 event ↑
+- 10-20 12:44 event ↑
+- 10-20 13:00 event ↓
+- 10-20 13:23 event ↑
+- 10-20 13:31 event ↓
+- 10-20 13:37 event ↑
+- 10-20 13:58 event ↑
+- 10-20 14:07 event ↑
+- 10-20 14:10 event ↑
+- 10-20 14:14 event ↑
+- 10-20 14:56 event ↑
+- 10-20 15:12 event ↓
+- 10-20 15:40 event ↑
+- 10-20 16:11 event ↓
+- 10-20 16:17 event ↓
+- 10-20 16:31 event ↑
+- 10-20 16:47 event ↑
+- 10-20 17:24 event ↓
+- 10-20 17:31 event ↓
+- 10-20 17:35 event ↓
+- 10-20 17:56 event ↓
+- 10-20 18:24 event ↓
+- 10-20 18:44 event ↓
+- 10-20 19:18 event ↓
+- 10-20 20:00 event ↓
+- 10-20 20:30 event ↑
+- 10-20 20:33 event ↑
+- 10-20 20:57 event ↑
+- 10-20 21:17 event ↑
+- 10-20 21:32 event ↓
+- 10-20 21:51 event ↑
+- 10-20 21:53 event ↑
+- 10-20 22:01 event ↑
+- 10-20 22:27 event ↓
+- 10-20 22:29 event ↓
+- 10-20 22:49 event ↑
+- 10-20 22:57 event ↓
+- 10-20 23:00 event ↓
+- 10-20 23:02 event ↓
+- 10-20 23:07 event ↓
+- 10-20 23:44 event ↑
+- 10-20 23:48 event ↑
+- 10-21 00:01 event ↓
+- 10-21 00:14 event ↑
+- 10-21 00:51 event ↑
+- 10-21 01:00 event ↓
+- 10-21 01:23 event ↑
+- 10-21 01:26 event ↑
+- 10-21 01:45 event ↑
+- 10-21 01:48 event ↑
+- 10-21 02:13 event ↓
+- 10-21 02:49 event ↑
+- 10-21 02:51 event ↑
+- 10-21 03:01 event ↓
+- 10-21 03:32 event ↑
+- 10-21 03:57 event ↓
+- 10-21 04:31 event ↑
+- 10-21 04:40 event ↓
+- 10-21 04:42 event ↓
+- 10-21 05:00 event ↑
+- 10-21 05:24 event ↓
+- 10-21 05:41 event ↓
+- 10-21 06:21 event ↓
+- 10-21 06:30 event ↑
+- 10-21 06:50 event ↓
+- 10-21 06:59 event ↓
+- 10-21 07:09 event ↑
+- 10-21 07:26 event ↑
+- 10-21 07:32 event ↑
+- 10-21 07:35 event ↑
+- 10-21 07:52 event ↑
+- 10-21 08:24 event ↑
+- 10-21 08:34 event ↓
+- 10-21 08:49 event ↑
+- 10-21 09:10 event ↑
+- 10-21 09:14 event ↑
+- 10-21 09:56 event ↓
+- 10-21 10:02 event ↓
+- 10-21 10:15 event ↓
+- 10-21 10:33 event ↑
+- 10-21 10:42 event ↑
+- 10-21 10:44 event ↑
+- 10-21 11:01 event ↑
+- 10-21 11:08 event ↑
+- 10-21 11:24 event ↑
+- 10-21 11:35 event ↓
+- 10-21 11:49 event ↑
+- 10-21 11:52 event ↑
+- 10-21 12:28 event ↑
+- 10-21 12:40 event ↑
+- 10-21 13:00 event ↑
+- 10-21 13:04 event ↑
+- 10-21 13:30 event ↓
+- 10-21 14:22 event ↑
+- 10-21 14:47 event ↑
+- 10-21 14:51 event ↑
+- 10-21 15:07 event ↑
+- 10-21 15:33 event ↑
+- 10-21 16:32 event ↓
+- 10-21 16:34 event ↓
+- 10-21 16:39 event ↑
+- 10-21 17:01 event ↓
+- 10-21 17:20 event ↑
+- 10-21 17:35 event ↑
+- 10-21 17:37 event ↑
+- 10-21 18:00 event ↓
+- 10-21 18:16 event ↑
+- 10-21 18:47 event ↓
+- 10-21 19:01 event ↓
+- 10-21 19:44 event ↓
+- 10-21 20:00 event ↓
+- 10-21 20:35 event ↑
+- 10-21 21:16 event ↑
+- 10-21 21:18 event ↑
+- 10-21 21:20 event ↑
+- 10-21 21:56 event ↓
+- 10-21 22:00 event ↓
+- 10-21 22:17 event ↓
+- 10-21 22:43 event ↓
+- 10-21 23:02 event ↓
+- 10-21 23:07 event ↓
+- 10-21 23:29 event ↓
+- 10-21 23:44 event ↓
+- 10-21 23:46 event ↓
+- 10-21 23:48 event ↓
+- 10-22 00:02 event ↑
+- 10-22 00:04 event ↑
+- 10-22 00:21 event ↓
+- 10-22 00:59 event ↓
+- 10-22 01:32 event ↓
+- 10-22 01:38 event ↓
+- 10-22 01:40 event ↓
+- 10-22 02:06 event ↓
+- 10-22 02:18 event ↓
+- 10-22 02:20 event ↓
+- 10-22 02:44 event ↓
+- 10-22 03:00 event ↑
+- 10-22 03:24 event ↓
+- 10-22 03:30 event ↓
+- 10-22 03:34 event ↓
+- 10-22 03:43 event ↑
+- 10-22 04:00 event ↑
+- 10-22 04:25 event ↑
+- 10-22 04:34 event ↓
+- 10-22 04:38 event ↓
+- 10-22 05:28 event ↑
+- 10-22 05:44 event ↓
+- 10-22 05:50 event ↓
+- 10-22 05:55 event ↓
+- 10-22 06:07 event ↑
+- 10-22 06:26 event ↓
+- 10-22 06:47 event ↓
+- 10-22 06:53 event ↑
+- 10-22 07:06 event ↓
+- 10-22 07:09 event ↓
+- 10-22 07:12 event ↓
+- 10-22 07:39 event ↑
+- 10-22 07:47 event ↑
+- 10-22 07:50 event ↓
+- 10-22 08:02 event ↓
+- 10-22 08:06 event ↓
+- 10-22 08:34 event ↓
+- 10-22 09:00 event ↓
+- 10-22 09:03 event ↓
+- 10-22 09:12 event ↓
+- 10-22 09:25 event ↓
+- 10-22 09:48 event ↑
+- 10-22 09:50 event ↑
+- 10-22 10:01 event ↑
+- 10-22 10:26 event ↑
+- 10-22 10:37 event ↓
+- 10-22 10:42 event ↓
+- 10-22 10:56 event ↓
+- 10-22 11:02 event ↓
+- 10-22 11:05 event ↓
+- 10-22 11:54 event ↓
+- 10-22 12:16 event ↑
+- 10-22 12:31 event ↓
+- 10-22 12:34 event ↓
+- 10-22 12:50 event ↑
+- 10-22 13:11 event ↓
+- 10-22 13:24 event ↑
+- 10-22 13:33 event ↑
+- 10-22 14:35 event ↓
+- 10-22 14:43 event ↑
+- 10-22 15:04 event ↓
+- 10-22 15:06 event ↓
+- 10-22 15:08 event ↓
+- 10-22 15:45 event ↓
+- 10-22 16:09 event ↑
+- 10-22 16:12 event ↓
+- 10-22 16:30 event ↓
+- 10-22 16:46 event ↓
+- 10-22 17:18 event ↑
+- 10-22 18:02 event ↓
+- 10-22 18:20 event ↑
+- 10-22 18:45 event ↑
+- 10-22 18:50 event ↑
+- 10-22 19:20 event ↑
+- 10-22 19:40 event ↓
+- 10-22 19:46 event ↓
+- 10-22 20:15 event ↓
+- 10-22 20:17 event ↓
+- 10-22 20:49 event ↓
+- 10-22 21:07 event ↑
+- 10-22 21:15 event ↑
+- 10-22 21:34 event ↓
+- 10-22 22:01 event ↑
+- 10-22 22:18 event ↓
+- 10-22 23:06 event ↑
+- 10-22 23:34 event ↓
+- 10-22 23:45 event ↑
+- 10-23 00:10 event ↓
+- 10-23 00:32 event ↑
+- 10-23 00:35 event ↑
+- 10-23 01:05 event ↓
+- 10-23 01:15 event ↓
+- 10-23 01:37 event ↓
+- 10-23 01:41 event ↑
+- 10-23 01:44 event ↑
+- 10-23 01:46 event ↑
+- 10-23 02:21 event ↑
+- 10-23 02:31 event ↑
+- 10-23 03:16 event ↓
+- 10-23 03:19 event ↓
+- 10-23 03:45 event ↑
+- 10-23 04:00 event ↓
+- 10-23 04:27 event ↓
+- 10-23 04:33 event ↓
+- 10-23 04:48 event ↓
+- 10-23 04:57 event ↓
+- 10-23 05:07 event ↑
+- 10-23 05:26 event ↓
+- 10-23 06:00 event ↓
+- 10-23 06:03 event ↓
+- 10-23 06:16 event ↑
+- 10-23 06:48 event ↑
+- 10-23 07:02 event ↓
+- 10-23 07:31 event ↑
+- 10-23 07:49 event ↓
+- 10-23 08:09 event ↑
+- 10-23 08:12 event ↑
+- 10-23 08:36 event ↓
+- 10-23 08:55 event ↓
+- 10-23 09:00 event ↓
+- 10-23 09:15 event ↓
+- 10-23 09:19 event ↓
+- 10-23 09:23 event ↓
+- 10-23 09:44 event ↑
+- 10-23 10:01 event ↓
+- 10-23 10:13 event ↑
+- 10-23 10:31 event ↓
+- 10-23 10:44 event ↓
+- 10-23 10:53 event ↓
+- 10-23 10:57 event ↓
+- 10-23 11:00 event ↓
+- 10-23 11:35 event ↑
+- 10-23 11:42 event ↑
+- 10-23 12:00 event ↓
+- 10-23 12:07 event ↓
+- 10-23 12:09 event ↓
+- 10-23 12:11 event ↓
+- 10-23 13:22 event ↑
+- 10-23 13:30 event ↑
+- 10-23 13:42 event ↑
+- 10-23 14:10 event ↓
+- 10-23 14:16 event ↓
+- 10-23 14:19 event ↓
+- 10-23 14:36 event ↑
+- 10-23 14:53 event ↑
+- 10-23 15:02 event ↓
+- 10-23 15:26 event ↑
+- 10-23 15:43 event ↓
+- 10-23 16:06 event ↑
+- 10-23 16:14 event ↓
+- 10-23 16:23 event ↓
+- 10-23 16:33 event ↑
+- 10-23 16:36 event ↑
+- 10-23 17:12 event ↑
+- 10-23 17:19 event ↑
+- 10-23 17:25 event ↓
+- 10-23 17:58 event ↑
+- 10-23 18:08 event ↓
+- 10-23 18:46 event ↓
+- 10-23 19:00 event ↓
+- 10-23 19:13 event ↓
+- 10-23 19:57 event ↓
+- 10-23 20:00 event ↓
+- 10-23 20:13 event ↑
+- 10-23 20:28 event ↑
+- 10-23 20:46 event ↑
+- 10-23 21:09 event ↑
+- 10-23 21:29 event ↓
+- 10-23 21:53 event ↓
+- 10-23 22:00 event ↑
+- 10-23 22:30 event ↓
+- 10-23 22:47 event ↓
+- 10-23 23:47 event ↑
+- 10-24 00:08 event ↓
+- 10-24 00:14 event ↓
+- 10-24 00:18 event ↓
+- 10-24 00:52 event ↑
+- 10-24 01:00 event ↑
+- 10-24 01:15 event ↑
+- 10-24 01:30 event ↓
+- 10-24 01:45 event ↑
+- 10-24 02:09 event ↑
+- 10-24 02:19 event ↓
+- 10-24 02:55 event ↑
+- 10-24 03:01 event ↑
+- 10-24 03:38 event ↓
+- 10-24 03:48 event ↓
+- 10-24 04:37 event ↑
+- 10-24 05:01 event ↓
+- 10-24 05:19 event ↓
+- 10-24 06:02 event ↓
+- 10-24 06:05 event ↓
+- 10-24 06:11 event ↑
+- 10-24 06:43 event ↓
+- 10-24 06:51 event ↓
+- 10-24 07:01 event ↑
+- 10-24 07:55 event ↓
+- 10-24 08:36 event ↓
+- 10-24 08:38 event ↓
+- 10-24 08:40 event ↓
+- 10-24 09:03 event ↓
+- 10-24 09:21 event ↓
+- 10-24 09:35 event ↓
+- 10-24 09:51 event ↑
+- 10-24 10:16 event ↓
+- 10-24 10:31 event ↑
+- 10-24 10:52 event ↓
+- 10-24 11:17 event ↓
+- 10-24 11:22 event ↓
+- 10-24 11:56 event ↓
+- 10-24 12:00 event ↓
+- 10-24 12:16 event ↑
+- 10-24 12:47 event ↑
+- 10-24 13:18 event ↓
+- 10-24 13:50 event ↑
+- 10-24 13:52 event ↑
+- 10-24 14:08 event ↓
+- 10-24 14:11 event ↓
+- 10-24 15:01 event ↓
+- 10-24 15:09 event ↓
+- 10-24 15:16 event ↓
+- 10-24 15:19 event ↓
+- 10-24 15:57 event ↑
+- 10-24 16:12 event ↑
+- 10-24 16:16 event ↑
+- 10-24 16:41 event ↑
+- 10-24 16:49 event ↑
+- 10-24 17:17 event ↑
+- 10-24 17:31 event ↓
+- 10-24 17:46 event ↑
+- 10-24 18:09 event ↑
+- 10-24 18:27 event ↑
+- 10-24 18:55 event ↑
+- 10-24 18:58 event ↑
+- 10-24 19:28 event ↑
+- 10-24 20:00 event ↑
+- 10-24 20:31 event ↓
+- 10-24 21:01 event ↓
+- 10-24 21:05 event ↓
+- 10-24 21:28 event ↑
+- 10-24 21:45 event ↓
+- 10-24 22:01 event ↑
+- 10-24 22:13 event ↑
+- 10-24 22:31 event ↑
+- 10-24 22:36 event ↑
+- 10-24 22:58 event ↑
+- 10-24 23:02 event ↑
+- 10-24 23:31 event ↑
+- 10-25 00:01 event ↓
+- 10-25 00:27 event ↑
+- 10-25 00:38 event ↑
+- 10-25 00:48 event ↑
+- 10-25 01:01 event ↓
+- 10-25 01:24 event ↑
+- 10-25 01:38 event ↑
+- 10-25 01:47 event ↑
+- 10-25 02:06 event ↑
+- 10-25 02:17 event ↓
+- 10-25 02:30 event ↑
+- 10-25 02:37 event ↑
+- 10-25 02:39 event ↑
+- 10-25 03:00 event ↓
+- 10-25 03:04 event ↓
+- 10-25 03:33 event ↓
+- 10-25 04:10 event ↑
+- 10-25 04:21 event ↑
+- 10-25 04:37 event ↑
+- 10-25 05:01 event ↓
+- 10-25 05:23 event ↓
+- 10-25 05:26 event ↓
+- 10-25 05:33 event ↓
+- 10-25 05:39 event ↓
+- 10-25 06:04 event ↓
+- 10-25 06:37 event ↓
+- 10-25 06:41 event ↓
+- 10-25 06:44 event ↓
+- 10-25 06:50 event ↓
+- 10-25 07:06 event ↑
+- 10-25 07:41 event ↑
+- 10-25 07:44 event ↑
+- 10-25 08:01 event ↓
+- 10-25 08:26 event ↓
+- 10-25 08:33 event ↓
+- 10-25 08:53 event ↓
+- 10-25 09:12 event ↓
+- 10-25 09:46 event ↑
+- 10-25 10:12 event ↑
+- 10-25 10:45 event ↓
+- 10-25 10:48 event ↓
+- 10-25 11:00 event ↑
+- 10-25 11:43 event ↑
+- 10-25 11:48 event ↑
+- 10-25 12:25 event ↓
+- 10-25 12:29 event ↓
+- 10-25 13:00 event ↑
+- 10-25 13:23 event ↓
+- 10-25 13:29 event ↓
+- 10-25 13:40 event ↑
+- 10-25 14:00 event ↓
+- 10-25 14:03 event ↓
+- 10-25 14:14 event ↑
+- 10-25 14:35 event ↑
+- 10-25 14:40 event ↑
+- 10-25 14:50 event ↑
+- 10-25 14:53 event ↑
+- 10-25 15:00 event ↑
+- 10-25 15:21 event ↓
+- 10-25 15:35 event ↑
+- 10-25 15:39 event ↑
+- 10-25 16:01 event ↓
+- 10-25 16:03 event ↓
+- 10-25 16:12 event ↑
+- 10-25 16:53 event ↑
+- 10-25 17:21 event ↑
+- 10-25 17:43 event ↑
+- 10-25 17:56 event ↑
+- 10-25 18:09 event ↓
+- 10-25 18:45 event ↑
+- 10-25 18:47 event ↑
+- 10-25 19:00 event ↓
+- 10-25 19:06 event ↓
+- 10-25 19:28 event ↓
+- 10-25 20:01 event ↓
+- 10-25 20:32 event ↓
+- 10-25 20:43 event ↓
+- 10-25 20:48 event ↓
+- 10-25 21:04 event ↓
+- 10-25 21:11 event ↓
+- 10-25 21:24 event ↓
+- 10-25 21:45 event ↓
+- 10-25 22:01 event ↑
+- 10-25 22:58 event ↓
+- 10-25 23:02 event ↓
+- 10-25 23:04 event ↓
+- 10-25 23:25 event ↓
+- 10-25 23:30 event ↓
+- 10-26 00:32 event ↑
+- 10-26 00:40 event ↓
+- 10-26 00:47 event ↓
+- 10-26 01:23 event ↑
+- 10-26 01:45 event ↓
+- 10-26 02:19 event ↓
+- 10-26 02:38 event ↓
+- 10-26 02:40 event ↓
+- 10-26 03:01 event ↑
+- 10-26 03:30 event ↓
+- 10-26 03:45 event ↓
+- 10-26 03:50 event ↓
+- 10-26 03:53 event ↓
+- 10-26 04:04 event ↑
+- 10-26 04:15 event ↑
+- 10-26 04:52 event ↑
+- 10-26 05:19 event ↓
+- 10-26 05:25 event ↑
+- 10-26 05:49 event ↑
+- 10-26 06:00 event ↑
+- 10-26 06:06 event ↓
+- 10-26 06:26 event ↓
+- 10-26 06:58 event ↑
+- 10-26 07:29 event ↓
+- 10-26 07:43 event ↑
+- 10-26 08:02 event ↓
+- 10-26 08:06 event ↓
+- 10-26 08:58 event ↓
+- 10-26 09:17 event ↑
+- 10-26 09:19 event ↑
+- 10-26 09:56 event ↑
+- 10-26 10:01 event ↓
+- 10-26 10:20 event ↓
+- 10-26 10:31 event ↑
+- 10-26 10:58 event ↓
+- 10-26 11:24 event ↑
+- 10-26 11:27 event ↑
+- 10-26 11:52 event ↑
+- 10-26 12:20 event ↓
+- 10-26 12:27 event ↑
+- 10-26 12:39 event ↓
+- 10-26 13:00 event ↓
+- 10-26 13:04 event ↓
+- 10-26 13:22 event ↓
+- 10-26 13:34 event ↓
+- 10-26 14:09 event ↑
+- 10-26 14:58 event ↑
+- 10-26 15:00 event ↑
+- 10-26 15:18 event ↑
+- 10-26 15:36 event ↑
+- 10-26 15:54 event ↓
+- 10-26 15:56 event ↓
+- 10-26 16:16 event ↓
+- 10-26 16:30 event ↓
+- 10-26 16:51 event ↑
+- 10-26 16:58 event ↑
+- 10-26 17:00 event ↑
+- 10-26 17:02 event ↑
+- 10-26 17:04 event ↑
+- 10-26 17:30 event ↓
 

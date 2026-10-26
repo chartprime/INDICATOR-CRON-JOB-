@@ -7,6 +7,8 @@ Evaluation seeds 17..21 (10 seed-directions; outcome fixtures 10 each)
 | TTM release (timing and density only) | 10/10 | 0 | 10 (10) | 0 | n/a | 0 | 0 | none | none | 12.6 | 0.0 | 1 |
 | Bollinger crossing (timing and density only) | 10/10 | 0 | 56 (38) | 14 | n/a | 0 | 0 | none | none | 47.6 | 0.0 | 1 |
 
+The squeeze-qualified variant is the squeeze qualifier on this machine, not the round-2 state machine with pause and release; the plain frozen range shares the machine by design, to isolate the width qualifier. (Note added after the single run; the numbers are those of that run.)
+
 {
   "Product (width ≤ 2×, min 6)": {
     "hits": 10,

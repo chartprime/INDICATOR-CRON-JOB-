@@ -406,3 +406,47 @@ effort M. Proceed to Codex plan round 1.
 9. `whaleVersusCrowd` runs in fixed mode, `tierSize` 1.0 BTC.
 10. Per-bar histogram display deferred to v2; cumulative-since-anchor stated
     as a presentation choice with no claimed benefit.
+
+## PM approval after Codex round 3 (the last plan round)
+
+APPROVED by PM authority. Codex round 3 (pm/log/codex/20261026T154523Z-plan-brief-size-split-delta.last.md)
+returned REVISE on implementation-level points; every one is accepted and
+binds the builder as an amendment:
+
+1. **Supersession size snapshot.** The tail record keeps the last revision's
+   valid sizes (bounded to its latest 4,096) so the supersession commit can
+   feed the size ring without a rescan; include the 32 KB in the memory
+   budget. Test: a print arriving after that revision changes neither the
+   committed flow nor the next bar's threshold until a rebuild.
+2. **One definition of "confirms".** Reference is `large_h`, the cumulative
+   at the bar of the matching price extreme: a higher close confirms when
+   `large_t > large_h`, a lower close when `large_t < large_h`; equality
+   lags; `m` stays the minimum depth for an arrow. Table and markers share it.
+3. A `null` `tierAtOpen` prevents classification but valid sizes from an
+   `"all"` window still train the threshold.
+4. Forming-bar tests expose only the prints received by each revision; the
+   window-end cutoff alone does not prove forming causality.
+5. **Share above 1.** A constant `MAX_TAPE_SHARE = 1.25`: above it the bar is
+   ineligible with row `Tape 160% · mismatch`; `share` is a numeric seam.
+6. Warm-up copy: "200 trade frames from complete windows, then the next bar
+   open", no duration estimate.
+7. Row (a) before `K` valid bars: `Need 20 valid bars`. Values: three
+   significant digits, `k`/`M` suffixes; if a row would exceed 30
+   characters, drop the values and keep the state word.
+8. **Scoring.** Planted-event recall is one result; every other arrow is an
+   "off-label marker" and is checked by an independent reference
+   implementation of the divergence condition (descriptive correctness
+   reported separately). The common evaluation mask is the set of bars where
+   both the auto and the fixed configuration have values.
+9. Replace the "+0.35 d" argument with measured fixture assertions on the
+   CVD baseline. Resolve the replay wording: the documented differences are
+   a reconnect and a rebuild after a late print. The conflict-count
+   expectation comes from a reference implementation written before the
+   indicator, not pinned afterwards.
+10. Simplest alternative: covered by the auto-versus-fixed comparison. No
+    fallback ships from this brief; a failed comparison fails acceptance.
+
+Build run authorised: worktree `/home/user/Terminal-L1-L2/worktrees/size-split-delta`,
+branch `build/size-split-delta` from main. UX pass joins mid-build. Codex
+code review before merge; validation on the frozen fixtures plus a live run
+on the owner's test host or the browser-direct deployment.

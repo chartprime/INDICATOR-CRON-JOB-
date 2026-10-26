@@ -117,3 +117,7 @@ filtered). VPIN: `vpin_status: "DISABLED"`.
   when their trade ids are consecutive, otherwise the seam is read from REST
   even with no millisecond between them; kept state is "done" only once the
   staged pages committed, so a switch during the grace restarts the read.
+- Follow-up fix: an unresolved seam's two boundary milliseconds are outside
+  every claim until its REST read succeeds (pending, not unverified); a seam
+  given up on makes them unverified for good; seam gaps are found on the
+  merged stretches so a given-up hole is never re-read as part of a wider one.

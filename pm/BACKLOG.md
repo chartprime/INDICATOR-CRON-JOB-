@@ -49,8 +49,8 @@ replenishment rate after a wall is eaten.
 | VPS test host recipe | PM | done (`ops/test-host-recipe.md`) |
 | Browser-direct L1 parity (markers, big-print pool, tape coverage) | L1 specialist | DONE: merged to main after 4 Codex rounds (10 findings fixed); two WARNING left as documented limitations |
 | L1 parity follow-up: fill-id continuity before merging adjacent stream spans; keep staged bootstrap pages across a pair switch during the grace period | L1 specialist | DONE: merged (2 Codex rounds); one conservative WARNING left documented (equal-timestamp merge keeps the older ending id, causing an unneeded seam read) for the next L1 touch |
-| Compression Range Breakout (pivoted from Squeeze Breakout Context) | OHLCV specialist | brief APPROVED after 3 Codex plan rounds (amendments bind); BUILD in progress on build/compression-breakout |
-| Size-Split Delta | L1 specialist | brief APPROVED after 3 Codex plan rounds (amendments bind); BUILD in progress on build/size-split-delta |
+| Compression Range Breakout (pivoted from Squeeze Breakout Context) | OHLCV specialist | BUILT (6e81df7; 20/20 design, 10/10 evaluation, live BTC/ETH equal to replay); Codex round 1 REVISE fixed at e86dcc6; Codex round 2 and validation loop 1 running |
+| Size-Split Delta | L1 specialist | BUILT (c2dfc4e, 63 tests, suite 5,492 green); Codex code round 1 and validation loop 1 running; marker density above the 40/1,000 ceiling on three fixtures, control being chosen for fix round 1 |
 | Depth capture on the owner's test host (`ops/enable-capture.sh`) | Owner | waiting for the host address and team credentials |
 
 ## Harness debt

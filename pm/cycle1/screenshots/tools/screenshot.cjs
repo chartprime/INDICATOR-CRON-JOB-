@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Takes the standard UX screenshots of the running web app (http://127.0.0.1:8000/).
+// Takes the standard UX screenshots of the running web app (http://127.0.0.1:8000/, or BASE_URL).
 // Usage: node screenshot.cjs <outDir> [indicatorLabel=RSI] [dialogIndicatorLabel=Session VWAP]
 // Produces: 01-default.png, 02-<indicator>-zoomed-out.png, 03-<indicator>-zoomed-in.png,
 // 04-<dialog>-settings-inputs.png, 05-<dialog>-settings-visibility.png (when the dialog has tabs).
@@ -28,7 +28,7 @@ async function addIndicator(page, label) {
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1600, height: 1000 }, deviceScaleFactor: 1 });
   page.on("pageerror", (e) => console.log("pageerror:", e.message));
-  await page.goto("http://127.0.0.1:8000/", { waitUntil: "domcontentloaded" });
+  await page.goto(process.env.BASE_URL ?? "http://127.0.0.1:8000/", { waitUntil: "domcontentloaded" });
   await page.waitForSelector(".chart-mount canvas", { timeout: 30_000 });
   await page.waitForFunction(() => document.body.innerText.includes("LIVE"), null, { timeout: 30_000 });
   await page.waitForTimeout(1500);

@@ -4,7 +4,7 @@ const { chromium } = require("playwright");
   const outDir = process.argv[2];
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1600, height: 1000 } });
-  await page.goto("http://127.0.0.1:8000/", { waitUntil: "domcontentloaded" });
+  await page.goto(process.env.BASE_URL ?? "http://127.0.0.1:8000/", { waitUntil: "domcontentloaded" });
   await page.waitForSelector(".chart-mount canvas", { timeout: 30_000 });
   await page.waitForFunction(() => document.body.innerText.includes("LIVE"), null, { timeout: 30_000 });
   await page.getByRole("button", { name: /Indicators/ }).click();

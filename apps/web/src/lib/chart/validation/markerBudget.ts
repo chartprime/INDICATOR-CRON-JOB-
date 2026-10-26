@@ -14,6 +14,8 @@ import { driveLive, replayCapture, type LiveExtras } from "./liveDrive";
 
 export interface MarkerBudget {
   bars: number;
+  /** The runtime latched the indicator as faulted during the run: the counts below are of a dead indicator and prove nothing. */
+  faulted: boolean;
   total: number;
   per1000Bars: number;
   /** Most markers placed on a single bar time. */
@@ -24,7 +26,7 @@ export interface MarkerBudget {
   byColor: Record<string, number>;
 }
 
-export function markerBudgetOf(markers: readonly MarkerCall[], bars: number): MarkerBudget {
+export function markerBudgetOf(markers: readonly MarkerCall[], bars: number, faulted = false): MarkerBudget {
   const perTime = new Map<number, number>();
   const byShape: Partial<Record<MarkerShapeKind, number>> = {};
   const byPosition: Partial<Record<MarkerPositionKind, number>> = {};
@@ -39,6 +41,7 @@ export function markerBudgetOf(markers: readonly MarkerCall[], bars: number): Ma
   for (const count of perTime.values()) maxPerBar = Math.max(maxPerBar, count);
   return {
     bars,
+    faulted,
     total: markers.length,
     per1000Bars: bars === 0 ? 0 : (markers.length / bars) * 1000,
     maxPerBar,
@@ -65,7 +68,7 @@ export function countMarkers<S, T>(
   const capture = options.live
     ? driveLive(def, liveArrivals(bars, options.live.revisionsPerBar, options.live.tradesFor), settings, options.extras)
     : replayCapture(def, bars, settings, options.extras);
-  return markerBudgetOf(capture.markers, bars.length);
+  return markerBudgetOf(capture.markers, bars.length, capture.faulted);
 }
 
 /** The budget of an arbitrary arrival script (duplicates, rebuilds, reconnects included). */
@@ -76,22 +79,31 @@ export function countMarkersOver<S, T>(
   extras: LiveExtras = {},
 ): MarkerBudget {
   const result = driveLive(def, arrivals, settings, extras);
-  return markerBudgetOf(result.markers, result.bars.length);
+  return markerBudgetOf(result.markers, result.bars.length, result.faulted);
 }
 
 export interface BudgetVerdict {
   ok: boolean;
+  /** A faulted run never passes, whatever it counted. */
+  faulted: boolean;
   ceilingPer1000Bars: number;
   actualPer1000Bars: number;
   maxPerBarCeiling: number | null;
   maxPerBar: number;
 }
 
-/** Pass when the measured rate (and, if given, the per-bar maximum) is at or under the ceiling. */
+/** Pass when the indicator did not fault and the measured rate (and, if given, the per-bar maximum) is at or under the ceiling. */
 export function judgeBudget(budget: MarkerBudget, ceilingPer1000Bars: number, maxPerBarCeiling: number | null = null): BudgetVerdict {
   const rateOk = budget.per1000Bars <= ceilingPer1000Bars;
   const perBarOk = maxPerBarCeiling === null || budget.maxPerBar <= maxPerBarCeiling;
-  return { ok: rateOk && perBarOk, ceilingPer1000Bars, actualPer1000Bars: budget.per1000Bars, maxPerBarCeiling, maxPerBar: budget.maxPerBar };
+  return {
+    ok: !budget.faulted && rateOk && perBarOk,
+    faulted: budget.faulted,
+    ceilingPer1000Bars,
+    actualPer1000Bars: budget.per1000Bars,
+    maxPerBarCeiling,
+    maxPerBar: budget.maxPerBar,
+  };
 }
 
 export interface MarkerCapture {
@@ -121,6 +133,7 @@ export function captureMarkers(timeOf: () => number): MarkerCapture {
 }
 
 export function summarizeBudget(label: string, budget: MarkerBudget, verdict?: BudgetVerdict): string {
+  if (budget.faulted) return `${label}: FAULTED during the run (${budget.total} marker(s) over ${budget.bars} bars before the fault); the budget cannot be judged`;
   const head = `${label}: ${budget.total} marker(s) over ${budget.bars} bars = ${budget.per1000Bars.toFixed(1)} per 1,000 bars; ${budget.barsWithMarkers} bar(s) marked, at most ${budget.maxPerBar} on one bar`;
   if (!verdict) return head;
   return `${head}; ceiling ${verdict.ceilingPer1000Bars} per 1,000${verdict.maxPerBarCeiling === null ? "" : ` and ${verdict.maxPerBarCeiling} per bar`}: ${verdict.ok ? "PASS" : "FAIL"}`;

@@ -1,0 +1,1340 @@
+Reading additional input from stdin...
+OpenAI Codex v0.164.0
+--------
+workdir: /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+model: gpt-6.1-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 01a1763d-1cc0-7312-9d37-e5830f108c19
+--------
+user
+You are the independent plan reviewer for a trading-indicator team. Review this build brief for an indicator in the repository you are running in (a React/TypeScript chart terminal with an indicator SDK; read apps/web/src/lib/chart/indicatorTypes.ts and docs/architecture/indicators/data-for-indicator-authors.md for the contract and rules).
+
+Judge: 1) Does it answer one specific trading question a retail trader has? 2) Is the calculation fully specified, incremental (one bar at a time, forming bar revised in place), and free of future data? 3) Is every data input actually available per the brief's data section, with honest behavior when it is missing? 4) Will a trader understand the default view in seconds with at most three primary controls? 5) Is the success criterion testable and the baseline fair? 6) What is the simplest alternative that would do most of the job?
+
+Be specific and actionable. End with exactly VERDICT: APPROVED or VERDICT: REVISE.
+
+----- BUILD BRIEF -----
+# Build brief: optional REST-polling Binance SPOT source (`TT_BINANCE_TRANSPORT=rest`)
+
+Survey of `Terminal-L1-L2-development-indicator-sdk` (main), 2026-10-26. Paths are relative to `apps/runtime/src/` unless stated. The repository was not modified.
+
+## 0. Step one, independent of the REST work: spot WebSocket URL override
+
+Binance runs an un-geo-blocked spot stream mirror, `wss://data-stream.binance.vision:9443`. Today the spot WS origin is the constant `BINANCE_SPOT_WS_BASE_URL` (`providers/binance/binance-config.js:4`), read by `wsBaseUrlsFor` (:121-132), frozen into the market-kind context (:134-146) and made the route URL `${base}/stream` in `binance-connection.js:108-110, 291-322`. The REST origin is the constant at :7, read by `restBaseUrlFor` (:111-119) and used by `binance-http-client.js:261, 292, 314`.
+
+Build:
+1. `binance-config.js`: add `binanceEndpointsFromEnv(env)` returning `{ spotWsBaseUrl, spotRestBaseUrl }` with the current constants as defaults; `wsBaseUrlsFor(marketKind, endpoints)` and `restBaseUrlFor(marketKind, endpoints)` accept the override for SPOT only. PERPETUAL constants (:5-6, :8) untouched.
+2. `binance-connection.js:112-139`: new option `endpoints`, passed to `createBinanceMarketKindContext` (:226-229) and as `baseUrl` to `fetchDepthSnapshot`/`createBinanceKlineBackfill` (:251, :1612, :1652); `binance-http-client.js` functions take an optional `baseUrl`. `server/app.js:128` passes `endpoints: binanceEndpointsFromEnv(process.env)`.
+3. `platform/config-registry.js`: `TT_BINANCE_SPOT_WS_BASE_URL` (new kind `wsOrigin`: bare `ws:`/`wss:` origin, port allowed; `describeExpected`/`valueIsValid` :261-337) and `TT_BINANCE_SPOT_REST_BASE_URL` (kind `origin`), both `[TERMINAL_C]`, `.env`. Matching rows in `docs/operations/09-configuration.md` (:35ff; `scripts/validate-docs.cjs:91-102` enforces them).
+4. Tests: `test/providers/binance/binance-config.test.js:53-70` gains the override cases; `binance-connection.test.js:128-142` gains "with `endpoints.spotWsBaseUrl` the SPOT route URL is `<override>/stream` and the two PERPETUAL URLs are unchanged"; `binance-http-client.test.js:35-41` gains the REST override URL.
+
+This alone lets a VPS in a blocked region run the normal stream transport for spot. It does not help this container (the proxy refuses WebSocket upgrades); hence the REST source.
+
+## 1. Integration point
+
+The seam is the connection object, which `market-data-server.js` duck-types: `onMessage` (:3602), `connect`/`getStatus` (:3609-3610; `requiredRoutesConnected` :3533-3539 needs `status.SPOT.public === "CONNECTED"`), `subscribeMany`/`unsubscribeMany` (:1261, :1288), `getFeedHealth` (:822, :955, :2680), `getOrderBook`/`getOrderBookStatus` (:1018, :1130-1137), `recoverStaleSubscription` (:2642), `fetchRecentKlines` (:1807), `disconnect` (:3629). The public surface is `binance-connection.js:1930-1949`.
+
+Build `providers/binance/binance-rest-connection.js` exporting `createBinanceRestConnection(options)` with that surface, selected in `server/app.js:128`:
+
+```js
+const connection = transport === "rest"
+  ? createBinanceRestConnection({ telemetry, fetchImpl, endpoints, pollMs, weightBudget })
+  : createBinanceConnection({ telemetry, webSocketImpl, fetchImpl, endpoints, backpressureMaxQueueDepth });
+```
+
+It reuses unchanged: `binance-config.js`, `binance-subscription-guard.js` (:99-115), `providers/shared/subscription-registry.js`, `binance-event-normalizer.js` (`normalizeBinanceEvent` :671-690, fed raw objects in stream shape so the output is the same frozen envelope :540-552), `binance-feed-health.js`, `binance-kline-backfill.js`; plus `binance-book-assembler.js` with one additive method (section 3) and `binance-http-client.js` with `fetchAggTrades`. It emits envelopes as the WS path does: `patchEnvelopeHealthContext` (`binance-connection.js:1446-1461`) and `feedHealth.recordEvent` before emission (:1356-1358).
+
+Files to touch: new `binance-rest-connection.js`, `binance-rest-trade-pager.js`, `binance-rest-weight-budget.js`; `binance-http-client.js` (`fetchAggTrades`, `baseUrl`; it already returns `headers` :248); `binance-book-assembler.js` (one method); `binance-config.js`, `server/app.js:128`, `config-registry.js`, `09-configuration.md`; `market-data-server.js:845-856` only to carry the health context's `reason` into `healthFrame` (today only `WIRE_VALUE_OUT_OF_RANGE` does, :839-843).
+
+Must not change: `binance-connection.js` beyond the `endpoints` option, `binance-event-normalizer.js`, `binance-feed-health.js`, `binance-backpressure-queue.js`, `server/frames.js`, `provider-router.js`, every `indicators/**`, the web app.
+
+## 2. Configuration (`config-registry.js`, `[TERMINAL_C]`, `.env`)
+
+| Setting | Kind | Default | Meaning |
+|---|---|---|---|
+| `TT_BINANCE_TRANSPORT` | enum `ws`,`rest` | `ws` | absent or `ws` is byte-for-byte today's path |
+| `TT_BINANCE_SPOT_WS_BASE_URL` | wsOrigin | `wss://stream.binance.com` | documented alternative `wss://data-stream.binance.vision:9443` |
+| `TT_BINANCE_SPOT_REST_BASE_URL` | origin | `https://api.binance.com` | documented alternative `https://data-api.binance.vision` |
+| `TT_BINANCE_REST_POLL_MS` | number, integer, min 250 | `1000` | trades and klines cadence |
+| `TT_BINANCE_REST_WEIGHT_BUDGET` | number, integer, 100..6000 | `4000` | REQUEST_WEIGHT the runtime allows itself per minute |
+
+`09-configuration.md` gets the rows plus a paragraph: spot only, perpetual pairs unselectable, container prerequisite `NODE_USE_ENV_PROXY=1` (section 5). `bootProcess` (`platform/process-env.js:48-67`) validates them at start.
+
+## 3. Polling design per family
+
+**Trades (`/api/v3/aggTrades`, weight 4).** The WS path emits one envelope per `@trade` message (`binance-connection.js:76`), normalized from keys `t,p,q,T,m` (`normalizer :21, :42, :318-325`, event time `T` :297), and downstream derives side as `isBuyerMaker ? "sell" : "buy"` (`frames.js:163`, `l2-memory/live-binding.js:52`) and dedupes by `trade_id` (`server/history.js:206-214`). Pager: on subscribe, `GET aggTrades?symbol&limit=1` sets `cursor = a`. Each tick: `GET aggTrades?symbol&fromId=cursor+1&limit=1000`; while a page is full, fetch the next at once (cap 5 pages per tick, then `feedHealth.beginRecovery(TRADE)` and continue next tick, never drop). Aggregate ids are contiguous: a row with `a <= cursor` is dropped as a duplicate; a jump is telemetry `market_data.binance_rest.trade_id_gap`, never filled. Each row becomes raw `{e:"trade", E: receivedAtMs, s, t: a, p, q, T, m, M}` for `normalizeBinanceEvent`: `payload.tradeId` is the aggregate id, `eventTime` the exchange time `T`, emission order `a` ascending.
+
+**Bars (`/api/v3/klines`, weight 1 for limit ≤ 100).** Today 1m bars come from the `@kline_1m` stream, not from trades (`market-data-server.js:119, :1248-1249`; `klineEnvelopeToFrame` `frames.js:168-210`, closed from `k.x`); backfill uses REST rows (`restKlineRowToBarFrame` `frames.js:212-263`). Each tick: `GET klines?symbol&interval=1m&startTime=<previous minute open>&limit=2`. Row 0 is emitted `x:true` once per `openTime`, only after `closeTime < receivedAtMs`; row 1 `x:false` whenever `c,v,n` changed. Raw: `{e:"kline", E: receivedAtMs, s, k:{t,T,s,i:"1m",o,c,h,l,v,n,x,q,V,Q}}`; `f`,`L`,`B` are optional (`normalizer :24, :48-64`). `fetchRecentKlines` delegates to the existing backfill.
+
+**Depth (`/api/v3/depth?limit=1000`, weight 50) as periodic snapshots.** The assembler needs a snapshot and then a bridging diff: `applySnapshotStatus` sets `needsBridgeCheck = true` (`binance-book-assembler.js:352`) and `getStatus` stays `BUFFERING` until a diff with `U <= lastUpdateId+1` arrives (:85-105, :264-288, :381-398). A snapshot-only feed never leaves BUFFERING, so add one explicit method, `applyStandaloneSnapshotStatus(body)`: the same validation (`snapshotDepthBody` :27-43, crossed book :339-344, level cap), then `needsBridgeCheck = false`, `localUpdateId = body.lastUpdateId`, buffer cleared. No synthetic update ids. The transport keeps one real assembler per pair and feeds it every poll, so `getOrderBook` returns a READY book whose `lastUpdateId` is the snapshot's own id (`emitBook` fingerprints on it, `market-data-server.js:963-968`).
+
+For the L2 engine the transport emits one DEPTH envelope per snapshot: `firstUpdateId = lastUpdateId = snapshot.lastUpdateId`, `previousUpdateId: null` (SPOT, `normalizer :364-367`, `assembler :69-71`) and `bids`/`asks` = the observed level changes between the previous and current snapshot, computed only inside the price window both snapshots cover (bids `>= max(oldLowestBid, newLowestBid)`, asks mirrored); a vanished level is reported with quantity `"0"` as Binance does; levels that merely left the 1000-level window are not reported. `live-binding.js:44-47` makes a `book` frame whose `delta` is those changes; `memory-engine.js:201-250` applies it as a diff while `live`, seeds on the first READY book (:131-141), resyncs after a gap (:143-158), and `coverageOf` (:106-114) reads the real edge of the 1000-level book. A failed poll emits nothing; `429/418` or three consecutive failures mark DEPTH recovering, the `gateBookState` equivalent returns `UNAVAILABLE: RECOVERY_IN_PROGRESS` and `live-binding.js:45` sends a `gap` frame, as a WS sequence gap does (`binance-connection.js:1377-1390`). The periodic and shadow refreshes (:65, :867-886, :1580-1641) do not apply.
+
+## 4. Honesty
+
+- `getStatus()` reports `SPOT.public` `CONNECTED` only after a successful `exchangeInfo?symbol=BTCUSDT` probe (weight 20, `fetchExchangeInfo` :303-319), `DISCONNECTED` after three consecutive failures; PERPETUAL routes stay `DISCONNECTED`, so a perpetual `subscribeMany` throws today's "route is connected" error (`binance-connection.js:1004-1016`) and `requestSwitch` parks the selection (`market-data-server.js:3496-3508`).
+- `getFeedHealth()` returns the feed-health context plus `transport: "rest"`, `pollMs`, `lastPollLatencyMs` and `reason`: `REST_POLL` while READY, `REST_RATE_LIMITED`, `REST_POLL_FAILED`, `REST_BACKOFF_<ms>` while degraded. `market-data-server.js:845-856` passes the worst context's `reason` to `healthFrame` (`frames.js:663-694` accepts a reason with READY, limit 256 chars :28); the browser already prints it (`apps/web/src/components/chart/MainPanel.tsx:2436`). The health fingerprint includes it (`market-data-server.js:944`), so every change is broadcast.
+- Staleness keeps today's thresholds (`binance-feed-health.js:7-12`: TRADE 30 s, KLINE 10 s, DEPTH 5 s). A successful empty trade poll is a real observation and records `recordEvent(TRADE)`; a failed poll records nothing, so silence becomes `stale: true` as with a dead stream. No envelope is ever emitted without a row.
+- Backoff: on `RATE_LIMITED` (`binance-http-client.js:231-234` parses `Retry-After`) every family of every pair pauses until the later of `Retry-After` and exponential backoff (1 s base, 30 s cap, 20% jitter, as `binance-connection.js:47-49, :1704-1740`), with `beginRecovery` on all families and telemetry `market_data.binance_rest.backoff`. A `418` (IP ban) waits the full `Retry-After` and sets `DISCONNECTED`.
+- Weight accounting: every response's `x-mbx-used-weight-1m` (already in `result.value.headers`) is authoritative; the budget module also projects per calendar minute: aggTrades 4 per page, klines 1, depth 50 (limit 1000), exchangeInfo 20, kline backfill 5 per 1000-row page. With one pair at `pollMs=1000`: 60·(4+1) + 60·50 = 3300/min ≤ 4000, so depth polls every tick. The scheduler stretches the depth cadence first (to the smallest multiple of `pollMs` that fits), then klines, never trades; two pairs: 600 + 3000 (depth every 2 s) = 3600. If the header reaches the budget, all polling stops until the minute boundary; the hard limit 6000 is never approached (margin ≥ 2000).
+
+## 5. Proxy support
+
+The REST client is Node's built-in `fetch` (`binance-http-client.js:208-211`, `fetchImpl = globalThis.fetch` :253; `binance-connection.js:116`), not `undici` or `https`; `redirect: "error"`, 5 s timeout, 2 MB cap. It ignores `HTTPS_PROXY` unless `NODE_USE_ENV_PROXY=1` (Node ≥ 22.21; the repo pins 24.21.0, `package.json:6-7`). CA: Node reads `NODE_EXTRA_CA_CERTS`, which this container sets beside `SSL_CERT_FILE` (Node ignores the latter). No code change: document both in `09-configuration.md` and `03-server-runbook.md`; on the owner's machine neither is set and nothing changes. `ws` never honoured a proxy.
+
+## 6. Tests (jest, `apps/runtime/test/providers/binance/`)
+
+Fixture: `test/fixtures/binance-rest/fake-binance-server.js`, a `node:http` server on `127.0.0.1:0` (precedent `test/fixtures/offline-serving-process.js`) serving scripted `aggTrades`, `klines`, `depth`, `exchangeInfo` bodies with `x-mbx-used-weight-1m`, status overrides (`429` plus `Retry-After`, `418`, `500`) and a request log; the connection gets `endpoints.spotRestBaseUrl = http://127.0.0.1:<port>`. Unit tests use `jest.fn` fetch fakes as in `binance-connection.test.js:1608-1628`.
+
+- `binance-rest-trade-pager.test.js`: 2500 trades over three pages arrive once, in order, no id missing; overlapping pages drop duplicates by id; a jump logs telemetry and fabricates nothing; the 5-page cap marks TRADE recovering.
+- `binance-rest-weight-budget.test.js`: per-family ledger, depth cadence stretching, hard stop at the header, minute-boundary reset (fake clock).
+- `binance-rest-connection.test.js`: `getStatus` lifecycle; backoff on 429/418 honouring `Retry-After`; failed polls emit nothing and turn `stale`; health context carries `transport`, `reason`, latency; perpetual subscribe throws; `quiesce` drains in-flight polls.
+- `binance-book-assembler.test.js`: `applyStandaloneSnapshotStatus` reaches READY with the snapshot's `lastUpdateId`, rejects malformed and crossed books; the real assembler plus `live-binding.binanceDepthFrame` feed `memory-engine` (seed, diffs, gap, resync; `stats.resyncs` counts one per gap, not per poll).
+- `binance-rest-shape-parity.test.js`: a recorded fixture of WS `trade`/`kline`/`depthUpdate` messages and the equivalent REST rows for the same instant; per family the normalized envelopes have identical key sets and types, identical `provider`, `venue`, `marketKind`, `eventType`, `timingClass`, and identical `price`, `quantity`, `isBuyerMaker`, `eventTime` per print; the documented differences (`tradeId` space, kline `eventTime` = poll time, depth `firstUpdateId === lastUpdateId`) are asserted.
+- `test/server/app.test.js:210-230`: with `TT_BINANCE_TRANSPORT=rest` `createApp` constructs no WebSocket; absent, `createBinanceConnection` is used.
+- `test/platform/config-registry.test.js` covers the new entries automatically (:46-60).
+
+## 7. Acceptance criteria
+
+1. In this container, `TT_BINANCE_TRANSPORT=rest TT_BINANCE_SPOT_REST_BASE_URL=https://data-api.binance.vision NODE_USE_ENV_PROXY=1 node apps/runtime/scripts/serve/run-ws-server.js 8001 BTCUSDT` reaches `CONNECTED`, and the web app shows BTC spot trades with side, a forming and a closing 1m bar, a READY book, and a health line carrying `REST_POLL`.
+2. `x-mbx-used-weight-1m` observed over ten minutes stays ≤ 4000.
+3. `npm test` in `apps/runtime` passes in full; `npm run docs:check` passes.
+4. With the setting absent the WS path is untouched: `binance-connection.test.js` (3805 lines) passes unmodified apart from the added URL-override case, and `app.test.js:226` still finds the `stream.binance.com/stream` socket.
+
+## 8. Risks and what is not supported
+
+- Not supported: perpetuals (no mirror; routes stay DISCONNECTED); sub-second latency (trades arrive up to `pollMs` plus round trip late; the engine's late-trade rule, `memory-engine.js:83-94`, keeps order); order-book diffs (a 1000-level snapshot at most once per tick; iceberg and exhaustion engines see coarser deltas, to be documented as degraded on REST); bookTicker; switching transport at runtime (aggregate and raw trade ids differ).
+- Risks: endpoint weights may change (the header is authoritative, the ledger a projection); the mirror's lag behind the primary is undocumented (measure `T` versus `receivedAt` in the acceptance run); a 1000-level book is shallower than the 5000-level WS snapshot, so lane-0 heatmap coverage (±5%) may be partial on volatile days, with `coverageOf` marking the real edge.
+
+## Summary
+
+1. First step: `TT_BINANCE_SPOT_WS_BASE_URL` override (config.js:4,121-146; connection.js:291-322) with registry entry, doc row and one URL test; helps a VPS, not this container.
+2. The REST source is a second connection factory with the surface of `binance-connection.js:1930-1949`, chosen in `app.js:128`.
+3. Normalizer, feed health, frames, L2 engine, router and web app stay unchanged; raw objects are built in stream shape, so envelopes are canonical.
+4. Trades: aggTrades `fromId` paging, dedupe by id, side from `isBuyerMaker`, order preserved, gaps reported not filled.
+5. Bars: klines `limit=2`, previous bar emitted closed once, forming bar on change; matches today's kline-stream path.
+6. Depth: 1000-level snapshots into the real assembler via one additive method; L2 gets observed level changes with `U === u === lastUpdateId`, gap and resync frames as today.
+7. Health reason `REST_POLL`/`REST_RATE_LIMITED`/`REST_POLL_FAILED` reaches the browser; empty polls are observations, failed polls are silence.
+8. Weight ledger plus the exchange header, budget 4000/min by default, depth cadence stretched first, hard stop until the minute turns.
+9. Proxy and CA need only `NODE_USE_ENV_PROXY=1`; nothing changes on the owner's machine.
+10. Effort: step one half a day; REST source about five engineer-days (one specialist run plus two fix rounds), tests included, with the acceptance run in this container.
+
+## PM amendments after Codex plan round 1 (2026-10-26)
+
+This is a transport brief, not an indicator brief; the plan gate's first
+criterion (a trading question) does not apply and is noted as such. The
+scope is staged, and stage 3 is NOT part of this build:
+
+**Stage A, build first:** the endpoint overrides `TT_BINANCE_SPOT_WS_BASE_URL`
+and `TT_BINANCE_SPOT_REST_BASE_URL` exactly as section 0 specifies (config
+registry, documentation rows, one URL test). Perpetual constants untouched.
+
+**Stage B, this build:** `TT_BINANCE_TRANSPORT=rest` serving SPOT candles and
+trades only. The book is reported `status: "UNAVAILABLE"` with reason
+`REST_NO_DEPTH`, so every depth indicator shows its own unavailable state and
+the L2 engine is never fed sampled snapshots as if they were a stream.
+Requirements Codex added, all accepted:
+- Bars: a per-pair bar cursor by open time; after any outage longer than one
+  minute, catch up by fetching klines from the last confirmed close forward
+  (bounded pages) before resuming the two-row poll; classify EVERY row by its
+  open time and close time against the exchange `serverTime`, never by row
+  position or local clock; a revision replaces the same bar, finalisation
+  happens once, and a response from an older poll never overwrites a newer
+  revision.
+- Trades: aggregate trades are labelled as such everywhere (`trade_id` from
+  the aggregate id; health reason and documentation say "aggregate trades:
+  fills from one taker order at one price are combined"). Parity against the
+  WebSocket path is measured on summed sided volume over aligned complete
+  minutes, never per print. A detected id gap marks the affected window
+  incomplete (the tape must not read as LIVE_COMPLETE for it) until paging
+  has caught up, and the server's aggressive-prints pool is only extended
+  with complete ranges.
+- Per-pair serialisation: one in-flight request per family per pair,
+  cancellation on unsubscribe, responses from an obsolete subscription
+  rejected.
+- HTTP client: preserve status code and response headers for 429 and 418
+  (Retry-After, x-mbx-used-weight-1m) instead of collapsing both to
+  RATE_LIMITED; back off per Retry-After; 418 stops polling for the ban
+  window.
+- Weight: reserve the projected weight before dispatch (klines weight 2,
+  aggTrades weight 4 per page, exchangeInfo probes, catch-up pages); default
+  budget 4000 per minute, maximum setting 5000 so the 1000 margin always
+  holds; if mandatory trade polling alone would exceed the budget, lengthen
+  the trade cadence and say so in the health reason; never exceed the budget
+  to keep a cadence.
+- Health: the trader-facing reason is `Polled spot data · aggregate trades ·
+  no order book`, with the degraded variants `rate limited`, `poll failed`,
+  `catching up`; documentation names every unavailable analytic.
+- Tests add: a multi-minute outage with catch-up, clock skew (machine ahead
+  of exchange), a genuine multi-fill aggregate, a paging backlog, unsubscribe
+  during an in-flight request, 429 then 418, budget reservation under
+  concurrency.
+- Acceptance: a connected-WebSocket run on a machine that has one is the
+  semantic baseline (completed candles equal, aligned sided volume equal
+  within rounding); the blocked-WebSocket run in this container is the
+  availability test (chart, candles, trades, health reason visible).
+
+**Stage C, deferred to its own brief:** depth from REST snapshots, only with
+explicit coverage reconciliation in the L2 engine (`coverageOf` on every
+snapshot, gap frames on every failed poll) and an honest statement that
+replenishment and cancellation between snapshots are unobservable.
+warning: Codex could not find bubblewrap on PATH. Install bubblewrap with your OS package manager. See the sandbox prerequisites: https://developers.openai.com/codex/concepts/sandboxing#prerequisites. Codex will use the bundled bubblewrap in the meantime.
+codex
+I’ll read the SDK contract and data rules, then review the amended Stage A/B scope and its remaining gaps.
+exec
+/bin/bash -lc 'cat apps/web/src/lib/chart/indicatorTypes.ts docs/architecture/indicators/data-for-indicator-authors.md' in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+import type { ReactNode } from "react";
+import type { BarFrame, FrameIdentity, TradeFrame } from "../../types/frames";
+import type { IndicatorLiquidity } from "./indicatorLiquidity";
+import type { IndicatorL2 } from "./indicatorL2";
+import type { BandHistoryWant, IndicatorBandHistory } from "./bandHistory";
+import type { IndicatorTicks } from "./indicatorTicks";
+import type { FillOptions } from "./draw/fill";
+import type { PlotCharOptions, PlotShapeOptions } from "./draw/markers";
+
+export type IndicatorCategory =
+  | "technical"
+  | "l1"
+  | "l2"
+  | "session"
+  | "community";
+
+export type TaNamespace = Record<string, never>;
+
+export interface DrawNamespace {
+  /**
+   * Fills the region between two values, bar by bar. `key` names the band, so
+   * one indicator can fill more than one region at once -- an inner band and
+   * the ring around it, say -- each keeping its own colour and its own point
+   * per bar. Omit it for a single fill; `DEFAULT_FILL_KEY` is used.
+   */
+  fill(
+    valueA: number | null,
+    valueB: number | null,
+    options?: FillOptions,
+    key?: string,
+  ): void;
+}
+
+export interface MarkersNamespace {
+  plotshape(options: PlotShapeOptions): void;
+  plotchar(options: PlotCharOptions): void;
+}
+
+export interface PaneNamespace {
+  paneIndex: number;
+}
+
+/**
+ * Provenance for the print array supplied to an indicator. An empty complete
+ * live range is materially different from a historical range we do not have
+ * or a bounded live range that overflowed before correlation.
+ */
+export type TradeAvailability =
+  | "LIVE_COMPLETE"
+  | "LIVE_PARTIAL"
+  | "HISTORICAL_UNAVAILABLE";
+
+export interface IndicatorBarCtx<S, T> {
+  bar: BarFrame;
+  /**
+   * The individual trades observed during this displayed chart bar. Only
+   * populated for a live bar going forward from activation -- every bar
+   * touched by a full replay (warm-start, REBUILT, a recompute-tagged
+   * settings change) gets an empty array here, honestly, since no
+   * historical trade-by-range query exists yet. Read tradeAvailability
+   * before interpreting an empty array as a genuine no-print bar.
+   */
+  trades: readonly TradeFrame[];
+  /**
+   * Indicators which derive signals from individual prints must not treat
+   * LIVE_PARTIAL or HISTORICAL_UNAVAILABLE as an observed zero-trade bar.
+   */
+  tradeAvailability?: TradeAvailability;
+  liquidity?: IndicatorLiquidity;
+  l2?: IndicatorL2;
+  bandHistory?: IndicatorBandHistory;
+  /** The terminal's L1 print store, when one exists for the selected pair. */
+  ticks?: IndicatorTicks;
+  state: S;
+  settings: T;
+  replace: boolean;
+  replaying: boolean;
+  drawNow?: boolean;
+  /**
+   * Where this bar sits in the series being fed to the indicator, 0-based, and
+   * how many bars that series holds. During a replay the series is the bars the
+   * replay iterates (all of them, or the `maxReplayBars` slice); for a live bar
+   * it is the chart's own bars, so the last one is `barCount - 1`.
+   *
+   * This is what lets an anchored indicator place itself a fixed number of bars
+   * back from the newest one, and it only describes the series -- it says
+   * nothing about whether the store can price the bar. The runtime always sets
+   * both; they are optional so a hand-written context in a test can leave them
+   * out, and an indicator that reads them should treat their absence as "position
+   * unknown" rather than as bar zero.
+   */
+  barIndex?: number;
+  barCount?: number;
+  ta: TaNamespace;
+  draw: DrawNamespace;
+  markers: MarkersNamespace;
+  pane: PaneNamespace;
+}
+
+export interface LineOutputSpec<S, T = unknown> {
+  key: string;
+  color?: (state: S, settings: T) => string;
+  recolor?: (currentColor: string | undefined, settings: T) => string;
+  lineWidth?: number;
+}
+
+export type PlacementSpec =
+  | { kind: "overlay" }
+  | {
+      kind: "ownPane";
+      priceLines?: readonly number[];
+      autoscaleRange?: { min: number; max: number };
+    }
+  | { kind: "sharedPane"; withIndicatorId: string };
+
+/**
+ * NOT IMPLEMENTED (found during TA.05's audit). Declaring this on a
+ * RuntimeIndicatorDef throws at registration -- createIndicatorRuntime()
+ * rejects it rather than silently ignoring it. `attachToLineKey` was meant
+ * to reference another indicator's `lines[].key`, but the one real case
+ * that motivated this (Delta Divergence attaching to Order Flow's CVD
+ * line) can't be expressed that way: Order Flow's CVD line is hand-built
+ * directly in ChartPanel.tsx (lines: [] on its own def), not produced
+ * through the generic `lines` output this field assumes. Building this for
+ * real needs a redesign validated against a second real use case, not
+ * guessed from one that doesn't even fit the current shape.
+ *
+ * Need to attach a primitive onto another specific indicator's own
+ * (possibly bespoke) series today? There is no self-serve path yet --
+ * hand-wire the attach/detach lifecycle directly in ChartPanel.tsx, the
+ * way deltaDivergenceIndicator.tsx's own real Order Flow attachment does,
+ * or ask whoever owns the chart pipeline. Every other placement need
+ * (own pane, overlay, or sharing a pane with an SDK indicator via
+ * `PlacementSpec`'s `sharedPane`) is fully self-serve already.
+ */
+export interface CrossAttachmentSpec {
+  attachToIndicatorId: string;
+  attachToLineKey: string;
+  createPrimitive: () => unknown;
+}
+
+interface SettingsFieldBase<T> {
+  visibleIf?: (settings: T) => boolean;
+  /**
+   * Where the generic dialog puts the field. `inputs` (the default) and
+   * `visibility` are the two tabs. `advanced` is an input too, but rendered
+   * under a collapsed "Advanced" group at the end of the Inputs tab: the
+   * trader sees at most the few primary controls first and opens the rest
+   * on purpose. Presets, reset and persistence treat it like any input.
+   */
+  tab?: "inputs" | "visibility" | "advanced";
+}
+
+export type SettingsFieldSchema<T> =
+  | (SettingsFieldBase<T> & {
+      kind: "boolean";
+      key: keyof T;
+      label: string;
+      affects: "recompute" | "cosmetic" | "liveOnly";
+    })
+  | (SettingsFieldBase<T> & {
+      kind: "checkboxList";
+      key: keyof T;
+      label: string;
+      options: readonly { value: unknown; label: string }[];
+      affects: "recompute" | "cosmetic" | "liveOnly";
+    })
+  | (SettingsFieldBase<T> & {
+      kind: "radioGroup";
+      key: keyof T;
+      label: string;
+      options: readonly { value: unknown; label: string; hint?: string }[];
+      affects: "recompute" | "cosmetic" | "liveOnly";
+    })
+  | (SettingsFieldBase<T> & {
+      kind: "select";
+      key: keyof T;
+      label: string;
+      options: readonly { value: unknown; label: string }[];
+      affects: "recompute" | "cosmetic" | "liveOnly";
+    })
+  | (SettingsFieldBase<T> & {
+      kind: "numeric";
+      key: keyof T;
+      label: string;
+      min: number;
+      max: number;
+      step: number;
+      /**
+       * A saved value outside [min, max] is brought to the nearest bound instead
+       * of falling back to the default -- for fields whose bounds have tightened,
+       * so a trader's setting keeps its side of the range.
+       */
+      clampOnRestore?: boolean;
+      affects: "recompute" | "cosmetic" | "liveOnly";
+    })
+  | (SettingsFieldBase<T> & {
+      kind: "color";
+      key: keyof T;
+      label: string;
+      affects: "recompute" | "cosmetic" | "liveOnly";
+    })
+  | (SettingsFieldBase<T> & {
+      kind: "slider";
+      key: keyof T;
+      label: string;
+      min: number;
+      max: number;
+      step: number;
+      /**
+       * A saved value outside [min, max] is brought to the nearest bound instead
+       * of falling back to the default -- for fields whose bounds have tightened,
+       * so a trader's setting keeps its side of the range.
+       */
+      clampOnRestore?: boolean;
+      affects: "recompute" | "cosmetic" | "liveOnly";
+    })
+  | (SettingsFieldBase<T> & {
+      kind: "staticHint";
+      text: string;
+    })
+  | (SettingsFieldBase<T> & {
+      kind: "custom";
+      /**
+       * Optional: when a custom field only ever writes one settings key,
+       * naming it here lets the runtime scope its recompute-change
+       * detection to that key instead of the whole settings object --
+       * otherwise an unrelated sibling field's change (e.g. a cosmetic
+       * toggle) is indistinguishable from this field's own and forces an
+       * unwanted full replay too. Omit only if the field genuinely writes
+       * more than one key.
+       */
+      key?: keyof T;
+      render: (settings: T, onChange: (next: T) => void) => ReactNode;
+      isValidPersistedValue?: (value: unknown) => boolean;
+      byInstrument?: boolean;
+      affects: "recompute" | "cosmetic" | "liveOnly";
+    });
+
+interface IndicatorMeta {
+  id: string;
+  label: string;
+  category: IndicatorCategory;
+}
+
+export interface RuntimeIndicatorDef<S, T> extends IndicatorMeta {
+  kind: "runtime";
+  createState(settings: T): S;
+  onBar(ctx: IndicatorBarCtx<S, T>): void;
+  readOutput(state: S): Record<string, number | null>;
+  getHoverData?: (state: S, settings: T) => unknown;
+  lines: readonly LineOutputSpec<S, T>[];
+  defaultSettings: T;
+  settingsSchema?: readonly SettingsFieldSchema<T>[];
+  persistenceSchema?: readonly SettingsFieldSchema<T>[];
+  settingsFieldsFor?: (identity: { symbol: string } & FrameIdentity) => Partial<Record<keyof T, SettingsFieldSchema<T>>>;
+  placement: PlacementSpec;
+  /** Limit historical bars processed when this indicator is activated or recomputed. */
+  maxReplayBars?: number;
+  crossAttachments?: readonly CrossAttachmentSpec[];
+  timeframeGate?: (intervalMs: number) => boolean;
+  bandHistoryWanted?: (state: S) => readonly BandHistoryWant[];
+  /**
+   * Set when the indicator reads `ctx.ticks`. The runtime replays only the
+   * indicators that declare it when the print store is handed over, since a
+   * print store arrives once per pair and a replay is what backfills the bars
+   * drawn before it did.
+   */
+  ticksWanted?: boolean;
+}
+
+export interface LegacyIndicatorDef extends IndicatorMeta {
+  kind: "legacy";
+}
+
+export type IndicatorDef = RuntimeIndicatorDef<any, any> | LegacyIndicatorDef;
+# Data for indicator authors
+
+[Handbook](../../README.md) · [Indicator index](README.md) ·
+[Onboarding](../../operations/00-developer-onboarding.md) ·
+[Indicator SDK](../indicator-sdk/TA.01-indicator-authoring-core-evidence.md)
+
+An indicator never opens SQLite, S3 or a provider connection itself. It reads
+what the runtime and the archive deliver through a small number of supported
+boundaries. This page names those boundaries, says what each one carries for
+each instrument, and lists the rules every indicator has to follow. The code
+named here is the authority; when this page and the code disagree, the code
+wins and this page is the defect.
+
+## Three sources of data
+
+| Source | How it reaches an indicator | You need | When it is missing |
+|---|---|---|---|
+| **Live ticks** | Terminal C holds the provider session and sends canonical frames (`bar`, `trade`, `book`, `health`, profiles, VPIN readings) over the local `/ws` WebSocket | Binance: nothing. dxFeed: layer 2 (Tailscale broker) | dxFeed instruments show *History only*: with layer 1 their recorded host history still loads, without new ticks |
+| **Warm-up** | Before live ticks arrive, the runtime reads recent history through its storage reader: candles, large trades, aggressive prints, volume profile, VPIN calibration | Layer 1 (WireGuard + bearer); otherwise only a local collector's SQLite | The indicator starts from live ticks only and reports itself not ready |
+| **Archive** | Historical Mode reads candles through `/archive/query` and asks the host for four studies through `/archive/study` | Layer 1 | Historical Mode shows *Historical Mode needs host data access* |
+
+The three layers are explained in [onboarding](../../operations/00-developer-onboarding.md);
+`npm run doctor` reports which ones a machine has.
+
+Warm-up and live ticks meet in the runtime; the archive is a separate path used
+only by Historical Mode. A successful warm-up does not prove an archive
+partition exists, and an archive answer says nothing about the live collector
+today.
+
+Live Mode also has a bounded `band_history` request for a historical price band.
+The laptop sends the instrument, price range and time window through Terminal C;
+the host replays its recorded raw depth and returns resting size and traded
+flow per row. Institutional Order Blocks v1 reads a block the visible live
+history did not cover from the host's stored heatmap columns first
+(`/heatmap/columns`, cut to the block's rows in the browser) and uses
+`band_history` only when the host has no stored columns for the pair or that
+read fails. Session Levels reads a touched level's five minutes and a range's
+totals from the same stored columns, with no raw-replay fallback. A missing book interval remains a gap, never a
+zero-liquidity observation. Each host read is capped at two hours, 256 rows and
+100,000 row/column cells; the client pieces longer requests. This is an
+on-demand derivation, **not a stored canonical L2 row dataset**, and it does
+not make order-book indicators available in the separate Historical Mode
+archive. See the [wire contract](../../contracts/ws-frame-contract/v1/ws-frame-contract-v1.md)
+and `apps/runtime/src/server/band-history.js` for the exact boundary.
+
+## What each instrument has
+
+| Instrument | Live ticks | Warm-up from the host | Historical candles | Historical studies |
+|---|---|---|---|---|
+| BTC, ETH spot and perpetual (Binance) | always | yes | 1m, 1h, 1d, each with taker buy volume | none yet |
+| ES, NQ (continuous futures) | with layer 2 | yes, what the weekday collector captured | 1m, 1h, 1d | profile, VPIN, large prints, bar flow |
+| AAPL, TSLA (equities) | with layer 2 | yes, what the weekday collector captured | 1m, 1h, 1d | profile, VPIN, large prints, bar flow |
+| NVDA (equity) | with layer 2 | yes, what the weekday collector captured | not archived | none |
+
+**Equity candles are regular session only**, live and historical alike:
+09:30–16:00 New York time, with the exchange's holidays and early closes from
+[`config/market-calendar.json`](../../../config/market-calendar.json). Hourly
+bars start at 09:30, the last one ends at the bell, and a daily bar is that
+session. Pre-market and after-hours prints are not in equity candles. Futures
+and crypto candles are UTC-aligned and cover every traded minute.
+
+Other timeframes are resampled in the browser from those rungs. The governed
+instrument list, exact provider symbols and tick sizes live in
+[`config/market-instruments.json`](../../../config/market-instruments.json);
+the archive's list lives in `apps/web/src/lib/archive/historicalCatalog.ts`.
+
+The four studies are computed on the host from trade-derived families, so the
+browser never pages minute rows. Their request, limits and refusals are in the
+[archive study contract](../../contracts/archive-study/v1/archive-study-v1.md).
+In short: a profile per requested range, VPIN over whole UTC weeks (at most 26),
+and large prints and bar flow over one bar-aligned range of at most 5,000 bars.
+
+## Which indicators work in Historical Mode
+
+`HISTORICAL_INDICATOR_POLICIES` in `apps/web/src/lib/chart/indicatorRegistry.ts`
+decides this, per indicator, from the capabilities the selected archive
+provides. There are three policies:
+
+| Policy | Needs | Works on |
+|---|---|---|
+| Candles | `ohlcv` | every archived instrument |
+| Candle flow | `ohlcv` + `buy_volume` | Binance (candles carry taker buy volume) and ES/NQ/AAPL/TSLA (the `bar_flow` study supplies both sides) |
+| Trade families | `ohlcv` + `trade_families` | ES/NQ/AAPL/TSLA |
+
+An indicator can also be marked unavailable with a reason, as order-book and
+every-trade indicators are: the archive has no historical depth and keeps only
+the largest prints of each minute.
+
+## Rules every indicator follows
+
+**Read buy and sell through `barSides`.** Never compute sell volume as
+`volume - buy_volume`. `apps/web/src/lib/indicators/barSides.ts` returns
+`{known, buy, sell, unknown, delta, sided}` for a bar. It uses an explicit
+`sell_volume` when the bar has one, and falls back to `volume - buy_volume`
+only for bars that carry just a buy side. That fallback is exact for Binance,
+where every trade has a taker side. It is not exact for equities.
+
+**Unsided volume is real and large for equities.** A Databento equity trade
+often has no aggressor side. Measured on the host (Report 54): ES and NQ are
+effectively fully sided, but AAPL is about 40% unsided on one-minute bars and
+65–75% on hourly and daily bars; TSLA is 35–55%. Historical bars carry that
+volume separately as `unknown`, and `unsidedShare(bars)` gives the share to
+show beside an equity delta. Counting it as selling would make every equity
+delta read bearish by that amount.
+
+Live dxFeed bars built from the tape carry buy and sell only when every trade in
+that minute had a side. A minute with any unsided trade carries neither, so
+`barSides` reports it unknown and it draws no delta, which is common for
+equities. Stored native dxFeed candles carry both sides explicitly (volume at
+the ask and at the bid), with any remainder unknown.
+
+**`missing` is not `empty`.** A study reports ranges it could not read as
+`missing`; draw them as unavailable, never as zero. It reports ranges it read
+and found no trades in (a weekend, an overnight hour for an equity) as `empty`,
+and those legitimately have nothing to draw. A bar with no trades is absent
+from `bar_flow`; draw no delta for it, not a zero delta.
+
+**Gate on capabilities, not on provider names.** Declare what the indicator
+needs through its `HISTORICAL_INDICATOR_POLICIES` entry. Do not branch on
+`provider === "BINANCE"`. The map is typed over every indicator id, so a new
+indicator does not compile until it has a policy.
+
+**Warm-up failure is not an empty signal.** When the storage reader cannot
+reach the host it reports the read as unavailable. Show the indicator as
+warming up or degraded, never as a flat or zero reading.
+
+**Quantities are provider units.** Futures sizes are contracts, equity sizes
+are shares, Binance sizes are the base asset. Do not add them across providers
+or convert them to a notional the provider did not report.
+
+**Need a new trade-derived aggregate?** Do not fetch minute rows into the
+browser. A new study is a change to the archive study contract and the host,
+and goes through the owner.
+
+## Adding an indicator that works in both modes
+
+1. Create `apps/web/src/lib/indicators/<name>/`. The folder owns the whole
+   indicator: computation, geometry, primitive and settings. Follow the
+   [SDK execution model](../indicator-sdk/TA.01-indicator-authoring-core-evidence.md).
+   Its settings dialog gets [setting presets](setting-presets.md): a
+   `settingsSchema` is enough for the generic dialog, and a hand-built one
+   declares a preset schema for every setting it stores.
+   Keep at most three primary controls on the Inputs tab and give every other
+   input `tab: "advanced"`, which the generic dialog renders as a collapsed
+   Advanced group.
+2. Register it in `INDICATOR_REGISTRY` and give it a
+   `HISTORICAL_INDICATOR_POLICIES` entry that names what it needs.
+3. Read sides through `barSides`. For example, a cumulative delta that leaves
+   bars without a known side undrawn:
+
+   ```ts
+   import type { BarFrame } from "../../../types/frames";
+   import { barSides } from "../barSides";
+
+   export function cumulativeDelta(bars: readonly BarFrame[]): (number | null)[] {
+     let total = 0;
+     return bars.map((bar) => {
+       const sides = barSides(bar);
+       if (!sides.known) return null;
+       total += sides.delta;
+       return total;
+     });
+   }
+   ```
+
+4. Check it in Live Mode on Binance (every machine can), then in Historical
+   Mode on BTC and on one futures and one equity instrument (layer 1). On AAPL,
+   confirm the unsided share is shown and the delta is not skewed.
+5. Add tests for the computation, lifecycle, capability gating and rendering,
+   as listed under *Adding or changing an indicator* in the
+   [indicator index](README.md).
+
+## Where the code is
+
+| Concern | File |
+|---|---|
+| Indicator registration and Historical Mode policy | `apps/web/src/lib/chart/indicatorRegistry.ts` |
+| Buy/sell sides of a bar | `apps/web/src/lib/indicators/barSides.ts` |
+| Archive instruments and candle rungs | `apps/web/src/lib/archive/historicalCatalog.ts` |
+| Study requests and validation | `apps/web/src/lib/archive/archiveStudyClient.ts` |
+| When studies are asked for, and how results reach the chart | `apps/web/src/lib/archive/useArchiveStudies.ts` |
+| Wire frames the browser accepts | `apps/web/src/types/frames.ts` and the [WebSocket frame contract](../../contracts/ws-frame-contract/v1/ws-frame-contract-v1.md) |
+| Warm-up source selection (local or host) | [Storage architecture](../storage/README.md) |
+
+exec
+/bin/bash -lc "rg --files -g AGENTS.md -g '*feed-health*' -g '*history*' -g '*aggressive*' apps/runtime | head -50" in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+apps/runtime/scripts/serve/run-iceberg-history.js
+apps/runtime/test/providers/binance/binance-feed-health.test.js
+apps/runtime/test/storage/dxfeed/dxfeed-storage-reader-aggressive-prints.test.js
+apps/runtime/test/storage/storage-reader-aggressive-prints.test.js
+apps/runtime/test/indicators/passive_liquidity/liquidity-history.test.js
+apps/runtime/test/indicators/passive_liquidity/aggressive-orders-tracker.test.js
+apps/runtime/test/indicators/l2-memory/size-history.test.js
+apps/runtime/test/indicators/l2-memory/history/wall-history-store.test.js
+apps/runtime/test/scripts/serve/run-iceberg-history.test.js
+apps/runtime/test/indicators/l2-memory/history/event-history.test.js
+apps/runtime/test/indicators/l2-memory/history/wall-history.test.js
+apps/runtime/test/indicators/initiative/initiative-history.test.js
+apps/runtime/test/server/band-history-handler.test.js
+apps/runtime/test/indicators/iceberg/iceberg-history.test.js
+apps/runtime/test/indicators/iceberg/iceberg-history-chain.test.js
+apps/runtime/test/indicators/iceberg/iceberg-history-capacity.test.js
+apps/runtime/test/server/aggressive-pool.test.js
+apps/runtime/test/indicators/volume-profile/volume-profile-history-job.test.js
+apps/runtime/test/server/aggressive-history-real-worker.test.js
+apps/runtime/test/indicators/volume-profile/volume-profile-history.test.js
+apps/runtime/test/indicators/exhaustion/exhaustion-history.test.js
+apps/runtime/test/server/history-request-handler.test.js
+apps/runtime/test/server/history.test.js
+apps/runtime/test/server/band-history.test.js
+apps/runtime/test/server/aggressive-history.test.js
+apps/runtime/src/providers/binance/binance-feed-health.js
+apps/runtime/src/indicators/passive_liquidity/liquidity-history.js
+apps/runtime/src/indicators/passive_liquidity/aggressive-orders-tracker.js
+apps/runtime/src/indicators/l2-memory/history/wall-history-store.js
+apps/runtime/src/indicators/l2-memory/history/wall-history.js
+apps/runtime/src/indicators/l2-memory/history/event-history.js
+apps/runtime/src/indicators/l2-memory/size-history.js
+apps/runtime/src/server/history.js
+apps/runtime/src/server/history-frames.js
+apps/runtime/src/server/aggressive-history.js
+apps/runtime/src/server/history-parameters.js
+apps/runtime/src/server/history-request-handler.js
+apps/runtime/src/server/aggressive-pool.js
+apps/runtime/src/server/band-history.js
+apps/runtime/src/server/band-history-handler.js
+apps/runtime/src/indicators/exhaustion/exhaustion-history.js
+apps/runtime/src/indicators/initiative/initiative-history.js
+apps/runtime/src/indicators/iceberg/iceberg-history.js
+apps/runtime/src/indicators/volume-profile/volume-profile-history-worker.js
+apps/runtime/src/indicators/volume-profile/volume-profile-history-job.js
+apps/runtime/src/indicators/volume-profile/volume-profile-history.js
+
+exec
+/bin/bash -lc "pwd; rg --files -g AGENTS.md -g '"'!node_modules'"' -g '"'!vendor'"' . /home/user 2>/dev/null | head -30; rg -n 'LIVE_COMPLETE|tradeAvailability' apps/web/src/lib/chart | head -45; rg -n 'healthFrame|reason|aggressivePool|aggressive.*pool' apps/runtime/src/server/market-data-server.js | head -50" in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 190ms:
+/home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+apps/web/src/lib/chart/validation/liveDrive.ts:110:      runtime.onBar(arrival.bar, mutation, bars, arrival.trades, arrival.tradeAvailability);
+apps/web/src/lib/chart/validation/perfProbe.ts:132: * (LIVE_COMPLETE) and in the tick store.
+apps/web/src/lib/chart/validation/perfProbe.ts:193:    session.dispatch({ bar, trades: prints.slice(0, printIndex), tradeAvailability: "LIVE_COMPLETE" });
+apps/web/src/lib/chart/validation/perfProbe.ts:355:          tradeAvailability: "HISTORICAL_UNAVAILABLE",
+apps/web/src/lib/chart/indicatorTypes.ts:49:  | "LIVE_COMPLETE"
+apps/web/src/lib/chart/indicatorTypes.ts:60:   * historical trade-by-range query exists yet. Read tradeAvailability
+apps/web/src/lib/chart/indicatorTypes.ts:68:  tradeAvailability?: TradeAvailability;
+apps/web/src/lib/chart/indicatorRuntime.ts:77:    tradeAvailability?: TradeAvailability,
+apps/web/src/lib/chart/indicatorRuntime.ts:146:  tradeAvailability: TradeAvailability = "HISTORICAL_UNAVAILABLE",
+apps/web/src/lib/chart/indicatorRuntime.ts:154:    tradeAvailability,
+apps/web/src/lib/chart/indicatorRuntime.ts:659:    tradeAvailability: TradeAvailability = "HISTORICAL_UNAVAILABLE",
+apps/web/src/lib/chart/indicatorRuntime.ts:672:            makeCtx(record, bar, false, false, true, bars.length - 1, bars.length, tradesForBar, tradeAvailability),
+apps/web/src/lib/chart/indicatorRuntime.ts:689:          makeCtx(record, bar, true, false, true, bars.length - 1, bars.length, tradesForBar, tradeAvailability),
+apps/web/src/lib/chart/validation/tests/syntheticTape.test.ts:45:      tradeAvailability: "LIVE_COMPLETE",
+apps/web/src/lib/chart/validation/tests/syntheticTape.test.ts:50:    const whaleRun = driveLive(largeTradeBubblesIndicator, [...warmupArrivals, { bar: pair.candle, trades: pair.whale, tradeAvailability: "LIVE_COMPLETE" }], settings);
+apps/web/src/lib/chart/validation/tests/syntheticTape.test.ts:51:    const crowdRun = driveLive(largeTradeBubblesIndicator, [...warmupArrivals, { bar: pair.candle, trades: pair.crowd, tradeAvailability: "LIVE_COMPLETE" }], settings);
+apps/web/src/lib/chart/validation/tests/markerBudget.test.ts:42:          return { trades: all.slice(0, Math.ceil((all.length * (revision + 1)) / revisions)), tradeAvailability: "LIVE_COMPLETE" };
+apps/web/src/lib/chart/validation/tests/liveEquivalence.test.ts:90:        return { trades: all.slice(0, Math.ceil((all.length * (revision + 1)) / revisions)), tradeAvailability: "LIVE_COMPLETE" };
+apps/web/src/lib/chart/replayBars.ts:30:        tradeAvailability: "HISTORICAL_UNAVAILABLE",
+apps/web/src/lib/chart/validation/fixtures.ts:412:  tradeAvailability?: TradeAvailability;
+apps/web/src/lib/chart/validation/fixtures.ts:475:  tradesFor?: (bar: BarFrame, revision: number, revisions: number) => Pick<Arrival, "trades" | "tradeAvailability">,
+22:  healthFrame,
+67:} = require("./aggressive-pool");
+238:  aggressivePoolWarmup = true,
+239:  aggressivePoolWindowMs = null,
+288:  const aggressivePoolWindow =
+289:    aggressivePoolWindowMs !== null
+290:      ? aggressivePoolWindowMs
+298:    !Number.isSafeInteger(aggressivePoolWindow) ||
+299:    aggressivePoolWindow <= 0
+302:      "market data server: aggressivePoolWindowMs must be a positive integer",
+331:    closeClient: (client, code, reason) => {
+333:        client.close?.(code, reason);
+535:  const aggressivePools = new Map();
+536:  const aggressivePoolWarmedPairs = new Set();
+537:  const aggressivePoolWarmInProgressPairs = new Set();
+539:  const aggressivePoolWarmRetryNotBeforeMs = new Map();
+797:        healthFrame(
+842:        reason: "WIRE_VALUE_OUT_OF_RANGE",
+944:    const fingerprint = `${context.recoveryState}:${context.stale}:${context.reason ?? ""}:${health.recordingStale}`;
+948:        healthFrame(activeSymbol, activeMarketKind, health, context.reason),
+965:      return `UNAVAILABLE:${state.reason}`;
+983:          reason: bookFailureReason(error),
+987:        reason: bookFailureReason(error),
+1007:          reason: bookFailureReason(error),
+1011:        reason: bookFailureReason(error),
+1061:        aggressivePoolFor(envelope.providerSymbol, envelope.marketKind).record(
+1170:          aggressivePoolSnapshot(activeSymbol, activeMarketKind),
+1188:        healthFrame(
+1192:          health.reason,
+1297:  function aggressivePoolFor(pairSymbol, pairMarketKind) {
+1299:    let pool = aggressivePools.get(key);
+1301:      pool = createAggressivePool({ now, windowMs: aggressivePoolWindow });
+1302:      aggressivePools.set(key, pool);
+1307:  function aggressivePoolSnapshot(pairSymbol, pairMarketKind) {
+1308:    const pool = aggressivePools.get(pairKey(pairSymbol, pairMarketKind));
+1313:    if (!aggressivePoolWarmup) {
+1319:        { reason: "DISABLED_BY_CONFIG" },
+1332:        { reason: "STORAGE_UNAVAILABLE" },
+1337:      aggressivePoolWarmedPairs.has(key) ||
+1338:      aggressivePoolWarmInProgressPairs.has(key) ||
+1339:      Date.now() < (aggressivePoolWarmRetryNotBeforeMs.get(key) ?? 0)
+1342:    aggressivePoolWarmInProgressPairs.add(key);
+1344:      reason: "IN_PROGRESS",
+1346:    const pool = aggressivePoolFor(pairSymbol, pairMarketKind);
+1352:        windowMs: aggressivePoolWindow,
+1405:        aggressivePoolWarmedPairs.add(key);
+1406:        aggressivePoolWarmRetryNotBeforeMs.delete(key);
+1408:        aggressivePoolWarmRetryNotBeforeMs.set(
+1419:          reason: result.complete ? null : "PARTIAL_COVERAGE",
+1440:      aggressivePoolWarmRetryNotBeforeMs.set(
+
+exec
+/bin/bash -lc "rg -n 'LIVE_COMPLETE|LIVE_PARTIAL|tradeAvailability' apps/web/src --glob '"'!**/validation/**'"' | head -70; sed -n '1020,1085p' apps/runtime/src/server/market-data-server.js; sed -n '1,140p' apps/runtime/src/server/aggressive-pool.js; sed -n '810,860p' apps/runtime/src/server/market-data-server.js; rg -n 'tradeId|trade_id' apps/runtime/src/server/history.js apps/runtime/src/server/frames.js | head -25" in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+apps/web/src/lib/chart/indicatorRuntime.ts:77:    tradeAvailability?: TradeAvailability,
+apps/web/src/lib/chart/indicatorRuntime.ts:146:  tradeAvailability: TradeAvailability = "HISTORICAL_UNAVAILABLE",
+apps/web/src/lib/chart/indicatorRuntime.ts:154:    tradeAvailability,
+apps/web/src/lib/chart/indicatorRuntime.ts:659:    tradeAvailability: TradeAvailability = "HISTORICAL_UNAVAILABLE",
+apps/web/src/lib/chart/indicatorRuntime.ts:672:            makeCtx(record, bar, false, false, true, bars.length - 1, bars.length, tradesForBar, tradeAvailability),
+apps/web/src/lib/chart/indicatorRuntime.ts:689:          makeCtx(record, bar, true, false, true, bars.length - 1, bars.length, tradesForBar, tradeAvailability),
+apps/web/src/lib/chart/indicatorTypes.ts:49:  | "LIVE_COMPLETE"
+apps/web/src/lib/chart/indicatorTypes.ts:50:  | "LIVE_PARTIAL"
+apps/web/src/lib/chart/indicatorTypes.ts:60:   * historical trade-by-range query exists yet. Read tradeAvailability
+apps/web/src/lib/chart/indicatorTypes.ts:66:   * LIVE_PARTIAL or HISTORICAL_UNAVAILABLE as an observed zero-trade bar.
+apps/web/src/lib/chart/indicatorTypes.ts:68:  tradeAvailability?: TradeAvailability;
+apps/web/src/hooks/useMarketData.ts:99:   * `tradeAvailability` distinguishes a genuine no-print live bar from a
+apps/web/src/hooks/useMarketData.ts:105:    tradeAvailability?: TradeAvailability,
+apps/web/src/hooks/useMarketData.ts:536:    // read back as a genuine zero-trade LIVE_COMPLETE bar just because its
+apps/web/src/hooks/useMarketData.ts:1063:              partial ? "LIVE_PARTIAL" : "LIVE_COMPLETE",
+apps/web/src/hooks/useMarketData.test.tsx:759:      expect(deliveries.at(-1)?.[1]).toBe("LIVE_PARTIAL");
+apps/web/src/hooks/useMarketData.test.tsx:779:      expect(deliveries.at(-1)?.[1]).toBe("LIVE_COMPLETE");
+apps/web/src/hooks/useMarketData.test.tsx:787:      expect(deliveries.at(-1)?.[1]).toBe("LIVE_PARTIAL");
+apps/web/src/hooks/useMarketData.test.tsx:1147:  it("marks a duplicate close for an already-evicted bar LIVE_PARTIAL rather than a false LIVE_COMPLETE zero", async () => {
+apps/web/src/hooks/useMarketData.test.tsx:1178:    expect(deliveries[0][2]).toBe("LIVE_COMPLETE");
+apps/web/src/hooks/useMarketData.test.tsx:1199:    expect(deliveries[0][2]).toBe("LIVE_PARTIAL");
+apps/web/src/lib/chart/replayBars.ts:30:        tradeAvailability: "HISTORICAL_UNAVAILABLE",
+apps/web/src/lib/indicators/market-structure/tests/marketStructure.test.ts:54:    tradeAvailability: "LIVE_COMPLETE",
+apps/web/src/components/chart/Terminal.tsx:71:  tradeAvailability: TradeAvailability;
+apps/web/src/components/chart/Terminal.tsx:79:  if (current === "LIVE_PARTIAL" || next === "LIVE_PARTIAL") return "LIVE_PARTIAL";
+apps/web/src/components/chart/Terminal.tsx:80:  return "LIVE_COMPLETE";
+apps/web/src/components/chart/Terminal.tsx:146:    tradeAvailability: TradeAvailability = "LIVE_COMPLETE",
+apps/web/src/components/chart/Terminal.tsx:162:      sourceBarTradesRef.current.set(bar.ts_open, { trades: [...trades], tradeAvailability });
+apps/web/src/components/chart/Terminal.tsx:163:    } else if (tradeAvailability !== "LIVE_COMPLETE") {
+apps/web/src/components/chart/Terminal.tsx:166:        tradeAvailability: combinedTradeAvailability(existingTradeSet.tradeAvailability, tradeAvailability),
+apps/web/src/components/chart/Terminal.tsx:198:      ? "LIVE_COMPLETE"
+apps/web/src/components/chart/Terminal.tsx:208:      bucketTradeAvailability = combinedTradeAvailability(bucketTradeAvailability, sourceTradeSet.tradeAvailability);
+apps/web/src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts:74:  return { bar, trades: [], tradeAvailability: "LIVE_COMPLETE", liquidity, l2, state, settings, replace: false, replaying: false, drawNow, ta: {}, draw: { fill: vi.fn() }, markers: { plotshape: vi.fn(), plotchar: vi.fn() }, pane: { paneIndex: 0 } };
+apps/web/src/components/chart/tests/Terminal.test.tsx:722:      "LIVE_COMPLETE",
+apps/web/src/components/chart/tests/Terminal.test.tsx:772:          "LIVE_COMPLETE",
+apps/web/src/components/chart/tests/Terminal.test.tsx:782:      "LIVE_COMPLETE",
+apps/web/src/components/chart/tests/Terminal.test.tsx:786:  it("reaches LIVE_COMPLETE on a display timeframe wider than the old flat 120-bar retention cap (4h needs 240 source bars)", async () => {
+apps/web/src/components/chart/tests/Terminal.test.tsx:832:          "LIVE_COMPLETE",
+apps/web/src/components/chart/tests/Terminal.test.tsx:839:    expect(lastCall[2]).toBe("LIVE_COMPLETE");
+apps/web/src/components/chart/tests/ChartPanel.lifecycle.test.tsx:1652:          "LIVE_COMPLETE",
+apps/web/src/components/chart/tests/ChartPanel.lifecycle.test.tsx:1669:      ref.current?.applyBar(bar(21 * 60_000), [hugeTrade], "LIVE_COMPLETE"),
+apps/web/src/lib/indicators/delta-divergence/tests/deltaDivergenceIndicator.test.ts:33:        tradeAvailability: "HISTORICAL_UNAVAILABLE",
+apps/web/src/components/chart/ChartPanel.tsx:287:    tradeAvailability?: TradeAvailability,
+apps/web/src/components/chart/ChartPanel.tsx:3043:          tradeAvailability: TradeAvailability = "HISTORICAL_UNAVAILABLE",
+apps/web/src/components/chart/ChartPanel.tsx:3065:            tradeAvailability,
+apps/web/src/lib/indicators/cvd-divergence/tests/cvdDivergenceIndicator.test.ts:187:        tradeAvailability: "HISTORICAL_UNAVAILABLE",
+apps/web/src/lib/indicators/l1-order-blocks/tests/l1OrderBlocks.test.ts:64:    tradeAvailability: "LIVE_COMPLETE",
+apps/web/src/lib/indicators/pivot-points/tests/pivotPoints.test.ts:52:    tradeAvailability: "HISTORICAL_UNAVAILABLE",
+apps/web/src/components/historical/HistoricalModePanel.test.tsx:41:  tradeAvailability: { current: false },
+apps/web/src/components/historical/HistoricalModePanel.test.tsx:69:  useArchiveTradeAvailability: () => mocks.tradeAvailability.current,
+apps/web/src/components/historical/HistoricalModePanel.test.tsx:168:  mocks.tradeAvailability.current = false;
+apps/web/src/components/historical/HistoricalModePanel.test.tsx:1063:    mocks.tradeAvailability.current = true;
+apps/web/src/lib/indicators/whale-detector/tests/whaleDetectorIndicator.test.ts:22:        tradeAvailability: "HISTORICAL_UNAVAILABLE",
+apps/web/src/lib/indicators/institutional-order-blocks/tests/institutionalOrderBlocks.test.ts:78:    tradeAvailability: "LIVE_COMPLETE",
+apps/web/src/lib/indicators/large-trade-bubbles/tests/largeTradeBubbles.test.ts:45:  tradeAvailability: TradeAvailability = "LIVE_COMPLETE",
+apps/web/src/lib/indicators/large-trade-bubbles/tests/largeTradeBubbles.test.ts:50:    tradeAvailability,
+apps/web/src/lib/indicators/large-trade-bubbles/tests/largeTradeBubbles.test.ts:186:    const ctx = ctxOf(state, bar(0), [trade(0, 100, 500)], false, 3, "LIVE_PARTIAL");
+apps/web/src/lib/indicators/large-trade-bubbles/largeTradeBubbles.ts:107:    if (ctx.tradeAvailability !== "LIVE_COMPLETE" || ctx.trades.length === 0) {
+apps/web/src/lib/indicators/session-levels/tests/sessionLevelsIndicator.test.ts:42:    bar: b, trades: [], tradeAvailability: "LIVE_COMPLETE", liquidity, state, settings, replace: false, replaying: false,
+apps/web/src/lib/indicators/classic-order-blocks/tests/classicOrderBlocks.test.ts:71:    tradeAvailability: "LIVE_COMPLETE",
+apps/web/src/lib/indicators/swing-alphabet-profile/tests/swingAlphabetProfile.test.ts:65:    tradeAvailability: "HISTORICAL_UNAVAILABLE",
+apps/web/src/lib/indicators/swing-alphabet-profile/tests/swingAlphabetProfile.test.ts:438:      tradeAvailability: "HISTORICAL_UNAVAILABLE",
+apps/web/src/lib/indicators/pivot-support-resistance/tests/pivotSupportResistance.test.ts:53:    tradeAvailability: "HISTORICAL_UNAVAILABLE",
+apps/web/src/lib/indicators/swing-alphabet-profile/tests/swingAlphabetProfile.barTimes.test.ts:45:      bar: nextBar, trades: [], tradeAvailability: "HISTORICAL_UNAVAILABLE", state, settings: SETTINGS, replace: false,
+apps/web/src/lib/indicators/order-flow/tests/orderFlowIndicator.test.ts:23:        tradeAvailability: "HISTORICAL_UNAVAILABLE",
+apps/web/src/lib/indicators/liquidity-voids/tests/liquidityVoidsLearned.test.ts:160:  return { bar, trades: [], tradeAvailability: "LIVE_COMPLETE", liquidity, l2, state, settings, replace: false, replaying: false, drawNow, ta: {}, draw: { fill: vi.fn() }, markers: { plotshape: vi.fn(), plotchar: vi.fn() }, pane: { paneIndex: 0 } };
+apps/web/src/lib/indicators/liquidity-voids/tests/liquidityVoidsIndicator.test.ts:137:  return { bar, trades: [], tradeAvailability: "LIVE_COMPLETE", liquidity, l2, state, settings, replace: false, replaying: false, drawNow, ta: {}, draw: { fill: vi.fn() }, markers: { plotshape: vi.fn(), plotchar: vi.fn() }, pane: { paneIndex: 0 } };
+apps/web/src/lib/indicators/vpin-cloud/tests/vpinCloudIndicator.test.ts:22:        tradeAvailability: "HISTORICAL_UNAVAILABLE",
+apps/web/src/lib/indicators/killzones/tests/killzonesIndicator.test.ts:28:        tradeAvailability: "HISTORICAL_UNAVAILABLE",
+apps/web/src/lib/indicators/institutional-order-blocks-v2/tests/institutionalOrderBlocksV2.test.ts:47:    bar, trades: [], tradeAvailability: "LIVE_COMPLETE", liquidity, state, settings, replace: false, replaying: false,
+      return;
+    }
+    const stale = state.status === "READY" && isDepthStale();
+    const fingerprint = bookFingerprint(state, stale);
+    if (fingerprint !== lastBookFingerprint) {
+      emitBook(state);
+    }
+  }
+
+  function handleEnvelope(envelope) {
+    const isActivePair =
+      envelope.marketKind === activeMarketKind &&
+      envelope.providerSymbol === activeSymbol;
+    const isTrackedPair =
+      isActivePair ||
+      trackedPairs.has(pairKey(envelope.providerSymbol, envelope.marketKind));
+
+    if (
+      envelope.eventType === EVENT_TYPES.TRADE &&
+      envelope.state !== "UNAVAILABLE"
+    ) {
+      const failureKey = `${pairKey(envelope.providerSymbol, envelope.marketKind)}:${EVENT_TYPES.TRADE}`;
+      let frame;
+      try {
+        frame = tradeEnvelopeToFrame(envelope);
+        wireFailures.delete(failureKey);
+      } catch (error) {
+        wireFailures.add(failureKey);
+        console.error(
+          "market data server: trade value cannot be represented on the numeric wire",
+          error?.message ?? error,
+        );
+        if (isActivePair) checkHealthAndMaybeBroadcast();
+        return;
+      }
+      const buffer = historyBufferFor(
+        envelope.providerSymbol,
+        envelope.marketKind,
+      );
+      const isNewTrade = buffer.recordTrade(frame);
+      if (isNewTrade)
+        aggressivePoolFor(envelope.providerSymbol, envelope.marketKind).record(
+          frame,
+        );
+      if (isTrackedPair && isNewTrade) l2Memory.onTrade(envelope);
+      if (icebergEnabled && isTrackedPair && isNewTrade) feedIcebergTrade(envelope, frame);
+      if (isActivePair && isNewTrade) broadcast(frame);
+      if (
+        isNewTrade &&
+        buffer.wouldRetainMarker(
+          frame.ts_exchange,
+          frame.side,
+          frame.price * frame.size,
+        )
+      ) {
+        let wireMarker;
+        try {
+          wireMarker = markerFrame(
+            frame,
+            envelope.providerSymbol,
+            envelope.marketKind,
+          );
+        } catch (error) {
+          console.error(
+            "market data server: marker value cannot be represented on the numeric wire",
+            error?.message ?? error,
+"use strict";
+
+const { createPrintFloor } = require("../indicators/passive_liquidity/print-floor");
+const { floorAbove } = require("../indicators/passive_liquidity/bounded-prints");
+
+const DEFAULT_WINDOW_MS = 4 * 60 * 60 * 1000;
+const DEFAULT_MAX_PRINTS = 20_000;
+const DEFAULT_FLOOR_SHARE = 0.02;
+const DEFAULT_FLOOR_WINDOW = 4_096;
+const DEFAULT_FLOOR_MIN_SAMPLES = 200;
+const DEFAULT_CALIBRATION_MS = 15 * 60 * 1000;
+const DEFAULT_CHUNK_MS = 60 * 60 * 1000;
+const DEFAULT_READ_LIMIT = 10_000;
+const DEFAULT_MAX_PAGES_PER_SLICE = 50;
+
+function assertPositiveInteger(value, field) {
+  if (!Number.isSafeInteger(value) || value <= 0) throw new Error(`aggressive-pool: ${field} must be a positive safe integer`);
+}
+
+function createAggressivePool({
+  windowMs = DEFAULT_WINDOW_MS,
+  maxPrints = DEFAULT_MAX_PRINTS,
+  floorShare = DEFAULT_FLOOR_SHARE,
+  floorWindow = DEFAULT_FLOOR_WINDOW,
+  floorMinSamples = DEFAULT_FLOOR_MIN_SAMPLES,
+  now = () => Date.now(),
+} = {}) {
+  assertPositiveInteger(windowMs, "windowMs");
+  assertPositiveInteger(maxPrints, "maxPrints");
+  assertPositiveInteger(floorWindow, "floorWindow");
+  assertPositiveInteger(floorMinSamples, "floorMinSamples");
+  if (!(floorShare > 0 && floorShare < 1)) throw new Error("aggressive-pool: floorShare must be in (0, 1)");
+
+  const printFloor = createPrintFloor({ window: floorWindow, share: floorShare, minSamples: floorMinSamples });
+  let prints = [];
+  const ids = new Set();
+  let coverageFloor = 0;
+  let from = null;
+
+  function gate() {
+    return printFloor.value();
+  }
+
+  function insert(trade) {
+    if (ids.has(trade.trade_id)) return false;
+    ids.add(trade.trade_id);
+    const last = prints[prints.length - 1];
+    if (!last || last.ts_exchange <= trade.ts_exchange) {
+      prints.push(trade);
+      return true;
+    }
+    let lo = 0;
+    let hi = prints.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >>> 1;
+      if (prints[mid].ts_exchange <= trade.ts_exchange) lo = mid + 1;
+      else hi = mid;
+    }
+    prints.splice(lo, 0, trade);
+    return true;
+  }
+
+  function trimWindow(at) {
+    const cutoff = at - windowMs;
+    let drop = 0;
+    while (drop < prints.length && prints[drop].ts_exchange < cutoff) drop += 1;
+    if (drop > 0) for (const gone of prints.splice(0, drop)) ids.delete(gone.trade_id);
+    if (from === null || from < cutoff) from = cutoff;
+  }
+
+  function trimCount() {
+    if (prints.length <= maxPrints) return;
+    const bySize = prints.map((print) => print.size).sort((a, b) => a - b);
+    let threshold = bySize[prints.length - maxPrints];
+    let atOrAbove = 0;
+    for (const size of bySize) if (size >= threshold) atOrAbove += 1;
+    if (atOrAbove > maxPrints) {
+      const above = bySize.find((size) => size > threshold);
+      if (above === undefined) {
+        for (const gone of prints) ids.delete(gone.trade_id);
+        prints = [];
+        coverageFloor = Math.max(coverageFloor, floorAbove(threshold));
+        return;
+      }
+      threshold = above;
+    }
+    const kept = [];
+    for (const print of prints) {
+      if (print.size < threshold) ids.delete(print.trade_id);
+      else kept.push(print);
+    }
+    prints = kept;
+    if (threshold > coverageFloor) coverageFloor = threshold;
+  }
+
+  function record(trade) {
+    if (!(trade.size > 0)) return false;
+    printFloor.push(trade.size);
+    const floor = gate();
+    if (floor > coverageFloor) coverageFloor = floor;
+    if (trade.size < Math.max(floor, coverageFloor)) return false;
+    if (!insert(trade)) return false;
+    trimWindow(now());
+    trimCount();
+    return true;
+  }
+
+  function mergeInsertAll(candidates) {
+    if (candidates.length === 0) return 0;
+    const ordered = candidates.length === 1 ? candidates : [...candidates].sort((a, b) => a.ts_exchange - b.ts_exchange);
+    const merged = [];
+    let i = 0;
+    let j = 0;
+    while (i < prints.length && j < ordered.length) {
+      if (prints[i].ts_exchange <= ordered[j].ts_exchange) merged.push(prints[i++]);
+      else merged.push(ordered[j++]);
+    }
+    while (i < prints.length) merged.push(prints[i++]);
+    while (j < ordered.length) merged.push(ordered[j++]);
+    for (const trade of ordered) ids.add(trade.trade_id);
+    prints = merged;
+    return ordered.length;
+  }
+
+  function seed(trades, { fromMs, calibrate = false } = {}) {
+    const admit = calibrate ? 0 : Math.max(coverageFloor, gate());
+    const candidates = [];
+    const seenInBatch = new Set();
+    for (const trade of trades) {
+      if (!(trade.size > 0) || trade.size < admit) continue;
+      if (calibrate) printFloor.push(trade.size);
+      if (ids.has(trade.trade_id) || seenInBatch.has(trade.trade_id)) continue;
+      seenInBatch.add(trade.trade_id);
+      candidates.push(trade);
+    }
+    const taken = mergeInsertAll(candidates);
+    if (calibrate) {
+      const floor = gate();
+      if (floor > coverageFloor) coverageFloor = floor;
+      if (floor > 0) {
+        frameError?.message ?? frameError,
+      );
+    }
+  }
+
+  function currentAggregateHealth() {
+    const tuples = [
+      [EVENT_TYPES.TRADE, undefined],
+      [EVENT_TYPES.KLINE, KLINE_INTERVAL],
+    ];
+    const contexts = [];
+    for (const [eventType, interval] of tuples) {
+      const context = connection.getFeedHealth(
+        activeMarketKind,
+        activeSymbol,
+        eventType,
+        interval,
+      );
+      if (context) contexts.push(context);
+    }
+    if (contexts.length === 0) return null;
+    if (
+      wireFailures.has(
+        `${pairKey(activeSymbol, activeMarketKind)}:${EVENT_TYPES.TRADE}`,
+      ) ||
+      wireFailures.has(
+        `${pairKey(activeSymbol, activeMarketKind)}:${EVENT_TYPES.KLINE}`,
+      )
+    ) {
+      return Object.freeze({
+        stale: true,
+        recoveryState: "UNAVAILABLE",
+        reason: "WIRE_VALUE_OUT_OF_RANGE",
+      });
+    }
+    const rank = { READY: 0, RECOVERING: 1, UNAVAILABLE: 2 };
+    const recoveryState = contexts.reduce(
+      (worst, context) =>
+        rank[context.recoveryState] > rank[worst]
+          ? context.recoveryState
+          : worst,
+      "READY",
+    );
+    return Object.freeze({
+      stale: contexts.some((context) => context.stale),
+      recoveryState,
+    });
+  }
+
+  function applyRecordingRead(key, at, read) {
+    recordingCache = {
+apps/runtime/src/server/frames.js:99:function tradeIdToWireString(value, field) {
+apps/runtime/src/server/frames.js:148:  const { tradeId, price, quantity, isBuyerMaker } = envelope.payload;
+apps/runtime/src/server/frames.js:154:  const wireTradeId = tradeIdToWireString(tradeId, "tradeEnvelopeToFrame.tradeId");
+apps/runtime/src/server/frames.js:164:    trade_id: wireTradeId,
+apps/runtime/src/server/frames.js:322:    trade_id: tradeIdToWireString(row.trade_id, "storageTradeRowToTradeFrame.tradeId"),
+apps/runtime/src/server/frames.js:338:    trade_id: tradeIdToWireString(trade.trade_id, "markerFrame.tradeId"),
+apps/runtime/src/server/frames.js:377:    const id = print.id === null || print.id === undefined ? null : tradeIdToWireString(print.id, `${at}.id`);
+apps/runtime/src/server/frames.js:594:    if (!print || print.type !== "trade" || !matches(print) || ids.has(print.trade_id) || print.ts_exchange < previousTs) {
+apps/runtime/src/server/frames.js:597:    ids.add(print.trade_id);
+apps/runtime/src/server/frames.js:625:  const tradeIds = new Set();
+apps/runtime/src/server/frames.js:631:      tradeIds.has(trade.trade_id)
+apps/runtime/src/server/frames.js:635:    tradeIds.add(trade.trade_id);
+apps/runtime/src/server/frames.js:643:      markerTradeIds.has(marker.trade_id)
+apps/runtime/src/server/frames.js:647:    markerTradeIds.add(marker.trade_id);
+apps/runtime/src/server/frames.js:828:function dxfeedTradeFrame({ symbol, assetClass, tsExchange, price, size, side, tradeId, auction = false }) {
+apps/runtime/src/server/frames.js:841:    trade_id: tradeIdToWireString(tradeId, "dxfeedTradeFrame.tradeId"),
+apps/runtime/src/server/frames.js:846:function dxfeedMarkerFrame({ symbol, assetClass, tsExchange, price, size, side, tradeId }) {
+apps/runtime/src/server/frames.js:858:    trade_id: tradeIdToWireString(tradeId, "dxfeedMarkerFrame.tradeId"),
+apps/runtime/src/server/frames.js:1070:  const tradeIds = new Set();
+apps/runtime/src/server/frames.js:1076:      tradeIds.has(trade.trade_id)
+apps/runtime/src/server/frames.js:1080:    tradeIds.add(trade.trade_id);
+apps/runtime/src/server/frames.js:1088:      markerTradeIds.has(marker.trade_id)
+apps/runtime/src/server/frames.js:1092:    markerTradeIds.add(marker.trade_id);
+apps/runtime/src/server/frames.js:1197:  return Object.freeze([marker.ts_exchange, marker.price, marker.size, marker.side === "buy" ? "b" : "s", marker.trade_id]);
+apps/runtime/src/server/frames.js:1214:    if (ids.has(marker.trade_id) || marker.ts_exchange < previousTs) {
+
+exec
+/bin/bash -lc "sed -n '995,1075p' apps/web/src/hooks/useMarketData.ts; rg -n 'partial|health' apps/web/src/hooks/useMarketData.ts | tail -35; sed -n '95,113p' apps/runtime/src/server/frames.js; sed -n '198,220p' apps/runtime/src/server/history.js" in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+            ) {
+              if (correlatedIds.has(candidate.trade_id)) continue;
+              if (tradesForBar.length < MAX_TRADES_PER_LIVE_SOURCE_BAR) {
+                correlatedIds.add(candidate.trade_id);
+                if (
+                  previousTrade !== undefined &&
+                  compareTradesChronological(previousTrade, candidate) > 0
+                ) {
+                  requiresSort = true;
+                }
+                tradesForBar.push(candidate);
+                previousTrade = candidate;
+              } else {
+                partial = true;
+                if (!partialCorrelationBarOpenTimes.has(bar.ts_open)) {
+                  partialCorrelationBarOpenTimes.add(bar.ts_open);
+                  console.warn(
+                    "useMarketData: live source-bar trade correlation reached its bounded capacity",
+                    {
+                      tsOpen: bar.ts_open,
+                      intervalMs: bar.interval_ms,
+                      maxTrades: MAX_TRADES_PER_LIVE_SOURCE_BAR,
+                    },
+                  );
+                }
+              }
+            } else {
+              const retainedBar = retainedCorrelationBarFor(candidate);
+              if (retainedBar === undefined) {
+                unmatchedTrades.push(candidate);
+                continue;
+              }
+              const retainedTrades =
+                correlatedTradesByOpenTime.get(retainedBar.ts_open) ?? [];
+              if (
+                !retainedTrades.some(
+                  (trade) => trade.trade_id === candidate.trade_id,
+                )
+              ) {
+                if (retainedTrades.length < MAX_TRADES_PER_LIVE_SOURCE_BAR)
+                  retainedTrades.push(candidate);
+                else partialCorrelationBarOpenTimes.add(retainedBar.ts_open);
+              }
+              correlatedTradesByOpenTime.set(
+                retainedBar.ts_open,
+                retainedTrades,
+              );
+            }
+          }
+          pendingTradesForBarCorrelation.length = 0;
+          pendingTradesForBarCorrelation.push(...unmatchedTrades);
+          // Normal WebSocket delivery is already chronological, so avoid a
+          // full O(n log n) sort on every live-bar update. Still restore a
+          // deterministic order if the transport ever delivers an inversion.
+          if (requiresSort) tradesForBar.sort(compareTradesChronological);
+          correlatedTradesByOpenTime.set(bar.ts_open, tradesForBar);
+          const observedVolume = tradesForBar.reduce(
+            (sum, trade) => sum + trade.size,
+            0,
+          );
+          partial ||=
+            tradesForBar.length !== bar.trade_count ||
+            Math.abs(observedVolume - bar.volume) >
+              Math.max(1e-8, Math.abs(bar.volume) * 1e-9);
+          try {
+            onBarRef.current?.(
+              bar,
+              tradesForBar,
+              partial ? "LIVE_PARTIAL" : "LIVE_COMPLETE",
+            );
+          } catch (error) {
+            console.error("useMarketData: onBar callback failed", error);
+          }
+          // Retain a small final-bar window. A transport may repeat a close
+          // or deliver one final late print; that repeat must still carry the
+          // full observed source-bar set rather than overwrite it with an
+          // increment. The bounded terminal keeps the memory cost explicit.
+          if (bar.closed) {
+            if (!recentClosedTradeBarOpenTimes.includes(bar.ts_open)) {
+              recentClosedTradeBarOpenTimes.push(bar.ts_open);
+            }
+533:    const partialCorrelationBarOpenTimes = new Set<number>();
+697:      partialCorrelationBarOpenTimes.clear();
+977:          let partial =
+979:            partialCorrelationBarOpenTimes.has(bar.ts_open) ||
+984:              partial = true;
+1008:                partial = true;
+1009:                if (!partialCorrelationBarOpenTimes.has(bar.ts_open)) {
+1010:                  partialCorrelationBarOpenTimes.add(bar.ts_open);
+1036:                else partialCorrelationBarOpenTimes.add(retainedBar.ts_open);
+1055:          partial ||=
+1063:              partial ? "LIVE_PARTIAL" : "LIVE_COMPLETE",
+1084:                partialCorrelationBarOpenTimes.delete(oldestOpenTime);
+1330:      if (frame.type === "health") {
+1605:              // conservative and mark subsequent correlation as partial
+    throw new Error(`${field}: unsupported asset class`);
+  }
+}
+
+function tradeIdToWireString(value, field) {
+  if (
+    (typeof value !== "string" && typeof value !== "number" && typeof value !== "bigint") ||
+    (typeof value === "number" && !Number.isSafeInteger(value))
+  ) {
+    throw new Error(`${field}: trade id is outside the supported wire range`);
+  }
+  const converted = String(value);
+  const hasControlCharacter = [...converted].some((character) => {
+    const codePoint = character.codePointAt(0);
+    return codePoint <= 0x1f || codePoint === 0x7f;
+  });
+  if (
+    converted.length === 0 ||
+    converted.trim() !== converted ||
+        if (oldestKey === undefined || key < oldestKey) {
+          oldestKey = key;
+        }
+      }
+      bars.delete(oldestKey);
+    }
+  }
+
+  function recordTrade(tradeFrame) {
+    if (typeof tradeFrame?.trade_id !== "string" || tradeFrame.trade_id.length === 0) {
+      throw new Error("recordTrade: trade_id must be a non-empty string");
+    }
+    if (tradeIds.has(tradeFrame.trade_id)) {
+      return false;
+    }
+    tradeIds.add(tradeFrame.trade_id);
+    tradeIdOrder.push(tradeFrame.trade_id);
+    trades.push(tradeFrame);
+    if (trades.length > maxTrades) {
+      trades.shift();
+    }
+    if (tradeIdOrder.length - tradeIdOrderHead > maxSeenTradeIds) {
+      tradeIds.delete(tradeIdOrder[tradeIdOrderHead]);
+
+codex
+The amendments make this a much safer transport proposal: candles and trades are in scope; sampled depth is deferred. **Stage A is ready, but Stage B still needs revisions at the transport-to-indicator boundary.**
+
+1. **Specific trading question — not applicable as an indicator gate.** This is infrastructure. Its concrete user need is clear: “Can I monitor spot prices and sided volume when Binance WebSockets are inaccessible?” Approve it against that purpose, without implying equivalence for individual-print analytics.
+
+2. **Incremental calculation and no future data — mostly specified.** The amended bar cursor, exchange-time classification, catch-up and obsolete-response rejection are sound requirements. Finish specifying:
+   
+   - How `serverTime` is fetched, refreshed and charged to the budget.
+   - Exact catch-up page limits, continuation cursor and behavior while catching up.
+   - The forming-bar change detector: `c,v,n` alone omits changes to high, low and taker-buy volume. Compare every downstream-relevant field.
+   - Cross-family ordering: a closing candle can arrive before its trade pages. Define when that bar becomes complete and how late catch-up updates reach its indicators.
+   - An irrecoverable trade-id gap must remain incomplete for its affected interval. Reaching the latest page does not repair missing data.
+
+3. **Available inputs and honest missing-data behavior — remaining blockers.**
+   
+   **Aggregate trades conflict with the existing completeness check.** [useMarketData.ts](/home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk/apps/web/src/hooks/useMarketData.ts:1055) compares the number of received trade records with the candle’s `trade_count`, as well as volume. A genuine multi-fill aggregate can preserve volume while reducing record count, so complete REST ranges become `LIVE_PARTIAL`. Do not alter the candle count to conceal this. Specify an aggregation-aware capability/completeness contract, or explicitly accept unavailable individual-print indicators.
+   
+   **A health sentence does not carry aggregation semantics through the SDK.** [indicatorTypes.ts](/home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk/apps/web/src/lib/chart/indicatorTypes.ts:52) describes individual trades. Print-size thresholds, print counts and size-distribution calibration change under aggregation even when sided volume matches. Name which analytics remain valid, which change meaning, and which must be disabled.
+   
+   **The aggressive-pool requirement exceeds the allowed edit scope.** [market-data-server.js](/home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk/apps/runtime/src/server/market-data-server.js:1059) currently records every new trade into the pool without a complete-range gate. Specify transport buffering or authorize the necessary server changes. Also define whether raw-trade warm-up may mix with aggregate-trade live data, including incompatible ID spaces.
+   
+   Reporting depth as `REST_NO_DEPTH` is appropriate. Verify that previously seeded or warmed L2 visuals become unavailable too.
+
+4. **Understandable default view and controls — plausible, unproven.** No new trader controls are necessary; environment configuration is operational. The proposed health wording is clear. Add a browser acceptance check showing that unavailable depth and unsupported print analytics visibly explain their state. The blanket prohibition on web changes must yield if the existing UI cannot communicate this honestly.
+
+5. **Testable success and fair baseline — improved, needs precision.** A simultaneous WebSocket baseline for completed candles and aligned sided volume is fair. Specify the symbols, overlapping complete-minute window, catch-up deadline, numeric tolerance and treatment of incomplete minutes. Include OHLC, volume and taker-buy volume comparisons. Add end-to-end tests for aggregate-count completeness, close-before-trades ordering and pool admission.
+   
+   Consolidate the amendments into the main brief: READY-book acceptance, per-print parity, weight values and configuration limits currently contradict the final scope. Define the weight guarantee as this runtime’s reserved dispatch budget; a shared-IP response header cannot be guaranteed below 4000 by this process alone.
+
+6. **Simplest alternative.** Ship Stage A first. If this container still needs support, add REST candles alone, including taker-buy volume, and explicitly mark tape and depth unavailable. That supplies price charts and candle-based flow with substantially fewer semantic and recovery problems. Add aggregate trades once their capability contract is explicit.
+
+VERDICT: REVISE
+tokens used
+35,676
+The amendments make this a much safer transport proposal: candles and trades are in scope; sampled depth is deferred. **Stage A is ready, but Stage B still needs revisions at the transport-to-indicator boundary.**
+
+1. **Specific trading question — not applicable as an indicator gate.** This is infrastructure. Its concrete user need is clear: “Can I monitor spot prices and sided volume when Binance WebSockets are inaccessible?” Approve it against that purpose, without implying equivalence for individual-print analytics.
+
+2. **Incremental calculation and no future data — mostly specified.** The amended bar cursor, exchange-time classification, catch-up and obsolete-response rejection are sound requirements. Finish specifying:
+   
+   - How `serverTime` is fetched, refreshed and charged to the budget.
+   - Exact catch-up page limits, continuation cursor and behavior while catching up.
+   - The forming-bar change detector: `c,v,n` alone omits changes to high, low and taker-buy volume. Compare every downstream-relevant field.
+   - Cross-family ordering: a closing candle can arrive before its trade pages. Define when that bar becomes complete and how late catch-up updates reach its indicators.
+   - An irrecoverable trade-id gap must remain incomplete for its affected interval. Reaching the latest page does not repair missing data.
+
+3. **Available inputs and honest missing-data behavior — remaining blockers.**
+   
+   **Aggregate trades conflict with the existing completeness check.** [useMarketData.ts](/home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk/apps/web/src/hooks/useMarketData.ts:1055) compares the number of received trade records with the candle’s `trade_count`, as well as volume. A genuine multi-fill aggregate can preserve volume while reducing record count, so complete REST ranges become `LIVE_PARTIAL`. Do not alter the candle count to conceal this. Specify an aggregation-aware capability/completeness contract, or explicitly accept unavailable individual-print indicators.
+   
+   **A health sentence does not carry aggregation semantics through the SDK.** [indicatorTypes.ts](/home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk/apps/web/src/lib/chart/indicatorTypes.ts:52) describes individual trades. Print-size thresholds, print counts and size-distribution calibration change under aggregation even when sided volume matches. Name which analytics remain valid, which change meaning, and which must be disabled.
+   
+   **The aggressive-pool requirement exceeds the allowed edit scope.** [market-data-server.js](/home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk/apps/runtime/src/server/market-data-server.js:1059) currently records every new trade into the pool without a complete-range gate. Specify transport buffering or authorize the necessary server changes. Also define whether raw-trade warm-up may mix with aggregate-trade live data, including incompatible ID spaces.
+   
+   Reporting depth as `REST_NO_DEPTH` is appropriate. Verify that previously seeded or warmed L2 visuals become unavailable too.
+
+4. **Understandable default view and controls — plausible, unproven.** No new trader controls are necessary; environment configuration is operational. The proposed health wording is clear. Add a browser acceptance check showing that unavailable depth and unsupported print analytics visibly explain their state. The blanket prohibition on web changes must yield if the existing UI cannot communicate this honestly.
+
+5. **Testable success and fair baseline — improved, needs precision.** A simultaneous WebSocket baseline for completed candles and aligned sided volume is fair. Specify the symbols, overlapping complete-minute window, catch-up deadline, numeric tolerance and treatment of incomplete minutes. Include OHLC, volume and taker-buy volume comparisons. Add end-to-end tests for aggregate-count completeness, close-before-trades ordering and pool admission.
+   
+   Consolidate the amendments into the main brief: READY-book acceptance, per-print parity, weight values and configuration limits currently contradict the final scope. Define the weight guarantee as this runtime’s reserved dispatch budget; a shared-IP response header cannot be guaranteed below 4000 by this process alone.
+
+6. **Simplest alternative.** Ship Stage A first. If this container still needs support, add REST candles alone, including taker-buy volume, and explicitly mark tape and depth unavailable. That supplies price charts and candle-based flow with substantially fewer semantic and recovery problems. Add aggregate trades once their capability contract is explicit.
+
+VERDICT: REVISE
+--- last message saved to /home/user/Terminal-L1-L2/PM/log/codex/20261026T032438Z-plan-brief-binance-rest-source.last.md
+VERDICT: REVISE

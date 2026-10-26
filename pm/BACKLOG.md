@@ -40,6 +40,14 @@ replenishment rate after a wall is eaten.
 - Squeeze Breakout Context (OHLCV, cross-layer anchor) and Size-Split Delta (L1) in parallel; then Break Defense Monitor (L2).
 - Deferred from cycle 1: weekend slot family for crypto RVOL; sustained-run marker; `clear` on draw.table; Pine version once the editor source arrives.
 
+## Cycle 2 (in progress)
+
+| Step | Owner | State |
+|---|---|---|
+| Browser-direct Binance mode (test link) | Platform/Web | built, published v1, Codex G2 fix round 1 running |
+| Binance spot URL overrides (stage A) and REST transport (stage B) | Platform | building; Codex plan round 2 REVISE being folded in |
+| VPS test host recipe | PM | done (`ops/test-host-recipe.md`) |
+
 ## Harness debt
 
 - fakeL2 snapshot-only walls: expire `absorbing` once the snapshot's age exceeds `ABSORB_WINDOW_MS`, or record the last trade timestamp with snapshots (Codex G2 round 3, 2026-10-26). Due before the first L2 indicator validation loop.

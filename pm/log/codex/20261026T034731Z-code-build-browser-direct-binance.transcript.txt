@@ -1,0 +1,2643 @@
+Reading additional input from stdin...
+OpenAI Codex v0.164.0
+--------
+workdir: /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+model: gpt-6.1-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 01a17652-0f23-78b3-88ec-78ae6ddbf0e7
+--------
+user
+You are the independent code reviewer for a trading-indicator team. Review branch build/browser-direct-binance against main in this repository. Run: git diff main...build/browser-direct-binance -- .gitignore apps/web/src/components/chart/Terminal.tsx apps/web/src/hooks/useMarketData.ts apps/web/src/workers/browserBinanceTransport.ts apps/web/src/workers/marketDataWorker.ts apps/web/src/workers/tests/browserBinanceTransport.test.ts apps/web/src/workers/tests/createTransport.test.ts apps/web/src/workers/tests/fixtures/binance-mirror/depth20.json apps/web/src/workers/tests/fixtures/binance-mirror/kline-events.json apps/web/src/workers/tests/fixtures/binance-mirror/klines.json apps/web/src/workers/tests/fixtures/binance-mirror/trades.json docs/architecture/binance/README.md eslint.config.mjs 
+
+Focus, in order: 1) correctness of the math versus the brief; 2) future-data leakage (a bar may use only data timestamped at or before its close) and replay-versus-live consistency; 3) honest handling of missing data: null, never zero or NaN, gates on tradeAvailability, ticks.coverageOf, l2.trusted(); 4) buy/sell read through barSides, never volume minus buy_volume; 5) incremental state, bounded memory, no per-bar copying of large arrays, no stream or draw factories created inside onBar; 6) settings schema covers every default key with step > 0; 7) tests actually pin the behavior (hand-computed values, replace semantics, empty input, gates); 8) readability and house style.
+
+For each finding give file, line range, severity CRITICAL / WARNING / SUGGESTION, the problem, and the fix. End with exactly VERDICT: APPROVED or VERDICT: REVISE.
+
+----- BUILD BRIEF -----
+# Build brief: browser-direct Binance data mode (`browser-binance`)
+
+Branch `build/browser-direct-binance`, 2026-10-26. The web app runs with no
+runtime server: the worker reads Binance spot from the browser and feeds the
+main thread the canonical frames the runtime would send. Opt-in only:
+`VITE_DATA_SOURCE=browser-binance` at build time or `?source=browser-binance`.
+With neither, every byte the worker sends and receives is unchanged.
+
+## 1. The seam
+
+`marketDataWorker.ts` creates its socket in `connect()` with `new WebSocket(url)`.
+That line becomes `createTransport(url, source)`, exported for tests:
+
+```ts
+export interface TransportSocket {
+  readyState: number;
+  send(data: string): void;
+  close(): void;
+  onopen: ((event: Event) => void) | null;
+  onmessage: ((event: MessageEvent) => void) | null;
+  onclose: ((event: CloseEvent) => void) | null;
+  onerror: ((event: Event) => void) | null;
+}
+export function createTransport(url: string, source: DataSource | undefined): TransportSocket {
+  return source === "browser-binance" ? new BrowserBinanceTransport(url) : new WebSocket(url);
+}
+```
+
+A real `WebSocket` satisfies the interface, so the worker's `ws`, `socketCleanup`
+and helper parameters are retyped to `TransportSocket` and nothing else changes:
+it still sends `capabilities` then `select`, parses every incoming `event.data`
+string with `parseServerFrame`, and reconnects on close. The `start` message
+gains one optional field, `source: "browser-binance"`, set by `useMarketData.ts`
+from `import.meta.env.VITE_DATA_SOURCE` or `location.search`
+(`resolveDataSource()`); the query string wins so a tester can switch a bundle.
+
+`BrowserBinanceTransport` (`apps/web/src/workers/browserBinanceTransport.ts`)
+takes injectable `fetch`, `WebSocket`, clock and timers so tests run offline;
+every frame leaves it as a JSON `MessageEvent`, so the worker's parser stays
+the contract gate in production.
+
+## 2. Frame sequence on selection
+
+The worker sends `{"type":"select",...}` as today. When its `onopen` sends no
+selection (first start), the transport selects `BTC-USDT` SPOT, as the runtime
+pushes its current pair on connect.
+
+For a Binance SPOT pair, in the fixture server's order:
+
+1. `selection`.
+2. REST `GET https://data-api.binance.vision/api/v3/klines?symbol=BTCUSDT&interval=1m&limit=901`.
+3. `snapshot`: the closed rows (`closeTime < now`, at most 900, oldest first),
+   each a `bar` with `closed: true` and `reconstructed: true` (REST-sourced, as
+   `restKlineRowToBarFrame` marks them), `trades: []`, `markers: []`,
+   `vpin_status: "DISABLED"`. No `bar_history`: the parser rejects it on a
+   Binance snapshot.
+4. `health` `READY`, `stale: false`, `reason: "BROWSER_DIRECT"`.
+5. `book` `UNAVAILABLE`, `reason: "BROWSER_DIRECT_STREAM_CONNECTING"`.
+6. The last REST row as a forming `bar` (`closed: false`) if its minute is open.
+7. One combined mirror stream
+   `wss://data-stream.binance.vision:9443/stream?streams=btcusdt@kline_1m/btcusdt@trade/btcusdt@depth20@100ms`,
+   then `bar`, `trade` and `book` frames as events arrive.
+
+A second `select` closes the stream, aborts any fetch and restarts at step 1.
+
+## 3. Payload to frame mapping
+
+| Binance payload | Frame | Fields |
+|---|---|---|
+| REST kline row `[t,o,h,l,c,v,T,q,n,V,Q,_]` | `bar` | `ts_open: t`, OHLC and `volume` as numbers, `buy_volume: V`, `trade_count: n`, `closed: true`, `reconstructed: true`, `interval_ms: 60000` |
+| `kline` event `k` | `bar` | same from `k.t,o,h,l,c,v,V,n`; `closed: k.x` (forming while false, closed once true); no `reconstructed` |
+| `trade` event | `trade` | `ts_exchange: T`, `price: +p`, `size: +q`, `side: m ? "sell" : "buy"`, `trade_id: String(t)` |
+| `depth20@100ms` `{lastUpdateId,bids,asks}` | `book` | `status: "READY"`, bids/asks as `{price,size}` numbers (zero sizes dropped), `lastUpdateId`, `stale: false` |
+| stream close, or no open within 15 s | `health` | `RECOVERING`, `stale: true`, `reason: "BROWSER_DIRECT_STREAM_CLOSED"`; reconnect with 1 s to 30 s backoff; after five failures `UNAVAILABLE`, `reason: "BROWSER_DIRECT_STREAM_UNAVAILABLE"`, retries continue |
+| stream reopen | `bar`, `health` | REST klines since the last closed bar fill the gap as closed `reconstructed` bars; then `READY` with `BROWSER_DIRECT` |
+| REST failure | `health` | `UNAVAILABLE`, `reason: "BROWSER_DIRECT_REST_FAILED"`, retried with the same backoff |
+
+Identity on every frame: `provider: "BINANCE"`, wire `symbol` (`BTC-USDT`),
+`marketKind` from the selection. Side and `buy_volume` follow
+`apps/runtime/src/server/frames.js`.
+
+## 4. Honest answers to client requests
+
+| Request | Answer |
+|---|---|
+| `aggressive_history` | `complete: false`, `reason: "STORAGE_UNAVAILABLE"`, `trades: []`; the client shows its degraded state and retries three times with backoff |
+| `delta_profile` | `complete: false`, `reason: "STORAGE_UNAVAILABLE"`, `pending: 0`, `rows: []` |
+| `band_history` | `complete: false`, `reason: "GEOMETRY_UNAVAILABLE"`, row fields `null` (no live book grid exists) |
+| `wall_history`, `l2_event_history` | `complete: false`, `reason: "HISTORY_UNAVAILABLE"`, `row_width: null`, empty rows, `next: null` |
+| `profile_config`, `profile_history` | `analytics_status` `PROFILE` `UNAVAILABLE` (the browser withdraws the live profile and shows the label) |
+| `capabilities`, `liquidity_resync`, `l2_resync`, `exhaustion_history`, `initiative_history` | ignored: no reply shape exists; L2 indicators stay in their "no L2 frame yet" state |
+| `heatmap_history`, `heatmap_walls` | untouched: the worker's HTTP fetch fails and the stores back off |
+
+Every answer echoes the request's ids and window.
+
+## 5. Health reason and the visible notice
+
+`BROWSER_DIRECT` rides on the READY health frame. The status chip in
+`Terminal.tsx` already shows the recovery state; it now appends ` (reason)` to
+`LIVE` when a READY frame carries one, the form MainPanel uses for UNAVAILABLE.
+The runtime sends a reason only with UNAVAILABLE today, so the default display
+is unchanged. Degraded states show their reasons in the existing overlay.
+
+## 6. Other instruments
+
+- PERPETUAL: `https://fapi.binance.com/fapi/v1/klines` and
+  `wss://fstream.binance.com/stream?streams=...`; there is no mirror. A REST
+  or stream failure gives `health` `UNAVAILABLE`,
+  `reason: "BROWSER_DIRECT_PERPETUAL_UNREACHABLE"` at once, no hang.
+- dxFeed: `selection`, an empty `snapshot`, then `health` `UNAVAILABLE`,
+  `reason: "BROWSER_DIRECT_NO_DXFEED"`, like `DXFEED_NOT_CONFIGURED` today.
+
+## 7. Unsupported
+
+No L2 engine, heatmap, walls, icebergs, exhaustion, initiative, candle monitor,
+profiles or VPIN; no history past 900 bars; no trades before the page opened;
+no marker pool; a 20-level book. Perpetuals only where the browser reaches
+`fapi`/`fstream`. This container cannot open WebSockets, so the live stream is
+verified by tests and the REST-only rendering, not end to end.
+warning: Codex could not find bubblewrap on PATH. Install bubblewrap with your OS package manager. See the sandbox prerequisites: https://developers.openai.com/codex/concepts/sandboxing#prerequisites. Codex will use the bundled bubblewrap in the meantime.
+codex
+I’ll compare the branch with `main`, check the transport against the brief and parser contracts, and run the focused tests if the environment permits.
+exec
+/bin/bash -lc 'git diff main...build/browser-direct-binance -- .gitignore apps/web/src/components/chart/Terminal.tsx apps/web/src/hooks/useMarketData.ts apps/web/src/workers/browserBinanceTransport.ts apps/web/src/workers/marketDataWorker.ts apps/web/src/workers/tests/browserBinanceTransport.test.ts apps/web/src/workers/tests/createTransport.test.ts apps/web/src/workers/tests/fixtures/binance-mirror/depth20.json apps/web/src/workers/tests/fixtures/binance-mirror/kline-events.json apps/web/src/workers/tests/fixtures/binance-mirror/klines.json apps/web/src/workers/tests/fixtures/binance-mirror/trades.json docs/architecture/binance/README.md eslint.config.mjs' in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+diff --git a/.gitignore b/.gitignore
+index 172094a..5aaac8d 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -50,3 +50,6 @@ Thumbs.db
+ # The ledger's lock while a run writes it, and its rewrite before the rename
+ benchmarks/mutation-ledger.jsonl.lock
+ benchmarks/mutation-ledger.jsonl.*.tmp
++
++# Browser-direct static bundle (built on demand, never committed)
++dist-browser-direct/
+diff --git a/apps/web/src/components/chart/Terminal.tsx b/apps/web/src/components/chart/Terminal.tsx
+index 1e2716d..27d4b24 100644
+--- a/apps/web/src/components/chart/Terminal.tsx
++++ b/apps/web/src/components/chart/Terminal.tsx
+@@ -410,7 +410,7 @@ export function Terminal() {
+         )}
+         <div className="status-chip">
+           <span className={`dot ${status === "open" ? (feedInitializing ? "connecting" : feedUnavailable ? (historyOnly ? "quiet" : "unavailable") : feedQuiet ? "quiet" : backendDegraded ? (feedStale ? "stale" : feedHealth!.recoveryState.toLowerCase()) : "pulse") : status}`} />
+-          {status === "open" ? (feedInitializing ? "SYNCING" : feedUnavailable ? (historyOnly ? "HISTORY ONLY" : feedHealth!.recoveryState) : feedQuiet ? "QUIET" : backendDegraded ? (feedStale ? "STALE" : feedHealth!.recoveryState) : "LIVE") : status.toUpperCase()}
++          {status === "open" ? (feedInitializing ? "SYNCING" : feedUnavailable ? (historyOnly ? "HISTORY ONLY" : feedHealth!.recoveryState) : feedQuiet ? "QUIET" : backendDegraded ? (feedStale ? "STALE" : feedHealth!.recoveryState) : feedHealth?.reason ? `LIVE (${feedHealth.reason})` : "LIVE") : status.toUpperCase()}
+         </div>
+           </>
+         )}
+diff --git a/apps/web/src/hooks/useMarketData.ts b/apps/web/src/hooks/useMarketData.ts
+index b4c7b25..9a3b0cd 100644
+--- a/apps/web/src/hooks/useMarketData.ts
++++ b/apps/web/src/hooks/useMarketData.ts
+@@ -20,6 +20,7 @@ import type {
+   SelectionTraceTransport,
+   WorkerToMainMessage,
+ } from "../workers/marketDataWorker";
++import { resolveDataSource, type DataSource } from "../workers/browserBinanceTransport";
+ import {
+   createTimeCoveredMarkerRetentionBuffer,
+   type MarkerRetentionBuffer,
+@@ -87,6 +88,12 @@ const ID_ORDER_COMPACTION_MIN_HEAD = 4_096;
+ 
+ export interface UseMarketDataOptions {
+   url: string;
++  /**
++   * Where the worker reads market data: the runtime WebSocket at `url`
++   * (default) or Binance directly from the browser ("browser-binance").
++   * Resolved from `?source=` and VITE_DATA_SOURCE when not given.
++   */
++  source?: DataSource;
+   onSnapshotBars?: (
+     bars: BarFrame[],
+     selectionTrace?: SelectionTraceTransport,
+@@ -318,10 +325,15 @@ export function createBoundedIdTracker(maxIds: number): BoundedIdTracker {
+ 
+ export function useMarketData({
+   url,
++  source: sourceOption,
+   onSnapshotBars,
+   onSelectionTrace,
+   onBar,
+ }: UseMarketDataOptions): UseMarketDataResult {
++  const source = sourceOption ?? resolveDataSource(
++    import.meta.env.VITE_DATA_SOURCE,
++    typeof location === "undefined" ? undefined : location.search,
++  );
+   const [analyticsStatus, setAnalyticsStatus] = useState<
+     NonNullable<UseMarketDataResult["analyticsStatus"]>
+   >({});
+@@ -1792,7 +1804,7 @@ export function useMarketData({
+       postWorkerControl({ kind: "delta_profile", ...request }, "delta profile request");
+     };
+ 
+-    const startMsg: MainToWorkerMessage = { kind: "start", url };
++    const startMsg: MainToWorkerMessage = { kind: "start", url, ...(source === undefined ? {} : { source }) };
+     if (
+       postWorkerControl({ kind: "flow_control" }, "delivery flow control") &&
+       postWorkerControl(startMsg, "start request")
+@@ -1857,7 +1869,7 @@ export function useMarketData({
+         askRangePrintsImplRef.current = () => {};
+       }
+     };
+-  }, [url]);
++  }, [url, source]);
+ 
+   return {
+     analyticsStatus,
+diff --git a/apps/web/src/workers/browserBinanceTransport.ts b/apps/web/src/workers/browserBinanceTransport.ts
+new file mode 100644
+index 0000000..db58cc2
+--- /dev/null
++++ b/apps/web/src/workers/browserBinanceTransport.ts
+@@ -0,0 +1,676 @@
++// Browser-direct data mode: the market-data worker talks to Binance itself
++// instead of to the runtime's WebSocket server, and turns Binance's REST and
++// stream payloads into the canonical frames of apps/web/src/types/frames.ts.
++// It presents the subset of the WebSocket interface the worker uses, so the
++// worker is unchanged apart from the factory that picks the transport. Every
++// frame leaves here as a JSON string, so the worker's parser stays the
++// contract gate in production exactly as it is with the runtime.
++//
++// Opt-in only (VITE_DATA_SOURCE=browser-binance or ?source=browser-binance).
++// Spot pairs use Binance's public mirror (CORS-enabled REST and streams);
++// perpetual pairs are attempted on the futures endpoints and fail honestly
++// when the browser cannot reach them; dxFeed instruments are unavailable.
++import marketInstrumentCatalog from "../../../../config/market-instruments.json";
++import type { FrameIdentity, MarketKind } from "../types/frames";
++
++export const BROWSER_BINANCE_SOURCE = "browser-binance";
++export type DataSource = typeof BROWSER_BINANCE_SOURCE;
++
++export const DATA_SOURCE_QUERY_KEY = "source";
++
++/**
++ * The data source for this page: the `?source=` query wins (so a deployed
++ * bundle can be switched either way), then the build-time VITE_DATA_SOURCE.
++ * Anything but "browser-binance" means the runtime WebSocket, as today.
++ */
++export function resolveDataSource(envValue: unknown, search: string | undefined): DataSource | undefined {
++  let fromQuery: string | null = null;
++  if (typeof search === "string" && search.length > 0) {
++    try {
++      fromQuery = new URLSearchParams(search).get(DATA_SOURCE_QUERY_KEY);
++    } catch {
++      fromQuery = null;
++    }
++  }
++  if (fromQuery !== null) return fromQuery === BROWSER_BINANCE_SOURCE ? BROWSER_BINANCE_SOURCE : undefined;
++  return envValue === BROWSER_BINANCE_SOURCE ? BROWSER_BINANCE_SOURCE : undefined;
++}
++
++/** The part of the WebSocket interface marketDataWorker.ts uses. A real WebSocket satisfies it. */
++export interface TransportSocket {
++  readyState: number;
++  send(data: string): void;
++  close(): void;
++  onopen: ((event: Event) => void) | null;
++  onmessage: ((event: MessageEvent) => void) | null;
++  onclose: ((event: CloseEvent) => void) | null;
++  onerror: ((event: Event) => void) | null;
++}
++
++/** What this transport needs from the upstream (Binance) WebSocket. */
++export interface UpstreamSocket {
++  readyState: number;
++  close(): void;
++  onopen: ((event: Event) => void) | null;
++  onmessage: ((event: MessageEvent) => void) | null;
++  onclose: ((event: CloseEvent) => void) | null;
++  onerror: ((event: Event) => void) | null;
++}
++
++export type BrowserBinanceEndpoints = {
++  spotRestBase: string;
++  spotStreamBase: string;
++  perpetualRestBase: string;
++  perpetualStreamBase: string;
++};
++
++export const DEFAULT_ENDPOINTS: Readonly<BrowserBinanceEndpoints> = Object.freeze({
++  spotRestBase: "https://data-api.binance.vision",
++  spotStreamBase: "wss://data-stream.binance.vision:9443",
++  perpetualRestBase: "https://fapi.binance.com",
++  perpetualStreamBase: "wss://fstream.binance.com",
++});
++
++export type BrowserBinanceTransportOptions = {
++  fetch?: typeof fetch;
++  WebSocket?: new (url: string) => UpstreamSocket;
++  now?: () => number;
++  setTimeout?: (callback: () => void, ms: number) => unknown;
++  clearTimeout?: (handle: unknown) => void;
++  endpoints?: Partial<BrowserBinanceEndpoints>;
++};
++
++export const SNAPSHOT_BARS = 900;
++export const BAR_INTERVAL_MS = 60_000;
++export const REST_TIMEOUT_MS = 10_000;
++export const STREAM_BACKOFF_INITIAL_MS = 1_000;
++export const STREAM_BACKOFF_CAP_MS = 30_000;
++export const STREAM_FAILURES_BEFORE_UNAVAILABLE = 5;
++/** A browser WebSocket has no connect timeout of its own; a proxy that swallows the upgrade would otherwise leave the book "connecting" for good. */
++export const STREAM_CONNECT_TIMEOUT_MS = 15_000;
++
++export const HEALTH_REASON_READY = "BROWSER_DIRECT";
++export const HEALTH_REASON_STREAM_CLOSED = "BROWSER_DIRECT_STREAM_CLOSED";
++export const HEALTH_REASON_STREAM_UNAVAILABLE = "BROWSER_DIRECT_STREAM_UNAVAILABLE";
++export const HEALTH_REASON_REST_FAILED = "BROWSER_DIRECT_REST_FAILED";
++export const HEALTH_REASON_PERPETUAL_UNREACHABLE = "BROWSER_DIRECT_PERPETUAL_UNREACHABLE";
++export const HEALTH_REASON_NO_DXFEED = "BROWSER_DIRECT_NO_DXFEED";
++export const BOOK_REASON_STREAM_CONNECTING = "BROWSER_DIRECT_STREAM_CONNECTING";
++
++const CONNECTING = 0;
++const OPEN = 1;
++const CLOSED = 3;
++
++type Selection = { symbol: string } & FrameIdentity;
++
++type Session = {
++  readonly selection: Selection;
++  readonly binanceSymbol: string;
++  readonly restBase: string;
++  readonly streamBase: string;
++  stream: UpstreamSocket | null;
++  connectTimer: unknown;
++  /** A degraded health frame went out; the next open stream owes a READY (after a REST gap fill). */
++  degraded: boolean;
++  streamFailures: number;
++  backoffMs: number;
++  lastClosedOpen: number;
++  abort: AbortController | null;
++  timer: unknown;
++  closed: boolean;
++};
++
++type KlineRow = {
++  openTime: number;
++  closeTime: number;
++  open: number;
++  high: number;
++  low: number;
++  close: number;
++  volume: number;
++  buyVolume: number | undefined;
++  tradeCount: number;
++};
++
++function defaultSelection(): Selection {
++  const first = (marketInstrumentCatalog.binance as ReadonlyArray<{ symbol: string; marketKind: string }>)
++    .find((entry) => entry.marketKind === "SPOT") ?? marketInstrumentCatalog.binance[0];
++  return { symbol: first.symbol, provider: "BINANCE", marketKind: first.marketKind as MarketKind };
++}
++
++function isRecord(value: unknown): value is Record<string, unknown> {
++  return typeof value === "object" && value !== null && !Array.isArray(value);
++}
++
++function finiteNumber(value: unknown): number | undefined {
++  if (typeof value === "number") return Number.isFinite(value) ? value : undefined;
++  if (typeof value === "string" && /^\d+(\.\d+)?$/.test(value)) {
++    const parsed = Number(value);
++    return Number.isFinite(parsed) ? parsed : undefined;
++  }
++  return undefined;
++}
++
++function identityFields(selection: Selection): Record<string, unknown> {
++  return selection.provider === "BINANCE"
++    ? { provider: "BINANCE", symbol: selection.symbol, marketKind: selection.marketKind }
++    : { provider: selection.provider, symbol: selection.symbol, assetClass: selection.assetClass };
++}
++
++function parseSelectRequest(msg: Record<string, unknown>): Selection | null {
++  if (typeof msg.symbol !== "string" || msg.symbol.length === 0) return null;
++  if (msg.provider === "BINANCE") {
++    if (msg.marketKind !== "SPOT" && msg.marketKind !== "PERPETUAL") return null;
++    return { symbol: msg.symbol, provider: "BINANCE", marketKind: msg.marketKind };
++  }
++  if (msg.provider === "DXFEED") {
++    if (msg.assetClass !== "FUTURE" && msg.assetClass !== "EQUITY") return null;
++    return { symbol: msg.symbol, provider: "DXFEED", assetClass: msg.assetClass };
++  }
++  return null;
++}
++
++/** Parses one REST kline row: [openTime, open, high, low, close, volume, closeTime, quoteVolume, trades, takerBuyBase, takerBuyQuote, ignore]. */
++export function parseKlineRow(row: unknown): KlineRow | null {
++  if (!Array.isArray(row) || row.length < 11) return null;
++  const openTime = row[0];
++  const closeTime = row[6];
++  const tradeCount = row[8];
++  if (!Number.isSafeInteger(openTime) || (openTime as number) % BAR_INTERVAL_MS !== 0) return null;
++  if (!Number.isSafeInteger(closeTime) || (closeTime as number) !== (openTime as number) + BAR_INTERVAL_MS - 1) return null;
++  if (!Number.isSafeInteger(tradeCount) || (tradeCount as number) < 0) return null;
++  return assembleBar({
++    openTime: openTime as number,
++    closeTime: closeTime as number,
++    open: finiteNumber(row[1]),
++    high: finiteNumber(row[2]),
++    low: finiteNumber(row[3]),
++    close: finiteNumber(row[4]),
++    volume: finiteNumber(row[5]),
++    buyVolume: finiteNumber(row[9]),
++    tradeCount: tradeCount as number,
++  });
++}
++
++function assembleBar(parts: {
++  openTime: number;
++  closeTime: number;
++  open: number | undefined;
++  high: number | undefined;
++  low: number | undefined;
++  close: number | undefined;
++  volume: number | undefined;
++  buyVolume: number | undefined;
++  tradeCount: number;
++}): KlineRow | null {
++  const { open, high, low, close, volume } = parts;
++  if (open === undefined || high === undefined || low === undefined || close === undefined || volume === undefined) return null;
++  if (open <= 0 || high <= 0 || low <= 0 || close <= 0 || volume < 0) return null;
++  if (low > Math.min(open, close) || high < Math.max(open, close) || low > high) return null;
++  const buyVolume = parts.buyVolume !== undefined && parts.buyVolume >= 0 && parts.buyVolume <= volume ? parts.buyVolume : undefined;
++  return { openTime: parts.openTime, closeTime: parts.closeTime, open, high, low, close, volume, buyVolume, tradeCount: parts.tradeCount };
++}
++
++/** Parses the `k` object of a kline stream event. */
++export function parseKlineEvent(k: unknown): (KlineRow & { closed: boolean }) | null {
++  if (!isRecord(k) || typeof k.x !== "boolean") return null;
++  if (!Number.isSafeInteger(k.t) || (k.t as number) % BAR_INTERVAL_MS !== 0) return null;
++  if (!Number.isSafeInteger(k.n) || (k.n as number) < 0) return null;
++  const closeTime = Number.isSafeInteger(k.T) ? (k.T as number) : (k.t as number) + BAR_INTERVAL_MS - 1;
++  const bar = assembleBar({
++    openTime: k.t as number,
++    closeTime,
++    open: finiteNumber(k.o),
++    high: finiteNumber(k.h),
++    low: finiteNumber(k.l),
++    close: finiteNumber(k.c),
++    volume: finiteNumber(k.v),
++    buyVolume: finiteNumber(k.V),
++    tradeCount: k.n as number,
++  });
++  return bar === null ? null : { ...bar, closed: k.x };
++}
++
++function barFrame(selection: Selection, bar: KlineRow, closed: boolean, reconstructed: boolean): Record<string, unknown> {
++  return {
++    type: "bar",
++    ...identityFields(selection),
++    interval_ms: BAR_INTERVAL_MS,
++    ts_open: bar.openTime,
++    open: bar.open,
++    high: bar.high,
++    low: bar.low,
++    close: bar.close,
++    volume: bar.volume,
++    trade_count: bar.tradeCount,
++    closed,
++    ...(reconstructed ? { reconstructed: true } : {}),
++    ...(bar.buyVolume !== undefined ? { buy_volume: bar.buyVolume } : {}),
++  };
++}
++
++function bookLevels(raw: unknown): Array<{ price: number; size: number }> | null {
++  if (!Array.isArray(raw)) return null;
++  const levels: Array<{ price: number; size: number }> = [];
++  for (const level of raw) {
++    if (!Array.isArray(level) || level.length < 2) return null;
++    const price = finiteNumber(level[0]);
++    const size = finiteNumber(level[1]);
++    if (price === undefined || size === undefined || price <= 0 || size < 0) return null;
++    if (size === 0) continue;
++    levels.push({ price, size });
++  }
++  return levels;
++}
++
++export class BrowserBinanceTransport implements TransportSocket {
++  readyState = CONNECTING;
++  onopen: ((event: Event) => void) | null = null;
++  onmessage: ((event: MessageEvent) => void) | null = null;
++  onclose: ((event: CloseEvent) => void) | null = null;
++  onerror: ((event: Event) => void) | null = null;
++
++  readonly url: string;
++  private readonly fetchImpl: typeof fetch;
++  private readonly WebSocketImpl: new (url: string) => UpstreamSocket;
++  private readonly now: () => number;
++  private readonly setTimer: (callback: () => void, ms: number) => unknown;
++  private readonly clearTimer: (handle: unknown) => void;
++  private readonly endpoints: BrowserBinanceEndpoints;
++  private session: Session | null = null;
++  private openTimer: unknown = null;
++
++  constructor(url: string, options: BrowserBinanceTransportOptions = {}) {
++    this.url = url;
++    this.fetchImpl = options.fetch ?? ((input, init) => fetch(input, init));
++    this.WebSocketImpl = options.WebSocket ?? (WebSocket as unknown as new (url: string) => UpstreamSocket);
++    this.now = options.now ?? (() => Date.now());
++    this.setTimer = options.setTimeout ?? ((callback, ms) => setTimeout(callback, ms));
++    this.clearTimer = options.clearTimeout ?? ((handle) => clearTimeout(handle as ReturnType<typeof setTimeout>));
++    this.endpoints = { ...DEFAULT_ENDPOINTS, ...(options.endpoints ?? {}) };
++    // A WebSocket opens asynchronously; so does this, so the worker installs
++    // its handlers before anything fires.
++    this.openTimer = this.setTimer(() => {
++      this.openTimer = null;
++      if (this.readyState !== CONNECTING) return;
++      this.readyState = OPEN;
++      this.onopen?.(new Event("open"));
++      // The runtime pushes its current pair on connect; with no selection
++      // from the worker we do the same with the catalog's first spot pair.
++      if (this.session === null && this.readyState === OPEN) this.select(defaultSelection());
++    }, 0);
++  }
++
++  send(data: string): void {
++    if (this.readyState !== OPEN) throw new DOMException("transport is not open", "InvalidStateError");
++    let msg: unknown;
++    try {
++      msg = JSON.parse(data);
++    } catch {
++      return;
++    }
++    if (!isRecord(msg) || typeof msg.type !== "string") return;
++    if (msg.type === "select") {
++      const selection = parseSelectRequest(msg);
++      if (selection !== null) this.select(selection);
++      return;
++    }
++    const reply = this.replyFor(msg);
++    if (reply !== null) this.setTimer(() => this.deliver(reply), 0);
++  }
++
++  close(): void {
++    if (this.readyState === CLOSED) return;
++    this.readyState = CLOSED;
++    if (this.openTimer !== null) {
++      this.clearTimer(this.openTimer);
++      this.openTimer = null;
++    }
++    this.endSession();
++  }
++
++  /** The contract's own "not available" answer for a request this transport cannot serve; null when the contract defines none. */
++  private replyFor(msg: Record<string, unknown>): Record<string, unknown> | null {
++    const session = this.session;
++    if (session === null) return null;
++    const identity = identityFields(session.selection);
++    const echo = (keys: readonly string[]): Record<string, unknown> | null => {
++      const fields: Record<string, unknown> = {};
++      for (const key of keys) {
++        if (msg[key] === undefined) return null;
++        fields[key] = msg[key];
++      }
++      return fields;
++    };
++    switch (msg.type) {
++      case "aggressive_history": {
++        const fields = echo(["request_id", "from_ts", "to_ts", "min_size"]);
++        if (fields === null) return null;
++        return { type: "aggressive_history", ...identity, ...fields, complete: false, reason: "STORAGE_UNAVAILABLE", next_cursor: null, retry_after_ms: null, trades: [] };
++      }
++      case "delta_profile": {
++        const fields = echo(["request_id", "from_ts", "to_ts", "row_width"]);
++        if (fields === null) return null;
++        return { type: "delta_profile", ...identity, ...fields, complete: false, reason: "STORAGE_UNAVAILABLE", retry_after_ms: null, pending: 0, rows: [] };
++      }
++      case "band_history": {
++        const fields = echo(["request_id", "from_ts", "to_ts", "price_lo", "price_hi", "column_ms"]);
++        if (fields === null) return null;
++        return { type: "band_history", ...identity, ...fields, row_width: null, row_lo: null, row_hi: null, complete: false, reason: "GEOMETRY_UNAVAILABLE", retry_after_ms: null, columns: [] };
++      }
++      case "wall_history": {
++        const fields = echo(["request_id", "from_ts", "to_ts", "price_lo", "price_hi"]);
++        if (fields === null) return null;
++        return { type: "wall_history", ...identity, ...fields, row_width: null, complete: false, reason: "HISTORY_UNAVAILABLE", retry_after_ms: null, walls: [], next: null };
++      }
++      case "l2_event_history": {
++        const fields = echo(["request_id", "from_ts", "to_ts", "price_lo", "price_hi"]);
++        if (fields === null) return null;
++        return { type: "l2_event_history", ...identity, ...fields, row_width: null, complete: false, reason: "HISTORY_UNAVAILABLE", retry_after_ms: null, trades: [], wall_trades: [], trades_held_from: null, next: null };
++      }
++      case "profile_config":
++      case "profile_history":
++        return { type: "analytics_status", ...identity, indicator: "PROFILE", status: "UNAVAILABLE" };
++      default:
++        // capabilities, liquidity_resync, l2_resync, exhaustion_history,
++        // initiative_history: the contract defines no reply shape, so the
++        // indicators keep their own "no frame yet" state.
++        return null;
++    }
++  }
++
++  private deliver(frame: Record<string, unknown>): void {
++    if (this.readyState !== OPEN) return;
++    const data = JSON.stringify(frame);
++    const event = typeof MessageEvent === "function"
++      ? new MessageEvent("message", { data })
++      : ({ data } as unknown as MessageEvent);
++    this.onmessage?.(event);
++  }
++
++  private endSession(): void {
++    const session = this.session;
++    if (session === null) return;
++    this.session = null;
++    session.closed = true;
++    session.abort?.abort();
++    session.abort = null;
++    if (session.timer !== null) {
++      this.clearTimer(session.timer);
++      session.timer = null;
++    }
++    this.closeStream(session);
++  }
++
++  private closeStream(session: Session): void {
++    if (session.connectTimer !== null) {
++      this.clearTimer(session.connectTimer);
++      session.connectTimer = null;
++    }
++    const stream = session.stream;
++    session.stream = null;
++    if (stream === null) return;
++    stream.onopen = null;
++    stream.onmessage = null;
++    stream.onclose = null;
++    stream.onerror = null;
++    try {
++      stream.close();
++    } catch {
++      void 0;
++    }
++  }
++
++  private isCurrent(session: Session): boolean {
++    return this.readyState === OPEN && this.session === session && !session.closed;
++  }
++
++  private select(selection: Selection): void {
++    this.endSession();
++    const perpetual = selection.provider === "BINANCE" && selection.marketKind === "PERPETUAL";
++    const session: Session = {
++      selection,
++      binanceSymbol: selection.symbol.replace("-", ""),
++      restBase: perpetual ? this.endpoints.perpetualRestBase : this.endpoints.spotRestBase,
++      streamBase: perpetual ? this.endpoints.perpetualStreamBase : this.endpoints.spotStreamBase,
++      stream: null,
++      connectTimer: null,
++      degraded: false,
++      streamFailures: 0,
++      backoffMs: STREAM_BACKOFF_INITIAL_MS,
++      lastClosedOpen: -1,
++      abort: null,
++      timer: null,
++      closed: false,
++    };
++    this.session = session;
++    this.deliver({ type: "selection", ...identityFields(selection) });
++    if (selection.provider !== "BINANCE") {
++      this.deliver({ type: "snapshot", ...identityFields(selection), bars: [], trades: [], markers: [] });
++      this.deliverHealth(session, "UNAVAILABLE", HEALTH_REASON_NO_DXFEED);
++      return;
++    }
++    void this.bootstrap(session);
++  }
++
++  private deliverHealth(session: Session, recoveryState: "READY" | "RECOVERING" | "UNAVAILABLE", reason: string): void {
++    this.deliver({
++      type: "health",
++      ...identityFields(session.selection),
++      recoveryState,
++      stale: recoveryState !== "READY",
++      reason,
++    });
++  }
++
++  private klinesUrl(session: Session, query: Record<string, string | number>): string {
++    const path = session.selection.provider === "BINANCE" && session.selection.marketKind === "PERPETUAL" ? "/fapi/v1/klines" : "/api/v3/klines";
++    const params = new URLSearchParams({ symbol: session.binanceSymbol, interval: "1m" });
++    for (const [key, value] of Object.entries(query)) params.set(key, String(value));
++    return `${session.restBase}${path}?${params.toString()}`;
++  }
++
++  private async fetchKlines(session: Session, query: Record<string, string | number>): Promise<KlineRow[]> {
++    const controller = new AbortController();
++    session.abort = controller;
++    const timer = this.setTimer(() => controller.abort(), REST_TIMEOUT_MS);
++    try {
++      const response = await this.fetchImpl(this.klinesUrl(session, query), { signal: controller.signal });
++      if (!response.ok) throw new Error(`klines: HTTP ${response.status}`);
++      const body: unknown = await response.json();
++      if (!Array.isArray(body)) throw new Error("klines: body is not an array");
++      const rows: KlineRow[] = [];
++      for (const raw of body) {
++        const row = parseKlineRow(raw);
++        if (row !== null) rows.push(row);
++      }
++      rows.sort((a, b) => a.openTime - b.openTime);
++      return rows;
++    } finally {
++      this.clearTimer(timer);
++      if (session.abort === controller) session.abort = null;
++    }
++  }
++
++  private scheduleRetry(session: Session, action: () => void): void {
++    if (!this.isCurrent(session)) return;
++    if (session.timer !== null) this.clearTimer(session.timer);
++    const delay = session.backoffMs;
++    session.backoffMs = Math.min(session.backoffMs * 2, STREAM_BACKOFF_CAP_MS);
++    session.timer = this.setTimer(() => {
++      session.timer = null;
++      if (this.isCurrent(session)) action();
++    }, delay);
++  }
++
++  private restFailureReason(session: Session): string {
++    return session.selection.provider === "BINANCE" && session.selection.marketKind === "PERPETUAL"
++      ? HEALTH_REASON_PERPETUAL_UNREACHABLE
++      : HEALTH_REASON_REST_FAILED;
++  }
++
++  private async bootstrap(session: Session): Promise<void> {
++    let rows: KlineRow[];
++    try {
++      rows = await this.fetchKlines(session, { limit: SNAPSHOT_BARS + 1 });
++    } catch (error) {
++      if (!this.isCurrent(session)) return;
++      console.warn("browserBinanceTransport: kline history request failed", error);
++      this.deliverHealth(session, "UNAVAILABLE", this.restFailureReason(session));
++      this.scheduleRetry(session, () => void this.bootstrap(session));
++      return;
++    }
++    if (!this.isCurrent(session)) return;
++    const now = this.now();
++    const closedRows = rows.filter((row) => row.closeTime < now).slice(-SNAPSHOT_BARS);
++    const forming = rows.find((row) => row.closeTime >= now && row.openTime <= now);
++    const identity = identityFields(session.selection);
++    this.deliver({
++      type: "snapshot",
++      ...identity,
++      bars: closedRows.map((row) => barFrame(session.selection, row, true, true)),
++      trades: [],
++      markers: [],
++      vpin_status: "DISABLED",
++    });
++    if (closedRows.length > 0) session.lastClosedOpen = closedRows[closedRows.length - 1].openTime;
++    this.deliverHealth(session, "READY", HEALTH_REASON_READY);
++    this.deliver({ type: "book", ...identity, status: "UNAVAILABLE", reason: BOOK_REASON_STREAM_CONNECTING });
++    if (forming !== undefined) this.deliver(barFrame(session.selection, forming, false, false));
++    session.backoffMs = STREAM_BACKOFF_INITIAL_MS;
++    this.openStream(session);
++  }
++
++  private streamUrl(session: Session): string {
++    const symbol = session.binanceSymbol.toLowerCase();
++    return `${session.streamBase}/stream?streams=${symbol}@kline_1m/${symbol}@trade/${symbol}@depth20@100ms`;
++  }
++
++  private openStream(session: Session): void {
++    if (!this.isCurrent(session)) return;
++    let stream: UpstreamSocket;
++    try {
++      stream = new this.WebSocketImpl(this.streamUrl(session));
++    } catch (error) {
++      console.warn("browserBinanceTransport: could not construct the stream socket", error);
++      this.streamLost(session);
++      return;
++    }
++    session.stream = stream;
++    session.connectTimer = this.setTimer(() => {
++      session.connectTimer = null;
++      if (!this.isCurrent(session) || session.stream !== stream) return;
++      console.warn("browserBinanceTransport: the stream did not open in time");
++      this.closeStream(session);
++      this.streamLost(session);
++    }, STREAM_CONNECT_TIMEOUT_MS);
++    stream.onopen = () => {
++      if (!this.isCurrent(session) || session.stream !== stream) return;
++      if (session.connectTimer !== null) {
++        this.clearTimer(session.connectTimer);
++        session.connectTimer = null;
++      }
++      session.streamFailures = 0;
++      session.backoffMs = STREAM_BACKOFF_INITIAL_MS;
++      if (session.degraded) {
++        session.degraded = false;
++        void this.recoverAfterGap(session);
++      }
++    };
++    stream.onmessage = (event: MessageEvent) => {
++      if (!this.isCurrent(session) || session.stream !== stream) return;
++      if (typeof event.data !== "string") return;
++      let parsed: unknown;
++      try {
++        parsed = JSON.parse(event.data);
++      } catch {
++        return;
++      }
++      this.routeStreamMessage(session, parsed);
++    };
++    stream.onclose = () => {
++      if (!this.isCurrent(session) || session.stream !== stream) return;
++      this.closeStream(session);
++      this.streamLost(session);
++    };
++    stream.onerror = () => {
++      // The browser follows every error with a close event; that path reports it.
++    };
++  }
++
++  private streamLost(session: Session): void {
++    if (!this.isCurrent(session)) return;
++    session.streamFailures += 1;
++    session.degraded = true;
++    if (session.streamFailures >= STREAM_FAILURES_BEFORE_UNAVAILABLE) {
++      this.deliverHealth(session, "UNAVAILABLE", HEALTH_REASON_STREAM_UNAVAILABLE);
++    } else {
++      this.deliverHealth(session, "RECOVERING", HEALTH_REASON_STREAM_CLOSED);
++    }
++    this.scheduleRetry(session, () => this.openStream(session));
++  }
++
++  /** After a stream reconnect: closed bars the stream missed come from REST, marked reconstructed as the runtime marks its backfill. */
++  private async recoverAfterGap(session: Session): Promise<void> {
++    let rows: KlineRow[] = [];
++    try {
++      rows = await this.fetchKlines(session, session.lastClosedOpen >= 0 ? { startTime: session.lastClosedOpen + BAR_INTERVAL_MS, limit: 1000 } : { limit: SNAPSHOT_BARS + 1 });
++    } catch (error) {
++      console.warn("browserBinanceTransport: kline gap fill failed", error);
++    }
++    if (!this.isCurrent(session)) return;
++    const now = this.now();
++    for (const row of rows) {
++      if (row.closeTime < now && row.openTime > session.lastClosedOpen) {
++        this.deliver(barFrame(session.selection, row, true, true));
++        session.lastClosedOpen = row.openTime;
++      }
++    }
++    this.deliverHealth(session, "READY", HEALTH_REASON_READY);
++  }
++
++  private routeStreamMessage(session: Session, parsed: unknown): void {
++    if (!isRecord(parsed)) return;
++    const payload = isRecord(parsed.data) && typeof parsed.stream === "string" ? parsed.data : parsed;
++    if (payload.e === "kline") {
++      const bar = parseKlineEvent(payload.k);
++      if (bar === null) return;
++      if (bar.closed && bar.openTime <= session.lastClosedOpen) return;
++      this.deliver(barFrame(session.selection, bar, bar.closed, false));
++      if (bar.closed) session.lastClosedOpen = bar.openTime;
++      return;
++    }
++    if (payload.e === "trade") {
++      const price = finiteNumber(payload.p);
++      const size = finiteNumber(payload.q);
++      if (price === undefined || size === undefined || price <= 0 || size <= 0) return;
++      if (!Number.isSafeInteger(payload.T) || !Number.isSafeInteger(payload.t) || typeof payload.m !== "boolean") return;
++      this.deliver({
++        type: "trade",
++        ...identityFields(session.selection),
++        ts_exchange: payload.T,
++        price,
++        size,
++        side: payload.m ? "sell" : "buy",
++        trade_id: String(payload.t),
++      });
++      return;
++    }
++    const isSpotPartial = Array.isArray(payload.bids) && Array.isArray(payload.asks) && Number.isSafeInteger(payload.lastUpdateId);
++    const isFuturesPartial = payload.e === "depthUpdate" && Array.isArray(payload.b) && Array.isArray(payload.a) && Number.isSafeInteger(payload.u);
++    if (!isSpotPartial && !isFuturesPartial) return;
++    const bids = bookLevels(isSpotPartial ? payload.bids : payload.b);
++    const asks = bookLevels(isSpotPartial ? payload.asks : payload.a);
++    if (bids === null || asks === null) return;
++    if (bids.length > 0 && asks.length > 0 && bids[0].price >= asks[0].price) return;
++    this.deliver({
++      type: "book",
++      ...identityFields(session.selection),
++      status: "READY",
++      bids: bids.slice(0, 20),
++      asks: asks.slice(0, 20),
++      lastUpdateId: (isSpotPartial ? payload.lastUpdateId : payload.u) as number,
++      stale: false,
++    });
++  }
++}
+diff --git a/apps/web/src/workers/marketDataWorker.ts b/apps/web/src/workers/marketDataWorker.ts
+index e5d3aac..40f15f8 100644
+--- a/apps/web/src/workers/marketDataWorker.ts
++++ b/apps/web/src/workers/marketDataWorker.ts
+@@ -14,6 +14,7 @@ import { LiquidityDecoder, type DecodedLiquidity, type LiquidityColumn } from ".
+ import { LaneDecoder, type DecodedLane } from "../lib/l2/laneGrids";
+ import { HISTORY_LEVELS_MS, HISTORY_ROW_FACTORS, decodeHistoryPage, historyTransferables, type DecodedHistoryPage } from "../lib/indicators/passive-liquidity/heatmapHistoryDecode";
+ import { decodeHostWallPage, isWallFilter, type HostWallPage } from "../lib/l2/hostWalls";
++import { BROWSER_BINANCE_SOURCE, BrowserBinanceTransport, type DataSource, type TransportSocket } from "./browserBinanceTransport";
+ 
+ export type WorkerToMainMessage =
+   | {
+@@ -144,7 +145,7 @@ export type BandHistoryRequest = {
+ export type MainToWorkerMessage =
+   | { kind: "flow_control" }
+   | { kind: "ack" }
+-  | { kind: "start"; url: string }
++  | { kind: "start"; url: string; source?: DataSource }
+   | { kind: "stop" }
+   | ({
+       kind: "select";
+@@ -177,8 +178,9 @@ const CONNECT_TIMEOUT_MS = 10_000;
+ const STABLE_CONNECTION_MS = 12_000;
+ const MAX_SERVER_MESSAGE_BYTES = 32 * 1024 * 1024;
+ 
+-let ws: WebSocket | null = null;
++let ws: TransportSocket | null = null;
+ let url = "";
++let source: DataSource | undefined;
+ let backoffMs = BACKOFF_INITIAL_MS;
+ let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+ let stopped = true;
+@@ -201,13 +203,24 @@ const pendingDeliveryBytes: number[] = [];
+ let pendingBytes = 0;
+ const MAX_PENDING_DELIVERIES = 4_000;
+ const MAX_PENDING_DELIVERY_BYTES = 32 * 1024 * 1024;
+-const socketCleanup = new WeakMap<WebSocket, () => void>();
++const socketCleanup = new WeakMap<TransportSocket, () => void>();
++
++/**
++ * The transport seam. With no data source set, the worker speaks to the
++ * runtime over a real WebSocket exactly as before; with "browser-binance" it
++ * reads Binance directly from the browser through an object that offers the
++ * same subset of the WebSocket interface and emits the same canonical frames.
++ */
++export function createTransport(socketUrl: string, dataSource: DataSource | undefined): TransportSocket {
++  if (dataSource === BROWSER_BINANCE_SOURCE) return new BrowserBinanceTransport(socketUrl);
++  return new WebSocket(socketUrl);
++}
+ 
+ function traceNowMs(): number {
+   return performance.timeOrigin + performance.now();
+ }
+ 
+-function releaseSocket(socket: WebSocket | null): void {
++function releaseSocket(socket: TransportSocket | null): void {
+   if (!socket) return;
+   socketCleanup.get(socket)?.();
+   socketCleanup.delete(socket);
+@@ -657,7 +670,7 @@ function isWebSocketUrl(value: unknown): value is string {
+   }
+ }
+ 
+-function isCurrentSocket(socket: WebSocket): boolean {
++function isCurrentSocket(socket: TransportSocket): boolean {
+   return !stopped && ws === socket;
+ }
+ 
+@@ -675,7 +688,7 @@ function clearConnectTimer(timer: ReturnType<typeof setTimeout> | null): void {
+   if (timer !== null) clearTimeout(timer);
+ }
+ 
+-function failCurrentSocket(socket: WebSocket, reason: string): void {
++function failCurrentSocket(socket: TransportSocket, reason: string): void {
+   if (!isCurrentSocket(socket)) return;
+   releaseSocket(socket);
+   ws = null;
+@@ -688,7 +701,7 @@ function failCurrentSocket(socket: WebSocket, reason: string): void {
+   scheduleReconnect();
+ }
+ 
+-function sendDesiredSelection(socket: WebSocket): void {
++function sendDesiredSelection(socket: TransportSocket): void {
+   if (
+     !isCurrentSocket(socket) ||
+     desiredSelection === null ||
+@@ -722,9 +735,9 @@ function connect(): void {
+   if (stopped || flowPaused) return;
+   if (!post({ kind: "status", status: "connecting" })) return;
+ 
+-  let socket: WebSocket;
++  let socket: TransportSocket;
+   try {
+-    socket = new WebSocket(url);
++    socket = createTransport(url, source);
+   } catch (error) {
+     console.warn("marketDataWorker: failed to construct WebSocket", error);
+     post({ kind: "status", status: "closed", reason: "construct-failed" });
+@@ -957,7 +970,12 @@ self.onmessage = (event: MessageEvent<MainToWorkerMessage>) => {
+     return;
+   }
+   if (msg.kind === "start") {
+-    if (!hasExactKeys(msg, ["kind", "url"]) || !isWebSocketUrl(msg.url)) {
++    const hasSource = Object.hasOwn(msg, "source");
++    if (
++      !hasExactKeys(msg, hasSource ? ["kind", "source", "url"] : ["kind", "url"]) ||
++      !isWebSocketUrl(msg.url) ||
++      (hasSource && msg.source !== BROWSER_BINANCE_SOURCE)
++    ) {
+       console.warn(
+         "marketDataWorker: dropped start request with an invalid URL",
+       );
+@@ -978,6 +996,7 @@ self.onmessage = (event: MessageEvent<MainToWorkerMessage>) => {
+       return;
+     }
+     url = msg.url;
++    source = hasSource ? BROWSER_BINANCE_SOURCE : undefined;
+     stopped = false;
+     backoffMs = BACKOFF_INITIAL_MS;
+     desiredSelection = null;
+diff --git a/apps/web/src/workers/tests/browserBinanceTransport.test.ts b/apps/web/src/workers/tests/browserBinanceTransport.test.ts
+new file mode 100644
+index 0000000..3e1cb9e
+--- /dev/null
++++ b/apps/web/src/workers/tests/browserBinanceTransport.test.ts
+@@ -0,0 +1,378 @@
++import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
++import {
++  BOOK_REASON_STREAM_CONNECTING,
++  BrowserBinanceTransport,
++  DEFAULT_ENDPOINTS,
++  HEALTH_REASON_NO_DXFEED,
++  HEALTH_REASON_PERPETUAL_UNREACHABLE,
++  HEALTH_REASON_READY,
++  HEALTH_REASON_REST_FAILED,
++  HEALTH_REASON_STREAM_CLOSED,
++  HEALTH_REASON_STREAM_UNAVAILABLE,
++  STREAM_BACKOFF_CAP_MS,
++  STREAM_BACKOFF_INITIAL_MS,
++  STREAM_CONNECT_TIMEOUT_MS,
++  STREAM_FAILURES_BEFORE_UNAVAILABLE,
++  resolveDataSource,
++  type UpstreamSocket,
++} from "../browserBinanceTransport";
++import { parseServerFrame, type ServerFrame } from "../../types/frames";
++import klineRows from "./fixtures/binance-mirror/klines.json";
++import tradeEvents from "./fixtures/binance-mirror/trades.json";
++import depthEvent from "./fixtures/binance-mirror/depth20.json";
++import klineEvents from "./fixtures/binance-mirror/kline-events.json";
++
++// The fixtures sit in the minute that opens at 1761400140000; "now" is inside
++// that minute, so the first two REST rows are closed and the third is forming.
++const NOW_MS = 1_761_400_150_000;
++const SPOT = { type: "select", symbol: "BTC-USDT", provider: "BINANCE", marketKind: "SPOT" };
++
++class FakeUpstreamSocket implements UpstreamSocket {
++  static instances: FakeUpstreamSocket[] = [];
++  readonly url: string;
++  readyState = 0;
++  closed = false;
++  onopen: ((event: Event) => void) | null = null;
++  onmessage: ((event: MessageEvent) => void) | null = null;
++  onclose: ((event: CloseEvent) => void) | null = null;
++  onerror: ((event: Event) => void) | null = null;
++  constructor(url: string) {
++    this.url = url;
++    FakeUpstreamSocket.instances.push(this);
++  }
++  close(): void {
++    this.closed = true;
++    this.readyState = 3;
++  }
++  open(): void {
++    this.readyState = 1;
++    this.onopen?.(new Event("open"));
++  }
++  message(payload: unknown): void {
++    this.onmessage?.(new MessageEvent("message", { data: JSON.stringify(payload) }));
++  }
++  drop(): void {
++    this.readyState = 3;
++    this.onclose?.(new CloseEvent("close", { code: 1006 }));
++  }
++}
++
++type Harness = {
++  transport: BrowserBinanceTransport;
++  frames: Record<string, unknown>[];
++  parsed: () => ServerFrame[];
++  fetchMock: ReturnType<typeof vi.fn>;
++  stream: () => FakeUpstreamSocket;
++};
++
++function jsonResponse(body: unknown, status = 200): Response {
++  return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
++}
++
++function harness(fetchImpl?: (url: string) => Promise<Response>): Harness {
++  FakeUpstreamSocket.instances = [];
++  const fetchMock = vi.fn(fetchImpl ?? (async () => jsonResponse(klineRows)));
++  const transport = new BrowserBinanceTransport("ws://127.0.0.1:8000/ws", {
++    fetch: fetchMock as unknown as typeof fetch,
++    WebSocket: FakeUpstreamSocket,
++    now: () => NOW_MS,
++  });
++  const frames: Record<string, unknown>[] = [];
++  transport.onmessage = (event) => {
++    expect(typeof event.data).toBe("string");
++    frames.push(JSON.parse(event.data as string) as Record<string, unknown>);
++  };
++  return {
++    transport,
++    frames,
++    parsed: () => frames.map((frame) => {
++      const parsed = parseServerFrame(frame, { nowMs: NOW_MS });
++      if (parsed === null) throw new Error(`frame rejected by parseServerFrame: ${JSON.stringify(frame)}`);
++      return parsed;
++    }),
++    fetchMock,
++    stream: () => FakeUpstreamSocket.instances.at(-1)!,
++  };
++}
++
++// As the worker does: capabilities and the selection go out synchronously
++// inside onopen, so the transport never falls back to its default pair.
++async function openAndSelect(h: Harness, select: Record<string, unknown> = SPOT): Promise<void> {
++  const opened = vi.fn(() => {
++    h.transport.send(JSON.stringify({ type: "capabilities", marker_history: true }));
++    h.transport.send(JSON.stringify(select));
++  });
++  h.transport.onopen = opened;
++  await vi.advanceTimersByTimeAsync(0);
++  expect(opened).toHaveBeenCalledTimes(1);
++  expect(h.transport.readyState).toBe(1);
++}
++
++beforeEach(() => {
++  vi.useFakeTimers();
++});
++afterEach(() => {
++  vi.useRealTimers();
++});
++
++describe("BrowserBinanceTransport", () => {
++  it("answers a spot selection with selection, snapshot, health READY, book, forming bar, in that order, every frame passing the parser", async () => {
++    const h = harness();
++    await openAndSelect(h);
++    const frames = h.parsed();
++    expect(frames.map((frame) => frame.type)).toEqual(["selection", "snapshot", "health", "book", "bar"]);
++    expect(h.fetchMock).toHaveBeenCalledTimes(1);
++    expect(String(h.fetchMock.mock.calls[0]![0])).toBe(`${DEFAULT_ENDPOINTS.spotRestBase}/api/v3/klines?symbol=BTCUSDT&interval=1m&limit=901`);
++
++    const snapshot = frames[1];
++    if (snapshot.type !== "snapshot") throw new Error("expected a snapshot");
++    expect(snapshot).toMatchObject({ provider: "BINANCE", symbol: "BTC-USDT", marketKind: "SPOT", trades: [], markers: [], vpin_status: "DISABLED" });
++    expect(snapshot.bars.map((bar) => bar.ts_open)).toEqual([1_761_400_020_000, 1_761_400_080_000]);
++    expect(snapshot.bars.every((bar) => bar.closed === true && bar.reconstructed === true && bar.interval_ms === 60_000)).toBe(true);
++    expect(snapshot.bars[0]).toMatchObject({ open: 65000, high: 65050, low: 64980, close: 65020.5, volume: 12.345, buy_volume: 7.1, trade_count: 321 });
++    expect(snapshot.bars[0]).not.toHaveProperty("sell_volume");
++
++    expect(frames[2]).toEqual({ type: "health", provider: "BINANCE", symbol: "BTC-USDT", marketKind: "SPOT", recoveryState: "READY", stale: false, reason: HEALTH_REASON_READY });
++    expect(frames[3]).toEqual({ type: "book", provider: "BINANCE", symbol: "BTC-USDT", marketKind: "SPOT", status: "UNAVAILABLE", reason: BOOK_REASON_STREAM_CONNECTING });
++    expect(frames[4]).toMatchObject({ type: "bar", ts_open: 1_761_400_140_000, closed: false, close: 65095, trade_count: 40, buy_volume: 0.7 });
++    expect(frames[4]).not.toHaveProperty("reconstructed");
++
++    expect(FakeUpstreamSocket.instances).toHaveLength(1);
++    expect(h.stream().url).toBe(`${DEFAULT_ENDPOINTS.spotStreamBase}/stream?streams=btcusdt@kline_1m/btcusdt@trade/btcusdt@depth20@100ms`);
++  });
++
++  it("forwards kline events as forming then closed bars, trades with the side from the maker flag, and depth20 as a READY book", async () => {
++    const h = harness();
++    await openAndSelect(h);
++    h.stream().open();
++    h.frames.length = 0;
++    h.stream().message(klineEvents.forming);
++    for (const trade of tradeEvents) h.stream().message(trade);
++    h.stream().message(depthEvent);
++    h.stream().message(klineEvents.closed);
++    const frames = h.parsed();
++    expect(frames.map((frame) => frame.type)).toEqual(["bar", "trade", "trade", "trade", "book", "bar"]);
++
++    expect(frames[0]).toMatchObject({ type: "bar", ts_open: 1_761_400_140_000, closed: false, open: 65080, high: 65100, low: 65070, close: 65091, volume: 1.469, buy_volume: 0.719, trade_count: 43 });
++    expect(frames[5]).toMatchObject({ type: "bar", ts_open: 1_761_400_140_000, closed: true, close: 65088, volume: 9.8, buy_volume: 5.1, trade_count: 160 });
++    expect(frames[5]).not.toHaveProperty("reconstructed");
++
++    expect(frames[1]).toEqual({ type: "trade", provider: "BINANCE", symbol: "BTC-USDT", marketKind: "SPOT", ts_exchange: 1_761_400_150_005, price: 65090, size: 0.015, side: "buy", trade_id: "5100000001" });
++    expect(frames[2]).toMatchObject({ side: "sell", trade_id: "5100000002", size: 0.25 });
++    expect(frames[3]).toMatchObject({ side: "buy", trade_id: "5100000003" });
++
++    expect(frames[4]).toEqual({
++      type: "book", provider: "BINANCE", symbol: "BTC-USDT", marketKind: "SPOT", status: "READY", lastUpdateId: 77_123_456_789, stale: false,
++      bids: [{ price: 65090, size: 0.52 }, { price: 65089.9, size: 1.1 }, { price: 65089, size: 3.25 }],
++      asks: [{ price: 65090.1, size: 0.3 }, { price: 65090.5, size: 2 }, { price: 65091, size: 0.75 }],
++    });
++  });
++
++  it("does not repeat a closed bar the snapshot already carried", async () => {
++    const h = harness();
++    await openAndSelect(h);
++    h.stream().open();
++    h.frames.length = 0;
++    const stale = JSON.parse(JSON.stringify(klineEvents.closed)) as typeof klineEvents.closed;
++    stale.data.k.t = 1_761_400_080_000;
++    stale.data.k.T = 1_761_400_139_999;
++    h.stream().message(stale);
++    expect(h.frames).toHaveLength(0);
++  });
++
++  it("answers requests it cannot serve with the contract's unavailable reply and ignores the ones without one", async () => {
++    const h = harness();
++    await openAndSelect(h);
++    h.frames.length = 0;
++    const requests = [
++      { type: "aggressive_history", request_id: 7, from_ts: 1_761_390_000_000, to_ts: 1_761_400_000_000, min_size: 0.5 },
++      { type: "delta_profile", request_id: 9, from_ts: 1_761_390_000_000, to_ts: 1_761_400_000_000, row_width: 1 },
++      { type: "band_history", request_id: 12, from_ts: 1_761_390_000_000, to_ts: 1_761_400_000_000, price_lo: 64000, price_hi: 64040, column_ms: 10_000 },
++      { type: "wall_history", request_id: 13, from_ts: 1_761_390_000_000, to_ts: 1_761_400_000_000, price_lo: 64000, price_hi: 64040 },
++      { type: "l2_event_history", request_id: 14, from_ts: 1_761_390_000_000, to_ts: 1_761_400_000_000, price_lo: 64000, price_hi: 64040 },
++      { type: "profile_config", mode: "continuous", period_ms: 86_400_000, bin_size_multiplier: null, range_start_ts: null, range_end_ts: null },
++      { type: "liquidity_resync" },
++      { type: "l2_resync", channel: "l2_walls" },
++      { type: "exhaustion_history", from_ts: 1_761_390_000_000 },
++      { type: "initiative_history", from_ts: 1_761_390_000_000 },
++    ];
++    for (const request of requests) h.transport.send(JSON.stringify(request));
++    await vi.advanceTimersByTimeAsync(0);
++    const frames = h.parsed();
++    expect(frames.map((frame) => frame.type)).toEqual(["aggressive_history", "delta_profile", "band_history", "wall_history", "l2_event_history", "analytics_status"]);
++    expect(frames[0]).toMatchObject({ request_id: 7, from_ts: 1_761_390_000_000, to_ts: 1_761_400_000_000, min_size: 0.5, complete: false, reason: "STORAGE_UNAVAILABLE", next_cursor: null, retry_after_ms: null, trades: [] });
++    expect(frames[1]).toMatchObject({ request_id: 9, row_width: 1, complete: false, reason: "STORAGE_UNAVAILABLE", pending: 0, rows: [] });
++    expect(frames[2]).toMatchObject({ request_id: 12, complete: false, reason: "GEOMETRY_UNAVAILABLE", row_width: null, row_lo: null, row_hi: null, columns: [] });
++    expect(frames[3]).toMatchObject({ request_id: 13, complete: false, reason: "HISTORY_UNAVAILABLE", row_width: null, walls: [], next: null });
++    expect(frames[4]).toMatchObject({ request_id: 14, complete: false, reason: "HISTORY_UNAVAILABLE", trades: [], wall_trades: [], trades_held_from: null, next: null });
++    expect(frames[5]).toEqual({ type: "analytics_status", provider: "BINANCE", symbol: "BTC-USDT", marketKind: "SPOT", indicator: "PROFILE", status: "UNAVAILABLE" });
++  });
++
++  it("reports a dropped stream as RECOVERING, reconnects with backoff, turns UNAVAILABLE after repeated failures and READY again once the stream is back", async () => {
++    const h = harness();
++    await openAndSelect(h);
++    h.stream().open();
++    h.frames.length = 0;
++    let delay = STREAM_BACKOFF_INITIAL_MS;
++    for (let failure = 1; failure <= STREAM_FAILURES_BEFORE_UNAVAILABLE; failure += 1) {
++      const sockets = FakeUpstreamSocket.instances.length;
++      h.stream().drop();
++      const health = h.parsed().at(-1);
++      expect(health).toMatchObject(
++        failure < STREAM_FAILURES_BEFORE_UNAVAILABLE
++          ? { type: "health", recoveryState: "RECOVERING", stale: true, reason: HEALTH_REASON_STREAM_CLOSED }
++          : { type: "health", recoveryState: "UNAVAILABLE", stale: true, reason: HEALTH_REASON_STREAM_UNAVAILABLE },
++      );
++      await vi.advanceTimersByTimeAsync(delay - 1);
++      expect(FakeUpstreamSocket.instances).toHaveLength(sockets);
++      await vi.advanceTimersByTimeAsync(1);
++      expect(FakeUpstreamSocket.instances).toHaveLength(sockets + 1);
++      delay = Math.min(delay * 2, STREAM_BACKOFF_CAP_MS);
++    }
++    h.frames.length = 0;
++    h.fetchMock.mockResolvedValueOnce(jsonResponse([klineRows[1], klineRows[2]]));
++    h.stream().open();
++    await vi.advanceTimersByTimeAsync(0);
++    const frames = h.parsed();
++    // The gap fill re-reads from the last closed bar on; nothing newer closed, so only health follows.
++    expect(h.fetchMock).toHaveBeenCalledTimes(2);
++    expect(String(h.fetchMock.mock.calls[1]![0])).toContain("startTime=1761400140000");
++    expect(frames.map((frame) => frame.type)).toEqual(["health"]);
++    expect(frames[0]).toMatchObject({ recoveryState: "READY", stale: false, reason: HEALTH_REASON_READY });
++  });
++
++  it("gives up on a stream that never opens, reports RECOVERING and tries again, so a swallowed upgrade cannot leave the book connecting forever", async () => {
++    const h = harness();
++    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
++    try {
++      await openAndSelect(h);
++      h.frames.length = 0;
++      await vi.advanceTimersByTimeAsync(STREAM_CONNECT_TIMEOUT_MS - 1);
++      expect(h.frames).toHaveLength(0);
++      await vi.advanceTimersByTimeAsync(1);
++      expect(h.stream().closed).toBe(true);
++      expect(h.parsed().map((frame) => frame.type)).toEqual(["health"]);
++      expect(h.frames[0]).toMatchObject({ recoveryState: "RECOVERING", stale: true, reason: HEALTH_REASON_STREAM_CLOSED });
++      await vi.advanceTimersByTimeAsync(STREAM_BACKOFF_INITIAL_MS);
++      expect(FakeUpstreamSocket.instances).toHaveLength(2);
++      h.frames.length = 0;
++      h.stream().open();
++      await vi.advanceTimersByTimeAsync(STREAM_CONNECT_TIMEOUT_MS);
++      expect(h.stream().closed).toBe(false);
++      expect(h.parsed().map((frame) => frame.type)).toEqual(["health"]);
++      expect(h.frames[0]).toMatchObject({ recoveryState: "READY", reason: HEALTH_REASON_READY });
++    } finally {
++      warn.mockRestore();
++    }
++  });
++
++  it("fills the closed bars a dropped stream missed from REST, marked reconstructed, before saying READY", async () => {
++    const gapRow = [1_761_400_080_000, "65020.50", "65090.00", "65010.00", "65080.00", "8.500", 1_761_400_139_999, "0", 210, "4.250", "0", "0"];
++    const h = harness(async (url) => jsonResponse(url.includes("startTime") ? [gapRow] : [klineRows[0]]));
++    await openAndSelect(h);
++    h.stream().open();
++    h.stream().drop();
++    await vi.advanceTimersByTimeAsync(STREAM_BACKOFF_INITIAL_MS);
++    h.frames.length = 0;
++    h.stream().open();
++    await vi.advanceTimersByTimeAsync(0);
++    expect(String(h.fetchMock.mock.calls[1]![0])).toContain("startTime=1761400080000");
++    const filled = h.parsed();
++    expect(filled.map((frame) => frame.type)).toEqual(["bar", "health"]);
++    expect(filled[0]).toMatchObject({ ts_open: 1_761_400_080_000, closed: true, reconstructed: true, buy_volume: 4.25 });
++    expect(filled[1]).toMatchObject({ recoveryState: "READY", reason: HEALTH_REASON_READY });
++  });
++
++  it("marks a failed history read UNAVAILABLE with a reason and retries it with backoff", async () => {
++    const h = harness(async () => jsonResponse({ code: -1, msg: "blocked" }, 451));
++    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
++    try {
++      await openAndSelect(h);
++      expect(h.parsed().map((frame) => frame.type)).toEqual(["selection", "health"]);
++      expect(h.frames[1]).toMatchObject({ recoveryState: "UNAVAILABLE", stale: true, reason: HEALTH_REASON_REST_FAILED });
++      expect(FakeUpstreamSocket.instances).toHaveLength(0);
++      h.fetchMock.mockResolvedValueOnce(jsonResponse(klineRows));
++      await vi.advanceTimersByTimeAsync(STREAM_BACKOFF_INITIAL_MS);
++      expect(h.fetchMock).toHaveBeenCalledTimes(2);
++      expect(h.parsed().map((frame) => frame.type)).toEqual(["selection", "health", "snapshot", "health", "book", "bar"]);
++    } finally {
++      warn.mockRestore();
++    }
++  });
++
++  it("tries the futures endpoints for a perpetual and says so when they cannot be reached", async () => {
++    const h = harness(async () => {
++      throw new TypeError("Failed to fetch");
++    });
++    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
++    try {
++      await openAndSelect(h, { ...SPOT, marketKind: "PERPETUAL" });
++      expect(String(h.fetchMock.mock.calls[0]![0])).toBe(`${DEFAULT_ENDPOINTS.perpetualRestBase}/fapi/v1/klines?symbol=BTCUSDT&interval=1m&limit=901`);
++      const frames = h.parsed();
++      expect(frames.map((frame) => frame.type)).toEqual(["selection", "health"]);
++      expect(frames[1]).toMatchObject({ marketKind: "PERPETUAL", recoveryState: "UNAVAILABLE", stale: true, reason: HEALTH_REASON_PERPETUAL_UNREACHABLE });
++    } finally {
++      warn.mockRestore();
++    }
++  });
++
++  it("confirms a dxFeed selection, clears the bars and reports the feed unavailable without touching the network", async () => {
++    const h = harness();
++    await openAndSelect(h, { type: "select", symbol: "AAPL", provider: "DXFEED", assetClass: "EQUITY" });
++    const frames = h.parsed();
++    expect(frames.map((frame) => frame.type)).toEqual(["selection", "snapshot", "health"]);
++    expect(frames[1]).toMatchObject({ provider: "DXFEED", assetClass: "EQUITY", symbol: "AAPL", bars: [], trades: [], markers: [] });
++    expect(frames[2]).toMatchObject({ recoveryState: "UNAVAILABLE", stale: true, reason: HEALTH_REASON_NO_DXFEED });
++    expect(h.fetchMock).not.toHaveBeenCalled();
++    expect(FakeUpstreamSocket.instances).toHaveLength(0);
++  });
++
++  it("starts the catalog's first spot pair when the worker opens without a selection, as the runtime pushes its current pair", async () => {
++    const h = harness();
++    await vi.advanceTimersByTimeAsync(0);
++    expect(h.parsed().map((frame) => frame.type)).toEqual(["selection", "snapshot", "health", "book", "bar"]);
++    expect(h.frames[0]).toEqual({ type: "selection", provider: "BINANCE", symbol: "BTC-USDT", marketKind: "SPOT" });
++  });
++
++  it("a new selection ends the old session: its fetch is abandoned, its stream closed, and no frame of it arrives later", async () => {
++    let release: ((response: Response) => void) | null = null;
++    const h = harness((url) => url.includes("ETHUSDT") ? Promise.resolve(jsonResponse(klineRows)) : new Promise<Response>((resolve) => { release = resolve; }));
++    await openAndSelect(h);
++    expect(h.frames.map((frame) => frame.type)).toEqual(["selection"]);
++    h.transport.send(JSON.stringify({ ...SPOT, symbol: "ETH-USDT" }));
++    await vi.advanceTimersByTimeAsync(0);
++    expect(h.frames.map((frame) => frame.type)).toEqual(["selection", "selection", "snapshot", "health", "book", "bar"]);
++    expect(h.frames.slice(1).every((frame) => frame.symbol === "ETH-USDT")).toBe(true);
++    release!(jsonResponse(klineRows));
++    await vi.advanceTimersByTimeAsync(0);
++    expect(h.frames).toHaveLength(6);
++    expect(FakeUpstreamSocket.instances).toHaveLength(1);
++  });
++
++  it("close() stops everything: no frame, no reconnect, no new stream", async () => {
++    const h = harness();
++    await openAndSelect(h);
++    h.stream().open();
++    h.transport.close();
++    expect(h.transport.readyState).toBe(3);
++    expect(h.stream().closed).toBe(true);
++    h.frames.length = 0;
++    h.stream().message(klineEvents.forming);
++    await vi.advanceTimersByTimeAsync(STREAM_BACKOFF_CAP_MS);
++    expect(h.frames).toHaveLength(0);
++    expect(FakeUpstreamSocket.instances).toHaveLength(1);
++    expect(() => h.transport.send(JSON.stringify(SPOT))).toThrow();
++  });
++});
++
++describe("resolveDataSource", () => {
++  it("reads the query first, then the build-time variable, and treats anything else as the runtime", () => {
++    expect(resolveDataSource(undefined, "")).toBeUndefined();
++    expect(resolveDataSource("browser-binance", "")).toBe("browser-binance");
++    expect(resolveDataSource("browser-binance", undefined)).toBe("browser-binance");
++    expect(resolveDataSource(undefined, "?source=browser-binance")).toBe("browser-binance");
++    expect(resolveDataSource("browser-binance", "?source=runtime")).toBeUndefined();
++    expect(resolveDataSource("runtime", "?x=1")).toBeUndefined();
++    expect(resolveDataSource("BROWSER-BINANCE", "")).toBeUndefined();
++  });
++});
+diff --git a/apps/web/src/workers/tests/createTransport.test.ts b/apps/web/src/workers/tests/createTransport.test.ts
+new file mode 100644
+index 0000000..6e5a7d7
+--- /dev/null
++++ b/apps/web/src/workers/tests/createTransport.test.ts
+@@ -0,0 +1,104 @@
++// @vitest-environment jsdom
++import { afterEach, describe, expect, it, vi } from "vitest";
++import klineRows from "./fixtures/binance-mirror/klines.json";
++
++// The worker module assigns `self.onmessage` and calls `postMessage` at import
++// time, so it is re-imported per test with the globals stubbed, as
++// ../marketDataWorker.test.ts does.
++
++class FakeClientWebSocket {
++  static instances: FakeClientWebSocket[] = [];
++  static OPEN = 1;
++  url: string;
++  readyState = 0;
++  onopen: (() => void) | null = null;
++  onmessage: ((event: { data: string }) => void) | null = null;
++  onclose: ((event: { code: number; reason: string }) => void) | null = null;
++  onerror: (() => void) | null = null;
++  constructor(url: string) {
++    this.url = url;
++    FakeClientWebSocket.instances.push(this);
++  }
++  close() {
++    this.readyState = 3;
++  }
++  send() {}
++}
++
++const loadedWorkers: Array<NonNullable<typeof self.onmessage>> = [];
++afterEach(() => {
++  for (const handler of loadedWorkers.splice(0)) handler.call(self, { data: { kind: "stop" } } as MessageEvent);
++  vi.unstubAllGlobals();
++});
++
++async function loadWorkerModule() {
++  vi.resetModules();
++  FakeClientWebSocket.instances = [];
++  vi.stubGlobal("WebSocket", FakeClientWebSocket);
++  const posted: unknown[] = [];
++  vi.stubGlobal("postMessage", (message: unknown) => {
++    posted.push(message);
++  });
++  const workerModule = await import("../marketDataWorker");
++  const transportModule = await import("../browserBinanceTransport");
++  if (self.onmessage) loadedWorkers.push(self.onmessage);
++  return { posted, workerModule, transportModule };
++}
++
++describe("createTransport", () => {
++  it("returns the real WebSocket when no source is set and the browser-direct transport when it is", async () => {
++    const { workerModule, transportModule } = await loadWorkerModule();
++    const plain = workerModule.createTransport("ws://127.0.0.1:8000/ws", undefined);
++    expect(plain).toBeInstanceOf(FakeClientWebSocket);
++    expect((plain as unknown as FakeClientWebSocket).url).toBe("ws://127.0.0.1:8000/ws");
++    const direct = workerModule.createTransport("ws://127.0.0.1:8000/ws", "browser-binance");
++    expect(direct).toBeInstanceOf(transportModule.BrowserBinanceTransport);
++    expect(FakeClientWebSocket.instances).toHaveLength(1);
++    direct.close();
++  });
++
++  it("a start without a source opens a real WebSocket to the runtime, exactly as before", async () => {
++    const { posted } = await loadWorkerModule();
++    self.onmessage!({ data: { kind: "start", url: "ws://127.0.0.1:8000/ws" } } as MessageEvent);
++    expect(FakeClientWebSocket.instances).toHaveLength(1);
++    expect(posted).toEqual([{ kind: "status", status: "connecting" }]);
++  });
++
++  it("a start with an unknown source is refused like an invalid URL", async () => {
++    const { posted } = await loadWorkerModule();
++    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
++    try {
++      self.onmessage!({ data: { kind: "start", url: "ws://127.0.0.1:8000/ws", source: "something-else" } } as MessageEvent);
++      expect(FakeClientWebSocket.instances).toHaveLength(0);
++      expect(posted).toEqual([{ kind: "status", status: "closed", reason: "invalid-start-url" }]);
++    } finally {
++      warn.mockRestore();
++    }
++  });
++
++  it("a start with source browser-binance opens no runtime socket, and the frames it produces pass the worker's own parser on the way to the main thread", async () => {
++    const fetchMock = vi.fn(async () => new Response(JSON.stringify(klineRows), { status: 200 }));
++    vi.stubGlobal("fetch", fetchMock);
++    // Bars older than eight days are rejected by the live window, so the
++    // fixture minute is treated as now.
++    const nowSpy = vi.spyOn(Date, "now").mockReturnValue(1_761_400_150_000);
++    try {
++      const { posted } = await loadWorkerModule();
++      self.onmessage!({ data: { kind: "start", url: "ws://127.0.0.1:8000/ws", source: "browser-binance" } } as MessageEvent);
++      expect(FakeClientWebSocket.instances).toHaveLength(0);
++      await vi.waitFor(() => expect(posted.length).toBeGreaterThanOrEqual(7));
++      const kinds = posted.map((message) => {
++        const typed = message as { kind: string; status?: string; frame?: { type: string } };
++        return typed.kind === "status" ? `status:${typed.status}` : `frame:${typed.frame?.type}`;
++      });
++      expect(kinds).toEqual(["status:connecting", "status:open", "frame:selection", "frame:snapshot", "frame:health", "frame:book", "frame:bar"]);
++      const health = (posted[4] as { frame: Record<string, unknown> }).frame;
++      expect(health).toMatchObject({ recoveryState: "READY", reason: "BROWSER_DIRECT" });
++      // The upstream stream is a real WebSocket in the browser; here it is the stubbed one.
++      expect(FakeClientWebSocket.instances).toHaveLength(1);
++      expect(FakeClientWebSocket.instances[0]!.url).toContain("data-stream.binance.vision");
++    } finally {
++      nowSpy.mockRestore();
++    }
++  });
++});
+diff --git a/apps/web/src/workers/tests/fixtures/binance-mirror/depth20.json b/apps/web/src/workers/tests/fixtures/binance-mirror/depth20.json
+new file mode 100644
+index 0000000..5384541
+--- /dev/null
++++ b/apps/web/src/workers/tests/fixtures/binance-mirror/depth20.json
+@@ -0,0 +1,8 @@
++{
++  "stream": "btcusdt@depth20@100ms",
++  "data": {
++    "lastUpdateId": 77123456789,
++    "bids": [["65090.00", "0.52000"], ["65089.90", "1.10000"], ["65089.50", "0.00000"], ["65089.00", "3.25000"]],
++    "asks": [["65090.10", "0.30000"], ["65090.50", "2.00000"], ["65091.00", "0.75000"]]
++  }
++}
+diff --git a/apps/web/src/workers/tests/fixtures/binance-mirror/kline-events.json b/apps/web/src/workers/tests/fixtures/binance-mirror/kline-events.json
+new file mode 100644
+index 0000000..f7828c3
+--- /dev/null
++++ b/apps/web/src/workers/tests/fixtures/binance-mirror/kline-events.json
+@@ -0,0 +1,4 @@
++{
++  "forming": { "stream": "btcusdt@kline_1m", "data": { "e": "kline", "E": 1761400152100, "s": "BTCUSDT", "k": { "t": 1761400140000, "T": 1761400199999, "s": "BTCUSDT", "i": "1m", "f": 5100000000, "L": 5100000003, "o": "65080.00", "c": "65091.00", "h": "65100.00", "l": "65070.00", "v": "1.46900", "n": 43, "x": false, "q": "95600.00", "V": "0.71900", "Q": "46800.00", "B": "0" } } },
++  "closed": { "stream": "btcusdt@kline_1m", "data": { "e": "kline", "E": 1761400200050, "s": "BTCUSDT", "k": { "t": 1761400140000, "T": 1761400199999, "s": "BTCUSDT", "i": "1m", "f": 5100000000, "L": 5100000120, "o": "65080.00", "c": "65088.00", "h": "65105.00", "l": "65070.00", "v": "9.80000", "n": 160, "x": true, "q": "637000.00", "V": "5.10000", "Q": "331000.00", "B": "0" } } }
++}
+diff --git a/apps/web/src/workers/tests/fixtures/binance-mirror/klines.json b/apps/web/src/workers/tests/fixtures/binance-mirror/klines.json
+new file mode 100644
+index 0000000..7eba1b4
+--- /dev/null
++++ b/apps/web/src/workers/tests/fixtures/binance-mirror/klines.json
+@@ -0,0 +1,5 @@
++[
++  [1761400020000, "65000.00", "65050.00", "64980.00", "65020.50", "12.345", 1761400079999, "802000.00", 321, "7.100", "461000.00", "0"],
++  [1761400080000, "65020.50", "65090.00", "65010.00", "65080.00", "8.500", 1761400139999, "553000.00", 210, "4.250", "276000.00", "0"],
++  [1761400140000, "65080.00", "65100.00", "65070.00", "65095.00", "1.200", 1761400199999, "78000.00", 40, "0.700", "45500.00", "0"]
++]
+diff --git a/apps/web/src/workers/tests/fixtures/binance-mirror/trades.json b/apps/web/src/workers/tests/fixtures/binance-mirror/trades.json
+new file mode 100644
+index 0000000..7dd29dc
+--- /dev/null
++++ b/apps/web/src/workers/tests/fixtures/binance-mirror/trades.json
+@@ -0,0 +1,5 @@
++[
++  { "stream": "btcusdt@trade", "data": { "e": "trade", "E": 1761400150010, "s": "BTCUSDT", "t": 5100000001, "p": "65090.00", "q": "0.01500", "T": 1761400150005, "m": false, "M": true } },
++  { "stream": "btcusdt@trade", "data": { "e": "trade", "E": 1761400151020, "s": "BTCUSDT", "t": 5100000002, "p": "65089.50", "q": "0.25000", "T": 1761400151012, "m": true, "M": true } },
++  { "stream": "btcusdt@trade", "data": { "e": "trade", "E": 1761400152030, "s": "BTCUSDT", "t": 5100000003, "p": "65091.00", "q": "0.00400", "T": 1761400152025, "m": false, "M": true } }
++]
+diff --git a/docs/architecture/binance/README.md b/docs/architecture/binance/README.md
+index a28ee6e..2385c8a 100644
+--- a/docs/architecture/binance/README.md
++++ b/docs/architecture/binance/README.md
+@@ -58,6 +58,50 @@ Recent host storage is bounded by actual collector coverage and retention.
+ Curated historical coverage is a separate S3 publication path and must be
+ confirmed from its catalogs.
+ 
++## Browser-direct mode (no runtime)
++
++The web app can read Binance spot by itself, for a link that opens anywhere to
++test indicators on live data. It is opt-in and off by default: with neither
++switch below set, the worker speaks to the runtime over its WebSocket exactly
++as before.
++
++- Build-time: `VITE_DATA_SOURCE=browser-binance` baked into the bundle.
++- Per page: `?source=browser-binance` in the URL (wins over the build-time
++  value; `?source=runtime` switches a baked bundle back).
++
++The market-data worker then uses `BrowserBinanceTransport`
++(`apps/web/src/workers/browserBinanceTransport.ts`) in place of the socket to
++the runtime. On a selection it fetches the last 900 closed one-minute klines
++from Binance's public mirror (`https://data-api.binance.vision`), sends
++`selection`, `snapshot` (closed bars only, marked `reconstructed` as the
++runtime marks its REST backfill), `health` READY with `reason: "BROWSER_DIRECT"`
++and a `book` placeholder, then opens one mirror stream
++(`wss://data-stream.binance.vision:9443`) for `kline_1m`, `trade` and
++`depth20@100ms` and forwards each event as a `bar`, `trade` or `book` frame.
++Side, `buy_volume` and `trade_count` follow `src/server/frames.js`, so
++indicators see the same data as from the runtime; every frame still passes the
++browser's own frame parser. The status chip reads `LIVE (BROWSER_DIRECT)`.
++
++What it does not have: the L2 engine and heatmap, walls, icebergs, exhaustion,
++initiative, candle monitor, live profiles and VPIN (their requests get the
++contract's unavailable reply, so those indicators show their own "needs the
++runtime" state); history past 900 bars; trades from before the page opened;
++the marker pool; a book deeper than 20 levels. Spot only: perpetual pairs are
++attempted on `fapi`/`fstream` and report
++`BROWSER_DIRECT_PERPETUAL_UNREACHABLE` when the browser cannot reach them;
++dxFeed instruments report `BROWSER_DIRECT_NO_DXFEED`. A dropped stream shows
++`RECOVERING` and reconnects with backoff (`UNAVAILABLE` after five failures),
++filling missed closed bars from REST.
++
++To build a static bundle with the mode baked in and relative asset paths:
++
++```bash
++cd apps/web && VITE_DATA_SOURCE=browser-binance npx vite build --base ./ --outDir ../../dist-browser-direct
++```
++
++Serve `dist-browser-direct/` from any static host or open `index.html` through
++one; nothing else needs to run.
++
+ ## Contracts
+ 
+ - [Canonical event v1](../../contracts/binance-canonical-event/v1/binance-canonical-event-v1.md)
+diff --git a/eslint.config.mjs b/eslint.config.mjs
+index 5e4568d..8cfa90e 100644
+--- a/eslint.config.mjs
++++ b/eslint.config.mjs
+@@ -3,7 +3,7 @@ import globals from "globals";
+ 
+ export default [
+   {
+-    ignores: ["**/node_modules/**", "**/.pytest_cache/**", "**/.venv/**", "apps/web/**", "apps/runtime/data/**", "scratch/**", "apps/runtime-python-reference/**", "benchmarks/results/**"],
++    ignores: ["**/node_modules/**", "dist-browser-direct/**", "**/.pytest_cache/**", "**/.venv/**", "apps/web/**", "apps/runtime/data/**", "scratch/**", "apps/runtime-python-reference/**", "benchmarks/results/**"],
+   },
+   js.configs.recommended,
+   {
+
+exec
+/bin/bash -lc "pwd; rg --files -g AGENTS.md -g package.json -g '*protocol*' -g '*frames*' | head -60" in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+/home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+package.json
+apps/runtime/package.json
+apps/runtime/scripts/bench/indicator-density-frames.js
+apps/web/package.json
+pm/cycle1/validation-protocol.md
+apps/web/src/lib/archive/historicalTimeframes.test.ts
+apps/web/src/lib/archive/historicalTimeframes.ts
+apps/runtime/test/scripts/bench/indicator-density-frames.test.js
+apps/web/src/types/frames.ts
+apps/web/src/types/frames-liquidity.test.ts
+apps/web/src/types/frames.test.ts
+apps/web/src/types/frames-delta-profile.test.ts
+apps/runtime/test/server/frames-dxfeed-liquidity.test.js
+apps/runtime/test/server/iceberg-frames.test.js
+apps/runtime/test/server/candle-monitor-frames.test.js
+apps/runtime/test/server/initiative-frames.test.js
+apps/runtime/test/server/l2-frames.test.js
+apps/runtime/test/server/frames-liquidity.test.js
+apps/runtime/test/server/frames.test.js
+apps/runtime/test/server/exhaustion-frames.test.js
+apps/runtime/test/indicators/l2-memory/input-frames.test.js
+apps/runtime/test/indicators/l2-memory/historical-topn-frames.test.js
+apps/runtime/test/indicators/l2-memory/historical-tardis-frames.test.js
+apps/runtime/src/indicators/l2-memory/dxfeed-book-frames.js
+apps/runtime/src/indicators/l2-memory/historical-tardis-frames.js
+apps/runtime/src/indicators/l2-memory/historical-topn-frames.js
+apps/runtime/src/indicators/l2-memory/compact/lane-frames.js
+apps/runtime/src/indicators/l2-memory/input-frames.js
+apps/runtime/src/server/candle-monitor-frames.js
+apps/runtime/src/server/history-frames.js
+apps/runtime/src/server/l2-frames.js
+apps/runtime/src/server/iceberg-frames.js
+apps/runtime/src/server/initiative-frames.js
+apps/runtime/src/server/frames.js
+apps/runtime/src/server/exhaustion-frames.js
+
+exec
+/bin/bash -lc "git status --short; rg --files -g AGENTS.md; nl -ba apps/web/src/workers/browserBinanceTransport.ts | sed -n '350,710p'; git diff main...build/browser-direct-binance -- apps/web/src/workers/marketDataWorker.ts; cat apps/web/package.json" in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+?? pm/log/codex/20261026T032438Z-plan-brief-binance-rest-source.last.md
+?? pm/log/codex/20261026T032438Z-plan-brief-binance-rest-source.transcript.txt
+?? pm/log/codex/20261026T034731Z-code-build-browser-direct-binance.transcript.txt
+?? pm/log/g1-binance-rest-round2.txt
+?? pm/log/g2-browser-direct-r1.txt
+nl: apps/web/src/workers/browserBinanceTransport.ts: No such file or directory
+diff --git a/apps/web/src/workers/marketDataWorker.ts b/apps/web/src/workers/marketDataWorker.ts
+index e5d3aac..40f15f8 100644
+--- a/apps/web/src/workers/marketDataWorker.ts
++++ b/apps/web/src/workers/marketDataWorker.ts
+@@ -14,6 +14,7 @@ import { LiquidityDecoder, type DecodedLiquidity, type LiquidityColumn } from ".
+ import { LaneDecoder, type DecodedLane } from "../lib/l2/laneGrids";
+ import { HISTORY_LEVELS_MS, HISTORY_ROW_FACTORS, decodeHistoryPage, historyTransferables, type DecodedHistoryPage } from "../lib/indicators/passive-liquidity/heatmapHistoryDecode";
+ import { decodeHostWallPage, isWallFilter, type HostWallPage } from "../lib/l2/hostWalls";
++import { BROWSER_BINANCE_SOURCE, BrowserBinanceTransport, type DataSource, type TransportSocket } from "./browserBinanceTransport";
+ 
+ export type WorkerToMainMessage =
+   | {
+@@ -144,7 +145,7 @@ export type BandHistoryRequest = {
+ export type MainToWorkerMessage =
+   | { kind: "flow_control" }
+   | { kind: "ack" }
+-  | { kind: "start"; url: string }
++  | { kind: "start"; url: string; source?: DataSource }
+   | { kind: "stop" }
+   | ({
+       kind: "select";
+@@ -177,8 +178,9 @@ const CONNECT_TIMEOUT_MS = 10_000;
+ const STABLE_CONNECTION_MS = 12_000;
+ const MAX_SERVER_MESSAGE_BYTES = 32 * 1024 * 1024;
+ 
+-let ws: WebSocket | null = null;
++let ws: TransportSocket | null = null;
+ let url = "";
++let source: DataSource | undefined;
+ let backoffMs = BACKOFF_INITIAL_MS;
+ let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+ let stopped = true;
+@@ -201,13 +203,24 @@ const pendingDeliveryBytes: number[] = [];
+ let pendingBytes = 0;
+ const MAX_PENDING_DELIVERIES = 4_000;
+ const MAX_PENDING_DELIVERY_BYTES = 32 * 1024 * 1024;
+-const socketCleanup = new WeakMap<WebSocket, () => void>();
++const socketCleanup = new WeakMap<TransportSocket, () => void>();
++
++/**
++ * The transport seam. With no data source set, the worker speaks to the
++ * runtime over a real WebSocket exactly as before; with "browser-binance" it
++ * reads Binance directly from the browser through an object that offers the
++ * same subset of the WebSocket interface and emits the same canonical frames.
++ */
++export function createTransport(socketUrl: string, dataSource: DataSource | undefined): TransportSocket {
++  if (dataSource === BROWSER_BINANCE_SOURCE) return new BrowserBinanceTransport(socketUrl);
++  return new WebSocket(socketUrl);
++}
+ 
+ function traceNowMs(): number {
+   return performance.timeOrigin + performance.now();
+ }
+ 
+-function releaseSocket(socket: WebSocket | null): void {
++function releaseSocket(socket: TransportSocket | null): void {
+   if (!socket) return;
+   socketCleanup.get(socket)?.();
+   socketCleanup.delete(socket);
+@@ -657,7 +670,7 @@ function isWebSocketUrl(value: unknown): value is string {
+   }
+ }
+ 
+-function isCurrentSocket(socket: WebSocket): boolean {
++function isCurrentSocket(socket: TransportSocket): boolean {
+   return !stopped && ws === socket;
+ }
+ 
+@@ -675,7 +688,7 @@ function clearConnectTimer(timer: ReturnType<typeof setTimeout> | null): void {
+   if (timer !== null) clearTimeout(timer);
+ }
+ 
+-function failCurrentSocket(socket: WebSocket, reason: string): void {
++function failCurrentSocket(socket: TransportSocket, reason: string): void {
+   if (!isCurrentSocket(socket)) return;
+   releaseSocket(socket);
+   ws = null;
+@@ -688,7 +701,7 @@ function failCurrentSocket(socket: WebSocket, reason: string): void {
+   scheduleReconnect();
+ }
+ 
+-function sendDesiredSelection(socket: WebSocket): void {
++function sendDesiredSelection(socket: TransportSocket): void {
+   if (
+     !isCurrentSocket(socket) ||
+     desiredSelection === null ||
+@@ -722,9 +735,9 @@ function connect(): void {
+   if (stopped || flowPaused) return;
+   if (!post({ kind: "status", status: "connecting" })) return;
+ 
+-  let socket: WebSocket;
++  let socket: TransportSocket;
+   try {
+-    socket = new WebSocket(url);
++    socket = createTransport(url, source);
+   } catch (error) {
+     console.warn("marketDataWorker: failed to construct WebSocket", error);
+     post({ kind: "status", status: "closed", reason: "construct-failed" });
+@@ -957,7 +970,12 @@ self.onmessage = (event: MessageEvent<MainToWorkerMessage>) => {
+     return;
+   }
+   if (msg.kind === "start") {
+-    if (!hasExactKeys(msg, ["kind", "url"]) || !isWebSocketUrl(msg.url)) {
++    const hasSource = Object.hasOwn(msg, "source");
++    if (
++      !hasExactKeys(msg, hasSource ? ["kind", "source", "url"] : ["kind", "url"]) ||
++      !isWebSocketUrl(msg.url) ||
++      (hasSource && msg.source !== BROWSER_BINANCE_SOURCE)
++    ) {
+       console.warn(
+         "marketDataWorker: dropped start request with an invalid URL",
+       );
+@@ -978,6 +996,7 @@ self.onmessage = (event: MessageEvent<MainToWorkerMessage>) => {
+       return;
+     }
+     url = msg.url;
++    source = hasSource ? BROWSER_BINANCE_SOURCE : undefined;
+     stopped = false;
+     backoffMs = BACKOFF_INITIAL_MS;
+     desiredSelection = null;
+{
+  "name": "web",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "engines": {
+    "node": "24.21.0"
+  },
+  "scripts": {
+    "pretest": "node ../../scripts/verify-node-version.cjs",
+    "prebuild": "node ../../scripts/verify-node-version.cjs",
+    "dev": "node ../../scripts/node-launcher.cjs ../../node_modules/vite/bin/vite.js",
+    "build": "tsc -b && vite build",
+    "lint": "oxlint",
+    "preview": "node ../../scripts/node-launcher.cjs ../../node_modules/vite/bin/vite.js preview",
+    "test": "set \"ELECTRON_RUN_AS_NODE=\"&& vitest run"
+  },
+  "dependencies": {
+    "lightweight-charts": "^5.2.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "trading-signals": "8.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.2",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.3",
+    "@vitest/coverage-v8": "4.1.11",
+    "@vitest/ui": "^4.1.11",
+    "fast-check": "4.10.2",
+    "jsdom": "^29.1.1",
+    "oxlint": "^1.71.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.1.1",
+    "vitest": "^4.1.11"
+  },
+  "optionalDependencies": {
+    "@oxlint/binding-linux-x64-gnu": "1.73.0"
+  }
+}
+
+exec
+/bin/bash -lc "git show build/browser-direct-binance:apps/web/src/workers/browserBinanceTransport.ts | nl -ba | sed -n '350,700p'; git show build/browser-direct-binance:apps/web/src/workers/tests/browserBinanceTransport.test.ts | nl -ba | sed -n '1,330p'; ls node_modules/.bin/vitest" in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+   350	      }
+   351	      case "delta_profile": {
+   352	        const fields = echo(["request_id", "from_ts", "to_ts", "row_width"]);
+   353	        if (fields === null) return null;
+   354	        return { type: "delta_profile", ...identity, ...fields, complete: false, reason: "STORAGE_UNAVAILABLE", retry_after_ms: null, pending: 0, rows: [] };
+   355	      }
+   356	      case "band_history": {
+   357	        const fields = echo(["request_id", "from_ts", "to_ts", "price_lo", "price_hi", "column_ms"]);
+   358	        if (fields === null) return null;
+   359	        return { type: "band_history", ...identity, ...fields, row_width: null, row_lo: null, row_hi: null, complete: false, reason: "GEOMETRY_UNAVAILABLE", retry_after_ms: null, columns: [] };
+   360	      }
+   361	      case "wall_history": {
+   362	        const fields = echo(["request_id", "from_ts", "to_ts", "price_lo", "price_hi"]);
+   363	        if (fields === null) return null;
+   364	        return { type: "wall_history", ...identity, ...fields, row_width: null, complete: false, reason: "HISTORY_UNAVAILABLE", retry_after_ms: null, walls: [], next: null };
+   365	      }
+   366	      case "l2_event_history": {
+   367	        const fields = echo(["request_id", "from_ts", "to_ts", "price_lo", "price_hi"]);
+   368	        if (fields === null) return null;
+   369	        return { type: "l2_event_history", ...identity, ...fields, row_width: null, complete: false, reason: "HISTORY_UNAVAILABLE", retry_after_ms: null, trades: [], wall_trades: [], trades_held_from: null, next: null };
+   370	      }
+   371	      case "profile_config":
+   372	      case "profile_history":
+   373	        return { type: "analytics_status", ...identity, indicator: "PROFILE", status: "UNAVAILABLE" };
+   374	      default:
+   375	        // capabilities, liquidity_resync, l2_resync, exhaustion_history,
+   376	        // initiative_history: the contract defines no reply shape, so the
+   377	        // indicators keep their own "no frame yet" state.
+   378	        return null;
+   379	    }
+   380	  }
+   381	
+   382	  private deliver(frame: Record<string, unknown>): void {
+   383	    if (this.readyState !== OPEN) return;
+   384	    const data = JSON.stringify(frame);
+   385	    const event = typeof MessageEvent === "function"
+   386	      ? new MessageEvent("message", { data })
+   387	      : ({ data } as unknown as MessageEvent);
+   388	    this.onmessage?.(event);
+   389	  }
+   390	
+   391	  private endSession(): void {
+   392	    const session = this.session;
+   393	    if (session === null) return;
+   394	    this.session = null;
+   395	    session.closed = true;
+   396	    session.abort?.abort();
+   397	    session.abort = null;
+   398	    if (session.timer !== null) {
+   399	      this.clearTimer(session.timer);
+   400	      session.timer = null;
+   401	    }
+   402	    this.closeStream(session);
+   403	  }
+   404	
+   405	  private closeStream(session: Session): void {
+   406	    if (session.connectTimer !== null) {
+   407	      this.clearTimer(session.connectTimer);
+   408	      session.connectTimer = null;
+   409	    }
+   410	    const stream = session.stream;
+   411	    session.stream = null;
+   412	    if (stream === null) return;
+   413	    stream.onopen = null;
+   414	    stream.onmessage = null;
+   415	    stream.onclose = null;
+   416	    stream.onerror = null;
+   417	    try {
+   418	      stream.close();
+   419	    } catch {
+   420	      void 0;
+   421	    }
+   422	  }
+   423	
+   424	  private isCurrent(session: Session): boolean {
+   425	    return this.readyState === OPEN && this.session === session && !session.closed;
+   426	  }
+   427	
+   428	  private select(selection: Selection): void {
+   429	    this.endSession();
+   430	    const perpetual = selection.provider === "BINANCE" && selection.marketKind === "PERPETUAL";
+   431	    const session: Session = {
+   432	      selection,
+   433	      binanceSymbol: selection.symbol.replace("-", ""),
+   434	      restBase: perpetual ? this.endpoints.perpetualRestBase : this.endpoints.spotRestBase,
+   435	      streamBase: perpetual ? this.endpoints.perpetualStreamBase : this.endpoints.spotStreamBase,
+   436	      stream: null,
+   437	      connectTimer: null,
+   438	      degraded: false,
+   439	      streamFailures: 0,
+   440	      backoffMs: STREAM_BACKOFF_INITIAL_MS,
+   441	      lastClosedOpen: -1,
+   442	      abort: null,
+   443	      timer: null,
+   444	      closed: false,
+   445	    };
+   446	    this.session = session;
+   447	    this.deliver({ type: "selection", ...identityFields(selection) });
+   448	    if (selection.provider !== "BINANCE") {
+   449	      this.deliver({ type: "snapshot", ...identityFields(selection), bars: [], trades: [], markers: [] });
+   450	      this.deliverHealth(session, "UNAVAILABLE", HEALTH_REASON_NO_DXFEED);
+   451	      return;
+   452	    }
+   453	    void this.bootstrap(session);
+   454	  }
+   455	
+   456	  private deliverHealth(session: Session, recoveryState: "READY" | "RECOVERING" | "UNAVAILABLE", reason: string): void {
+   457	    this.deliver({
+   458	      type: "health",
+   459	      ...identityFields(session.selection),
+   460	      recoveryState,
+   461	      stale: recoveryState !== "READY",
+   462	      reason,
+   463	    });
+   464	  }
+   465	
+   466	  private klinesUrl(session: Session, query: Record<string, string | number>): string {
+   467	    const path = session.selection.provider === "BINANCE" && session.selection.marketKind === "PERPETUAL" ? "/fapi/v1/klines" : "/api/v3/klines";
+   468	    const params = new URLSearchParams({ symbol: session.binanceSymbol, interval: "1m" });
+   469	    for (const [key, value] of Object.entries(query)) params.set(key, String(value));
+   470	    return `${session.restBase}${path}?${params.toString()}`;
+   471	  }
+   472	
+   473	  private async fetchKlines(session: Session, query: Record<string, string | number>): Promise<KlineRow[]> {
+   474	    const controller = new AbortController();
+   475	    session.abort = controller;
+   476	    const timer = this.setTimer(() => controller.abort(), REST_TIMEOUT_MS);
+   477	    try {
+   478	      const response = await this.fetchImpl(this.klinesUrl(session, query), { signal: controller.signal });
+   479	      if (!response.ok) throw new Error(`klines: HTTP ${response.status}`);
+   480	      const body: unknown = await response.json();
+   481	      if (!Array.isArray(body)) throw new Error("klines: body is not an array");
+   482	      const rows: KlineRow[] = [];
+   483	      for (const raw of body) {
+   484	        const row = parseKlineRow(raw);
+   485	        if (row !== null) rows.push(row);
+   486	      }
+   487	      rows.sort((a, b) => a.openTime - b.openTime);
+   488	      return rows;
+   489	    } finally {
+   490	      this.clearTimer(timer);
+   491	      if (session.abort === controller) session.abort = null;
+   492	    }
+   493	  }
+   494	
+   495	  private scheduleRetry(session: Session, action: () => void): void {
+   496	    if (!this.isCurrent(session)) return;
+   497	    if (session.timer !== null) this.clearTimer(session.timer);
+   498	    const delay = session.backoffMs;
+   499	    session.backoffMs = Math.min(session.backoffMs * 2, STREAM_BACKOFF_CAP_MS);
+   500	    session.timer = this.setTimer(() => {
+   501	      session.timer = null;
+   502	      if (this.isCurrent(session)) action();
+   503	    }, delay);
+   504	  }
+   505	
+   506	  private restFailureReason(session: Session): string {
+   507	    return session.selection.provider === "BINANCE" && session.selection.marketKind === "PERPETUAL"
+   508	      ? HEALTH_REASON_PERPETUAL_UNREACHABLE
+   509	      : HEALTH_REASON_REST_FAILED;
+   510	  }
+   511	
+   512	  private async bootstrap(session: Session): Promise<void> {
+   513	    let rows: KlineRow[];
+   514	    try {
+   515	      rows = await this.fetchKlines(session, { limit: SNAPSHOT_BARS + 1 });
+   516	    } catch (error) {
+   517	      if (!this.isCurrent(session)) return;
+   518	      console.warn("browserBinanceTransport: kline history request failed", error);
+   519	      this.deliverHealth(session, "UNAVAILABLE", this.restFailureReason(session));
+   520	      this.scheduleRetry(session, () => void this.bootstrap(session));
+   521	      return;
+   522	    }
+   523	    if (!this.isCurrent(session)) return;
+   524	    const now = this.now();
+   525	    const closedRows = rows.filter((row) => row.closeTime < now).slice(-SNAPSHOT_BARS);
+   526	    const forming = rows.find((row) => row.closeTime >= now && row.openTime <= now);
+   527	    const identity = identityFields(session.selection);
+   528	    this.deliver({
+   529	      type: "snapshot",
+   530	      ...identity,
+   531	      bars: closedRows.map((row) => barFrame(session.selection, row, true, true)),
+   532	      trades: [],
+   533	      markers: [],
+   534	      vpin_status: "DISABLED",
+   535	    });
+   536	    if (closedRows.length > 0) session.lastClosedOpen = closedRows[closedRows.length - 1].openTime;
+   537	    this.deliverHealth(session, "READY", HEALTH_REASON_READY);
+   538	    this.deliver({ type: "book", ...identity, status: "UNAVAILABLE", reason: BOOK_REASON_STREAM_CONNECTING });
+   539	    if (forming !== undefined) this.deliver(barFrame(session.selection, forming, false, false));
+   540	    session.backoffMs = STREAM_BACKOFF_INITIAL_MS;
+   541	    this.openStream(session);
+   542	  }
+   543	
+   544	  private streamUrl(session: Session): string {
+   545	    const symbol = session.binanceSymbol.toLowerCase();
+   546	    return `${session.streamBase}/stream?streams=${symbol}@kline_1m/${symbol}@trade/${symbol}@depth20@100ms`;
+   547	  }
+   548	
+   549	  private openStream(session: Session): void {
+   550	    if (!this.isCurrent(session)) return;
+   551	    let stream: UpstreamSocket;
+   552	    try {
+   553	      stream = new this.WebSocketImpl(this.streamUrl(session));
+   554	    } catch (error) {
+   555	      console.warn("browserBinanceTransport: could not construct the stream socket", error);
+   556	      this.streamLost(session);
+   557	      return;
+   558	    }
+   559	    session.stream = stream;
+   560	    session.connectTimer = this.setTimer(() => {
+   561	      session.connectTimer = null;
+   562	      if (!this.isCurrent(session) || session.stream !== stream) return;
+   563	      console.warn("browserBinanceTransport: the stream did not open in time");
+   564	      this.closeStream(session);
+   565	      this.streamLost(session);
+   566	    }, STREAM_CONNECT_TIMEOUT_MS);
+   567	    stream.onopen = () => {
+   568	      if (!this.isCurrent(session) || session.stream !== stream) return;
+   569	      if (session.connectTimer !== null) {
+   570	        this.clearTimer(session.connectTimer);
+   571	        session.connectTimer = null;
+   572	      }
+   573	      session.streamFailures = 0;
+   574	      session.backoffMs = STREAM_BACKOFF_INITIAL_MS;
+   575	      if (session.degraded) {
+   576	        session.degraded = false;
+   577	        void this.recoverAfterGap(session);
+   578	      }
+   579	    };
+   580	    stream.onmessage = (event: MessageEvent) => {
+   581	      if (!this.isCurrent(session) || session.stream !== stream) return;
+   582	      if (typeof event.data !== "string") return;
+   583	      let parsed: unknown;
+   584	      try {
+   585	        parsed = JSON.parse(event.data);
+   586	      } catch {
+   587	        return;
+   588	      }
+   589	      this.routeStreamMessage(session, parsed);
+   590	    };
+   591	    stream.onclose = () => {
+   592	      if (!this.isCurrent(session) || session.stream !== stream) return;
+   593	      this.closeStream(session);
+   594	      this.streamLost(session);
+   595	    };
+   596	    stream.onerror = () => {
+   597	      // The browser follows every error with a close event; that path reports it.
+   598	    };
+   599	  }
+   600	
+   601	  private streamLost(session: Session): void {
+   602	    if (!this.isCurrent(session)) return;
+   603	    session.streamFailures += 1;
+   604	    session.degraded = true;
+   605	    if (session.streamFailures >= STREAM_FAILURES_BEFORE_UNAVAILABLE) {
+   606	      this.deliverHealth(session, "UNAVAILABLE", HEALTH_REASON_STREAM_UNAVAILABLE);
+   607	    } else {
+   608	      this.deliverHealth(session, "RECOVERING", HEALTH_REASON_STREAM_CLOSED);
+   609	    }
+   610	    this.scheduleRetry(session, () => this.openStream(session));
+   611	  }
+   612	
+   613	  /** After a stream reconnect: closed bars the stream missed come from REST, marked reconstructed as the runtime marks its backfill. */
+   614	  private async recoverAfterGap(session: Session): Promise<void> {
+   615	    let rows: KlineRow[] = [];
+   616	    try {
+   617	      rows = await this.fetchKlines(session, session.lastClosedOpen >= 0 ? { startTime: session.lastClosedOpen + BAR_INTERVAL_MS, limit: 1000 } : { limit: SNAPSHOT_BARS + 1 });
+   618	    } catch (error) {
+   619	      console.warn("browserBinanceTransport: kline gap fill failed", error);
+   620	    }
+   621	    if (!this.isCurrent(session)) return;
+   622	    const now = this.now();
+   623	    for (const row of rows) {
+   624	      if (row.closeTime < now && row.openTime > session.lastClosedOpen) {
+   625	        this.deliver(barFrame(session.selection, row, true, true));
+   626	        session.lastClosedOpen = row.openTime;
+   627	      }
+   628	    }
+   629	    this.deliverHealth(session, "READY", HEALTH_REASON_READY);
+   630	  }
+   631	
+   632	  private routeStreamMessage(session: Session, parsed: unknown): void {
+   633	    if (!isRecord(parsed)) return;
+   634	    const payload = isRecord(parsed.data) && typeof parsed.stream === "string" ? parsed.data : parsed;
+   635	    if (payload.e === "kline") {
+   636	      const bar = parseKlineEvent(payload.k);
+   637	      if (bar === null) return;
+   638	      if (bar.closed && bar.openTime <= session.lastClosedOpen) return;
+   639	      this.deliver(barFrame(session.selection, bar, bar.closed, false));
+   640	      if (bar.closed) session.lastClosedOpen = bar.openTime;
+   641	      return;
+   642	    }
+   643	    if (payload.e === "trade") {
+   644	      const price = finiteNumber(payload.p);
+   645	      const size = finiteNumber(payload.q);
+   646	      if (price === undefined || size === undefined || price <= 0 || size <= 0) return;
+   647	      if (!Number.isSafeInteger(payload.T) || !Number.isSafeInteger(payload.t) || typeof payload.m !== "boolean") return;
+   648	      this.deliver({
+   649	        type: "trade",
+   650	        ...identityFields(session.selection),
+   651	        ts_exchange: payload.T,
+   652	        price,
+   653	        size,
+   654	        side: payload.m ? "sell" : "buy",
+   655	        trade_id: String(payload.t),
+   656	      });
+   657	      return;
+   658	    }
+   659	    const isSpotPartial = Array.isArray(payload.bids) && Array.isArray(payload.asks) && Number.isSafeInteger(payload.lastUpdateId);
+   660	    const isFuturesPartial = payload.e === "depthUpdate" && Array.isArray(payload.b) && Array.isArray(payload.a) && Number.isSafeInteger(payload.u);
+   661	    if (!isSpotPartial && !isFuturesPartial) return;
+   662	    const bids = bookLevels(isSpotPartial ? payload.bids : payload.b);
+   663	    const asks = bookLevels(isSpotPartial ? payload.asks : payload.a);
+   664	    if (bids === null || asks === null) return;
+   665	    if (bids.length > 0 && asks.length > 0 && bids[0].price >= asks[0].price) return;
+   666	    this.deliver({
+   667	      type: "book",
+   668	      ...identityFields(session.selection),
+   669	      status: "READY",
+   670	      bids: bids.slice(0, 20),
+   671	      asks: asks.slice(0, 20),
+   672	      lastUpdateId: (isSpotPartial ? payload.lastUpdateId : payload.u) as number,
+   673	      stale: false,
+   674	    });
+   675	  }
+   676	}
+     1	import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+     2	import {
+     3	  BOOK_REASON_STREAM_CONNECTING,
+     4	  BrowserBinanceTransport,
+     5	  DEFAULT_ENDPOINTS,
+     6	  HEALTH_REASON_NO_DXFEED,
+     7	  HEALTH_REASON_PERPETUAL_UNREACHABLE,
+     8	  HEALTH_REASON_READY,
+     9	  HEALTH_REASON_REST_FAILED,
+    10	  HEALTH_REASON_STREAM_CLOSED,
+    11	  HEALTH_REASON_STREAM_UNAVAILABLE,
+    12	  STREAM_BACKOFF_CAP_MS,
+    13	  STREAM_BACKOFF_INITIAL_MS,
+    14	  STREAM_CONNECT_TIMEOUT_MS,
+    15	  STREAM_FAILURES_BEFORE_UNAVAILABLE,
+    16	  resolveDataSource,
+    17	  type UpstreamSocket,
+    18	} from "../browserBinanceTransport";
+    19	import { parseServerFrame, type ServerFrame } from "../../types/frames";
+    20	import klineRows from "./fixtures/binance-mirror/klines.json";
+    21	import tradeEvents from "./fixtures/binance-mirror/trades.json";
+    22	import depthEvent from "./fixtures/binance-mirror/depth20.json";
+    23	import klineEvents from "./fixtures/binance-mirror/kline-events.json";
+    24	
+    25	// The fixtures sit in the minute that opens at 1761400140000; "now" is inside
+    26	// that minute, so the first two REST rows are closed and the third is forming.
+    27	const NOW_MS = 1_761_400_150_000;
+    28	const SPOT = { type: "select", symbol: "BTC-USDT", provider: "BINANCE", marketKind: "SPOT" };
+    29	
+    30	class FakeUpstreamSocket implements UpstreamSocket {
+    31	  static instances: FakeUpstreamSocket[] = [];
+    32	  readonly url: string;
+    33	  readyState = 0;
+    34	  closed = false;
+    35	  onopen: ((event: Event) => void) | null = null;
+    36	  onmessage: ((event: MessageEvent) => void) | null = null;
+    37	  onclose: ((event: CloseEvent) => void) | null = null;
+    38	  onerror: ((event: Event) => void) | null = null;
+    39	  constructor(url: string) {
+    40	    this.url = url;
+    41	    FakeUpstreamSocket.instances.push(this);
+    42	  }
+    43	  close(): void {
+    44	    this.closed = true;
+    45	    this.readyState = 3;
+    46	  }
+    47	  open(): void {
+    48	    this.readyState = 1;
+    49	    this.onopen?.(new Event("open"));
+    50	  }
+    51	  message(payload: unknown): void {
+    52	    this.onmessage?.(new MessageEvent("message", { data: JSON.stringify(payload) }));
+    53	  }
+    54	  drop(): void {
+    55	    this.readyState = 3;
+    56	    this.onclose?.(new CloseEvent("close", { code: 1006 }));
+    57	  }
+    58	}
+    59	
+    60	type Harness = {
+    61	  transport: BrowserBinanceTransport;
+    62	  frames: Record<string, unknown>[];
+    63	  parsed: () => ServerFrame[];
+    64	  fetchMock: ReturnType<typeof vi.fn>;
+    65	  stream: () => FakeUpstreamSocket;
+    66	};
+    67	
+    68	function jsonResponse(body: unknown, status = 200): Response {
+    69	  return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+    70	}
+    71	
+    72	function harness(fetchImpl?: (url: string) => Promise<Response>): Harness {
+    73	  FakeUpstreamSocket.instances = [];
+    74	  const fetchMock = vi.fn(fetchImpl ?? (async () => jsonResponse(klineRows)));
+    75	  const transport = new BrowserBinanceTransport("ws://127.0.0.1:8000/ws", {
+    76	    fetch: fetchMock as unknown as typeof fetch,
+    77	    WebSocket: FakeUpstreamSocket,
+    78	    now: () => NOW_MS,
+    79	  });
+    80	  const frames: Record<string, unknown>[] = [];
+    81	  transport.onmessage = (event) => {
+    82	    expect(typeof event.data).toBe("string");
+    83	    frames.push(JSON.parse(event.data as string) as Record<string, unknown>);
+    84	  };
+    85	  return {
+    86	    transport,
+    87	    frames,
+    88	    parsed: () => frames.map((frame) => {
+    89	      const parsed = parseServerFrame(frame, { nowMs: NOW_MS });
+    90	      if (parsed === null) throw new Error(`frame rejected by parseServerFrame: ${JSON.stringify(frame)}`);
+    91	      return parsed;
+    92	    }),
+    93	    fetchMock,
+    94	    stream: () => FakeUpstreamSocket.instances.at(-1)!,
+    95	  };
+    96	}
+    97	
+    98	// As the worker does: capabilities and the selection go out synchronously
+    99	// inside onopen, so the transport never falls back to its default pair.
+   100	async function openAndSelect(h: Harness, select: Record<string, unknown> = SPOT): Promise<void> {
+   101	  const opened = vi.fn(() => {
+   102	    h.transport.send(JSON.stringify({ type: "capabilities", marker_history: true }));
+   103	    h.transport.send(JSON.stringify(select));
+   104	  });
+   105	  h.transport.onopen = opened;
+   106	  await vi.advanceTimersByTimeAsync(0);
+   107	  expect(opened).toHaveBeenCalledTimes(1);
+   108	  expect(h.transport.readyState).toBe(1);
+   109	}
+   110	
+   111	beforeEach(() => {
+   112	  vi.useFakeTimers();
+   113	});
+   114	afterEach(() => {
+   115	  vi.useRealTimers();
+   116	});
+   117	
+   118	describe("BrowserBinanceTransport", () => {
+   119	  it("answers a spot selection with selection, snapshot, health READY, book, forming bar, in that order, every frame passing the parser", async () => {
+   120	    const h = harness();
+   121	    await openAndSelect(h);
+   122	    const frames = h.parsed();
+   123	    expect(frames.map((frame) => frame.type)).toEqual(["selection", "snapshot", "health", "book", "bar"]);
+   124	    expect(h.fetchMock).toHaveBeenCalledTimes(1);
+   125	    expect(String(h.fetchMock.mock.calls[0]![0])).toBe(`${DEFAULT_ENDPOINTS.spotRestBase}/api/v3/klines?symbol=BTCUSDT&interval=1m&limit=901`);
+   126	
+   127	    const snapshot = frames[1];
+   128	    if (snapshot.type !== "snapshot") throw new Error("expected a snapshot");
+   129	    expect(snapshot).toMatchObject({ provider: "BINANCE", symbol: "BTC-USDT", marketKind: "SPOT", trades: [], markers: [], vpin_status: "DISABLED" });
+   130	    expect(snapshot.bars.map((bar) => bar.ts_open)).toEqual([1_761_400_020_000, 1_761_400_080_000]);
+   131	    expect(snapshot.bars.every((bar) => bar.closed === true && bar.reconstructed === true && bar.interval_ms === 60_000)).toBe(true);
+   132	    expect(snapshot.bars[0]).toMatchObject({ open: 65000, high: 65050, low: 64980, close: 65020.5, volume: 12.345, buy_volume: 7.1, trade_count: 321 });
+   133	    expect(snapshot.bars[0]).not.toHaveProperty("sell_volume");
+   134	
+   135	    expect(frames[2]).toEqual({ type: "health", provider: "BINANCE", symbol: "BTC-USDT", marketKind: "SPOT", recoveryState: "READY", stale: false, reason: HEALTH_REASON_READY });
+   136	    expect(frames[3]).toEqual({ type: "book", provider: "BINANCE", symbol: "BTC-USDT", marketKind: "SPOT", status: "UNAVAILABLE", reason: BOOK_REASON_STREAM_CONNECTING });
+   137	    expect(frames[4]).toMatchObject({ type: "bar", ts_open: 1_761_400_140_000, closed: false, close: 65095, trade_count: 40, buy_volume: 0.7 });
+   138	    expect(frames[4]).not.toHaveProperty("reconstructed");
+   139	
+   140	    expect(FakeUpstreamSocket.instances).toHaveLength(1);
+   141	    expect(h.stream().url).toBe(`${DEFAULT_ENDPOINTS.spotStreamBase}/stream?streams=btcusdt@kline_1m/btcusdt@trade/btcusdt@depth20@100ms`);
+   142	  });
+   143	
+   144	  it("forwards kline events as forming then closed bars, trades with the side from the maker flag, and depth20 as a READY book", async () => {
+   145	    const h = harness();
+   146	    await openAndSelect(h);
+   147	    h.stream().open();
+   148	    h.frames.length = 0;
+   149	    h.stream().message(klineEvents.forming);
+   150	    for (const trade of tradeEvents) h.stream().message(trade);
+   151	    h.stream().message(depthEvent);
+   152	    h.stream().message(klineEvents.closed);
+   153	    const frames = h.parsed();
+   154	    expect(frames.map((frame) => frame.type)).toEqual(["bar", "trade", "trade", "trade", "book", "bar"]);
+   155	
+   156	    expect(frames[0]).toMatchObject({ type: "bar", ts_open: 1_761_400_140_000, closed: false, open: 65080, high: 65100, low: 65070, close: 65091, volume: 1.469, buy_volume: 0.719, trade_count: 43 });
+   157	    expect(frames[5]).toMatchObject({ type: "bar", ts_open: 1_761_400_140_000, closed: true, close: 65088, volume: 9.8, buy_volume: 5.1, trade_count: 160 });
+   158	    expect(frames[5]).not.toHaveProperty("reconstructed");
+   159	
+   160	    expect(frames[1]).toEqual({ type: "trade", provider: "BINANCE", symbol: "BTC-USDT", marketKind: "SPOT", ts_exchange: 1_761_400_150_005, price: 65090, size: 0.015, side: "buy", trade_id: "5100000001" });
+   161	    expect(frames[2]).toMatchObject({ side: "sell", trade_id: "5100000002", size: 0.25 });
+   162	    expect(frames[3]).toMatchObject({ side: "buy", trade_id: "5100000003" });
+   163	
+   164	    expect(frames[4]).toEqual({
+   165	      type: "book", provider: "BINANCE", symbol: "BTC-USDT", marketKind: "SPOT", status: "READY", lastUpdateId: 77_123_456_789, stale: false,
+   166	      bids: [{ price: 65090, size: 0.52 }, { price: 65089.9, size: 1.1 }, { price: 65089, size: 3.25 }],
+   167	      asks: [{ price: 65090.1, size: 0.3 }, { price: 65090.5, size: 2 }, { price: 65091, size: 0.75 }],
+   168	    });
+   169	  });
+   170	
+   171	  it("does not repeat a closed bar the snapshot already carried", async () => {
+   172	    const h = harness();
+   173	    await openAndSelect(h);
+   174	    h.stream().open();
+   175	    h.frames.length = 0;
+   176	    const stale = JSON.parse(JSON.stringify(klineEvents.closed)) as typeof klineEvents.closed;
+   177	    stale.data.k.t = 1_761_400_080_000;
+   178	    stale.data.k.T = 1_761_400_139_999;
+   179	    h.stream().message(stale);
+   180	    expect(h.frames).toHaveLength(0);
+   181	  });
+   182	
+   183	  it("answers requests it cannot serve with the contract's unavailable reply and ignores the ones without one", async () => {
+   184	    const h = harness();
+   185	    await openAndSelect(h);
+   186	    h.frames.length = 0;
+   187	    const requests = [
+   188	      { type: "aggressive_history", request_id: 7, from_ts: 1_761_390_000_000, to_ts: 1_761_400_000_000, min_size: 0.5 },
+   189	      { type: "delta_profile", request_id: 9, from_ts: 1_761_390_000_000, to_ts: 1_761_400_000_000, row_width: 1 },
+   190	      { type: "band_history", request_id: 12, from_ts: 1_761_390_000_000, to_ts: 1_761_400_000_000, price_lo: 64000, price_hi: 64040, column_ms: 10_000 },
+   191	      { type: "wall_history", request_id: 13, from_ts: 1_761_390_000_000, to_ts: 1_761_400_000_000, price_lo: 64000, price_hi: 64040 },
+   192	      { type: "l2_event_history", request_id: 14, from_ts: 1_761_390_000_000, to_ts: 1_761_400_000_000, price_lo: 64000, price_hi: 64040 },
+   193	      { type: "profile_config", mode: "continuous", period_ms: 86_400_000, bin_size_multiplier: null, range_start_ts: null, range_end_ts: null },
+   194	      { type: "liquidity_resync" },
+   195	      { type: "l2_resync", channel: "l2_walls" },
+   196	      { type: "exhaustion_history", from_ts: 1_761_390_000_000 },
+   197	      { type: "initiative_history", from_ts: 1_761_390_000_000 },
+   198	    ];
+   199	    for (const request of requests) h.transport.send(JSON.stringify(request));
+   200	    await vi.advanceTimersByTimeAsync(0);
+   201	    const frames = h.parsed();
+   202	    expect(frames.map((frame) => frame.type)).toEqual(["aggressive_history", "delta_profile", "band_history", "wall_history", "l2_event_history", "analytics_status"]);
+   203	    expect(frames[0]).toMatchObject({ request_id: 7, from_ts: 1_761_390_000_000, to_ts: 1_761_400_000_000, min_size: 0.5, complete: false, reason: "STORAGE_UNAVAILABLE", next_cursor: null, retry_after_ms: null, trades: [] });
+   204	    expect(frames[1]).toMatchObject({ request_id: 9, row_width: 1, complete: false, reason: "STORAGE_UNAVAILABLE", pending: 0, rows: [] });
+   205	    expect(frames[2]).toMatchObject({ request_id: 12, complete: false, reason: "GEOMETRY_UNAVAILABLE", row_width: null, row_lo: null, row_hi: null, columns: [] });
+   206	    expect(frames[3]).toMatchObject({ request_id: 13, complete: false, reason: "HISTORY_UNAVAILABLE", row_width: null, walls: [], next: null });
+   207	    expect(frames[4]).toMatchObject({ request_id: 14, complete: false, reason: "HISTORY_UNAVAILABLE", trades: [], wall_trades: [], trades_held_from: null, next: null });
+   208	    expect(frames[5]).toEqual({ type: "analytics_status", provider: "BINANCE", symbol: "BTC-USDT", marketKind: "SPOT", indicator: "PROFILE", status: "UNAVAILABLE" });
+   209	  });
+   210	
+   211	  it("reports a dropped stream as RECOVERING, reconnects with backoff, turns UNAVAILABLE after repeated failures and READY again once the stream is back", async () => {
+   212	    const h = harness();
+   213	    await openAndSelect(h);
+   214	    h.stream().open();
+   215	    h.frames.length = 0;
+   216	    let delay = STREAM_BACKOFF_INITIAL_MS;
+   217	    for (let failure = 1; failure <= STREAM_FAILURES_BEFORE_UNAVAILABLE; failure += 1) {
+   218	      const sockets = FakeUpstreamSocket.instances.length;
+   219	      h.stream().drop();
+   220	      const health = h.parsed().at(-1);
+   221	      expect(health).toMatchObject(
+   222	        failure < STREAM_FAILURES_BEFORE_UNAVAILABLE
+   223	          ? { type: "health", recoveryState: "RECOVERING", stale: true, reason: HEALTH_REASON_STREAM_CLOSED }
+   224	          : { type: "health", recoveryState: "UNAVAILABLE", stale: true, reason: HEALTH_REASON_STREAM_UNAVAILABLE },
+   225	      );
+   226	      await vi.advanceTimersByTimeAsync(delay - 1);
+   227	      expect(FakeUpstreamSocket.instances).toHaveLength(sockets);
+   228	      await vi.advanceTimersByTimeAsync(1);
+   229	      expect(FakeUpstreamSocket.instances).toHaveLength(sockets + 1);
+   230	      delay = Math.min(delay * 2, STREAM_BACKOFF_CAP_MS);
+   231	    }
+   232	    h.frames.length = 0;
+   233	    h.fetchMock.mockResolvedValueOnce(jsonResponse([klineRows[1], klineRows[2]]));
+   234	    h.stream().open();
+   235	    await vi.advanceTimersByTimeAsync(0);
+   236	    const frames = h.parsed();
+   237	    // The gap fill re-reads from the last closed bar on; nothing newer closed, so only health follows.
+   238	    expect(h.fetchMock).toHaveBeenCalledTimes(2);
+   239	    expect(String(h.fetchMock.mock.calls[1]![0])).toContain("startTime=1761400140000");
+   240	    expect(frames.map((frame) => frame.type)).toEqual(["health"]);
+   241	    expect(frames[0]).toMatchObject({ recoveryState: "READY", stale: false, reason: HEALTH_REASON_READY });
+   242	  });
+   243	
+   244	  it("gives up on a stream that never opens, reports RECOVERING and tries again, so a swallowed upgrade cannot leave the book connecting forever", async () => {
+   245	    const h = harness();
+   246	    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+   247	    try {
+   248	      await openAndSelect(h);
+   249	      h.frames.length = 0;
+   250	      await vi.advanceTimersByTimeAsync(STREAM_CONNECT_TIMEOUT_MS - 1);
+   251	      expect(h.frames).toHaveLength(0);
+   252	      await vi.advanceTimersByTimeAsync(1);
+   253	      expect(h.stream().closed).toBe(true);
+   254	      expect(h.parsed().map((frame) => frame.type)).toEqual(["health"]);
+   255	      expect(h.frames[0]).toMatchObject({ recoveryState: "RECOVERING", stale: true, reason: HEALTH_REASON_STREAM_CLOSED });
+   256	      await vi.advanceTimersByTimeAsync(STREAM_BACKOFF_INITIAL_MS);
+   257	      expect(FakeUpstreamSocket.instances).toHaveLength(2);
+   258	      h.frames.length = 0;
+   259	      h.stream().open();
+   260	      await vi.advanceTimersByTimeAsync(STREAM_CONNECT_TIMEOUT_MS);
+   261	      expect(h.stream().closed).toBe(false);
+   262	      expect(h.parsed().map((frame) => frame.type)).toEqual(["health"]);
+   263	      expect(h.frames[0]).toMatchObject({ recoveryState: "READY", reason: HEALTH_REASON_READY });
+   264	    } finally {
+   265	      warn.mockRestore();
+   266	    }
+   267	  });
+   268	
+   269	  it("fills the closed bars a dropped stream missed from REST, marked reconstructed, before saying READY", async () => {
+   270	    const gapRow = [1_761_400_080_000, "65020.50", "65090.00", "65010.00", "65080.00", "8.500", 1_761_400_139_999, "0", 210, "4.250", "0", "0"];
+   271	    const h = harness(async (url) => jsonResponse(url.includes("startTime") ? [gapRow] : [klineRows[0]]));
+   272	    await openAndSelect(h);
+   273	    h.stream().open();
+   274	    h.stream().drop();
+   275	    await vi.advanceTimersByTimeAsync(STREAM_BACKOFF_INITIAL_MS);
+   276	    h.frames.length = 0;
+   277	    h.stream().open();
+   278	    await vi.advanceTimersByTimeAsync(0);
+   279	    expect(String(h.fetchMock.mock.calls[1]![0])).toContain("startTime=1761400080000");
+   280	    const filled = h.parsed();
+   281	    expect(filled.map((frame) => frame.type)).toEqual(["bar", "health"]);
+   282	    expect(filled[0]).toMatchObject({ ts_open: 1_761_400_080_000, closed: true, reconstructed: true, buy_volume: 4.25 });
+   283	    expect(filled[1]).toMatchObject({ recoveryState: "READY", reason: HEALTH_REASON_READY });
+   284	  });
+   285	
+   286	  it("marks a failed history read UNAVAILABLE with a reason and retries it with backoff", async () => {
+   287	    const h = harness(async () => jsonResponse({ code: -1, msg: "blocked" }, 451));
+   288	    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+   289	    try {
+   290	      await openAndSelect(h);
+   291	      expect(h.parsed().map((frame) => frame.type)).toEqual(["selection", "health"]);
+   292	      expect(h.frames[1]).toMatchObject({ recoveryState: "UNAVAILABLE", stale: true, reason: HEALTH_REASON_REST_FAILED });
+   293	      expect(FakeUpstreamSocket.instances).toHaveLength(0);
+   294	      h.fetchMock.mockResolvedValueOnce(jsonResponse(klineRows));
+   295	      await vi.advanceTimersByTimeAsync(STREAM_BACKOFF_INITIAL_MS);
+   296	      expect(h.fetchMock).toHaveBeenCalledTimes(2);
+   297	      expect(h.parsed().map((frame) => frame.type)).toEqual(["selection", "health", "snapshot", "health", "book", "bar"]);
+   298	    } finally {
+   299	      warn.mockRestore();
+   300	    }
+   301	  });
+   302	
+   303	  it("tries the futures endpoints for a perpetual and says so when they cannot be reached", async () => {
+   304	    const h = harness(async () => {
+   305	      throw new TypeError("Failed to fetch");
+   306	    });
+   307	    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+   308	    try {
+   309	      await openAndSelect(h, { ...SPOT, marketKind: "PERPETUAL" });
+   310	      expect(String(h.fetchMock.mock.calls[0]![0])).toBe(`${DEFAULT_ENDPOINTS.perpetualRestBase}/fapi/v1/klines?symbol=BTCUSDT&interval=1m&limit=901`);
+   311	      const frames = h.parsed();
+   312	      expect(frames.map((frame) => frame.type)).toEqual(["selection", "health"]);
+   313	      expect(frames[1]).toMatchObject({ marketKind: "PERPETUAL", recoveryState: "UNAVAILABLE", stale: true, reason: HEALTH_REASON_PERPETUAL_UNREACHABLE });
+   314	    } finally {
+   315	      warn.mockRestore();
+   316	    }
+   317	  });
+   318	
+   319	  it("confirms a dxFeed selection, clears the bars and reports the feed unavailable without touching the network", async () => {
+   320	    const h = harness();
+   321	    await openAndSelect(h, { type: "select", symbol: "AAPL", provider: "DXFEED", assetClass: "EQUITY" });
+   322	    const frames = h.parsed();
+   323	    expect(frames.map((frame) => frame.type)).toEqual(["selection", "snapshot", "health"]);
+   324	    expect(frames[1]).toMatchObject({ provider: "DXFEED", assetClass: "EQUITY", symbol: "AAPL", bars: [], trades: [], markers: [] });
+   325	    expect(frames[2]).toMatchObject({ recoveryState: "UNAVAILABLE", stale: true, reason: HEALTH_REASON_NO_DXFEED });
+   326	    expect(h.fetchMock).not.toHaveBeenCalled();
+   327	    expect(FakeUpstreamSocket.instances).toHaveLength(0);
+   328	  });
+   329	
+   330	  it("starts the catalog's first spot pair when the worker opens without a selection, as the runtime pushes its current pair", async () => {
+node_modules/.bin/vitest
+
+codex
+The reconnect path has a likely data-loss race: live closed bars can advance the recovery cursor before REST backfill finishes. I’m checking that path and whether failed recovery can incorrectly report READY. The working tree is on another branch, so I’m reading the target with `git show`; I can’t check it out in this read-only environment.
+exec
+/bin/bash -lc "rg -n 'frame.type === \"bar\"|case \"bar\"|ts_open.*last|last.*ts_open|reconstructed|book.*stale' apps/web/src/hooks/useMarketData.ts | head -65; rg -n 'bar_history|function parseBook|parseHealth|case \"book\"' apps/web/src/types/frames.ts; git branch --show-current; rg -n 'restKlineRowToBarFrame' apps/runtime/src/server/frames.js; sed -n '720,780p' apps/web/src/workers/marketDataWorker.ts; rg -n 'book.*health|feedHealth|bookFrame' apps/web/src/hooks/useMarketData.ts | head -35" in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+1633:      if (frame.type === "bar") {
+81:  bar_history?: BarHistory;
+1102:  "bar_history",
+1837:  const barHistory = raw.bar_history;
+2021:      ? { bar_history: barHistory as SnapshotFrame["bar_history"] }
+2037:function parseHealthFrame(raw: Record<string, unknown>): HealthFrame | null {
+2097:function parseBookLevels(
+2131:function parseBookFrame(raw: Record<string, unknown>): BookFrame | null {
+3629:    return parseHealthFrame(record);
+main
+212:function restKlineRowToBarFrame(row, symbol, marketKind, interval) {
+215:    throw new Error(`restKlineRowToBarFrame: unrecognized interval "${interval}"`);
+217:  assertMarketKind(marketKind, "restKlineRowToBarFrame.marketKind");
+219:    throw new Error("restKlineRowToBarFrame: openTime must align to the requested interval");
+221:  timestampToWireNumber(row.openTime, "restKlineRowToBarFrame.openTime");
+223:    throw new Error("restKlineRowToBarFrame: closeTime must match the requested interval");
+228:  const wireOpen = decimalToFiniteNumber(row.open, "restKlineRowToBarFrame.open");
+229:  const wireHigh = decimalToFiniteNumber(row.high, "restKlineRowToBarFrame.high");
+230:  const wireLow = decimalToFiniteNumber(row.low, "restKlineRowToBarFrame.low");
+231:  const wireClose = decimalToFiniteNumber(row.close, "restKlineRowToBarFrame.close");
+232:  const wireVolume = decimalToFiniteNumber(row.volume, "restKlineRowToBarFrame.volume", { allowZero: true });
+233:  const buyVolume = decimalToFiniteNumberOrUndefined(row.takerBuyBaseVolume, "restKlineRowToBarFrame.takerBuyBaseVolume");
+245:  }, "restKlineRowToBarFrame");
+1428:  restKlineRowToBarFrame,
+
+function connect(): void {
+  if (stopped || flowPaused) return;
+  if (!post({ kind: "status", status: "connecting" })) return;
+
+  let socket: WebSocket;
+  try {
+    socket = new WebSocket(url);
+  } catch (error) {
+    console.warn("marketDataWorker: failed to construct WebSocket", error);
+    post({ kind: "status", status: "closed", reason: "construct-failed" });
+    scheduleReconnect();
+    return;
+  }
+  ws = socket;
+  currentConnectionId = ++nextConnectionId;
+  let provedAlive = false;
+  let connectTimer: ReturnType<typeof setTimeout> | null = setTimeout(() => {
+    if (!isCurrentSocket(socket)) return;
+    failCurrentSocket(socket, `connect-timeout:${socket.readyState}`);
+  }, CONNECT_TIMEOUT_MS);
+  let stableTimer: ReturnType<typeof setTimeout> | null = null;
+  socketCleanup.set(socket, () => {
+    clearConnectTimer(connectTimer);
+    connectTimer = null;
+    clearConnectTimer(stableTimer);
+    stableTimer = null;
+    socket.onopen = null;
+    socket.onmessage = null;
+    socket.onclose = null;
+    socket.onerror = null;
+  });
+
+  socket.onopen = () => {
+    if (!isCurrentSocket(socket)) return;
+    if (!post({ kind: "status", status: "open" })) {
+      failCurrentSocket(socket, "post-failed:open");
+      return;
+    }
+    stableTimer = setTimeout(() => {
+      if (isCurrentSocket(socket)) backoffMs = BACKOFF_INITIAL_MS;
+    }, STABLE_CONNECTION_MS);
+    columnDecoders.clear();
+    try {
+      // Capability negotiation makes a host-first rolling deploy safe: a new
+      // host with marker_history support remains on the legacy wire until the
+      // browser explicitly opts in. Older hosts simply ignore this message.
+      socket.send(
+        JSON.stringify({
+          type: "capabilities",
+          ...Object.fromEntries(CLIENT_CAPABILITIES.map((flag) => [flag, true])),
+        }),
+      );
+    } catch {
+      failCurrentSocket(socket, "send-failed:capabilities");
+      return;
+    }
+    sendDesiredSelection(socket);
+  };
+
+  socket.onmessage = (event: MessageEvent<string>) => {
+135:  feedHealth: FeedHealth | null;
+330:  const [feedHealth, setFeedHealth] = useState<FeedHealth | null>(null);
+1866:    feedHealth,
+
+codex
+1. **WARNING — `apps/web/src/workers/browserBinanceTransport.ts:617–626, 638–640` — Live events can erase the recovery gap.**  
+   While REST backfill is pending, a live closed kline advances `session.lastClosedOpen`. The REST loop then skips every missing bar older than that new cursor. For example, with minute A last received, missing B/C, and live D closing before REST returns, B/C are permanently omitted.  
+   **Fix:** Preserve the recovery boundary and coordinate backfill with live delivery so closed bars arrive chronologically without gaps. Add a deferred-fetch test where D arrives before the B/C response.
+
+2. **WARNING — `apps/web/src/workers/browserBinanceTransport.ts:614–629` — Failed or obsolete recovery reports READY.**  
+   A rejected gap-fill request is logged, then followed by `READY`, with no REST retry. Also, if the stream closes during that fetch, the response still passes `isCurrent(session)` because reconnects reuse the session; it can overwrite the newer RECOVERING state with READY while disconnected. This hides missing history and feed failure.  
+   **Fix:** Associate recovery with a stream generation, retain degraded health on REST failure, and retry with backoff. Emit READY only after successful recovery for the currently open stream. Test rejection and stream closure during a pending fetch.
+
+3. **WARNING — `apps/web/src/workers/browserBinanceTransport.ts:601–609` — Perpetual stream failures violate the specified unavailable behavior.**  
+   Perpetual REST failures use `BROWSER_DIRECT_PERPETUAL_UNREACHABLE`, but stream failures follow the spot path: RECOVERING for four failures, then generic STREAM_UNAVAILABLE. The brief requires UNAVAILABLE with the perpetual-specific reason on the first failure.  
+   **Fix:** Handle PERPETUAL in `streamLost()` and emit the required state and reason immediately. Test both socket closure and connection timeout after successful perpetual REST bootstrap.
+
+The payload conversions and unavailable-history replies otherwise follow the brief in the inspected paths. No indicator settings or `onBar` factories are introduced.
+
+The requested diff was reviewed. Tests were not run: the working tree is on `main`, and the read-only environment prevents checking out or materializing the target branch.
+
+VERDICT: REVISE
+tokens used
+44,418
+1. **WARNING — `apps/web/src/workers/browserBinanceTransport.ts:617–626, 638–640` — Live events can erase the recovery gap.**  
+   While REST backfill is pending, a live closed kline advances `session.lastClosedOpen`. The REST loop then skips every missing bar older than that new cursor. For example, with minute A last received, missing B/C, and live D closing before REST returns, B/C are permanently omitted.  
+   **Fix:** Preserve the recovery boundary and coordinate backfill with live delivery so closed bars arrive chronologically without gaps. Add a deferred-fetch test where D arrives before the B/C response.
+
+2. **WARNING — `apps/web/src/workers/browserBinanceTransport.ts:614–629` — Failed or obsolete recovery reports READY.**  
+   A rejected gap-fill request is logged, then followed by `READY`, with no REST retry. Also, if the stream closes during that fetch, the response still passes `isCurrent(session)` because reconnects reuse the session; it can overwrite the newer RECOVERING state with READY while disconnected. This hides missing history and feed failure.  
+   **Fix:** Associate recovery with a stream generation, retain degraded health on REST failure, and retry with backoff. Emit READY only after successful recovery for the currently open stream. Test rejection and stream closure during a pending fetch.
+
+3. **WARNING — `apps/web/src/workers/browserBinanceTransport.ts:601–609` — Perpetual stream failures violate the specified unavailable behavior.**  
+   Perpetual REST failures use `BROWSER_DIRECT_PERPETUAL_UNREACHABLE`, but stream failures follow the spot path: RECOVERING for four failures, then generic STREAM_UNAVAILABLE. The brief requires UNAVAILABLE with the perpetual-specific reason on the first failure.  
+   **Fix:** Handle PERPETUAL in `streamLost()` and emit the required state and reason immediately. Test both socket closure and connection timeout after successful perpetual REST bootstrap.
+
+The payload conversions and unavailable-history replies otherwise follow the brief in the inspected paths. No indicator settings or `onBar` factories are introduced.
+
+The requested diff was reviewed. Tests were not run: the working tree is on `main`, and the read-only environment prevents checking out or materializing the target branch.
+
+VERDICT: REVISE

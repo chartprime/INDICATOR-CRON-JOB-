@@ -203,6 +203,13 @@ A pair's tape state counts as complete only once its staged pages have
 committed; a switch during the two-second grace discards them and a return
 reads them again.
 
+One known limitation (conservative direction): when two consecutive stream
+spans end in the same millisecond, the merged stretch keeps the older span's
+ending trade id, so the next span can fail the continuity check and trigger a
+REST seam read that was not needed; if that read fails three times the fully
+observed boundary millisecond is marked unverified. Coverage is then reported
+as unavailable, never as falsely complete.
+
 To build a static bundle with the mode baked in and relative asset paths:
 
 ```bash

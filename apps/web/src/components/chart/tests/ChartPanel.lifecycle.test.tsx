@@ -1266,7 +1266,7 @@ describe("ChartPanel Lightweight Charts lifecycle", () => {
     expect(chartMock.chart.addSeries).toHaveBeenCalledTimes(1);
     expect(chartMock.chart.addSeries).toHaveBeenCalledWith(
       "LineSeries",
-      expect.objectContaining({ lastValueVisible: false }),
+      expect.objectContaining({ lastValueVisible: false, crosshairMarkerVisible: false }),
       0,
     );
     expect(chartMock.series.createPriceLine).toHaveBeenCalledTimes(3);
@@ -1576,7 +1576,7 @@ describe("ChartPanel Lightweight Charts lifecycle", () => {
     expect(chartMock.chart.removeSeries).toHaveBeenCalledTimes(1);
   });
 
-  it("a draw.table() placed bottom-right renders in its own stack above the time axis, clear of the price axis, apart from the top-right one", async () => {
+  it("a draw.table() placed bottom-right renders in its own stack above the time axis, apart from the top-right one, and both stacks sit clear of the price axis", async () => {
     const ref = await mountChart();
     act(() => ref.current?.applySnapshot([bar(0), bar(60_000)]));
     act(() => {
@@ -1589,7 +1589,7 @@ describe("ChartPanel Lightweight Charts lifecycle", () => {
     expect(stacks[1].classList.contains("draw-table-overlay-stack--bottom")).toBe(true);
     expect(stacks[0].querySelectorAll(".draw-table-overlay")).toHaveLength(1);
     expect(stacks[1].querySelectorAll(".draw-table-overlay")).toHaveLength(1);
-    expect((stacks[0] as HTMLElement).style.right).toBe("");
+    expect((stacks[0] as HTMLElement).style.right).toBe(`${64 + AXIS_INSET_GAP_PX}px`);
     expect((stacks[1] as HTMLElement).style.right).toBe(`${64 + AXIS_INSET_GAP_PX}px`);
   });
 

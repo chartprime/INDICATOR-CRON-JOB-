@@ -1,0 +1,2179 @@
+Reading additional input from stdin...
+OpenAI Codex v0.164.0
+--------
+workdir: /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+model: gpt-6.1-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 01a178e8-90a5-7462-b195-3e0c2a1762dc
+--------
+user
+You are the independent code reviewer for a trading-indicator team. Review branch build/browser-direct-l1-followup against main in this repository. Run: git diff main...build/browser-direct-l1-followup -- apps/web/src/workers/browserBinanceTransport.ts apps/web/src/workers/tests/browserBinanceTransport.l1.test.ts docs/architecture/binance/README.md 
+
+Focus, in order: 1) correctness of the math versus the brief; 2) future-data leakage (a bar may use only data timestamped at or before its close) and replay-versus-live consistency; 3) honest handling of missing data: null, never zero or NaN, gates on tradeAvailability, ticks.coverageOf, l2.trusted(); 4) buy/sell read through barSides, never volume minus buy_volume; 5) incremental state, bounded memory, no per-bar copying of large arrays, no stream or draw factories created inside onBar; 6) settings schema covers every default key with step > 0; 7) tests actually pin the behavior (hand-computed values, replace semantics, empty input, gates); 8) readability and house style.
+
+For each finding give file, line range, severity CRITICAL / WARNING / SUGGESTION, the problem, and the fix. End with exactly VERDICT: APPROVED or VERDICT: REVISE.
+
+----- BUILD BRIEF -----
+# Build brief: L1 parity for browser-direct Binance (`build/browser-direct-l1`)
+
+2026-10-26. Browser-direct mode had no frame the runtime *derives* from the
+tape (`marker`, the aggressive pool, `aggressive_history`, `marker_history`), so
+Large Trade Detector drew its legend and no bubbles. This build computes them in
+the worker with the runtime's own algorithms, proven equal by parity tests that
+`require` the runtime's CommonJS modules on the same 10,000 recorded trades.
+
+## 1. What the runtime derives from trades, and who reads it
+
+There is no "baseline" for Binance markers (`baseline_log_*` are dxFeed storage
+columns). `history.js` retains, per minute and side, the four prints of largest
+**USD notional**, ties by time then id, 100,000 at most, seven days; a `marker`
+follows the admitted `trade`; the snapshot carries the newest 5,000;
+`marker_history` (opt-in) the full set, 5,000 rows a frame. The pool keeps
+prints at or above a floor (98th percentile of the last 4,096 sizes once 200
+are seen, never falling), 4 hours, 20,000 at most, on the snapshot as
+`aggressive_prints*`; `aggressive_history` answers from storage, 10,000 a page.
+
+| L1 indicator | Reads | Browser-direct before | Added by this build |
+|---|---|---|---|
+| Aggressive Order Flow, Delta Divergence, CVD Divergence, Market Structure Delta, FVG Delta, FVG Boxes, L1 Order Blocks, Volume Profile OHLC | bars via `barSides` | works | nothing |
+| Large Trade Detector | `markers` (snapshot, `marker`, `marker_history`) and bar `trade_count` | legend only | live markers; bootstrap markers; `marker_history` |
+| VWAP Bands, Large Trade Bubbles (tick store) | `ctx.ticks` / `ctx.trades`: live tape plus `aggressive_prints` and `aggressive_history` | live bars only (`coverageOf` "none" before connect) | pool in the snapshot; `aggressive_history` from the pool |
+| Live Delta Profile, Volume Profile (Ticks) | live trades plus `delta_profile` (every trade, per price row) | forming window only | nothing: the pool is floor-filtered; reply stays `STORAGE_UNAVAILABLE` |
+| VPIN Cloud | `vpin` frames (server study) | unavailable | nothing: `vpin_status: "DISABLED"` |
+
+## 2. Shared algorithm: approach (a)
+
+The runtime modules are CommonJS and the Vite build cannot import
+`apps/runtime`. Pure TypeScript mirrors live in `apps/web/src/lib/tape/`:
+`largeTradeDetection.ts` (line for line with `large-trade-detection.js`) and
+`aggressivePool.ts` (`createAggressivePool`, `print-floor.js`, `floorAbove`).
+Marker retention reuses `lib/chart/markerRetention.ts`, already the browser
+mirror of `history.js`'s time-covered path. `workers/tests/tapeParity.test.ts`
+`require`s the runtime files (vitest runs in Node) and asserts identical
+output on 10,000 recorded BTC-USDT aggregate trades: every helper result,
+every admit decision, the marker set, the pool's prints, floor and `from`.
+Runtime code is not touched.
+
+## 3. Markers
+
+Every live `trade` goes through the marker buffer; an admitted print goes out
+as a `marker` right after it. Bootstrap: after the first snapshot, alongside
+the stream, the worker pages `GET /api/v3/aggTrades?limit=1000` from the
+mirror, newest first by `fromId`, at most 30 pages (weight 4 each, 120 of the
+6,000 per minute budget, one 10 s timeout per page), stopping at a short page
+or seven days. Rows are aggregate trades: id `a<aggTradeId>` (a separate id space
+from the stream's `t`), size the summed fills of one taker order at one price,
+so a bootstrap marker can be larger than any single print the runtime saw.
+Then the `snapshot` is re-broadcast (closed bars, last 100 live trades, newest
+5,000 markers, the pool), as the runtime does after a warm-up chunk, and the
+forming bar re-sent. The runtime's baseline is seven days of storage; the
+browser's is what 30 pages cover (about twenty minutes on BTC-USDT, hours on
+a quiet pair). The detector's `top N%` target counts the snapshot bars' `trade_count`
+(15 hours), so a short bootstrap leaves the selection `truncated`; the legend
+appends ` · partial`.
+
+## 4. Aggressive pool and `aggressive_history`
+
+The pool is the runtime's: live trades `record`; bootstrap pages are staged
+until the stream's first trade is known (or a 2 s grace), reconciled against
+every live span by fill id (`f`/`l`), then `seed`, the newest 15 minutes with
+`calibrate: true`, older rows at the floor. Coverage is explicit: the
+transport keeps every stretch of tape observed in full (validated
+id-contiguous pages, each stream span first-to-last trade, ids at the ends)
+and claims only inside one, minus milliseconds whose aggregates straddle a
+span boundary; the REST-to-stream seam and reconnect holes are filled from
+`aggTrades` (by id after a REST row, else `startTime`, 10 pages, three tries)
+or stay holes; the bookkeeping is pruned to the pool's 4 h and bounded. A
+stream lost after trades closes the transport, as a lost runtime socket
+would: the worker reports `closed` (the tick store ends its live stretch,
+`AggressiveTape.endLive`) and reconnects to a new instance that keeps the
+pair's tape state. `aggressive_prints_from` is the start of the stretch
+reaching now, or now itself (no claim) while no stream delivers. A page with
+a malformed row is a failed read, never a shorter page. `aggressive_history` is answered from the pool: `complete: true`
+when the window lies inside one observed stretch and `min_size >= floor`,
+trades in time order, 10,000 a page with `CAP_REACHED` and a base64url cursor (`{ts, id}` bound to the
+request); otherwise `complete: false`, `reason: "STORAGE_UNAVAILABLE"`,
+`trades: []`, which the client retries three times and then rests, as today.
+
+## 5. `marker_history`
+
+With the `capabilities` flag set (the worker always sends it), the bootstrap's
+completion, a later opt-in and a connect with kept state each send the full
+marker set as `marker_history` frames, `reset` on the first, 5,000 rows each.
+
+## 6. Degraded states
+
+A failed first page is retried with the stream's backoff; after three failures
+the READY health frame carries `reason: "BROWSER_DIRECT_NO_TAPE_HISTORY"`,
+markers and the pool start at connect, retries continue (a later success
+publishes the snapshot and restores `BROWSER_DIRECT`). A failure after some
+pages keeps the pages validated before it.
+
+## 7. Unavailable, with reason
+
+`delta_profile`: `STORAGE_UNAVAILABLE` (needs every trade; the pool is floor
+filtered). VPIN: `vpin_status: "DISABLED"`.
+
+## 8. Round log
+
+- Round 1 (`c0059df`): markers, pool, `aggressive_history`, `marker_history`,
+  parity tests, docs, bundle.
+- Round 2 (`370c53c`): explicit observed stretches; seams between the REST
+  pages and the stream, and between streams, filled from `aggTrades` or left
+  outside every claim; a page with a malformed row is a failed read.
+- Round 3 (`1136823`): a stream lost after trades closes the transport like a
+  lost runtime socket (`AggressiveTape.endLive` on `status: closed`, tape
+  state kept across instances); REST rows reconciled by fill id; staged
+  bootstrap commit; bookkeeping pruned to the pool's retention.
+- Round 4 (final exception): a one-trade span is reconciled against both id
+  boundaries; the bootstrap's oldest millisecond is claimed only when the walk
+  reached the exchange's first aggregate trade; completeness ends at the last
+  trade seen, never in the future.
+- Follow-up (`build/browser-direct-l1-followup`): two stream spans join only
+  when their trade ids are consecutive, otherwise the seam is read from REST
+  even with no millisecond between them; kept state is "done" only once the
+  staged pages committed, so a switch during the grace restarts the read.
+warning: Codex could not find bubblewrap on PATH. Install bubblewrap with your OS package manager. See the sandbox prerequisites: https://developers.openai.com/codex/concepts/sandboxing#prerequisites. Codex will use the bundled bubblewrap in the meantime.
+codex
+I’ll review the three-file diff, then trace the coverage and bootstrap state changes against the brief and tests.
+exec
+/bin/bash -lc 'git diff main...build/browser-direct-l1-followup -- apps/web/src/workers/browserBinanceTransport.ts apps/web/src/workers/tests/browserBinanceTransport.l1.test.ts docs/architecture/binance/README.md' in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+diff --git a/apps/web/src/workers/browserBinanceTransport.ts b/apps/web/src/workers/browserBinanceTransport.ts
+index 599f20e..9e814d0 100644
+--- a/apps/web/src/workers/browserBinanceTransport.ts
++++ b/apps/web/src/workers/browserBinanceTransport.ts
+@@ -216,6 +216,8 @@ type Session = {
+   unfillable: TapeInterval[];
+   /** Boundary milliseconds whose aggregate trades straddle a live span's first or last trade and cannot be split by id: outside every claim. */
+   unverified: number[];
++  /** First trade ids of stream spans whose seam to the stretch before them a REST read has closed: that junction may join. */
++  bridgedStarts: number[];
+   /** The bootstrap's calibration window start: rows from it calibrate the pool's floor, as the runtime's newest warm-up chunk does. */
+   calibrationFrom: number;
+   tape: TapeBootstrap;
+@@ -237,6 +239,7 @@ type TapeState = {
+   liveSpans: LiveSpan[];
+   unfillable: TapeInterval[];
+   unverified: number[];
++  bridgedStarts: number[];
+   calibrationFrom: number;
+   recentTrades: TradeFrame[];
+   done: boolean;
+@@ -455,8 +458,31 @@ export function parseAggTradesPage(body: unknown, fromId: number | null): AggTra
+   return rows;
+ }
+ 
+-/** Merges a closed stretch into the list, joining stretches that overlap or touch (adjacent milliseconds); the ends keep the ids of whichever stretch reaches furthest. */
+-function addInterval(intervals: TapeInterval[], added: TapeInterval): void {
++/**
++ * Whether two stretches that touch or overlap in time are one continuous
++ * stretch of tape. Where the earlier one ends with a live trade and the later
++ * one starts with a live trade, they were observed independently (two stream
++ * spans): fills between the two ids may be missing even inside the same
++ * millisecond, so they join only when the ids are consecutive. A REST stretch
++ * (the bootstrap's pages, a filled seam) was reconciled against the spans by
++ * fill id, so it joins either side.
++ */
++function continuous(earlier: TapeInterval, later: TapeInterval, bridged: ReadonlySet<number>): boolean {
++  if (earlier.endTradeId === undefined || later.startTradeId === undefined) return true;
++  return later.startTradeId === earlier.endTradeId + 1 || bridged.has(later.startTradeId);
++}
++
++const NO_BRIDGES: ReadonlySet<number> = new Set();
++
++/**
++ * Merges a stretch into the list, joining stretches that overlap or touch
++ * (adjacent milliseconds) and are continuous (`bridged`: the first trade ids
++ * of spans whose seam a REST read has closed). The ends keep the ids of
++ * whichever stretch reaches furthest; at a tie both kinds of id stay, the
++ * live trade id (for continuity) and the REST aggregate id (for where the
++ * next read starts).
++ */
++function addInterval(intervals: TapeInterval[], added: TapeInterval, bridged: ReadonlySet<number> = NO_BRIDGES): void {
+   if (!(added.to >= added.from)) return;
+   let merged: TapeInterval = { ...added };
+   const apart: TapeInterval[] = [];
+@@ -465,12 +491,26 @@ function addInterval(intervals: TapeInterval[], added: TapeInterval): void {
+       apart.push(interval);
+       continue;
+     }
+-    const start = interval.from < merged.from || (interval.from === merged.from && merged.startTradeId === undefined) ? interval : merged;
+-    const end = interval.to > merged.to || (interval.to === merged.to && merged.endTradeId === undefined && merged.endAggId === undefined) ? interval : merged;
+-    merged = { from: start.from, to: end.to, startTradeId: start.startTradeId, endTradeId: end.endTradeId, endAggId: end.endAggId };
++    const intervalFirst = interval.from < merged.from || (interval.from === merged.from && interval.to <= merged.to);
++    const [earlier, later] = intervalFirst ? [interval, merged] : [merged, interval];
++    if (!continuous(earlier, later, bridged)) {
++      apart.push(interval);
++      continue;
++    }
++    const from = Math.min(interval.from, merged.from);
++    const to = Math.max(interval.to, merged.to);
++    const starts = [interval, merged].filter((candidate) => candidate.from === from);
++    const ends = [interval, merged].filter((candidate) => candidate.to === to);
++    merged = {
++      from,
++      to,
++      startTradeId: starts.map((candidate) => candidate.startTradeId).find((id) => id !== undefined),
++      endTradeId: ends.map((candidate) => candidate.endTradeId).find((id) => id !== undefined),
++      endAggId: ends.map((candidate) => candidate.endAggId).find((id) => id !== undefined),
++    };
+   }
+   apart.push(merged);
+-  apart.sort((a, b) => a.from - b.from);
++  apart.sort((a, b) => a.from - b.from || a.to - b.to);
+   intervals.splice(0, intervals.length, ...apart);
+ }
+ 
+@@ -776,9 +816,12 @@ export class BrowserBinanceTransport implements TransportSocket {
+       liveSpans: session.liveSpans,
+       unfillable: session.unfillable,
+       unverified: session.unverified,
++      bridgedStarts: session.bridgedStarts,
+       calibrationFrom: session.calibrationFrom,
+       recentTrades: session.recentTrades,
+-      done: session.tape.done,
++      // Completion means committed: pages still staged (a switch during the
++      // grace) are discarded, and a return reads them again.
++      done: session.tape.done && session.tape.staged.length === 0,
+     });
+     while (tapeStates.size > MAX_TAPE_STATES) {
+       const oldest = tapeStates.keys().next().value;
+@@ -816,7 +859,7 @@ export class BrowserBinanceTransport implements TransportSocket {
+     const live = session.live;
+     if (live !== null) {
+       session.liveSpans.push({ from: live.from, to: live.last, firstId: live.firstId, lastId: live.lastId });
+-      addInterval(session.observed, { from: live.from, to: live.last, startTradeId: live.firstId, endTradeId: live.lastId });
++      addInterval(session.observed, { from: live.from, to: live.last, startTradeId: live.firstId, endTradeId: live.lastId }, new Set(session.bridgedStarts));
+       session.live = null;
+     }
+     const stream = session.stream;
+@@ -872,6 +915,7 @@ export class BrowserBinanceTransport implements TransportSocket {
+       live: null,
+       unfillable: [],
+       unverified: [],
++      bridgedStarts: [],
+       calibrationFrom: this.now() - DEFAULT_CALIBRATION_MS,
+       tape: { started: false, inFlight: false, done: false, attempts: 0, unavailable: false, backoffMs: STREAM_BACKOFF_INITIAL_MS, abort: null, timer: null, staged: [], graceTimer: null, startVerified: false },
+       seam: { inFlight: false, gap: null, failures: 0, backoffMs: STREAM_BACKOFF_INITIAL_MS, abort: null, timer: null, publishWhenSettled: false },
+@@ -888,6 +932,7 @@ export class BrowserBinanceTransport implements TransportSocket {
+       session.liveSpans = kept.liveSpans;
+       session.unfillable = kept.unfillable;
+       session.unverified = kept.unverified;
++      session.bridgedStarts = kept.bridgedStarts;
+       session.recentTrades = kept.recentTrades;
+       if (kept.done) {
+         session.calibrationFrom = kept.calibrationFrom;
+@@ -1406,6 +1451,7 @@ export class BrowserBinanceTransport implements TransportSocket {
+     session.liveSpans = session.liveSpans.filter((span) => span.to >= cutoff);
+     session.unfillable = session.unfillable.filter((gap) => gap.to >= cutoff || keepsActive(gap));
+     session.unverified = session.unverified.filter((ms) => ms >= cutoff);
++    session.bridgedStarts = session.bridgedStarts.filter((id) => session.liveSpans.some((span) => span.firstId === id) || session.live?.firstId === id);
+     if (session.observed.length > MAX_COVERAGE_ENTRIES) session.observed.splice(0, session.observed.length - MAX_COVERAGE_ENTRIES);
+     if (session.liveSpans.length > MAX_COVERAGE_ENTRIES) session.liveSpans.splice(0, session.liveSpans.length - MAX_COVERAGE_ENTRIES);
+     if (session.unfillable.length > MAX_COVERAGE_ENTRIES) session.unfillable.splice(0, session.unfillable.length - MAX_COVERAGE_ENTRIES);
+@@ -1422,7 +1468,7 @@ export class BrowserBinanceTransport implements TransportSocket {
+   private coverageIntervals(session: Session): TapeInterval[] {
+     this.pruneCoverage(session);
+     const intervals = session.observed.map((interval) => ({ ...interval }));
+-    if (session.live !== null) addInterval(intervals, { from: session.live.from, to: session.live.last, startTradeId: session.live.firstId, endTradeId: session.live.lastId });
++    if (session.live !== null) addInterval(intervals, { from: session.live.from, to: session.live.last, startTradeId: session.live.firstId, endTradeId: session.live.lastId }, new Set(session.bridgedStarts));
+     return subtractMilliseconds(intervals, session.unverified);
+   }
+ 
+@@ -1754,15 +1800,24 @@ export class BrowserBinanceTransport implements TransportSocket {
+     return calibration.length + older.length;
+   }
+ 
+-  /** The newest hole between two observed stretches (the open stream span counts) that is neither given up on nor made only of unverified milliseconds. */
++  /**
++   * The newest hole between two observed stretches (the open stream span
++   * counts) that is neither given up on nor made only of unverified
++   * milliseconds. Two stream spans whose ids are not consecutive stay apart
++   * even when their milliseconds touch or coincide: their hole has no
++   * interior, and is still read from REST so the fills between the ids are
++   * seeded or the boundary is marked unverified.
++   */
+   private nextSeamGap(session: Session): TapeInterval | null {
+     const intervals = this.coverageIntervals(session);
+     for (let i = intervals.length - 1; i >= 1; i -= 1) {
+-      const gap: TapeInterval = { from: intervals[i - 1].to, to: intervals[i].from, endAggId: intervals[i - 1].endAggId, endTradeId: intervals[i - 1].endTradeId };
++      const earlier = intervals[i - 1];
++      const later = intervals[i];
++      const gap: TapeInterval = { from: Math.min(earlier.to, later.from), to: Math.max(earlier.to, later.from), startTradeId: later.startTradeId, endAggId: earlier.endAggId, endTradeId: earlier.endTradeId };
+       if (session.unfillable.some((open) => open.from === gap.from && open.to === gap.to)) continue;
+       const interior = gap.to - gap.from - 1;
+       const unverifiedInside = session.unverified.filter((ms) => ms > gap.from && ms < gap.to).length;
+-      if (interior <= unverifiedInside) continue;
++      if (interior > 0 && interior <= unverifiedInside) continue;
+       return gap;
+     }
+     return null;
+@@ -1803,7 +1858,14 @@ export class BrowserBinanceTransport implements TransportSocket {
+         const inside = rows.filter((row) => row.T <= gap.to);
+         if (inside.length > 0) {
+           this.seedTape(session, inside);
+-          endAggId = inside[inside.length - 1].a;
++          // The ids read end where the open stream's own fills begin: an
++          // aggregate at or after the stream's first trade is the stream's
++          // while it delivers, but if the stream is lost before delivering
++          // those fills, the next seam must read them again and judge them
++          // against the span as it ended.
++          const live = session.live;
++          const streams = live === null ? undefined : inside.find((row) => row.T > live.from || (row.T === live.from && row.l >= live.firstId));
++          endAggId = streams === undefined ? inside[inside.length - 1].a : streams.a - 1;
+         }
+         // The hole is closed when a row past its end was read, or the page
+         // was short (nothing newer existed on the exchange at the read).
+@@ -1839,7 +1901,10 @@ export class BrowserBinanceTransport implements TransportSocket {
+     seam.failures = 0;
+     seam.backoffMs = STREAM_BACKOFF_INITIAL_MS;
+     if (closed) {
+-      addInterval(session.observed, { from: gap.from, to: gap.to, endAggId });
++      // The fills between the stretch before and the span after were read and
++      // reconciled: that junction is continuous now, whatever its trade ids.
++      if (gap.startTradeId !== undefined && !session.bridgedStarts.includes(gap.startTradeId)) session.bridgedStarts.push(gap.startTradeId);
++      addInterval(session.observed, { from: gap.from, to: gap.to, endAggId }, new Set(session.bridgedStarts));
+       // Coverage grew: the snapshot says so.
+       session.seam.publishWhenSettled = true;
+     } else {
+diff --git a/apps/web/src/workers/tests/browserBinanceTransport.l1.test.ts b/apps/web/src/workers/tests/browserBinanceTransport.l1.test.ts
+index eca7449..73c95d1 100644
+--- a/apps/web/src/workers/tests/browserBinanceTransport.l1.test.ts
++++ b/apps/web/src/workers/tests/browserBinanceTransport.l1.test.ts
+@@ -137,6 +137,17 @@ function aggRow(a: number, T: number, f: number, l: number, q = "5.00000"): Reco
+   return { a, p: "79530.00", q, f, l, T, m: false, M: true };
+ }
+ 
++/** Serves hand-built mirror rows (sorted by id) as the mirror would: newest page, the page from `fromId`, or the page from `startTime` on. */
++function mirrorPage(url: string, raws: readonly Record<string, unknown>[]): Record<string, unknown>[] {
++  const params = new URL(url).searchParams;
++  const fromId = params.get("fromId");
++  const startTime = params.get("startTime");
++  const sorted = [...raws].sort((x, y) => (x.a as number) - (y.a as number));
++  if (startTime !== null) return sorted.filter((row) => (row.T as number) >= Number(startTime)).slice(0, TAPE_BOOTSTRAP_PAGE);
++  if (fromId !== null) return sorted.filter((row) => (row.a as number) >= Number(fromId)).slice(0, TAPE_BOOTSTRAP_PAGE);
++  return sorted.slice(-TAPE_BOOTSTRAP_PAGE);
++}
++
+ function jsonResponse(body: unknown, status = 200): Response {
+   return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+ }
+@@ -848,28 +859,46 @@ describe("BrowserBinanceTransport coverage edges", () => {
+   it("reconciles a one-trade stream span against both of its id boundaries: aggregates before and after it are seeded, one within it is dropped, one straddling it leaves its millisecond unverified", async () => {
+     const C = NEWEST_TS + 3_000;
+     const M = C + 5_000;
+-    const M2 = M + 5_000;
+-    // The clock sits past the last trade of the scenario, as it would live.
++    // The mirror after the recording: at C (the one-trade span, id 500) one
++    // aggregate wholly before, one within, one after; at M (the next span,
++    // id 600) one straddling it; then one newer.
++    const extra = [
++      aggRow(LAST_ID + 1, C, 490, 495),
++      aggRow(LAST_ID + 2, C, 500, 500),
++      aggRow(LAST_ID + 3, C, 505, 507),
++      aggRow(LAST_ID + 4, M, 598, 601),
++      aggRow(LAST_ID + 5, M + 2_000, 800, 800),
++    ];
+     const h1 = harness(async (url) => {
+-      if (url.includes(`fromId=${LAST_ID + 1}`)) return jsonResponse([]);
+-      if (url.includes(`startTime=${C}`)) {
+-        // The span is the single trade 500 at C: before it, within it, after it.
+-        return jsonResponse([aggRow(9_001, C, 490, 495), aggRow(9_002, C, 500, 500), aggRow(9_003, C, 505, 507), aggRow(9_004, M + 5, 700, 700)]);
+-      }
+-      if (url.includes(`startTime=${M}`)) {
+-        // The span is the single trade 600 at M: one straddling it.
+-        return jsonResponse([aggRow(9_101, M, 598, 601), aggRow(9_102, M2 + 5, 800, 800)]);
+-      }
++      const params = new URL(url).searchParams;
++      const fromId = params.get("fromId");
++      if (fromId !== null && Number(fromId) > LAST_ID) return jsonResponse(mirrorPage(url, extra));
++      if (params.get("startTime") !== null) return jsonResponse(mirrorPage(url, extra));
+       return jsonResponse(recordedPage(url));
+-    }, () => M2 + 10_000);
++    }, () => M + 10_000);
+     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+     try {
+       await openAndSelect(h1);
+       await settleBootstrap();
+       h1.stream().open();
+       await vi.advanceTimersByTimeAsync(0);
++      h1.frames.length = 0;
+       h1.stream().message(liveTrade(500, C, SIZE, false));
+       await settle();
++      // The seam after the pages is read by id and ends at the first row past C.
++      expect(String(h1.aggTradesMock.mock.calls.at(-1)![0])).toContain(`fromId=${LAST_ID + 1}`);
++      const first = h1.parsed().find((frame) => frame.type === "snapshot");
++      if (first === undefined || first.type !== "snapshot") throw new Error("expected a snapshot");
++      const ids = first.aggressive_prints!.map((print) => print.trade_id);
++      expect(ids).toContain(`a${LAST_ID + 1}`);
++      // While the stream delivers, every fill from its first trade on is the stream's.
++      expect(ids).not.toContain(`a${LAST_ID + 2}`);
++      expect(ids).not.toContain(`a${LAST_ID + 3}`);
++      expect(ids).toContain("500");
++      expect(h1.transport.tapeCoverage.unverified).toBe(0);
++      expect(first.aggressive_prints_from).toBe(OLDEST_TS);
++      expect(await askHistory(h1, historyRequest(1, OLDEST_TS, C + 1, 1))).toMatchObject({ complete: true });
++      // The stream is lost right after its first trade: fills 505..507 at C were never delivered.
+       h1.stream().drop();
+ 
+       const h2 = reconnected(h1);
+@@ -879,40 +908,146 @@ describe("BrowserBinanceTransport coverage edges", () => {
+       await vi.advanceTimersByTimeAsync(0);
+       h2.frames.length = 0;
+       h2.stream().message(liveTrade(600, M, SIZE, false));
++      h2.stream().message(liveTrade(601, M + 1_000, SIZE, false));
++      await settle();
++      // Read again from the first row the lost stream owned: against the span
++      // as it ended (one trade, id 500), the row within it is the stream's and
++      // the row after it is missing tape; the row at M straddles the new span's first trade.
++      expect(String(h2.aggTradesMock.mock.calls.at(-1)![0])).toContain(`fromId=${LAST_ID + 2}`);
++      const after = h2.parsed().find((frame) => frame.type === "snapshot");
++      if (after === undefined || after.type !== "snapshot") throw new Error("expected a snapshot");
++      const afterIds = after.aggressive_prints!.map((print) => print.trade_id);
++      expect(afterIds).not.toContain(`a${LAST_ID + 2}`);
++      expect(afterIds).toContain(`a${LAST_ID + 3}`);
++      expect(afterIds).not.toContain(`a${LAST_ID + 4}`);
++      expect(h2.transport.tapeCoverage.unverified).toBe(1);
++      expect(after.aggressive_prints_from).toBe(M + 1);
++      expect(await askHistory(h2, historyRequest(2, OLDEST_TS, M, 1))).toMatchObject({ complete: true });
++      expect(await askHistory(h2, historyRequest(3, OLDEST_TS, M + 1, 1))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE" });
++      expect(await askHistory(h2, historyRequest(4, M + 1, M + 1_001, 1))).toMatchObject({ complete: true });
++    } finally {
++      warn.mockRestore();
++    }
++  });
++
++  it("never joins two stream spans whose trade ids are not consecutive, even when their milliseconds touch or coincide, until REST reconciles the fills between them", async () => {
++    const tA = NOW_MS - 10_000;
++    // Adjacent milliseconds: the first stream ends at tA with trade 100, the
++    // next starts at tA+1 with trade 200; the mirror holds the fills between.
++    const adjacent = [aggRow(1, tA, 101, 150), aggRow(2, tA + 1, 151, 199), aggRow(3, tA + 1, 200, 200), aggRow(4, tA + 500, 300, 300)];
++    let release: (() => void) | null = null;
++    const h1 = harness((url) => {
++      if (!url.includes("startTime")) return Promise.resolve(jsonResponse([]));
++      return new Promise<Response>((resolve) => {
++        release = () => resolve(jsonResponse(mirrorPage(url, adjacent)));
++      });
++    });
++    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
++    try {
++      await openAndSelect(h1);
++      await settle();
++      h1.stream().open();
++      await vi.advanceTimersByTimeAsync(0);
++      h1.stream().message(liveTrade(100, tA, SIZE, false));
++      h1.stream().drop();
++      const h2 = reconnected(h1);
++      await openAndSelect(h2);
++      await settle();
++      h2.stream().open();
++      await vi.advanceTimersByTimeAsync(0);
++      h2.frames.length = 0;
++      h2.stream().message(liveTrade(200, tA + 1, SIZE, false));
++      await vi.advanceTimersByTimeAsync(0);
++      expect(String(h2.aggTradesMock.mock.calls.at(-1)![0])).toContain(`startTime=${tA}`);
++      // Until REST answers, the two spans are two stretches: nothing is complete across them.
++      expect(await askHistory(h2, historyRequest(1, tA, tA + 2, 1))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE" });
++      expect(await askHistory(h2, historyRequest(2, tA, tA + 1, 1))).toMatchObject({ complete: true });
++      release!();
+       await settle();
+       const snapshot = h2.parsed().find((frame) => frame.type === "snapshot");
+       if (snapshot === undefined || snapshot.type !== "snapshot") throw new Error("expected a snapshot");
+       const ids = snapshot.aggressive_prints!.map((print) => print.trade_id);
+-      expect(ids).toContain("a9001");
+-      expect(ids).not.toContain("a9002");
+-      expect(ids).toContain("a9003");
+-      expect(ids).toContain("500");
+-      expect(h2.transport.tapeCoverage.unverified).toBe(0);
+-      expect(snapshot.aggressive_prints_from).toBe(OLDEST_TS);
+-      expect(await askHistory(h2, historyRequest(1, OLDEST_TS, M + 1, 1))).toMatchObject({ complete: true });
++      expect(ids).toEqual(expect.arrayContaining(["a1", "a2", "100", "200"]));
++      expect(ids).not.toContain("a3");
++      expect(snapshot.aggressive_prints_from).toBe(tA);
++      expect(await askHistory(h2, historyRequest(3, tA, tA + 2, 1))).toMatchObject({ complete: true });
+       h2.stream().drop();
+ 
+-      const h3 = reconnected(h2);
++      // The same millisecond: the next stream starts at tA+1 again with trade
++      // 400 while this one ended there with 200. The ids read so far end just
++      // before the row the lost stream owned (its own trade 200), so the seam
++      // is read from that id: that row is the stream's, one aggregate between
++      // the spans is whole, one straddles the ended span, one is the new
++      // stream's.
++      const sameMs = [aggRow(3, tA + 1, 200, 200), aggRow(4, tA + 1, 201, 300), aggRow(5, tA + 1, 195, 205), aggRow(6, tA + 1, 400, 400), aggRow(7, tA + 900, 500, 500)];
++      release = null;
++      const h3 = harness((url) => {
++        if (!url.includes("fromId") && !url.includes("startTime")) return Promise.resolve(jsonResponse([]));
++        return Promise.resolve(jsonResponse(mirrorPage(url, sameMs)));
++      }, h2.now);
+       await openAndSelect(h3);
+       await settle();
+       h3.stream().open();
+       await vi.advanceTimersByTimeAsync(0);
+       h3.frames.length = 0;
+-      h3.stream().message(liveTrade(700, M2, SIZE, false));
++      h3.stream().message(liveTrade(400, tA + 1, SIZE, false));
++      h3.stream().message(liveTrade(401, tA + 800, SIZE, false));
+       await settle();
++      expect(String(h3.aggTradesMock.mock.calls.at(-1)![0])).toContain("fromId=3");
+       const after = h3.parsed().find((frame) => frame.type === "snapshot");
+       if (after === undefined || after.type !== "snapshot") throw new Error("expected a snapshot");
+-      expect(after.aggressive_prints!.map((print) => print.trade_id)).not.toContain("a9101");
++      const afterIds = after.aggressive_prints!.map((print) => print.trade_id);
++      expect(afterIds).not.toContain("a3");
++      expect(afterIds).toContain("a4");
++      expect(afterIds).not.toContain("a5");
++      expect(afterIds).not.toContain("a6");
+       expect(h3.transport.tapeCoverage.unverified).toBe(1);
+-      expect(after.aggressive_prints_from).toBe(M + 1);
+-      expect(await askHistory(h3, historyRequest(2, OLDEST_TS, M, 1))).toMatchObject({ complete: true });
+-      expect(await askHistory(h3, historyRequest(3, OLDEST_TS, M + 1, 1))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE" });
+-      expect(await askHistory(h3, historyRequest(4, M + 1, M2 + 1, 1))).toMatchObject({ complete: true });
++      // tA+1 holds a fill nobody can place: complete up to it and after it, never across it.
++      expect(after.aggressive_prints_from).toBe(tA + 2);
++      expect(await askHistory(h3, historyRequest(4, tA, tA + 1, 1))).toMatchObject({ complete: true });
++      expect(await askHistory(h3, historyRequest(5, tA, tA + 2, 1))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE" });
++      expect(await askHistory(h3, historyRequest(6, tA + 2, tA + 801, 1))).toMatchObject({ complete: true });
++      h3.stream().drop();
++
++      // Consecutive ids: the next stream's first trade is the one after this stream's last; no REST read, one stretch.
++      const h4 = reconnected(h3);
++      await openAndSelect(h4);
++      await settle();
++      h4.stream().open();
++      await vi.advanceTimersByTimeAsync(0);
++      const reads = h4.aggTradesMock.mock.calls.length;
++      h4.stream().message(liveTrade(402, tA + 801, SIZE, false));
++      await settle();
++      expect(h4.aggTradesMock.mock.calls.length).toBe(reads);
++      expect(await askHistory(h4, historyRequest(7, tA + 2, tA + 802, 1))).toMatchObject({ complete: true });
+     } finally {
+       warn.mockRestore();
+     }
+   });
+ 
++  it("reads the bootstrap again when the pair was left during the commit grace, instead of remembering staged pages as done", async () => {
++    const h = harness();
++    await openAndSelect(h);
++    await settle();
++    expect(h.aggTradesMock).toHaveBeenCalledTimes(11);
++    expect(h.transport.tapeCoverage.staged).toBe(10);
++    // Away to another pair during the grace, and back.
++    h.transport.send(JSON.stringify({ ...SPOT, symbol: "ETH-USDT" }));
++    await settleBootstrap();
++    const ethReads = h.aggTradesMock.mock.calls.length - 11;
++    expect(ethReads).toBeGreaterThan(0);
++    h.frames.length = 0;
++    h.transport.send(JSON.stringify(SPOT));
++    await settleBootstrap();
++    expect(h.aggTradesMock.mock.calls.length).toBe(11 + ethReads + 11);
++    const frames = h.parsed();
++    const snapshot = frames.filter((frame) => frame.type === "snapshot").at(-1);
++    if (snapshot === undefined || snapshot.type !== "snapshot") throw new Error("expected a snapshot");
++    expect(snapshot.symbol).toBe("BTC-USDT");
++    expect(snapshot.markers).toEqual(runtimeMarkers(recorded));
++    expect(h.transport.tapeCoverage.staged).toBe(0);
++  });
++
+   it("does not claim the oldest millisecond of a walk its page budget cut through aggregates sharing a timestamp", async () => {
+     // 31,000 aggregates; the budget reads the newest 30,000, whose oldest
+     // row shares its millisecond with the two rows just outside the budget.
+diff --git a/docs/architecture/binance/README.md b/docs/architecture/binance/README.md
+index b785751..0c247c4 100644
+--- a/docs/architecture/binance/README.md
++++ b/docs/architecture/binance/README.md
+@@ -193,14 +193,12 @@ the request went out; the minute at the edge takes the stream's own close. A
+ missing minute keeps the feed recovering; a gap past 11,000 minutes re-reads
+ the history as a fresh snapshot.
+ 
+-Two known limitations remain from the final code review and are tracked as a
+-follow-up (see `pm/BACKLOG.md`): coverage merges adjacent or overlapping
+-milliseconds from two independently observed stream spans without checking
+-fill-id continuity, so a stream that resumes within the same or the next
+-millisecond could close a seam over missing fills; and a pair switch during
+-the two-second bootstrap grace discards the staged pages while the cached
+-state remembers the read as done, so returning to that pair skips its
+-bootstrap until the page is reloaded.
++Two stream spans whose first and last trade ids are not consecutive never
++join, even when their milliseconds touch or coincide: the fills between the
++ids are read from REST and reconciled, or the boundary is marked unverified.
++A pair's tape state counts as complete only once its staged pages have
++committed; a switch during the two-second grace discards them and a return
++reads them again.
+ 
+ To build a static bundle with the mode baked in and relative asset paths:
+ 
+
+exec
+/bin/bash -lc "rg --files -g AGENTS.md -g package.json -g '*vitest*'" in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+package.json
+apps/web/package.json
+apps/runtime/package.json
+
+exec
+/bin/bash -lc 'git status --short; git branch --show-current; cat apps/web/package.json' in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+?? pm/log/codex/20261026T155109Z-code-build-browser-direct-l1-followup.transcript.txt
+?? pm/log/g2-browser-direct-l1-followup-r1.txt
+main
+{
+  "name": "web",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "engines": {
+    "node": "24.21.0"
+  },
+  "scripts": {
+    "pretest": "node ../../scripts/verify-node-version.cjs",
+    "prebuild": "node ../../scripts/verify-node-version.cjs",
+    "dev": "node ../../scripts/node-launcher.cjs ../../node_modules/vite/bin/vite.js",
+    "build": "tsc -b && vite build",
+    "lint": "oxlint",
+    "preview": "node ../../scripts/node-launcher.cjs ../../node_modules/vite/bin/vite.js preview",
+    "test": "set \"ELECTRON_RUN_AS_NODE=\"&& vitest run"
+  },
+  "dependencies": {
+    "lightweight-charts": "^5.2.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "trading-signals": "8.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.2",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.3",
+    "@vitest/coverage-v8": "4.1.11",
+    "@vitest/ui": "^4.1.11",
+    "fast-check": "4.10.2",
+    "jsdom": "^29.1.1",
+    "oxlint": "^1.71.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.1.1",
+    "vitest": "^4.1.11"
+  },
+  "optionalDependencies": {
+    "@oxlint/binding-linux-x64-gnu": "1.73.0"
+  }
+}
+
+exec
+/bin/bash -lc "sed -n '1380,1535p' apps/web/src/workers/browserBinanceTransport.ts; sed -n '1600,1945p' apps/web/src/workers/browserBinanceTransport.ts" in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+  /** Offers a print to the runtime's large-trade retention; an admitted one is broadcast as a `marker` when asked. */
+  private offerMarker(session: Session, trade: TradeFrame, broadcast: boolean): void {
+    const marker = markerOf(trade);
+    if (session.markers.insertAll([marker]) && broadcast) this.deliver(marker);
+  }
+
+  /** The newest markers the runtime would still hold: within its seven-day window, oldest first, the newest 5,000 for a snapshot. */
+  private retainedMarkers(session: Session): MarkerFrame[] {
+    const oldestKept = this.now() - MARKER_HISTORY_WINDOW_MS;
+    return session.markers.snapshot().filter((marker) => marker.ts_exchange >= oldestKept);
+  }
+
+  /**
+   * Forgets coverage older than the pool's retention (nothing older can be
+   * claimed: the pool has no print for it) and bounds every list, so
+   * reconnects over a long session cannot grow them without end. The gap a
+   * seam fill is working on, and the stretches beside it, are kept.
+   */
+  private pruneCoverage(session: Session): void {
+    const cutoff = this.now() - POOL_WINDOW_MS;
+    const active = session.seam.gap;
+    const keepsActive = (interval: TapeInterval): boolean =>
+      active !== null && (interval.to === active.from || interval.from === active.to || (interval.from === active.from && interval.to === active.to));
+    const clip = (interval: TapeInterval): TapeInterval =>
+      interval.from >= cutoff ? interval : { from: cutoff, to: interval.to, endTradeId: interval.endTradeId, endAggId: interval.endAggId };
+    session.observed = session.observed.filter((interval) => interval.to >= cutoff || keepsActive(interval)).map(clip);
+    session.liveSpans = session.liveSpans.filter((span) => span.to >= cutoff);
+    session.unfillable = session.unfillable.filter((gap) => gap.to >= cutoff || keepsActive(gap));
+    session.unverified = session.unverified.filter((ms) => ms >= cutoff);
+    if (session.observed.length > MAX_COVERAGE_ENTRIES) session.observed.splice(0, session.observed.length - MAX_COVERAGE_ENTRIES);
+    if (session.liveSpans.length > MAX_COVERAGE_ENTRIES) session.liveSpans.splice(0, session.liveSpans.length - MAX_COVERAGE_ENTRIES);
+    if (session.unfillable.length > MAX_COVERAGE_ENTRIES) session.unfillable.splice(0, session.unfillable.length - MAX_COVERAGE_ENTRIES);
+    if (session.unverified.length > MAX_UNVERIFIED_MS) session.unverified.splice(0, session.unverified.length - MAX_UNVERIFIED_MS);
+  }
+
+  /**
+   * Every stretch of tape observed in full: the closed ones, plus the open
+   * stream span up to its last trade (a trade in flight may still arrive, so
+   * the observed tape ends at the last print seen, never in the future),
+   * merged where they touch, with every unverified boundary millisecond cut
+   * out.
+   */
+  private coverageIntervals(session: Session): TapeInterval[] {
+    this.pruneCoverage(session);
+    const intervals = session.observed.map((interval) => ({ ...interval }));
+    if (session.live !== null) addInterval(intervals, { from: session.live.from, to: session.live.last, startTradeId: session.live.firstId, endTradeId: session.live.lastId });
+    return subtractMilliseconds(intervals, session.unverified);
+  }
+
+  /** Where the stretch of complete tape that reaches the stream's last trade begins, or null while no stream delivers. */
+  private coverageNowFrom(session: Session): number | null {
+    const live = session.live;
+    if (live === null) return null;
+    const open = this.coverageIntervals(session).find((interval) => interval.from <= live.last && interval.to >= live.last);
+    return open === undefined ? null : open.from;
+  }
+
+  /**
+   * What the snapshot may claim: the pool's prints, its floor, and coverage
+   * from the start of the continuous observed stretch that reaches now (never
+   * before the pool's own window), or from now itself, an empty claim, while
+   * no stream delivers or a hole separates the stream from what was read.
+   */
+  private poolCoverage(session: Session): { prints: readonly TradeFrame[]; floor: number; from: number } {
+    const snapshot = session.pool.snapshot();
+    const nowMs = this.now();
+    const from = this.coverageNowFrom(session);
+    return { prints: snapshot.prints, floor: snapshot.floor, from: from === null ? nowMs : Math.min(nowMs, Math.max(snapshot.from, from)) };
+  }
+
+  /** The runtime's snapshot for the pair as this transport knows it: every closed bar, the last 100 live trades, the newest markers, the print pool. */
+  private snapshotFrame(session: Session): Record<string, unknown> {
+    const bars = [...session.closedBars.values()].sort((a, b) => a.openTime - b.openTime);
+    const markers = this.retainedMarkers(session);
+    const pool = this.poolCoverage(session);
+    return {
+      type: "snapshot",
+      ...identityFields(session.selection),
+      bars: bars.map((row) => barFrame(session.selection, row, true, row.reconstructed)),
+      trades: [...session.recentTrades],
+      markers: markers.slice(-MAX_SNAPSHOT_MARKERS),
+      vpin_status: "DISABLED",
+      ...(session.tape.done || session.observed.length > 0 || session.live !== null
+        ? { aggressive_prints: [...pool.prints], aggressive_prints_floor: pool.floor, aggressive_prints_from: pool.from }
+        : {}),
+    };
+  }
+
+  /** The full marker set as marker_history frames, 5,000 rows each, `reset` on the first, as the runtime's markerHistoryFrames. */
+  private deliverMarkerHistory(session: Session): void {
+    if (!this.isCurrent(session) || !this.markerHistoryOptIn) return;
+    const markers = this.retainedMarkers(session);
+    if (markers.length === 0) return;
+    session.markerHistorySeq = 0;
+    for (let start = 0; start < markers.length; start += MAX_MARKER_HISTORY_ROWS) {
+      this.deliver({
+        type: "marker_history",
+        ...identityFields(session.selection),
+        reset: start === 0,
+        seq: session.markerHistorySeq,
+        rows: markers.slice(start, start + MAX_MARKER_HISTORY_ROWS).map(markerHistoryRow),
+      });
+      session.markerHistorySeq += 1;
+    }
+  }
+
+  /** After the bootstrap or a seam fill: the snapshot again (as the runtime re-broadcasts it after a warm-up chunk), the forming bar, and the marker history for a client that opted in. */
+  private publishTapeState(session: Session): void {
+    if (!this.isCurrent(session)) return;
+    session.seam.publishWhenSettled = false;
+    this.deliver(this.snapshotFrame(session));
+    const forming = session.lastFormingBar;
+    if (!session.recovering && forming !== null && forming.openTime > session.lastClosedOpen) this.deliver(barFrame(session.selection, forming, false, false));
+    this.deliverMarkerHistory(session);
+  }
+
+  /**
+   * The runtime answers from storage; this answers from the pool, and only
+   * claims completeness for a window that lies inside one observed stretch
+   * of tape (the bootstrap, a seam fill, a stream span), within the pool's
+   * window, at or above the pool's floor. Anything else, a hole between the
+   * REST pages and the stream or between two streams included, is honestly
+   * STORAGE_UNAVAILABLE, which the client retries three times and then rests.
+   * Pages of 10,000 with a cursor bound to the request, as the contract has it.
+   */
+  private aggressiveHistoryReply(session: Session, msg: Record<string, unknown>): Record<string, unknown> | null {
+    const request = parseAggressiveHistoryRequest(msg, this.now());
+    if (request === null) return null;
+    const after = request.cursor === null ? null : decodeHistoryCursor(request.cursor, session.selection, request);
+    if (request.cursor !== null && after === null) {
+      console.warn("browserBinanceTransport: dropped aggressive_history request: cursor does not match the selected history window");
+      return null;
+    }
+    const reply = {
+      type: "aggressive_history",
+      ...identityFields(session.selection),
+      request_id: request.requestId,
+      from_ts: request.fromMs,
+      to_ts: request.toMs,
+      min_size: request.minSize,
+      retry_after_ms: null,
+    };
+    const pool = session.pool.snapshot();
+    const inside = this.coverageIntervals(session).some((interval) => interval.from <= request.fromMs && interval.to >= request.toMs - 1);
+    const covered = inside && request.fromMs >= pool.from && request.minSize >= pool.floor;
+    if (!covered) return { ...reply, complete: false, reason: "STORAGE_UNAVAILABLE", next_cursor: null, trades: [] };
+    const matching = pool.prints
+      .filter((print) =>
+        print.ts_exchange >= request.fromMs && print.ts_exchange < request.toMs && print.size >= request.minSize &&
+        (after === null || tradeOrder(print, after) > 0))
+      .sort(tradeOrder);
+    const capped = matching.length > MAX_AGGRESSIVE_HISTORY_TRADES;
+    const page = capped ? matching.slice(0, MAX_AGGRESSIVE_HISTORY_TRADES) : matching;
+    const nextCursor = capped ? encodeHistoryCursor(session.selection, request, page[page.length - 1]) : null;
+    if (capped && nextCursor === null) return { ...reply, complete: false, reason: "CONVERSION_INCOMPLETE", next_cursor: null, trades: page };
+    return { ...reply, complete: !capped, reason: capped ? "CAP_REACHED" : null, next_cursor: nextCursor, trades: page };
+          // are consecutive), so the oldest row's millisecond is whole.
+          tape.startVerified = true;
+        }
+        if (rows.length === 0) break;
+        tape.staged.push(rows);
+        const oldest = rows[0];
+        if (tape.startVerified) break;
+        if (oldest.T < oldestWanted) break;
+        fromId = Math.max(0, oldest.a - TAPE_BOOTSTRAP_PAGE);
+      }
+    } catch (error) {
+      if (!this.isCurrent(session)) return;
+      tape.inFlight = false;
+      tape.attempts += 1;
+      console.warn("browserBinanceTransport: trade history request failed", error);
+      if (tape.attempts >= TAPE_BOOTSTRAP_FAILURES_BEFORE_DEGRADED && !tape.unavailable) {
+        tape.unavailable = true;
+        if (!session.degraded && !session.recovering) this.deliverHealth(session, "READY", this.readyReason(session));
+      }
+      this.scheduleTapeRetry(session);
+      return;
+    }
+    tape.inFlight = false;
+    tape.done = true;
+    const wasUnavailable = tape.unavailable;
+    tape.unavailable = false;
+    if (wasUnavailable && !session.degraded && !session.recovering) this.deliverHealth(session, "READY", HEALTH_REASON_READY);
+    this.commitStagedWhenSafe(session);
+  }
+
+  /**
+   * The staged pages can be reconciled against the live tape only once its
+   * first trade is known. With a stream delivering, or none that could ever
+   * deliver a trade older than the pages (no stream connecting or open), they
+   * commit at once; with a stream connecting or open but silent, a short
+   * grace keeps a first trade that is still in flight from overlapping
+   * already committed rows.
+   */
+  private commitStagedWhenSafe(session: Session): void {
+    const tape = session.tape;
+    if (!tape.done || tape.staged.length === 0) return;
+    const streamPending = session.stream !== null && session.stream.readyState <= OPEN;
+    if (session.live === null && session.liveSpans.length === 0 && streamPending) {
+      if (tape.graceTimer !== null) return;
+      tape.graceTimer = this.setTimer(() => {
+        tape.graceTimer = null;
+        if (this.isCurrent(session)) this.commitStaged(session);
+      }, BOOTSTRAP_COMMIT_GRACE_MS);
+      return;
+    }
+    if (tape.graceTimer !== null) {
+      this.clearTimer(tape.graceTimer);
+      tape.graceTimer = null;
+    }
+    this.commitStaged(session);
+  }
+
+  private commitStaged(session: Session): void {
+    const tape = session.tape;
+    const staged = tape.staged;
+    tape.staged = [];
+    let kept = 0;
+    let from = Infinity;
+    let to = -Infinity;
+    let endAggId: number | undefined;
+    for (const page of staged) {
+      kept += this.seedTape(session, page);
+      for (const row of page) {
+        if (row.T < from) from = row.T;
+        if (row.T > to) to = row.T;
+        if (endAggId === undefined || row.a > endAggId) endAggId = row.a;
+      }
+    }
+    // A walk stopped by its budget, a failed page or the seven-day bound may
+    // have cut through aggregates sharing the oldest millisecond, whose rest
+    // sits in the page never read: that millisecond is claimed only when the
+    // walk reached the exchange's first aggregate trade.
+    const claimFrom = tape.startVerified ? from : from + 1;
+    if (claimFrom <= to) addInterval(session.observed, { from: claimFrom, to, endAggId });
+    if (kept > 0 || from <= to) {
+      session.seam.publishWhenSettled = true;
+      this.fillNextSeam(session);
+    }
+  }
+
+  private scheduleTapeRetry(session: Session): void {
+    if (!this.isCurrent(session)) return;
+    const tape = session.tape;
+    if (tape.timer !== null) this.clearTimer(tape.timer);
+    const delay = tape.backoffMs;
+    tape.backoffMs = Math.min(tape.backoffMs * 2, STREAM_BACKOFF_CAP_MS);
+    tape.timer = this.setTimer(() => {
+      tape.timer = null;
+      if (this.isCurrent(session)) void this.bootstrapTape(session);
+    }, delay);
+  }
+
+  /**
+   * Whether a REST row is tape the stream already delivered. Inside a live
+   * span (open or closed) it is; at a span's first or last millisecond the
+   * aggregate's fill ids decide: wholly before the first live trade or wholly
+   * after the last one it is missing tape and is kept, wholly within it is
+   * dropped, and an aggregate straddling the boundary cannot be told apart,
+   * so it is dropped and that millisecond is marked unverified: no coverage
+   * claim includes it.
+   */
+  private admitRestRow(session: Session, row: AggTradeRow): boolean {
+    const spans: readonly LiveSpan[] = session.live === null
+      ? session.liveSpans
+      : [...session.liveSpans, { from: session.live.from, to: Infinity, firstId: session.live.firstId, lastId: Infinity }];
+    for (const span of spans) {
+      if (row.T > span.from && row.T < span.to) return false;
+      if (row.T !== span.from && row.T !== span.to) continue;
+      // At a boundary millisecond, the fill ids place the aggregate: wholly
+      // before the span's first trade (only at its first millisecond) or
+      // wholly after its last (only at its last) is missing tape; wholly
+      // between the two is the stream's; anything else straddles. A span of
+      // one millisecond is both boundaries at once.
+      const before = row.T === span.from && row.l < span.firstId;
+      const after = row.T === span.to && row.f > span.lastId;
+      if (before || after) continue;
+      const within = row.f >= span.firstId && row.l <= span.lastId;
+      if (within) return false;
+      this.markUnverified(session, row.T);
+      return false;
+    }
+    return true;
+  }
+
+  private markUnverified(session: Session, ms: number): void {
+    if (!session.unverified.includes(ms)) session.unverified.push(ms);
+  }
+
+  /**
+   * One validated page into the retention and the pool, as the runtime's
+   * warm-up seeds a storage chunk: rows from the calibration window (the
+   * newest fifteen minutes at the bootstrap's start) calibrate the floor
+   * (`calibrate: true`, every size counted), older rows are admitted at the
+   * floor; rows the stream already delivered are left out. Returns the rows kept.
+   */
+  private seedTape(session: Session, rows: readonly AggTradeRow[]): number {
+    const calibration: TradeFrame[] = [];
+    const older: TradeFrame[] = [];
+    let oldestTs = Infinity;
+    for (const row of rows) {
+      if (!this.admitRestRow(session, row)) continue;
+      const trade = aggTradeFrame(session.selection, row);
+      if (row.T < oldestTs) oldestTs = row.T;
+      (row.T >= session.calibrationFrom ? calibration : older).push(trade);
+      this.offerMarker(session, trade, false);
+    }
+    if (oldestTs === Infinity) return 0;
+    if (calibration.length > 0) session.pool.seed(calibration, { fromMs: oldestTs, calibrate: true });
+    if (older.length > 0) session.pool.seed(older, { fromMs: oldestTs });
+    return calibration.length + older.length;
+  }
+
+  /** The newest hole between two observed stretches (the open stream span counts) that is neither given up on nor made only of unverified milliseconds. */
+  private nextSeamGap(session: Session): TapeInterval | null {
+    const intervals = this.coverageIntervals(session);
+    for (let i = intervals.length - 1; i >= 1; i -= 1) {
+      const gap: TapeInterval = { from: intervals[i - 1].to, to: intervals[i].from, endAggId: intervals[i - 1].endAggId, endTradeId: intervals[i - 1].endTradeId };
+      if (session.unfillable.some((open) => open.from === gap.from && open.to === gap.to)) continue;
+      const interior = gap.to - gap.from - 1;
+      const unverifiedInside = session.unverified.filter((ms) => ms > gap.from && ms < gap.to).length;
+      if (interior <= unverifiedInside) continue;
+      return gap;
+    }
+    return null;
+  }
+
+  /**
+   * Closes the holes the tape has: between the bootstrap's newest row and the
+   * stream's first trade, or between one stream's last trade and the next
+   * stream's first. Kline recovery repairs bars, not trades, so the prints of
+   * such a hole are read from REST within a bounded budget: by id from the
+   * row after the last REST row when the hole follows one, else by time from
+   * the hole's first millisecond, every row reconciled against the live tape
+   * by fill id. A hole that cannot be closed stays a hole and is never inside
+   * a completeness claim. One fill runs at a time; when nothing is left to
+   * fill and a snapshot is waiting, it goes out.
+   */
+  private fillNextSeam(session: Session): void {
+    if (!this.isCurrent(session) || session.seam.inFlight || session.seam.timer !== null) return;
+    const gap = this.nextSeamGap(session);
+    if (gap === null) {
+      if (session.seam.publishWhenSettled) this.publishTapeState(session);
+      return;
+    }
+    void this.fillSeam(session, gap);
+  }
+
+  private async fillSeam(session: Session, gap: TapeInterval): Promise<void> {
+    const seam = session.seam;
+    seam.inFlight = true;
+    seam.gap = gap;
+    let closed = false;
+    let endAggId = gap.endAggId;
+    try {
+      let fromId: number | null = gap.endAggId === undefined ? null : gap.endAggId + 1;
+      for (let pages = 0; pages < MAX_SEAM_FILL_PAGES; pages += 1) {
+        const rows = await this.fetchAggTrades(session, fromId === null ? { startTime: gap.from } : { fromId }, seam);
+        if (!this.isCurrent(session)) return;
+        const inside = rows.filter((row) => row.T <= gap.to);
+        if (inside.length > 0) {
+          this.seedTape(session, inside);
+          endAggId = inside[inside.length - 1].a;
+        }
+        // The hole is closed when a row past its end was read, or the page
+        // was short (nothing newer existed on the exchange at the read).
+        if (inside.length < rows.length || rows.length < TAPE_BOOTSTRAP_PAGE) {
+          closed = true;
+          break;
+        }
+        fromId = rows[rows.length - 1].a + 1;
+      }
+    } catch (error) {
+      if (!this.isCurrent(session)) return;
+      seam.inFlight = false;
+      seam.gap = null;
+      seam.failures += 1;
+      console.warn("browserBinanceTransport: a tape seam fill failed", error);
+      if (seam.failures < SEAM_FILL_FAILURES_BEFORE_GIVING_UP) {
+        const delay = seam.backoffMs;
+        seam.backoffMs = Math.min(seam.backoffMs * 2, STREAM_BACKOFF_CAP_MS);
+        seam.timer = this.setTimer(() => {
+          seam.timer = null;
+          this.fillNextSeam(session);
+        }, delay);
+        return;
+      }
+      seam.failures = 0;
+      seam.backoffMs = STREAM_BACKOFF_INITIAL_MS;
+      session.unfillable.push({ from: gap.from, to: gap.to });
+      this.fillNextSeam(session);
+      return;
+    }
+    seam.inFlight = false;
+    seam.gap = null;
+    seam.failures = 0;
+    seam.backoffMs = STREAM_BACKOFF_INITIAL_MS;
+    if (closed) {
+      addInterval(session.observed, { from: gap.from, to: gap.to, endAggId });
+      // Coverage grew: the snapshot says so.
+      session.seam.publishWhenSettled = true;
+    } else {
+      console.warn("browserBinanceTransport: a tape seam is wider than a fill may walk; it stays open");
+      session.unfillable.push({ from: gap.from, to: gap.to });
+    }
+    this.fillNextSeam(session);
+  }
+}
+
+exec
+/bin/bash -lc "git show build/browser-direct-l1-followup:apps/web/src/workers/browserBinanceTransport.ts | nl -ba | sed -n '450,560p;1420,1495p;1800,1935p'; rg --files node_modules -g 'vitest.mjs' -g 'vitest.js' -g 'tsx*' | head" in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+   450	    rows.push(row);
+   451	  }
+   452	  rows.sort((a, b) => a.a - b.a);
+   453	  for (let i = 1; i < rows.length; i += 1) {
+   454	    if (rows[i].a !== rows[i - 1].a + 1) throw new Error("aggTrades: page is not id-contiguous");
+   455	    if (rows[i].T < rows[i - 1].T) throw new Error("aggTrades: page is not in time order");
+   456	  }
+   457	  if (fromId !== null && rows.length > 0 && rows[0].a !== fromId) throw new Error("aggTrades: page does not start at fromId");
+   458	  return rows;
+   459	}
+   460	
+   461	/**
+   462	 * Whether two stretches that touch or overlap in time are one continuous
+   463	 * stretch of tape. Where the earlier one ends with a live trade and the later
+   464	 * one starts with a live trade, they were observed independently (two stream
+   465	 * spans): fills between the two ids may be missing even inside the same
+   466	 * millisecond, so they join only when the ids are consecutive. A REST stretch
+   467	 * (the bootstrap's pages, a filled seam) was reconciled against the spans by
+   468	 * fill id, so it joins either side.
+   469	 */
+   470	function continuous(earlier: TapeInterval, later: TapeInterval, bridged: ReadonlySet<number>): boolean {
+   471	  if (earlier.endTradeId === undefined || later.startTradeId === undefined) return true;
+   472	  return later.startTradeId === earlier.endTradeId + 1 || bridged.has(later.startTradeId);
+   473	}
+   474	
+   475	const NO_BRIDGES: ReadonlySet<number> = new Set();
+   476	
+   477	/**
+   478	 * Merges a stretch into the list, joining stretches that overlap or touch
+   479	 * (adjacent milliseconds) and are continuous (`bridged`: the first trade ids
+   480	 * of spans whose seam a REST read has closed). The ends keep the ids of
+   481	 * whichever stretch reaches furthest; at a tie both kinds of id stay, the
+   482	 * live trade id (for continuity) and the REST aggregate id (for where the
+   483	 * next read starts).
+   484	 */
+   485	function addInterval(intervals: TapeInterval[], added: TapeInterval, bridged: ReadonlySet<number> = NO_BRIDGES): void {
+   486	  if (!(added.to >= added.from)) return;
+   487	  let merged: TapeInterval = { ...added };
+   488	  const apart: TapeInterval[] = [];
+   489	  for (const interval of intervals) {
+   490	    if (interval.to + 1 < merged.from || interval.from > merged.to + 1) {
+   491	      apart.push(interval);
+   492	      continue;
+   493	    }
+   494	    const intervalFirst = interval.from < merged.from || (interval.from === merged.from && interval.to <= merged.to);
+   495	    const [earlier, later] = intervalFirst ? [interval, merged] : [merged, interval];
+   496	    if (!continuous(earlier, later, bridged)) {
+   497	      apart.push(interval);
+   498	      continue;
+   499	    }
+   500	    const from = Math.min(interval.from, merged.from);
+   501	    const to = Math.max(interval.to, merged.to);
+   502	    const starts = [interval, merged].filter((candidate) => candidate.from === from);
+   503	    const ends = [interval, merged].filter((candidate) => candidate.to === to);
+   504	    merged = {
+   505	      from,
+   506	      to,
+   507	      startTradeId: starts.map((candidate) => candidate.startTradeId).find((id) => id !== undefined),
+   508	      endTradeId: ends.map((candidate) => candidate.endTradeId).find((id) => id !== undefined),
+   509	      endAggId: ends.map((candidate) => candidate.endAggId).find((id) => id !== undefined),
+   510	    };
+   511	  }
+   512	  apart.push(merged);
+   513	  apart.sort((a, b) => a.from - b.from || a.to - b.to);
+   514	  intervals.splice(0, intervals.length, ...apart);
+   515	}
+   516	
+   517	/** The stretches with the given milliseconds cut out (an unverified boundary millisecond splits the stretch around it). */
+   518	function subtractMilliseconds(intervals: TapeInterval[], milliseconds: readonly number[]): TapeInterval[] {
+   519	  let result = intervals;
+   520	  for (const ms of milliseconds) {
+   521	    const next: TapeInterval[] = [];
+   522	    for (const interval of result) {
+   523	      if (ms < interval.from || ms > interval.to) {
+   524	        next.push(interval);
+   525	        continue;
+   526	      }
+   527	      if (ms > interval.from) next.push({ from: interval.from, to: ms - 1, startTradeId: interval.startTradeId });
+   528	      if (ms < interval.to) next.push({ from: ms + 1, to: interval.to, endTradeId: interval.endTradeId, endAggId: interval.endAggId });
+   529	    }
+   530	    result = next;
+   531	  }
+   532	  return result;
+   533	}
+   534	
+   535	/**
+   536	 * A bootstrap print as a trade frame. Aggregate trade ids are a separate
+   537	 * sequence from the stream's trade ids, so they carry an `a` prefix: the two
+   538	 * can never be mistaken for one another, and nothing is counted twice.
+   539	 */
+   540	function aggTradeFrame(selection: Selection, row: AggTradeRow): TradeFrame {
+   541	  return { type: "trade", ...selection, ts_exchange: row.T, price: row.p, size: row.q, side: row.m ? "sell" : "buy", trade_id: `a${row.a}` };
+   542	}
+   543	
+   544	function markerOf(trade: TradeFrame): MarkerFrame {
+   545	  return { ...trade, type: "marker" };
+   546	}
+   547	
+   548	function markerHistoryRow(marker: MarkerFrame): [number, number, number, "b" | "s", string] {
+   549	  return [marker.ts_exchange, marker.price, marker.size, marker.side === "buy" ? "b" : "s", marker.trade_id];
+   550	}
+   551	
+   552	function tradeOrder(a: { ts_exchange: number; trade_id: string }, b: { ts_exchange: number; trade_id: string }): number {
+   553	  return a.ts_exchange - b.ts_exchange || (a.trade_id < b.trade_id ? -1 : a.trade_id > b.trade_id ? 1 : 0);
+   554	}
+   555	
+   556	/** The runtime's request validation (aggressive-history.js parseAggressiveHistoryRequest), minus the exact-key check the worker already applies. */
+   557	export function parseAggressiveHistoryRequest(msg: Record<string, unknown>, nowMs: number): AggressiveHistoryRequest | null {
+   558	  const { request_id: requestId, from_ts: fromMs, to_ts: toMs, min_size: minSize, cursor } = msg;
+   559	  if (!Number.isSafeInteger(requestId) || (requestId as number) < 0) return null;
+   560	  if (!Number.isSafeInteger(fromMs) || (fromMs as number) < 0) return null;
+  1420	    });
+  1421	  }
+  1422	
+  1423	  // ---- Tape-derived frames: markers, the aggressive pool, their history ----
+  1424	
+  1425	  /** Offers a print to the runtime's large-trade retention; an admitted one is broadcast as a `marker` when asked. */
+  1426	  private offerMarker(session: Session, trade: TradeFrame, broadcast: boolean): void {
+  1427	    const marker = markerOf(trade);
+  1428	    if (session.markers.insertAll([marker]) && broadcast) this.deliver(marker);
+  1429	  }
+  1430	
+  1431	  /** The newest markers the runtime would still hold: within its seven-day window, oldest first, the newest 5,000 for a snapshot. */
+  1432	  private retainedMarkers(session: Session): MarkerFrame[] {
+  1433	    const oldestKept = this.now() - MARKER_HISTORY_WINDOW_MS;
+  1434	    return session.markers.snapshot().filter((marker) => marker.ts_exchange >= oldestKept);
+  1435	  }
+  1436	
+  1437	  /**
+  1438	   * Forgets coverage older than the pool's retention (nothing older can be
+  1439	   * claimed: the pool has no print for it) and bounds every list, so
+  1440	   * reconnects over a long session cannot grow them without end. The gap a
+  1441	   * seam fill is working on, and the stretches beside it, are kept.
+  1442	   */
+  1443	  private pruneCoverage(session: Session): void {
+  1444	    const cutoff = this.now() - POOL_WINDOW_MS;
+  1445	    const active = session.seam.gap;
+  1446	    const keepsActive = (interval: TapeInterval): boolean =>
+  1447	      active !== null && (interval.to === active.from || interval.from === active.to || (interval.from === active.from && interval.to === active.to));
+  1448	    const clip = (interval: TapeInterval): TapeInterval =>
+  1449	      interval.from >= cutoff ? interval : { from: cutoff, to: interval.to, endTradeId: interval.endTradeId, endAggId: interval.endAggId };
+  1450	    session.observed = session.observed.filter((interval) => interval.to >= cutoff || keepsActive(interval)).map(clip);
+  1451	    session.liveSpans = session.liveSpans.filter((span) => span.to >= cutoff);
+  1452	    session.unfillable = session.unfillable.filter((gap) => gap.to >= cutoff || keepsActive(gap));
+  1453	    session.unverified = session.unverified.filter((ms) => ms >= cutoff);
+  1454	    session.bridgedStarts = session.bridgedStarts.filter((id) => session.liveSpans.some((span) => span.firstId === id) || session.live?.firstId === id);
+  1455	    if (session.observed.length > MAX_COVERAGE_ENTRIES) session.observed.splice(0, session.observed.length - MAX_COVERAGE_ENTRIES);
+  1456	    if (session.liveSpans.length > MAX_COVERAGE_ENTRIES) session.liveSpans.splice(0, session.liveSpans.length - MAX_COVERAGE_ENTRIES);
+  1457	    if (session.unfillable.length > MAX_COVERAGE_ENTRIES) session.unfillable.splice(0, session.unfillable.length - MAX_COVERAGE_ENTRIES);
+  1458	    if (session.unverified.length > MAX_UNVERIFIED_MS) session.unverified.splice(0, session.unverified.length - MAX_UNVERIFIED_MS);
+  1459	  }
+  1460	
+  1461	  /**
+  1462	   * Every stretch of tape observed in full: the closed ones, plus the open
+  1463	   * stream span up to its last trade (a trade in flight may still arrive, so
+  1464	   * the observed tape ends at the last print seen, never in the future),
+  1465	   * merged where they touch, with every unverified boundary millisecond cut
+  1466	   * out.
+  1467	   */
+  1468	  private coverageIntervals(session: Session): TapeInterval[] {
+  1469	    this.pruneCoverage(session);
+  1470	    const intervals = session.observed.map((interval) => ({ ...interval }));
+  1471	    if (session.live !== null) addInterval(intervals, { from: session.live.from, to: session.live.last, startTradeId: session.live.firstId, endTradeId: session.live.lastId }, new Set(session.bridgedStarts));
+  1472	    return subtractMilliseconds(intervals, session.unverified);
+  1473	  }
+  1474	
+  1475	  /** Where the stretch of complete tape that reaches the stream's last trade begins, or null while no stream delivers. */
+  1476	  private coverageNowFrom(session: Session): number | null {
+  1477	    const live = session.live;
+  1478	    if (live === null) return null;
+  1479	    const open = this.coverageIntervals(session).find((interval) => interval.from <= live.last && interval.to >= live.last);
+  1480	    return open === undefined ? null : open.from;
+  1481	  }
+  1482	
+  1483	  /**
+  1484	   * What the snapshot may claim: the pool's prints, its floor, and coverage
+  1485	   * from the start of the continuous observed stretch that reaches now (never
+  1486	   * before the pool's own window), or from now itself, an empty claim, while
+  1487	   * no stream delivers or a hole separates the stream from what was read.
+  1488	   */
+  1489	  private poolCoverage(session: Session): { prints: readonly TradeFrame[]; floor: number; from: number } {
+  1490	    const snapshot = session.pool.snapshot();
+  1491	    const nowMs = this.now();
+  1492	    const from = this.coverageNowFrom(session);
+  1493	    return { prints: snapshot.prints, floor: snapshot.floor, from: from === null ? nowMs : Math.min(nowMs, Math.max(snapshot.from, from)) };
+  1494	  }
+  1495	
+  1800	    return calibration.length + older.length;
+  1801	  }
+  1802	
+  1803	  /**
+  1804	   * The newest hole between two observed stretches (the open stream span
+  1805	   * counts) that is neither given up on nor made only of unverified
+  1806	   * milliseconds. Two stream spans whose ids are not consecutive stay apart
+  1807	   * even when their milliseconds touch or coincide: their hole has no
+  1808	   * interior, and is still read from REST so the fills between the ids are
+  1809	   * seeded or the boundary is marked unverified.
+  1810	   */
+  1811	  private nextSeamGap(session: Session): TapeInterval | null {
+  1812	    const intervals = this.coverageIntervals(session);
+  1813	    for (let i = intervals.length - 1; i >= 1; i -= 1) {
+  1814	      const earlier = intervals[i - 1];
+  1815	      const later = intervals[i];
+  1816	      const gap: TapeInterval = { from: Math.min(earlier.to, later.from), to: Math.max(earlier.to, later.from), startTradeId: later.startTradeId, endAggId: earlier.endAggId, endTradeId: earlier.endTradeId };
+  1817	      if (session.unfillable.some((open) => open.from === gap.from && open.to === gap.to)) continue;
+  1818	      const interior = gap.to - gap.from - 1;
+  1819	      const unverifiedInside = session.unverified.filter((ms) => ms > gap.from && ms < gap.to).length;
+  1820	      if (interior > 0 && interior <= unverifiedInside) continue;
+  1821	      return gap;
+  1822	    }
+  1823	    return null;
+  1824	  }
+  1825	
+  1826	  /**
+  1827	   * Closes the holes the tape has: between the bootstrap's newest row and the
+  1828	   * stream's first trade, or between one stream's last trade and the next
+  1829	   * stream's first. Kline recovery repairs bars, not trades, so the prints of
+  1830	   * such a hole are read from REST within a bounded budget: by id from the
+  1831	   * row after the last REST row when the hole follows one, else by time from
+  1832	   * the hole's first millisecond, every row reconciled against the live tape
+  1833	   * by fill id. A hole that cannot be closed stays a hole and is never inside
+  1834	   * a completeness claim. One fill runs at a time; when nothing is left to
+  1835	   * fill and a snapshot is waiting, it goes out.
+  1836	   */
+  1837	  private fillNextSeam(session: Session): void {
+  1838	    if (!this.isCurrent(session) || session.seam.inFlight || session.seam.timer !== null) return;
+  1839	    const gap = this.nextSeamGap(session);
+  1840	    if (gap === null) {
+  1841	      if (session.seam.publishWhenSettled) this.publishTapeState(session);
+  1842	      return;
+  1843	    }
+  1844	    void this.fillSeam(session, gap);
+  1845	  }
+  1846	
+  1847	  private async fillSeam(session: Session, gap: TapeInterval): Promise<void> {
+  1848	    const seam = session.seam;
+  1849	    seam.inFlight = true;
+  1850	    seam.gap = gap;
+  1851	    let closed = false;
+  1852	    let endAggId = gap.endAggId;
+  1853	    try {
+  1854	      let fromId: number | null = gap.endAggId === undefined ? null : gap.endAggId + 1;
+  1855	      for (let pages = 0; pages < MAX_SEAM_FILL_PAGES; pages += 1) {
+  1856	        const rows = await this.fetchAggTrades(session, fromId === null ? { startTime: gap.from } : { fromId }, seam);
+  1857	        if (!this.isCurrent(session)) return;
+  1858	        const inside = rows.filter((row) => row.T <= gap.to);
+  1859	        if (inside.length > 0) {
+  1860	          this.seedTape(session, inside);
+  1861	          // The ids read end where the open stream's own fills begin: an
+  1862	          // aggregate at or after the stream's first trade is the stream's
+  1863	          // while it delivers, but if the stream is lost before delivering
+  1864	          // those fills, the next seam must read them again and judge them
+  1865	          // against the span as it ended.
+  1866	          const live = session.live;
+  1867	          const streams = live === null ? undefined : inside.find((row) => row.T > live.from || (row.T === live.from && row.l >= live.firstId));
+  1868	          endAggId = streams === undefined ? inside[inside.length - 1].a : streams.a - 1;
+  1869	        }
+  1870	        // The hole is closed when a row past its end was read, or the page
+  1871	        // was short (nothing newer existed on the exchange at the read).
+  1872	        if (inside.length < rows.length || rows.length < TAPE_BOOTSTRAP_PAGE) {
+  1873	          closed = true;
+  1874	          break;
+  1875	        }
+  1876	        fromId = rows[rows.length - 1].a + 1;
+  1877	      }
+  1878	    } catch (error) {
+  1879	      if (!this.isCurrent(session)) return;
+  1880	      seam.inFlight = false;
+  1881	      seam.gap = null;
+  1882	      seam.failures += 1;
+  1883	      console.warn("browserBinanceTransport: a tape seam fill failed", error);
+  1884	      if (seam.failures < SEAM_FILL_FAILURES_BEFORE_GIVING_UP) {
+  1885	        const delay = seam.backoffMs;
+  1886	        seam.backoffMs = Math.min(seam.backoffMs * 2, STREAM_BACKOFF_CAP_MS);
+  1887	        seam.timer = this.setTimer(() => {
+  1888	          seam.timer = null;
+  1889	          this.fillNextSeam(session);
+  1890	        }, delay);
+  1891	        return;
+  1892	      }
+  1893	      seam.failures = 0;
+  1894	      seam.backoffMs = STREAM_BACKOFF_INITIAL_MS;
+  1895	      session.unfillable.push({ from: gap.from, to: gap.to });
+  1896	      this.fillNextSeam(session);
+  1897	      return;
+  1898	    }
+  1899	    seam.inFlight = false;
+  1900	    seam.gap = null;
+  1901	    seam.failures = 0;
+  1902	    seam.backoffMs = STREAM_BACKOFF_INITIAL_MS;
+  1903	    if (closed) {
+  1904	      // The fills between the stretch before and the span after were read and
+  1905	      // reconciled: that junction is continuous now, whatever its trade ids.
+  1906	      if (gap.startTradeId !== undefined && !session.bridgedStarts.includes(gap.startTradeId)) session.bridgedStarts.push(gap.startTradeId);
+  1907	      addInterval(session.observed, { from: gap.from, to: gap.to, endAggId }, new Set(session.bridgedStarts));
+  1908	      // Coverage grew: the snapshot says so.
+  1909	      session.seam.publishWhenSettled = true;
+  1910	    } else {
+  1911	      console.warn("browserBinanceTransport: a tape seam is wider than a fill may walk; it stays open");
+  1912	      session.unfillable.push({ from: gap.from, to: gap.to });
+  1913	    }
+  1914	    this.fillNextSeam(session);
+  1915	  }
+  1916	}
+node_modules/vitest/vitest.mjs
+
+codex
+The branch fixes the staged-bootstrap cache state and adds REST reconciliation for adjacent stream spans. I’m checking a remaining edge case: spans that share a millisecond may still let history report that millisecond as complete before reconciliation finishes.
+exec
+/bin/bash -lc "git show build/browser-direct-l1-followup:apps/web/src/workers/browserBinanceTransport.ts | sed -n '1180,1280p;1540,1590p'; git show build/browser-direct-l1-followup:apps/web/src/workers/tests/browserBinanceTransport.l1.test.ts | sed -n '1,75p'; cat package.json" in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+   * marks its backfill. Pages of 1,000 minutes are walked from that boundary;
+   * every row must be the next consecutive minute, and a row counts as final
+   * only when its minute closed before the request went out (a margin covers
+   * clock skew), or when the stream itself closed that minute meanwhile (its
+   * close wins). Closes the new stream reports during the fill wait in the
+   * buffer so the main thread sees closed bars in order and never a hole. The
+   * fill ends at the minute now forming, or at a minute that closed on the
+   * clock but is not yet confirmable, which the stream's own close or a later
+   * re-read settles. A missing, short or failed page keeps the feed RECOVERING
+   * and is retried from the first missing minute; a gap longer than the pages
+   * allowed, or a minute the exchange keeps omitting, is re-read as a fresh
+   * snapshot instead. READY follows only a continuous fill for the stream
+   * that is still open.
+   */
+  private async recoverAfterGap(session: Session, generation: number): Promise<void> {
+    session.awaitingBoundary = null;
+    try {
+      for (let page = 1; ; page += 1) {
+        if (page > MAX_GAP_FILL_PAGES || (session.lastClosedOpen >= 0 && this.now() - session.lastClosedOpen > MAX_GAP_FILL_MS)) {
+          this.restartFromSnapshot(session);
+          return;
+        }
+        const paged = session.lastClosedOpen >= 0;
+        const confirmedBefore = this.now() - CLOSE_CONFIRMATION_MARGIN_MS;
+        session.fillInFlight = true;
+        let rows: KlineRow[];
+        try {
+          rows = await this.fetchKlines(session, paged ? { startTime: session.lastClosedOpen + BAR_INTERVAL_MS, limit: GAP_FILL_PAGE } : { limit: SNAPSHOT_BARS + 1 });
+        } finally {
+          session.fillInFlight = false;
+        }
+        if (!this.recoveryIsLive(session, generation)) return;
+        const now = this.now();
+        let expected = paged ? session.lastClosedOpen + BAR_INTERVAL_MS : rows.length > 0 ? rows[0].openTime : -1;
+        let outcome: "continuous" | "hole" | "forming" | "boundary" = "continuous";
+        for (const row of rows) {
+          if (row.openTime < expected) continue;
+          if (row.openTime > expected) {
+            outcome = "hole";
+            break;
+          }
+          const held = session.heldClosedBars.get(row.openTime);
+          if (held !== undefined) {
+            // The stream closed this minute itself: its close is authoritative.
+            this.deliverClosedBar(session, held, false);
+          } else if (row.closeTime < confirmedBefore) {
+            this.deliverClosedBar(session, row, true);
+          } else {
+            outcome = row.closeTime < now ? "boundary" : "forming";
+            break;
+          }
+          expected = row.openTime + BAR_INTERVAL_MS;
+        }
+        if (outcome === "hole") {
+          session.holeRetries += 1;
+          if (session.holeRetries > MAX_HOLE_RETRIES) {
+            // The exchange keeps omitting this minute: a real gap, carried as a gap.
+            this.restartFromSnapshot(session);
+            return;
+          }
+          throw new Error(`gap fill: the exchange skipped the minute at ${expected}`);
+        }
+        session.holeRetries = 0;
+        if (outcome === "boundary") {
+          // The minute just closed on the clock but the row may be partial.
+          // The stream's own close for it ends the recovery as soon as it
+          // arrives; failing that, it is re-read once it is confirmable.
+          session.awaitingBoundary = expected;
+          const retryAt = expected + BAR_INTERVAL_MS + CLOSE_CONFIRMATION_MARGIN_MS;
+          this.scheduleRetryAt(session, Math.max(retryAt - now, STREAM_BACKOFF_INITIAL_MS), () => {
+            if (this.recoveryIsLive(session, generation)) void this.recoverAfterGap(session, generation);
+          });
+          return;
+        }
+        if (outcome === "forming") break;
+        if (paged && rows.length >= GAP_FILL_PAGE) continue;
+        const earliestHeld = this.earliestHeldClose(session);
+        if (!paged || earliestHeld === expected) break;
+        throw new Error("gap fill: the exchange returned fewer rows than the gap spans");
+      }
+    } catch (error) {
+      if (!this.recoveryIsLive(session, generation)) return;
+      console.warn("browserBinanceTransport: kline gap fill failed", error);
+      session.degraded = true;
+      this.deliverHealth(session, "RECOVERING", HEALTH_REASON_REST_FAILED);
+      this.scheduleRetry(session, () => {
+        if (this.recoveryIsLive(session, generation)) void this.recoverAfterGap(session, generation);
+      });
+      return;
+    }
+    if (!this.finishRecovery(session)) {
+      // Held closes are not consecutive with the boundary: the minutes between
+      // are read next, from the first missing one.
+      session.degraded = true;
+      this.deliverHealth(session, "RECOVERING", HEALTH_REASON_REST_FAILED);
+      this.scheduleRetry(session, () => {
+        if (this.recoveryIsLive(session, generation)) void this.recoverAfterGap(session, generation);
+      });
+    }
+  }
+
+  }
+
+  /**
+   * The runtime answers from storage; this answers from the pool, and only
+   * claims completeness for a window that lies inside one observed stretch
+   * of tape (the bootstrap, a seam fill, a stream span), within the pool's
+   * window, at or above the pool's floor. Anything else, a hole between the
+   * REST pages and the stream or between two streams included, is honestly
+   * STORAGE_UNAVAILABLE, which the client retries three times and then rests.
+   * Pages of 10,000 with a cursor bound to the request, as the contract has it.
+   */
+  private aggressiveHistoryReply(session: Session, msg: Record<string, unknown>): Record<string, unknown> | null {
+    const request = parseAggressiveHistoryRequest(msg, this.now());
+    if (request === null) return null;
+    const after = request.cursor === null ? null : decodeHistoryCursor(request.cursor, session.selection, request);
+    if (request.cursor !== null && after === null) {
+      console.warn("browserBinanceTransport: dropped aggressive_history request: cursor does not match the selected history window");
+      return null;
+    }
+    const reply = {
+      type: "aggressive_history",
+      ...identityFields(session.selection),
+      request_id: request.requestId,
+      from_ts: request.fromMs,
+      to_ts: request.toMs,
+      min_size: request.minSize,
+      retry_after_ms: null,
+    };
+    const pool = session.pool.snapshot();
+    const inside = this.coverageIntervals(session).some((interval) => interval.from <= request.fromMs && interval.to >= request.toMs - 1);
+    const covered = inside && request.fromMs >= pool.from && request.minSize >= pool.floor;
+    if (!covered) return { ...reply, complete: false, reason: "STORAGE_UNAVAILABLE", next_cursor: null, trades: [] };
+    const matching = pool.prints
+      .filter((print) =>
+        print.ts_exchange >= request.fromMs && print.ts_exchange < request.toMs && print.size >= request.minSize &&
+        (after === null || tradeOrder(print, after) > 0))
+      .sort(tradeOrder);
+    const capped = matching.length > MAX_AGGRESSIVE_HISTORY_TRADES;
+    const page = capped ? matching.slice(0, MAX_AGGRESSIVE_HISTORY_TRADES) : matching;
+    const nextCursor = capped ? encodeHistoryCursor(session.selection, request, page[page.length - 1]) : null;
+    if (capped && nextCursor === null) return { ...reply, complete: false, reason: "CONVERSION_INCOMPLETE", next_cursor: null, trades: page };
+    return { ...reply, complete: !capped, reason: capped ? "CAP_REACHED" : null, next_cursor: nextCursor, trades: page };
+  }
+
+  private aggTradesUrl(session: Session, query: { fromId?: number; startTime?: number }): string {
+    const path = session.selection.provider === "BINANCE" && session.selection.marketKind === "PERPETUAL" ? "/fapi/v1/aggTrades" : "/api/v3/aggTrades";
+    const params = new URLSearchParams({ symbol: session.binanceSymbol, limit: String(TAPE_BOOTSTRAP_PAGE) });
+    if (query.fromId !== undefined) params.set("fromId", String(query.fromId));
+    if (query.startTime !== undefined) params.set("startTime", String(query.startTime));
+    return `${session.restBase}${path}?${params.toString()}`;
+  }
+// The tape-derived frames of browser-direct mode: markers from the live tape
+// and from the REST bootstrap of recent aggregate trades, the aggressive-print
+// pool on the snapshot, aggressive_history answered from the pool, marker_history
+// for a client that opted in, and the honest states when the bootstrap fails.
+// The bootstrap pages come from the same 10,000 recorded BTC-USDT aggregate
+// trades the parity test drives the runtime modules with, so the markers on
+// the wire are compared with the runtime's own history buffer here as well.
+import { createRequire } from "node:module";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  BOOTSTRAP_COMMIT_GRACE_MS,
+  BrowserBinanceTransport,
+  DEFAULT_ENDPOINTS,
+  HEALTH_REASON_NO_TAPE_HISTORY,
+  HEALTH_REASON_READY,
+  MAX_AGGRESSIVE_HISTORY_TRADES,
+  MAX_COVERAGE_ENTRIES,
+  MAX_SNAPSHOT_MARKERS,
+  MAX_TAPE_BOOTSTRAP_PAGES,
+  SEAM_FILL_FAILURES_BEFORE_GIVING_UP,
+  STREAM_BACKOFF_INITIAL_MS,
+  TAPE_BOOTSTRAP_FAILURES_BEFORE_DEGRADED,
+  TAPE_BOOTSTRAP_PAGE,
+  clearBrowserTapeStates,
+  parseAggTradesPage,
+  type UpstreamSocket,
+} from "../browserBinanceTransport";
+import { DEFAULT_WINDOW_MS as POOL_WINDOW_MS } from "../../lib/tape/aggressivePool";
+import { parseServerFrame, type MarkerFrame, type ServerFrame, type TradeFrame } from "../../types/frames";
+import { MARKER_BUCKET_MS, MARKERS_PER_BUCKET_SIDE } from "../../lib/tape/largeTradeDetection";
+import { loadRecordedTrades } from "./recordedTape";
+
+const requireRuntime = createRequire(import.meta.url);
+const { createHistoryBuffer } = requireRuntime(path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../../runtime/src/server/history.js")) as {
+  createHistoryBuffer(options: { markerBucketMs: number; maxMarkersPerBucketSide: number }): {
+    recordMarker(marker: MarkerFrame): boolean;
+    snapshotMarkers(): MarkerFrame[];
+  };
+};
+
+const recorded = loadRecordedTrades();
+const FIRST_ID = Number(recorded[0].trade_id.slice(1));
+const LAST_ID = Number(recorded[recorded.length - 1].trade_id.slice(1));
+const OLDEST_TS = recorded[0].ts_exchange;
+const NEWEST_TS = recorded[recorded.length - 1].ts_exchange;
+// "now" is a few seconds after the newest recorded trade, inside the forming minute.
+const NOW_MS = NEWEST_TS + 5_000;
+const MINUTE = Math.floor(NOW_MS / 60_000) * 60_000;
+const SPOT = { type: "select", symbol: "BTC-USDT", provider: "BINANCE", marketKind: "SPOT" };
+
+/** The mirror's aggTrades row for a recorded trade. */
+function aggTradeRow(trade: TradeFrame): Record<string, unknown> {
+  const id = Number(trade.trade_id.slice(1));
+  return { a: id, p: String(trade.price), q: String(trade.size), f: id, l: id, T: trade.ts_exchange, m: trade.side === "sell", M: true };
+}
+
+/** Serves a tape as the mirror would: the newest page without parameters, the 1,000 ids from `fromId`, or the first 1,000 rows at or after `startTime`. */
+function recordedPage(url: string, rows: readonly TradeFrame[] = recorded): Record<string, unknown>[] {
+  const params = new URL(url).searchParams;
+  const fromId = params.get("fromId");
+  const startTime = params.get("startTime");
+  if (startTime !== null) return rows.filter((trade) => trade.ts_exchange >= Number(startTime)).slice(0, TAPE_BOOTSTRAP_PAGE).map(aggTradeRow);
+  const first = Number(rows[0].trade_id.slice(1));
+  const last = Number(rows[rows.length - 1].trade_id.slice(1));
+  const start = fromId === null ? Math.max(first, last - TAPE_BOOTSTRAP_PAGE + 1) : Number(fromId);
+  return rows.filter((trade) => {
+    const id = Number(trade.trade_id.slice(1));
+    return id >= start && id < start + TAPE_BOOTSTRAP_PAGE;
+  }).map(aggTradeRow);
+}
+
+function historyRequest(requestId: number, fromTs: number, toTs: number, minSize: number, cursor?: string) {
+  return { type: "aggressive_history", request_id: requestId, from_ts: fromTs, to_ts: toTs, min_size: minSize, ...(cursor === undefined ? {} : { cursor }) };
+{
+  "name": "terminal-l1-l2",
+  "private": true,
+  "version": "0.0.0",
+  "engines": {
+    "node": "24.21.0"
+  },
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "precheck": "node scripts/verify-node-version.cjs",
+    "pretest": "node scripts/verify-node-version.cjs",
+    "prebuild": "node scripts/verify-node-version.cjs",
+    "build": "npm run build --workspace web",
+    "docs:check": "node scripts/validate-docs.cjs",
+    "mutation:stale": "node apps/runtime/scripts/verify/mutation-stale.js",
+    "doctor": "node --env-file-if-exists=.env apps/runtime/scripts/verify/doctor.js",
+    "bench:o2": "node apps/runtime/scripts/bench/o2-campaign.js",
+    "lint": "eslint . && npm run lint --workspace web",
+    "test": "npm run test --workspaces --if-present",
+    "check": "npm run docs:check && npm run lint && npm test && npm run build",
+    "gate": "node scripts/gate.cjs",
+    "l2-memory:test": "npm run l2-memory:test --workspace @terminal-l1-l2/runtime",
+    "l2-memory:live": "npm run l2-memory:live --workspace @terminal-l1-l2/runtime --"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.0",
+    "eslint": "^9.39.0",
+    "globals": "^15.0.0",
+    "jsdom": "^29.1.1"
+  }
+}
+
+exec
+/bin/bash -lc "node <<'NODE'
+const cp = require('node:child_process');
+const ts = require('typescript');
+const src = cp.execFileSync('git', ['show', 'build/browser-direct-l1-followup:apps/web/src/workers/browserBinanceTransport.ts'], {encoding:'utf8'});
+const helpers = src.slice(src.indexOf('function continuous('), src.indexOf('/** The stretches with'));
+const js = ts.transpile(helpers, {target:ts.ScriptTarget.ES2022, module:ts.ModuleKind.CommonJS});
+const run = new Function(js + "'`
+const observed = [{from:1000,to:1000,startTradeId:100,endTradeId:100}];
+addInterval(observed,{from:1000,to:1000,startTradeId:200,endTradeId:200});
+return {intervals:observed, historyComplete: observed.some(i => i.from <= 1000 && i.to >= 1001-1), snapshotFrom: observed.find(i=>i.from<=1000&&i.to>=1000)?.from};`);
+console.log(JSON.stringify(run(),null,2));
+NODE' in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ exited 1 in 149ms:
+<ref *1> node:child_process:955
+    throw err;
+    ^
+
+Error: spawnSync git EPERM
+    at Object.spawnSync (node:internal/child_process:1120:20)
+    at spawnSync (node:child_process:902:24)
+    at Object.execFileSync (node:child_process:945:15)
+    at [stdin]:3:16
+    at runScriptInThisContext (node:internal/vm:209:10)
+    at node:internal/process/execution:446:12
+    at [stdin]-wrapper:6:24
+    at runScriptInContext (node:internal/process/execution:444:60)
+    at evalFunction (node:internal/process/execution:279:30)
+    at evalTypeScript (node:internal/process/execution:291:3) {
+  errno: -1,
+  code: 'EPERM',
+  syscall: 'spawnSync git',
+  path: 'git',
+  spawnargs: [
+    'show',
+    'build/browser-direct-l1-followup:apps/web/src/workers/browserBinanceTransport.ts'
+  ],
+  error: [Circular *1],
+  status: 0,
+  signal: null,
+  output: [
+    null,
+    '// Browser-direct data mode: the market-data worker talks to Binance itself\n' +
+      "// instead of to the runtime's WebSocket server, and turns Binance's REST and\n" +
+      '// stream payloads into the canonical frames of apps/web/src/types/frames.ts.\n' +
+      '// It presents the subset of the WebSocket interface the worker uses, so the\n' +
+      '// worker is unchanged apart from the factory that picks the transport. Every\n' +
+      "// frame leaves here as a JSON string, so the worker's parser stays the\n" +
+      '// contract gate in production exactly as it is with the runtime.\n' +
+      '//\n' +
+      '// Opt-in only (VITE_DATA_SOURCE=browser-binance or ?source=browser-binance).\n' +
+      "// Spot pairs use Binance's public mirror (CORS-enabled REST and streams);\n" +
+      '// perpetual pairs are attempted on the futures endpoints and fail honestly\n' +
+      '// when the browser cannot reach them; dxFeed instruments are unavailable.\n' +
+      '//\n' +
+      "// Tape-derived frames (L1 parity): the worker also runs the runtime's own\n" +
+      '// large-trade retention and aggressive-print pool over the live tape and over\n' +
+      '// a bounded REST bootstrap of recent aggregate trades, so `marker`, the\n' +
+      "// snapshot's `markers` and `aggressive_prints*`, `marker_history` and\n" +
+      '// `aggressive_history` are produced here as the runtime would produce them\n' +
+      '// (lib/tape mirrors the runtime modules; workers/tests/tapeParity.test.ts\n' +
+      '// proves them equal).\n' +
+      'import marketInstrumentCatalog from "../../../../config/market-instruments.json";\n' +
+      'import type { FrameIdentity, MarketKind, MarkerFrame, TradeFrame } from "../types/frames";\n' +
+      'import { createTimeCoveredMarkerRetentionBuffer, type MarkerRetentionBuffer } from "../lib/chart/markerRetention";\n' +
+      'import { createAggressivePool, DEFAULT_CALIBRATION_MS, DEFAULT_WINDOW_MS as POOL_WINDOW_MS, type AggressivePool } from "../lib/tape/aggressivePool";\n' +
+      'import { MARKER_BUCKET_MS, MARKERS_PER_BUCKET_SIDE } from "../lib/tape/largeTradeDetection";\n' +
+      '\n' +
+      'export const BROWSER_BINANCE_SOURCE = "browser-binance";\n' +
+      'export type DataSource = typeof BROWSER_BINANCE_SOURCE;\n' +
+      '\n' +
+      'export const DATA_SOURCE_QUERY_KEY = "source";\n' +
+      '\n' +
+      '/**\n' +
+      ' * The data source for this page: the `?source=` query wins (so a deployed\n' +
+      ' * bundle can be switched either way), then the build-time VITE_DATA_SOURCE.\n' +
+      ' * Anything but "browser-binance" means the runtime WebSocket, as today.\n' +
+      ' */\n' +
+      'export function resolveDataSource(envValue: unknown, search: string | undefined): DataSource | undefined {\n' +
+      '  let fromQuery: string | null = null;\n' +
+      '  if (typeof search === "string" && search.length > 0) {\n' +
+      '    try {\n' +
+      '      fromQuery = new URLSearchParams(search).get(DATA_SOURCE_QUERY_KEY);\n' +
+      '    } catch {\n' +
+      '      fromQuery = null;\n' +
+      '    }\n' +
+      '  }\n' +
+      '  if (fromQuery !== null) return fromQuery === BROWSER_BINANCE_SOURCE ? BROWSER_BINANCE_SOURCE : undefined;\n' +
+      '  return envValue === BROWSER_BINANCE_SOURCE ? BROWSER_BINANCE_SOURCE : undefined;\n' +
+      '}\n' +
+      '\n' +
+      '/** The part of the WebSocket interface marketDataWorker.ts uses. A real WebSocket satisfies it. */\n' +
+      'export interface TransportSocket {\n' +
+      '  readyState: number;\n' +
+      '  send(data: string): void;\n' +
+      '  close(): void;\n' +
+      '  onopen: ((event: Event) => void) | null;\n' +
+      '  onmessage: ((event: MessageEvent) => void) | null;\n' +
+      '  onclose: ((event: CloseEvent) => void) | null;\n' +
+      '  onerror: ((event: Event) => void) | null;\n' +
+      '}\n' +
+      '\n' +
+      '/** What this transport needs from the upstream (Binance) WebSocket. */\n' +
+      'export interface UpstreamSocket {\n' +
+      '  readyState: number;\n' +
+      '  close(): void;\n' +
+      '  onopen: ((event: Event) => void) | null;\n' +
+      '  onmessage: ((event: MessageEvent) => void) | null;\n' +
+      '  onclose: ((event: CloseEvent) => void) | null;\n' +
+      '  onerror: ((event: Event) => void) | null;\n' +
+      '}\n' +
+      '\n' +
+      'export type BrowserBinanceEndpoints = {\n' +
+      '  spotRestBase: string;\n' +
+      '  spotStreamBase: string;\n' +
+      '  perpetualRestBase: string;\n' +
+      '  perpetualStreamBase: string;\n' +
+      '};\n' +
+      '\n' +
+      'export const DEFAULT_ENDPOINTS: Readonly<BrowserBinanceEndpoints> = Object.freeze({\n' +
+      '  spotRestBase: "https://data-api.binance.vision",\n' +
+      '  spotStreamBase: "wss://data-stream.binance.vision:9443",\n' +
+      '  perpetualRestBase: "https://fapi.binance.com",\n' +
+      '  perpetualStreamBase: "wss://fstream.binance.com",\n' +
+      '});\n' +
+      '\n' +
+      'export type BrowserBinanceTransportOptions = {\n' +
+      '  fetch?: typeof fetch;\n' +
+      '  WebSocket?: new (url: string) => UpstreamSocket;\n' +
+      '  now?: () => number;\n' +
+      '  setTimeout?: (callback: () => void, ms: number) => unknown;\n' +
+      '  clearTimeout?: (handle: unknown) => void;\n' +
+      '  endpoints?: Partial<BrowserBinanceEndpoints>;\n' +
+      '};\n' +
+      '\n' +
+      'export const SNAPSHOT_BARS = 900;\n' +
+      'export const BAR_INTERVAL_MS = 60_000;\n' +
+      'export const REST_TIMEOUT_MS = 10_000;\n' +
+      'export const STREAM_BACKOFF_INITIAL_MS = 1_000;\n' +
+      'export const STREAM_BACKOFF_CAP_MS = 30_000;\n' +
+      'export const STREAM_FAILURES_BEFORE_UNAVAILABLE = 5;\n' +
+      '/** A browser WebSocket has no connect timeout of its own; a proxy that swallows the upgrade would otherwise leave the book "connecting" for good. */\n' +
+      'export const STREAM_CONNECT_TIMEOUT_MS = 15_000;\n' +
+      "/** Klines per REST page while filling a gap; Binance's maximum. */\n" +
+      'export const GAP_FILL_PAGE = 1_000;\n' +
+      "/** Pages a gap fill may walk before the history is simply re-read as a fresh snapshot (11,000 minutes covers the 10,080 bars the browser keeps and stays inside the parser's eight-day live window). */\n" +
+      'export const MAX_GAP_FILL_PAGES = 11;\n' +
+      'export const MAX_GAP_FILL_MS = MAX_GAP_FILL_PAGES * GAP_FILL_PAGE * BAR_INTERVAL_MS;\n' +
+      '/** Closed bars held back while a gap fill is pending; older ones are dropped and come back through the paginated REST read instead. */\n' +
+      'export const MAX_HELD_CLOSED_BARS = 120;\n' +
+      '/**\n' +
+      ' * A REST row is taken as final only when its minute closed this long before\n' +
+      ' * the request went out: a row served while its minute was still open is\n' +
+      " * partial, and the browser's clock may lead the exchange's by a little.\n" +
+      ' */\n' +
+      'export const CLOSE_CONFIRMATION_MARGIN_MS = 5_000;\n' +
+      '/** Consecutive fills that found the same minute missing before the history is re-read as a snapshot that carries the gap as a gap. */\n' +
+      'export const MAX_HOLE_RETRIES = 3;\n' +
+      '\n' +
+      "/** Aggregate trades per REST page while bootstrapping the tape; Binance's maximum. */\n" +
+      'export const TAPE_BOOTSTRAP_PAGE = 1_000;\n' +
+      '/** Pages the bootstrap walks back from now (weight 4 each: 120 of the 6,000 per minute budget). On BTC-USDT this is minutes of tape, on a quiet pair hours. */\n' +
+      'export const MAX_TAPE_BOOTSTRAP_PAGES = 30;\n' +
+      '/** Failed attempts (no page read at all) before the READY health frame says the tape history is missing; retries continue. */\n' +
+      'export const TAPE_BOOTSTRAP_FAILURES_BEFORE_DEGRADED = 3;\n' +
+      '/** Pages a seam fill (the tape between two observed stretches) may walk before the gap is left open. */\n' +
+      'export const MAX_SEAM_FILL_PAGES = 10;\n' +
+      '/** Failed reads of one seam before its gap is left open. */\n' +
+      'export const SEAM_FILL_FAILURES_BEFORE_GIVING_UP = 3;\n' +
+      '/** With a stream open but silent when the bootstrap pages are all read, how long they wait for a first trade before committing without one. */\n' +
+      'export const BOOTSTRAP_COMMIT_GRACE_MS = 2_000;\n' +
+      '/** Bounds on the coverage bookkeeping, beyond the retention pruning. */\n' +
+      'export const MAX_COVERAGE_ENTRIES = 128;\n' +
+      'export const MAX_UNVERIFIED_MS = 1_024;\n' +
+      '/** Pairs whose tape state (markers, pool, coverage) is kept across transport instances, so a reconnect does not bootstrap again. */\n' +
+      'export const MAX_TAPE_STATES = 4;\n' +
+      "/** How far back a marker is kept, as the runtime's large-trade history window (BACKFILL_DAYS). */\n" +
+      'export const MARKER_HISTORY_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;\n' +
+      "/** The runtime's history buffer caps (history.js DEFAULT_MAX_MARKERS, DEFAULT_MAX_TRADES) and the wire's snapshot caps (frames.js). */\n" +
+      'export const MAX_RETAINED_MARKERS = 100_000;\n' +
+      'export const SNAPSHOT_RECENT_TRADES = 100;\n' +
+      'export const MAX_SNAPSHOT_MARKERS = 5_000;\n' +
+      'export const MAX_MARKER_HISTORY_ROWS = 5_000;\n' +
+      'export const MAX_SNAPSHOT_CLOSED_BARS = 10_080;\n' +
+      '/** aggressive_history contract limits (frames.js MAX_AGGRESSIVE_HISTORY_TRADES, aggressive-history.js). */\n' +
+      'export const MAX_AGGRESSIVE_HISTORY_TRADES = 10_000;\n' +
+      'export const MAX_AGGRESSIVE_HISTORY_WINDOW_MS = 24 * 60 * 60 * 1000;\n' +
+      'export const AGGRESSIVE_HISTORY_FUTURE_SKEW_MS = 60_000;\n' +
+      'const MAX_HISTORY_CURSOR_LENGTH = 512;\n' +
+      'const HISTORY_CURSOR_VERSION = 1;\n' +
+      '\n' +
+      'export const HEALTH_REASON_READY = "BROWSER_DIRECT";\n' +
+      '/** READY, but the REST bootstrap of recent trades failed: markers and the print pool start at connect. */\n' +
+      'export const HEALTH_REASON_NO_TAPE_HISTORY = "BROWSER_DIRECT_NO_TAPE_HISTORY";\n' +
+      'export const HEALTH_REASON_STREAM_CLOSED = "BROWSER_DIRECT_STREAM_CLOSED";\n' +
+      'export const HEALTH_REASON_STREAM_UNAVAILABLE = "BROWSER_DIRECT_STREAM_UNAVAILABLE";\n' +
+      'export const HEALTH_REASON_REST_FAILED = "BROWSER_DIRECT_REST_FAILED";\n' +
+      'export const HEALTH_REASON_PERPETUAL_UNREACHABLE = "BROWSER_DIRECT_PERPETUAL_UNREACHABLE";\n' +
+      'export const HEALTH_REASON_NO_DXFEED = "BROWSER_DIRECT_NO_DXFEED";\n' +
+      'export const BOOK_REASON_STREAM_CONNECTING = "BROWSER_DIRECT_STREAM_CONNECTING";\n' +
+      '\n' +
+      'const CONNECTING = 0;\n' +
+      'const OPEN = 1;\n' +
+      'const CLOSED = 3;\n' +
+      '\n' +
+      'type Selection = { symbol: string } & FrameIdentity;\n' +
+      '\n' +
+      'type Session = {\n' +
+      '  readonly selection: Selection;\n' +
+      '  readonly binanceSymbol: string;\n' +
+      '  readonly restBase: string;\n' +
+      '  readonly streamBase: string;\n' +
+      '  stream: UpstreamSocket | null;\n' +
+      '  connectTimer: unknown;\n' +
+      '  /** Counts stream sockets; a recovery belongs to the generation whose open started it. */\n' +
+      '  streamGeneration: number;\n' +
+      '  /** A degraded health frame went out; the next open stream owes a READY, after a successful REST gap fill. */\n' +
+      '  degraded: boolean;\n' +
+      '  /** A gap fill is pending: live kline events wait in the buffer so closed bars reach the main thread in order, without gaps. */\n' +
+      '  recovering: boolean;\n' +
+      '  heldClosedBars: Map<number, KlineRow>;\n' +
+      '  heldFormingBar: KlineRow | null;\n' +
+      '  /** A READY book went out since the stream last opened; it is withdrawn when the stream is lost. */\n' +
+      '  bookLive: boolean;\n' +
+      '  /** A REST read is in flight for the recovery. */\n' +
+      '  fillInFlight: boolean;\n' +
+      "  /** The minute after the boundary closed on the clock but is not yet confirmable from REST; the stream's own close for it ends the recovery. */\n" +
+      '  awaitingBoundary: number | null;\n' +
+      '  holeRetries: number;\n' +
+      '  streamFailures: number;\n' +
+      '  backoffMs: number;\n' +
+      '  lastClosedOpen: number;\n' +
+      '  abort: AbortController | null;\n' +
+      '  timer: unknown;\n' +
+      '  closed: boolean;\n' +
+      '  /** Ev'... 81067 more characters,
+    ''
+  ],
+  pid: 10,
+  stdout: '// Browser-direct data mode: the market-data worker talks to Binance itself\n' +
+    "// instead of to the runtime's WebSocket server, and turns Binance's REST and\n" +
+    '// stream payloads into the canonical frames of apps/web/src/types/frames.ts.\n' +
+    '// It presents the subset of the WebSocket interface the worker uses, so the\n' +
+    '// worker is unchanged apart from the factory that picks the transport. Every\n' +
+    "// frame leaves here as a JSON string, so the worker's parser stays the\n" +
+    '// contract gate in production exactly as it is with the runtime.\n' +
+    '//\n' +
+    '// Opt-in only (VITE_DATA_SOURCE=browser-binance or ?source=browser-binance).\n' +
+    "// Spot pairs use Binance's public mirror (CORS-enabled REST and streams);\n" +
+    '// perpetual pairs are attempted on the futures endpoints and fail honestly\n' +
+    '// when the browser cannot reach them; dxFeed instruments are unavailable.\n' +
+    '//\n' +
+    "// Tape-derived frames (L1 parity): the worker also runs the runtime's own\n" +
+    '// large-trade retention and aggressive-print pool over the live tape and over\n' +
+    '// a bounded REST bootstrap of recent aggregate trades, so `marker`, the\n' +
+    "// snapshot's `markers` and `aggressive_prints*`, `marker_history` and\n" +
+    '// `aggressive_history` are produced here as the runtime would produce them\n' +
+    '// (lib/tape mirrors the runtime modules; workers/tests/tapeParity.test.ts\n' +
+    '// proves them equal).\n' +
+    'import marketInstrumentCatalog from "../../../../config/market-instruments.json";\n' +
+    'import type { FrameIdentity, MarketKind, MarkerFrame, TradeFrame } from "../types/frames";\n' +
+    'import { createTimeCoveredMarkerRetentionBuffer, type MarkerRetentionBuffer } from "../lib/chart/markerRetention";\n' +
+    'import { createAggressivePool, DEFAULT_CALIBRATION_MS, DEFAULT_WINDOW_MS as POOL_WINDOW_MS, type AggressivePool } from "../lib/tape/aggressivePool";\n' +
+    'import { MARKER_BUCKET_MS, MARKERS_PER_BUCKET_SIDE } from "../lib/tape/largeTradeDetection";\n' +
+    '\n' +
+    'export const BROWSER_BINANCE_SOURCE = "browser-binance";\n' +
+    'export type DataSource = typeof BROWSER_BINANCE_SOURCE;\n' +
+    '\n' +
+    'export const DATA_SOURCE_QUERY_KEY = "source";\n' +
+    '\n' +
+    '/**\n' +
+    ' * The data source for this page: the `?source=` query wins (so a deployed\n' +
+    ' * bundle can be switched either way), then the build-time VITE_DATA_SOURCE.\n' +
+    ' * Anything but "browser-binance" means the runtime WebSocket, as today.\n' +
+    ' */\n' +
+    'export function resolveDataSource(envValue: unknown, search: string | undefined): DataSource | undefined {\n' +
+    '  let fromQuery: string | null = null;\n' +
+    '  if (typeof search === "string" && search.length > 0) {\n' +
+    '    try {\n' +
+    '      fromQuery = new URLSearchParams(search).get(DATA_SOURCE_QUERY_KEY);\n' +
+    '    } catch {\n' +
+    '      fromQuery = null;\n' +
+    '    }\n' +
+    '  }\n' +
+    '  if (fromQuery !== null) return fromQuery === BROWSER_BINANCE_SOURCE ? BROWSER_BINANCE_SOURCE : undefined;\n' +
+    '  return envValue === BROWSER_BINANCE_SOURCE ? BROWSER_BINANCE_SOURCE : undefined;\n' +
+    '}\n' +
+    '\n' +
+    '/** The part of the WebSocket interface marketDataWorker.ts uses. A real WebSocket satisfies it. */\n' +
+    'export interface TransportSocket {\n' +
+    '  readyState: number;\n' +
+    '  send(data: string): void;\n' +
+    '  close(): void;\n' +
+    '  onopen: ((event: Event) => void) | null;\n' +
+    '  onmessage: ((event: MessageEvent) => void) | null;\n' +
+    '  onclose: ((event: CloseEvent) => void) | null;\n' +
+    '  onerror: ((event: Event) => void) | null;\n' +
+    '}\n' +
+    '\n' +
+    '/** What this transport needs from the upstream (Binance) WebSocket. */\n' +
+    'export interface UpstreamSocket {\n' +
+    '  readyState: number;\n' +
+    '  close(): void;\n' +
+    '  onopen: ((event: Event) => void) | null;\n' +
+    '  onmessage: ((event: MessageEvent) => void) | null;\n' +
+    '  onclose: ((event: CloseEvent) => void) | null;\n' +
+    '  onerror: ((event: Event) => void) | null;\n' +
+    '}\n' +
+    '\n' +
+    'export type BrowserBinanceEndpoints = {\n' +
+    '  spotRestBase: string;\n' +
+    '  spotStreamBase: string;\n' +
+    '  perpetualRestBase: string;\n' +
+    '  perpetualStreamBase: string;\n' +
+    '};\n' +
+    '\n' +
+    'export const DEFAULT_ENDPOINTS: Readonly<BrowserBinanceEndpoints> = Object.freeze({\n' +
+    '  spotRestBase: "https://data-api.binance.vision",\n' +
+    '  spotStreamBase: "wss://data-stream.binance.vision:9443",\n' +
+    '  perpetualRestBase: "https://fapi.binance.com",\n' +
+    '  perpetualStreamBase: "wss://fstream.binance.com",\n' +
+    '});\n' +
+    '\n' +
+    'export type BrowserBinanceTransportOptions = {\n' +
+    '  fetch?: typeof fetch;\n' +
+    '  WebSocket?: new (url: string) => UpstreamSocket;\n' +
+    '  now?: () => number;\n' +
+    '  setTimeout?: (callback: () => void, ms: number) => unknown;\n' +
+    '  clearTimeout?: (handle: unknown) => void;\n' +
+    '  endpoints?: Partial<BrowserBinanceEndpoints>;\n' +
+    '};\n' +
+    '\n' +
+    'export const SNAPSHOT_BARS = 900;\n' +
+    'export const BAR_INTERVAL_MS = 60_000;\n' +
+    'export const REST_TIMEOUT_MS = 10_000;\n' +
+    'export const STREAM_BACKOFF_INITIAL_MS = 1_000;\n' +
+    'export const STREAM_BACKOFF_CAP_MS = 30_000;\n' +
+    'export const STREAM_FAILURES_BEFORE_UNAVAILABLE = 5;\n' +
+    '/** A browser WebSocket has no connect timeout of its own; a proxy that swallows the upgrade would otherwise leave the book "connecting" for good. */\n' +
+    'export const STREAM_CONNECT_TIMEOUT_MS = 15_000;\n' +
+    "/** Klines per REST page while filling a gap; Binance's maximum. */\n" +
+    'export const GAP_FILL_PAGE = 1_000;\n' +
+    "/** Pages a gap fill may walk before the history is simply re-read as a fresh snapshot (11,000 minutes covers the 10,080 bars the browser keeps and stays inside the parser's eight-day live window). */\n" +
+    'export const MAX_GAP_FILL_PAGES = 11;\n' +
+    'export const MAX_GAP_FILL_MS = MAX_GAP_FILL_PAGES * GAP_FILL_PAGE * BAR_INTERVAL_MS;\n' +
+    '/** Closed bars held back while a gap fill is pending; older ones are dropped and come back through the paginated REST read instead. */\n' +
+    'export const MAX_HELD_CLOSED_BARS = 120;\n' +
+    '/**\n' +
+    ' * A REST row is taken as final only when its minute closed this long before\n' +
+    ' * the request went out: a row served while its minute was still open is\n' +
+    " * partial, and the browser's clock may lead the exchange's by a little.\n" +
+    ' */\n' +
+    'export const CLOSE_CONFIRMATION_MARGIN_MS = 5_000;\n' +
+    '/** Consecutive fills that found the same minute missing before the history is re-read as a snapshot that carries the gap as a gap. */\n' +
+    'export const MAX_HOLE_RETRIES = 3;\n' +
+    '\n' +
+    "/** Aggregate trades per REST page while bootstrapping the tape; Binance's maximum. */\n" +
+    'export const TAPE_BOOTSTRAP_PAGE = 1_000;\n' +
+    '/** Pages the bootstrap walks back from now (weight 4 each: 120 of the 6,000 per minute budget). On BTC-USDT this is minutes of tape, on a quiet pair hours. */\n' +
+    'export const MAX_TAPE_BOOTSTRAP_PAGES = 30;\n' +
+    '/** Failed attempts (no page read at all) before the READY health frame says the tape history is missing; retries continue. */\n' +
+    'export const TAPE_BOOTSTRAP_FAILURES_BEFORE_DEGRADED = 3;\n' +
+    '/** Pages a seam fill (the tape between two observed stretches) may walk before the gap is left open. */\n' +
+    'export const MAX_SEAM_FILL_PAGES = 10;\n' +
+    '/** Failed reads of one seam before its gap is left open. */\n' +
+    'export const SEAM_FILL_FAILURES_BEFORE_GIVING_UP = 3;\n' +
+    '/** With a stream open but silent when the bootstrap pages are all read, how long they wait for a first trade before committing without one. */\n' +
+    'export const BOOTSTRAP_COMMIT_GRACE_MS = 2_000;\n' +
+    '/** Bounds on the coverage bookkeeping, beyond the retention pruning. */\n' +
+    'export const MAX_COVERAGE_ENTRIES = 128;\n' +
+    'export const MAX_UNVERIFIED_MS = 1_024;\n' +
+    '/** Pairs whose tape state (markers, pool, coverage) is kept across transport instances, so a reconnect does not bootstrap again. */\n' +
+    'export const MAX_TAPE_STATES = 4;\n' +
+    "/** How far back a marker is kept, as the runtime's large-trade history window (BACKFILL_DAYS). */\n" +
+    'export const MARKER_HISTORY_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;\n' +
+    "/** The runtime's history buffer caps (history.js DEFAULT_MAX_MARKERS, DEFAULT_MAX_TRADES) and the wire's snapshot caps (frames.js). */\n" +
+    'export const MAX_RETAINED_MARKERS = 100_000;\n' +
+    'export const SNAPSHOT_RECENT_TRADES = 100;\n' +
+    'export const MAX_SNAPSHOT_MARKERS = 5_000;\n' +
+    'export const MAX_MARKER_HISTORY_ROWS = 5_000;\n' +
+    'export const MAX_SNAPSHOT_CLOSED_BARS = 10_080;\n' +
+    '/** aggressive_history contract limits (frames.js MAX_AGGRESSIVE_HISTORY_TRADES, aggressive-history.js). */\n' +
+    'export const MAX_AGGRESSIVE_HISTORY_TRADES = 10_000;\n' +
+    'export const MAX_AGGRESSIVE_HISTORY_WINDOW_MS = 24 * 60 * 60 * 1000;\n' +
+    'export const AGGRESSIVE_HISTORY_FUTURE_SKEW_MS = 60_000;\n' +
+    'const MAX_HISTORY_CURSOR_LENGTH = 512;\n' +
+    'const HISTORY_CURSOR_VERSION = 1;\n' +
+    '\n' +
+    'export const HEALTH_REASON_READY = "BROWSER_DIRECT";\n' +
+    '/** READY, but the REST bootstrap of recent trades failed: markers and the print pool start at connect. */\n' +
+    'export const HEALTH_REASON_NO_TAPE_HISTORY = "BROWSER_DIRECT_NO_TAPE_HISTORY";\n' +
+    'export const HEALTH_REASON_STREAM_CLOSED = "BROWSER_DIRECT_STREAM_CLOSED";\n' +
+    'export const HEALTH_REASON_STREAM_UNAVAILABLE = "BROWSER_DIRECT_STREAM_UNAVAILABLE";\n' +
+    'export const HEALTH_REASON_REST_FAILED = "BROWSER_DIRECT_REST_FAILED";\n' +
+    'export const HEALTH_REASON_PERPETUAL_UNREACHABLE = "BROWSER_DIRECT_PERPETUAL_UNREACHABLE";\n' +
+    'export const HEALTH_REASON_NO_DXFEED = "BROWSER_DIRECT_NO_DXFEED";\n' +
+    'export const BOOK_REASON_STREAM_CONNECTING = "BROWSER_DIRECT_STREAM_CONNECTING";\n' +
+    '\n' +
+    'const CONNECTING = 0;\n' +
+    'const OPEN = 1;\n' +
+    'const CLOSED = 3;\n' +
+    '\n' +
+    'type Selection = { symbol: string } & FrameIdentity;\n' +
+    '\n' +
+    'type Session = {\n' +
+    '  readonly selection: Selection;\n' +
+    '  readonly binanceSymbol: string;\n' +
+    '  readonly restBase: string;\n' +
+    '  readonly streamBase: string;\n' +
+    '  stream: UpstreamSocket | null;\n' +
+    '  connectTimer: unknown;\n' +
+    '  /** Counts stream sockets; a recovery belongs to the generation whose open started it. */\n' +
+    '  streamGeneration: number;\n' +
+    '  /** A degraded health frame went out; the next open stream owes a READY, after a successful REST gap fill. */\n' +
+    '  degraded: boolean;\n' +
+    '  /** A gap fill is pending: live kline events wait in the buffer so closed bars reach the main thread in order, without gaps. */\n' +
+    '  recovering: boolean;\n' +
+    '  heldClosedBars: Map<number, KlineRow>;\n' +
+    '  heldFormingBar: KlineRow | null;\n' +
+    '  /** A READY book went out since the stream last opened; it is withdrawn when the stream is lost. */\n' +
+    '  bookLive: boolean;\n' +
+    '  /** A REST read is in flight for the recovery. */\n' +
+    '  fillInFlight: boolean;\n' +
+    "  /** The minute after the boundary closed on the clock but is not yet confirmable from REST; the stream's own close for it ends the recovery. */\n" +
+    '  awaitingBoundary: number | null;\n' +
+    '  holeRetries: number;\n' +
+    '  streamFailures: number;\n' +
+    '  backoffMs: number;\n' +
+    '  lastClosedOpen: number;\n' +
+    '  abort: AbortController | null;\n' +
+    '  timer: unknown;\n' +
+    '  closed: boolean;\n' +
+    '  /** Ev'... 81067 more characters,
+  stderr: ''
+}
+
+Node.js v22.22.0
+
+exec
+/bin/bash -lc "git show build/browser-direct-l1-followup:apps/web/src/workers/browserBinanceTransport.ts | node -e 'const src=require(\"fs\").readFileSync(0,\"utf8\"); const ts=require(\"typescript\"); const helper=src.slice(src.indexOf(\"function continuous(\"),src.indexOf(\"/** The stretches with\")); const js=ts.transpile(helper,{target:ts.ScriptTarget.ES2022}); const result=new Function(js+\";const intervals=[{from:1000,to:1000,startTradeId:100,endTradeId:100}];addInterval(intervals,{from:1000,to:1000,startTradeId:200,endTradeId:200});return {intervals,historyComplete:intervals.some(i=>i.from<=1000&&i.to>=1000)};\")(); console.log(JSON.stringify(result));'" in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 178ms:
+{"intervals":[{"from":1000,"to":1000,"startTradeId":100,"endTradeId":100},{"from":1000,"to":1000,"startTradeId":200,"endTradeId":200}],"historyComplete":true}
+
+exec
+/bin/bash -lc "git show build/browser-direct-l1-followup:apps/web/src/workers/tests/browserBinanceTransport.l1.test.ts | nl -ba | sed -n '936,990p'" in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+   936	    // next starts at tA+1 with trade 200; the mirror holds the fills between.
+   937	    const adjacent = [aggRow(1, tA, 101, 150), aggRow(2, tA + 1, 151, 199), aggRow(3, tA + 1, 200, 200), aggRow(4, tA + 500, 300, 300)];
+   938	    let release: (() => void) | null = null;
+   939	    const h1 = harness((url) => {
+   940	      if (!url.includes("startTime")) return Promise.resolve(jsonResponse([]));
+   941	      return new Promise<Response>((resolve) => {
+   942	        release = () => resolve(jsonResponse(mirrorPage(url, adjacent)));
+   943	      });
+   944	    });
+   945	    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+   946	    try {
+   947	      await openAndSelect(h1);
+   948	      await settle();
+   949	      h1.stream().open();
+   950	      await vi.advanceTimersByTimeAsync(0);
+   951	      h1.stream().message(liveTrade(100, tA, SIZE, false));
+   952	      h1.stream().drop();
+   953	      const h2 = reconnected(h1);
+   954	      await openAndSelect(h2);
+   955	      await settle();
+   956	      h2.stream().open();
+   957	      await vi.advanceTimersByTimeAsync(0);
+   958	      h2.frames.length = 0;
+   959	      h2.stream().message(liveTrade(200, tA + 1, SIZE, false));
+   960	      await vi.advanceTimersByTimeAsync(0);
+   961	      expect(String(h2.aggTradesMock.mock.calls.at(-1)![0])).toContain(`startTime=${tA}`);
+   962	      // Until REST answers, the two spans are two stretches: nothing is complete across them.
+   963	      expect(await askHistory(h2, historyRequest(1, tA, tA + 2, 1))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE" });
+   964	      expect(await askHistory(h2, historyRequest(2, tA, tA + 1, 1))).toMatchObject({ complete: true });
+   965	      release!();
+   966	      await settle();
+   967	      const snapshot = h2.parsed().find((frame) => frame.type === "snapshot");
+   968	      if (snapshot === undefined || snapshot.type !== "snapshot") throw new Error("expected a snapshot");
+   969	      const ids = snapshot.aggressive_prints!.map((print) => print.trade_id);
+   970	      expect(ids).toEqual(expect.arrayContaining(["a1", "a2", "100", "200"]));
+   971	      expect(ids).not.toContain("a3");
+   972	      expect(snapshot.aggressive_prints_from).toBe(tA);
+   973	      expect(await askHistory(h2, historyRequest(3, tA, tA + 2, 1))).toMatchObject({ complete: true });
+   974	      h2.stream().drop();
+   975	
+   976	      // The same millisecond: the next stream starts at tA+1 again with trade
+   977	      // 400 while this one ended there with 200. The ids read so far end just
+   978	      // before the row the lost stream owned (its own trade 200), so the seam
+   979	      // is read from that id: that row is the stream's, one aggregate between
+   980	      // the spans is whole, one straddles the ended span, one is the new
+   981	      // stream's.
+   982	      const sameMs = [aggRow(3, tA + 1, 200, 200), aggRow(4, tA + 1, 201, 300), aggRow(5, tA + 1, 195, 205), aggRow(6, tA + 1, 400, 400), aggRow(7, tA + 900, 500, 500)];
+   983	      release = null;
+   984	      const h3 = harness((url) => {
+   985	        if (!url.includes("fromId") && !url.includes("startTime")) return Promise.resolve(jsonResponse([]));
+   986	        return Promise.resolve(jsonResponse(mirrorPage(url, sameMs)));
+   987	      }, h2.now);
+   988	      await openAndSelect(h3);
+   989	      await settle();
+   990	      h3.stream().open();
+
+codex
+1. **WARNING — `apps/web/src/workers/browserBinanceTransport.ts:494–498` and `apps/web/src/workers/tests/browserBinanceTransport.l1.test.ts:962–964`: unresolved seams still claim complete boundary milliseconds.**
+
+   Keeping spans separate prevents a request spanning adjacent milliseconds from succeeding, but each span still claims its entire boundary millisecond. The new fixture contains missing fills 101–150 at `tA`, yet line 964 expects `[tA, tA+1)` to return `complete: true` before REST delivers those fills. When both spans share a millisecond, even the entire seam window incorrectly passes the coverage check. If REST fails, that false completeness persists.
+
+   **Fix:** Exclude unresolved seam boundary milliseconds from coverage until REST reconciliation succeeds. Keep pending exclusions separate from permanently unverified timestamps. Change line 964 to expect `STORAGE_UNAVAILABLE`, and add delayed-response and failed-read tests for coincident spans, asserting completeness only after all required fills arrive.
+
+Ran the requested diff and reproduced the coincident-millisecond coverage error using the branch’s actual interval helpers. Full branch tests were not run in this read-only checkout, which is on `main`.
+
+VERDICT: REVISE
+tokens used
+46,351
+1. **WARNING — `apps/web/src/workers/browserBinanceTransport.ts:494–498` and `apps/web/src/workers/tests/browserBinanceTransport.l1.test.ts:962–964`: unresolved seams still claim complete boundary milliseconds.**
+
+   Keeping spans separate prevents a request spanning adjacent milliseconds from succeeding, but each span still claims its entire boundary millisecond. The new fixture contains missing fills 101–150 at `tA`, yet line 964 expects `[tA, tA+1)` to return `complete: true` before REST delivers those fills. When both spans share a millisecond, even the entire seam window incorrectly passes the coverage check. If REST fails, that false completeness persists.
+
+   **Fix:** Exclude unresolved seam boundary milliseconds from coverage until REST reconciliation succeeds. Keep pending exclusions separate from permanently unverified timestamps. Change line 964 to expect `STORAGE_UNAVAILABLE`, and add delayed-response and failed-read tests for coincident spans, asserting completeness only after all required fills arrive.
+
+Ran the requested diff and reproduced the coincident-millisecond coverage error using the branch’s actual interval helpers. Full branch tests were not run in this read-only checkout, which is on `main`.
+
+VERDICT: REVISE
+--- last message saved to /home/user/Terminal-L1-L2/PM/log/codex/20261026T155109Z-code-build-browser-direct-l1-followup.last.md
+VERDICT: REVISE
+exit 0

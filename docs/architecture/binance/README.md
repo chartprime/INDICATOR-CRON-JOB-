@@ -193,14 +193,22 @@ the request went out; the minute at the edge takes the stream's own close. A
 missing minute keeps the feed recovering; a gap past 11,000 minutes re-reads
 the history as a fresh snapshot.
 
-Two known limitations remain from the final code review and are tracked as a
-follow-up (see `pm/BACKLOG.md`): coverage merges adjacent or overlapping
-milliseconds from two independently observed stream spans without checking
-fill-id continuity, so a stream that resumes within the same or the next
-millisecond could close a seam over missing fills; and a pair switch during
-the two-second bootstrap grace discards the staged pages while the cached
-state remembers the read as done, so returning to that pair skips its
-bootstrap until the page is reloaded.
+Two stream spans whose first and last trade ids are not consecutive never
+join, even when their milliseconds touch or coincide: until the REST read
+between them succeeds, the milliseconds at their two ends are outside every
+claim (the fills after the one span's last trade and before the other's
+first, inside those milliseconds, are unread); a closed seam lifts that, a
+seam given up on leaves them unverified for good.
+A pair's tape state counts as complete only once its staged pages have
+committed; a switch during the two-second grace discards them and a return
+reads them again.
+
+One known limitation (conservative direction): when two consecutive stream
+spans end in the same millisecond, the merged stretch keeps the older span's
+ending trade id, so the next span can fail the continuity check and trigger a
+REST seam read that was not needed; if that read fails three times the fully
+observed boundary millisecond is marked unverified. Coverage is then reported
+as unavailable, never as falsely complete.
 
 To build a static bundle with the mode baked in and relative asset paths:
 

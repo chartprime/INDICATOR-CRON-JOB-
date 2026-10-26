@@ -113,3 +113,11 @@ filtered). VPIN: `vpin_status: "DISABLED"`.
   boundaries; the bootstrap's oldest millisecond is claimed only when the walk
   reached the exchange's first aggregate trade; completeness ends at the last
   trade seen, never in the future.
+- Follow-up (`build/browser-direct-l1-followup`): two stream spans join only
+  when their trade ids are consecutive, otherwise the seam is read from REST
+  even with no millisecond between them; kept state is "done" only once the
+  staged pages committed, so a switch during the grace restarts the read.
+- Follow-up fix: an unresolved seam's two boundary milliseconds are outside
+  every claim until its REST read succeeds (pending, not unverified); a seam
+  given up on makes them unverified for good; seam gaps are found on the
+  merged stretches so a given-up hole is never re-read as part of a wider one.

@@ -1,0 +1,7 @@
+- **WARNING — `apps/web/src/workers/browserBinanceTransport.ts:502–509`: Equal-timestamp merges retain the wrong ending trade ID.** When two consecutive stream spans end in the same millisecond, `ends.map(...).find(...)` selects the older interval’s `endTradeId`. Reproduced using the branch’s actual helper: merging trade 100 at timestamp 1000 with trade 101 at timestamp 1000 retains `endTradeId: 100`. A subsequent span starting with trade 102 at timestamp 1001 then fails the continuity check and triggers an unnecessary REST seam read. If that read fails three times, fully observed boundary milliseconds become permanently unverified, incorrectly disabling history coverage.
+
+  **Fix:** When endpoints share a timestamp, retain the greatest ending fill ID and the smallest starting fill ID. Preserve the REST cursor’s reconciliation constraints separately. Add a three-reconnect regression test with consecutive IDs and shared timestamps, asserting no REST read and uninterrupted completeness.
+
+Validation: ran the requested diff and reproduced the endpoint error with the branch’s interval helper. The full branch test suite was not run; the read-only checkout remains on `main`.
+
+VERDICT: REVISE

@@ -829,7 +829,7 @@ export const ChartPanel = forwardRef<ChartPanelHandle, ChartPanelProps>(
     const [tableOverlays, setTableOverlays] = useState<
       readonly { key: string; position: TablePosition; committedGrid: Record<string, TableCell> }[]
     >([]);
-    const [bottomTableRightPx, setBottomTableRightPx] = useState(AXIS_INSET_GAP_PX);
+    const [tableRightPx, setTableRightPx] = useState(AXIS_INSET_GAP_PX);
 
     function clearTooltips() {
       setWhaleTooltip(null);
@@ -1719,6 +1719,7 @@ export const ChartPanel = forwardRef<ChartPanelHandle, ChartPanelProps>(
                     INDICATOR_LINE_WIDTH) as LineWidth,
                   priceLineVisible: false,
                   lastValueVisible: false,
+                  crosshairMarkerVisible: false,
                   ...(autoscaleRange
                     ? {
                         autoscaleInfoProvider: () => ({
@@ -1895,7 +1896,7 @@ export const ChartPanel = forwardRef<ChartPanelHandle, ChartPanelProps>(
         controller?.setMarkers(markers);
       }
 
-      setBottomTableRightPx((chartRef.current?.priceScale("right").width() ?? 0) + AXIS_INSET_GAP_PX);
+      setTableRightPx((chartRef.current?.priceScale("right").width() ?? 0) + AXIS_INSET_GAP_PX);
       setTableOverlays((current) =>
         current.length === nextTables.length &&
         current.every(
@@ -3938,7 +3939,7 @@ export const ChartPanel = forwardRef<ChartPanelHandle, ChartPanelProps>(
           const cards = monitor || liveRange;
           if (stack.length === 0 && !cards) return null;
           return (
-          <div key={position} className={position === "bottom-right" ? "draw-table-overlay-stack draw-table-overlay-stack--bottom" : cards ? "draw-table-overlay-stack draw-table-overlay-stack--monitor" : "draw-table-overlay-stack"} style={position === "bottom-right" ? { right: bottomTableRightPx } : cards ? { right: (chartRef.current?.priceScale("right").width() ?? 0) + AXIS_INSET_GAP_PX } : undefined}>
+          <div key={position} className={position === "bottom-right" ? "draw-table-overlay-stack draw-table-overlay-stack--bottom" : cards ? "draw-table-overlay-stack draw-table-overlay-stack--monitor" : "draw-table-overlay-stack"} style={{ right: tableRightPx }}>
             {monitor && (
               <CandleMonitor
                 entry={candleMonitorState?.frame.entries.find((entry) => entry.candleMs === exhaustionCandleMsState) ?? null}

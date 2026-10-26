@@ -1,0 +1,846 @@
+Reading additional input from stdin...
+OpenAI Codex v0.164.0
+--------
+workdir: /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+model: gpt-6.1-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 01a17908-73ca-73b1-8e8a-b4b62be57216
+--------
+user
+You are the independent code reviewer for a trading-indicator team. Review branch ux/table-axis-inset against main in this repository. Run: git diff main...ux/table-axis-inset -- apps/web/src/components/chart/ChartPanel.tsx apps/web/src/components/chart/tests/ChartPanel.lifecycle.test.tsx 
+
+Focus, in order: 1) correctness of the math versus the brief; 2) future-data leakage (a bar may use only data timestamped at or before its close) and replay-versus-live consistency; 3) honest handling of missing data: null, never zero or NaN, gates on tradeAvailability, ticks.coverageOf, l2.trusted(); 4) buy/sell read through barSides, never volume minus buy_volume; 5) incremental state, bounded memory, no per-bar copying of large arrays, no stream or draw factories created inside onBar; 6) settings schema covers every default key with step > 0; 7) tests actually pin the behavior (hand-computed values, replace semantics, empty input, gates); 8) readability and house style.
+
+For each finding give file, line range, severity CRITICAL / WARNING / SUGGESTION, the problem, and the fix. End with exactly VERDICT: APPROVED or VERDICT: REVISE.
+
+----- BUILD BRIEF -----
+# UX notes: Compression Breakout (20), mid-build pass
+
+Reviewed against `ux-standard.md` and the approved brief (amendment 7):
+`compressionBreakout.ts` and `compressionBreakoutMath.ts` at commit `d0e5090`
+on `build/compression-breakout`, screenshots 01–05 in
+`pm/cycle2/screenshots/compression-breakout/`. Three-second verdict on 02/03:
+box, edge lines and arrow read at once; the table does not (findings 1–4).
+
+## 1. Findings
+
+1. **must · Table is dimmed to 50 % alpha permanently.** `tableRows` applies
+   `CB_PROVISIONAL_ALPHA` whenever `reading.confirmed` is false, and
+   `commitDrawFlush` runs after every dispatch (`indicatorRuntime.ts` 534,
+   695), so the live table always shows the forming bar: every row is grey
+   in 02–05. Change: remove `colorOf` from `tableRows`; rows take their full
+   colour. Likewise in `drawActive` drop the `reading.confirmed ? 1 : 0.5`
+   factor on the fill (the active range would otherwise live at 0.06/0.03).
+   Provisional styling stays on markers and on the edge lines' last point only.
+
+2. **must · Warm-up shows four rows, not one.** Rows 1–3 are written as `""`,
+   which renders three empty 6 px strips under `Warming up · n of 40 bars`.
+   Change: while `reading === null || !reading.rangeReady`, call
+   `state.table.cell(0, 0, …)` only; rows 1–3 are first written when ready
+   (`tableGridDimensions` sizes the grid from written keys, and a settings
+   change recreates the table).
+
+3. **must · Row 4 overflows 30 characters.** `Last · ↑ 12:34 · range · vol n/a`
+   is 32, the daily form 33. Change: row 4 drops the dot after `Last` and the
+   two "n/a" bases use a comma in both rows (table in §2). Max is 30.
+
+4. **must · "No range" twice (rows 1 and 3).** Keep row 1 `No range` (it is
+   the value row) and give row 3 a reason: `Watching · width 2.6×` from the
+   provisional `reading.widthRatio` (`Watching` when null). A trader then
+   sees how far the rolling window is from the 2× limit instead of a repeat.
+
+5. **must (PM, SDK) · Table overlaps the price-axis labels** (02: `67600.00`
+   shows through the table). `draw.table` has only `position`
+   (`top-right` | `bottom-right`); `bottom-right` already gets
+   `right: bottomTableRightPx` (axis width + 8) and the top-right stack gets
+   it only when a card is shown (`ChartPanel.tsx` 3941). Fix is one line
+   there: use `{ right: bottomTableRightPx }` for every stack (the state is
+   already refreshed at 1898). Builder keeps `top-right`; moving to
+   `bottom-right` would collide with the liquidity-voids book table and
+   break the house convention.
+
+6. **should · Forming box is invisible.** Purple at 0.06 with no border
+   shifts the cream background by about 7 levels and the dark one by 6; a
+   forming range cannot be seen on either chart. Change:
+   `CB_FILL_FORMING_ALPHA = 0.08` with border `withAlpha(CB_RANGE_COLOR, 0.35)`,
+   width 1; `CB_FILL_ESTABLISHED_ALPHA = 0.14` with the solid trend border;
+   held ranges 0.06 with border at 0.5 alpha (purple, or `--warn` for
+   failed) so they recede behind the active one. Still one fill in 0.12–0.25.
+
+7. **should · Row 1 edge order.** Brief rule 12 reads `Range 61240–61480`
+   (low–high); the code prints high–low. Print `lo–hi`.
+
+8. **should · Trader words in rows 2–3.** `Pending · 2 of 5 bars` →
+   `Holding · 2 of 5 bars` (pairs with `Held outside · 5 bars`);
+   `Range · 9 bars · 1.6×` → `Range · 9 bars · width 1.6×`;
+   `Trend · warming 120/205` → `Trend warming · 120 of 205` (the standard's
+   warm-up form); `Trend · fast ≥ slow` → `Trend off · fast ≥ slow`.
+
+9. **should · Hints.** `Activity threshold (×)` hint lacks "Replays every
+   bar" and opens with jargon; `Minimum compression (bars)` has none.
+   Replacements:
+   - Range length: keep "The range needs twice this many bars before it can
+     qualify. Replays every bar."
+   - Minimum bars inside: "Closed bars inside the range before a close outside
+     counts as a break. Replays every bar."
+   - Activity threshold: "The break bar's range and volume versus the prior
+     20 bars: one passing gives a faded arrow, both a solid one. Replays
+     every bar."
+   One hint per control; nothing else on the Inputs tab.
+
+10. **should · Label.** `Minimum compression (bars)` → `Minimum bars inside`:
+    says what is counted. All other labels pass (≤ 4 words, unit in brackets).
+
+11. **could · Markers.** Arrow + amber circle on consecutive bars is readable
+    at the 02 zoom; keep both shapes, `size: 1`, circle `inBar`. The faded
+    arrow (grade 1–2) at 0.5 alpha of `#26a69a` on cream is untested: deliver
+    the faded-arrow screenshot; if it is lost at the 02 zoom, raise the
+    marker's faded alpha to 0.65 (markers only, not the table).
+
+12. **could · Edge lines.** No join artefact in 02/03; the transparent last
+    point works. The line ends one bar short of the box on the outcome bar,
+    which is acceptable. The purple dots on the lines at the crosshair are
+    lightweight-charts' default crosshair markers on every SDK line (no
+    `crosshairMarkerVisible: false` anywhere); PM may add it beside
+    `lastValueVisible: false` in `ChartPanel.tsx`. Not the builder's.
+
+13. **could · Advanced hints.** Width limit: "A range qualifies when narrower
+    than this many times the mean bar range before it. Replays every bar."
+    Keep retired range: "Bars a failed or held range stays drawn. Replays
+    every bar." Others need none.
+
+14. **could · `showMarkers`/`showRanges` are `recompute`** (a 10,080-bar
+    replay per toggle). Accepted by the brief; note it in the doc page.
+
+Dark chart: purple `#8672b3`, the bull/bear pair and `#b07a1e` all read on
+`#111316`; no colour change needed, but the dark screenshots in §3 are
+required before merge.
+
+## 2. Final string table (characters)
+
+Row 1: `Range 66878.17–67237.22` (23, lo–hi, instrument precision; six
+significant digits if over 30) · `Warming up · 12 of 40 bars` (26, the only
+row during warm-up) · `No range` (8).
+
+Row 2: `Trend ↑ · MA 50/200` (19) · `Trend ↓ · MA 50/200` (19) ·
+`Trend flat · MA 50/200` (22) · `Trend warming · 120 of 205` (26) ·
+`Trend off · fast ≥ slow` (23).
+
+Row 3, first match: `No usable price` (15) · `Gap · range reset` (17) ·
+`Failed break` (12, `--warn`) · `Held outside · 5 bars` (21) ·
+`Range expired · 500 bars` (24) · `Break ↑ · range+vol` (19, bull/bear
+colour; bases `range only`, `vol only`, `unconfirmed`, `range, vol n/a`,
+`vol n/a`, `vol, range n/a`, `range n/a`, `no baseline`; longest 24) ·
+`Holding · 2 of 5 bars` (21) · `Range · 9 bars · width 1.6×` (29 at 499
+bars) · `Range forming · 3 of 6` (22) · `Watching · width 2.6×` (21) ·
+`Watching` (8).
+
+Row 4: `Last ↑ 12:34 · range+vol` (24; same bases, longest
+`Last ↑ 26 Oct · range, vol n/a` 30) · `Last failed ↑ 12:34` (19) ·
+`Last held ↑ 12:34 · 5 bars` (26) · `Last expired 12:34` (18) · `—`.
+
+Settings: Inputs `Range length (bars)`, `Minimum bars inside`,
+`Activity threshold (×)`; Advanced `Width limit (× bar range)`,
+`Failure window (bars)`, `Keep retired range (bars)`, `Trend fast MA (bars)`,
+`Trend slow MA (bars)`; Visibility `Show break markers`, `Show ranges`.
+
+## 3. Screenshots the package must deliver
+
+Cream chart, defaults, each at the 02 and 03 zoom levels: (1) warm-up, one
+table row, nothing drawn; (2) forming range, faint bordered box, row 3
+`Range forming`; (3) established range with edge lines, row 1 edges, row 3
+`Range · n bars · width`; (4) confirmed break, solid arrow, row 3 `Break ↑ ·
+range+vol`; (5) faded arrow (grade 1 or 2); (6) failed break, arrow + circle,
+`--warn` held box, row 3 `Failed break`; (7) held outside, row 4 `Last held`;
+(8) no range with a held box still drawn, row 3 `Watching`. Dark chart
+(`data-theme="dark"`): states 3, 4 and 6 at both zooms. Dialog: Inputs with
+Advanced closed, Advanced open, Visibility. Table clear of the axis labels
+once finding 5 lands; until then say so in the package.
+
+## PM rulings
+
+All five must items adopted; all should items adopted; could items: the
+crosshair-marker one-liner is adopted. Must item 5 (table right inset for
+every stack) and the crosshair marker change are SDK-level and go on their own
+small branch `ux/table-axis-inset` by the UX specialist, reviewed and merged
+before either cycle-2 indicator merges, so both products inherit them. The
+builder adopts the rest on `build/compression-breakout` and delivers the
+screenshot list above.
+warning: Codex could not find bubblewrap on PATH. Install bubblewrap with your OS package manager. See the sandbox prerequisites: https://developers.openai.com/codex/concepts/sandboxing#prerequisites. Codex will use the bundled bubblewrap in the meantime.
+codex
+I’ll run the requested diff, check both SDK changes against the brief, and review whether the lifecycle tests pin their behavior.
+exec
+/bin/bash -lc 'git diff main...ux/table-axis-inset -- apps/web/src/components/chart/ChartPanel.tsx apps/web/src/components/chart/tests/ChartPanel.lifecycle.test.tsx' in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+diff --git a/apps/web/src/components/chart/ChartPanel.tsx b/apps/web/src/components/chart/ChartPanel.tsx
+index 6fb5693..675d480 100644
+--- a/apps/web/src/components/chart/ChartPanel.tsx
++++ b/apps/web/src/components/chart/ChartPanel.tsx
+@@ -829,7 +829,7 @@ export const ChartPanel = forwardRef<ChartPanelHandle, ChartPanelProps>(
+     const [tableOverlays, setTableOverlays] = useState<
+       readonly { key: string; position: TablePosition; committedGrid: Record<string, TableCell> }[]
+     >([]);
+-    const [bottomTableRightPx, setBottomTableRightPx] = useState(AXIS_INSET_GAP_PX);
++    const [tableRightPx, setTableRightPx] = useState(AXIS_INSET_GAP_PX);
+ 
+     function clearTooltips() {
+       setWhaleTooltip(null);
+@@ -1719,6 +1719,7 @@ export const ChartPanel = forwardRef<ChartPanelHandle, ChartPanelProps>(
+                     INDICATOR_LINE_WIDTH) as LineWidth,
+                   priceLineVisible: false,
+                   lastValueVisible: false,
++                  crosshairMarkerVisible: false,
+                   ...(autoscaleRange
+                     ? {
+                         autoscaleInfoProvider: () => ({
+@@ -1895,7 +1896,7 @@ export const ChartPanel = forwardRef<ChartPanelHandle, ChartPanelProps>(
+         controller?.setMarkers(markers);
+       }
+ 
+-      setBottomTableRightPx((chartRef.current?.priceScale("right").width() ?? 0) + AXIS_INSET_GAP_PX);
++      setTableRightPx((chartRef.current?.priceScale("right").width() ?? 0) + AXIS_INSET_GAP_PX);
+       setTableOverlays((current) =>
+         current.length === nextTables.length &&
+         current.every(
+@@ -3938,7 +3939,7 @@ export const ChartPanel = forwardRef<ChartPanelHandle, ChartPanelProps>(
+           const cards = monitor || liveRange;
+           if (stack.length === 0 && !cards) return null;
+           return (
+-          <div key={position} className={position === "bottom-right" ? "draw-table-overlay-stack draw-table-overlay-stack--bottom" : cards ? "draw-table-overlay-stack draw-table-overlay-stack--monitor" : "draw-table-overlay-stack"} style={position === "bottom-right" ? { right: bottomTableRightPx } : cards ? { right: (chartRef.current?.priceScale("right").width() ?? 0) + AXIS_INSET_GAP_PX } : undefined}>
++          <div key={position} className={position === "bottom-right" ? "draw-table-overlay-stack draw-table-overlay-stack--bottom" : cards ? "draw-table-overlay-stack draw-table-overlay-stack--monitor" : "draw-table-overlay-stack"} style={{ right: tableRightPx }}>
+             {monitor && (
+               <CandleMonitor
+                 entry={candleMonitorState?.frame.entries.find((entry) => entry.candleMs === exhaustionCandleMsState) ?? null}
+diff --git a/apps/web/src/components/chart/tests/ChartPanel.lifecycle.test.tsx b/apps/web/src/components/chart/tests/ChartPanel.lifecycle.test.tsx
+index 6a701ab..41126ad 100644
+--- a/apps/web/src/components/chart/tests/ChartPanel.lifecycle.test.tsx
++++ b/apps/web/src/components/chart/tests/ChartPanel.lifecycle.test.tsx
+@@ -1266,7 +1266,7 @@ describe("ChartPanel Lightweight Charts lifecycle", () => {
+     expect(chartMock.chart.addSeries).toHaveBeenCalledTimes(1);
+     expect(chartMock.chart.addSeries).toHaveBeenCalledWith(
+       "LineSeries",
+-      expect.objectContaining({ lastValueVisible: false }),
++      expect.objectContaining({ lastValueVisible: false, crosshairMarkerVisible: false }),
+       0,
+     );
+     expect(chartMock.series.createPriceLine).toHaveBeenCalledTimes(3);
+@@ -1576,7 +1576,7 @@ describe("ChartPanel Lightweight Charts lifecycle", () => {
+     expect(chartMock.chart.removeSeries).toHaveBeenCalledTimes(1);
+   });
+ 
+-  it("a draw.table() placed bottom-right renders in its own stack above the time axis, clear of the price axis, apart from the top-right one", async () => {
++  it("a draw.table() placed bottom-right renders in its own stack above the time axis, apart from the top-right one, and both stacks sit clear of the price axis", async () => {
+     const ref = await mountChart();
+     act(() => ref.current?.applySnapshot([bar(0), bar(60_000)]));
+     act(() => {
+@@ -1589,7 +1589,7 @@ describe("ChartPanel Lightweight Charts lifecycle", () => {
+     expect(stacks[1].classList.contains("draw-table-overlay-stack--bottom")).toBe(true);
+     expect(stacks[0].querySelectorAll(".draw-table-overlay")).toHaveLength(1);
+     expect(stacks[1].querySelectorAll(".draw-table-overlay")).toHaveLength(1);
+-    expect((stacks[0] as HTMLElement).style.right).toBe("");
++    expect((stacks[0] as HTMLElement).style.right).toBe(`${64 + AXIS_INSET_GAP_PX}px`);
+     expect((stacks[1] as HTMLElement).style.right).toBe(`${64 + AXIS_INSET_GAP_PX}px`);
+   });
+ 
+
+exec
+/bin/bash -lc "rg --files -g AGENTS.md -g package.json -g '*vitest*' -g '*jest*'" in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+apps/web/package.json
+package.json
+apps/runtime/package.json
+
+exec
+/bin/bash -lc 'git status --short --branch; pwd' in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+## main...origin/main
+?? pm/log/codex/20261026T162559Z-code-ux-table-axis-inset.transcript.txt
+?? pm/log/g2-ux-table-inset-r1.txt
+/home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+
+exec
+/bin/bash -lc "cat apps/web/package.json; cat package.json; sed -n '1640,1750p' apps/web/src/components/chart/ChartPanel.tsx; sed -n '1840,1925p' apps/web/src/components/chart/ChartPanel.tsx; sed -n '3900,4015p' apps/web/src/components/chart/ChartPanel.tsx" in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+{
+  "name": "web",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "engines": {
+    "node": "24.21.0"
+  },
+  "scripts": {
+    "pretest": "node ../../scripts/verify-node-version.cjs",
+    "prebuild": "node ../../scripts/verify-node-version.cjs",
+    "dev": "node ../../scripts/node-launcher.cjs ../../node_modules/vite/bin/vite.js",
+    "build": "tsc -b && vite build",
+    "lint": "oxlint",
+    "preview": "node ../../scripts/node-launcher.cjs ../../node_modules/vite/bin/vite.js preview",
+    "test": "set \"ELECTRON_RUN_AS_NODE=\"&& vitest run"
+  },
+  "dependencies": {
+    "lightweight-charts": "^5.2.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "trading-signals": "8.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.2",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.3",
+    "@vitest/coverage-v8": "4.1.11",
+    "@vitest/ui": "^4.1.11",
+    "fast-check": "4.10.2",
+    "jsdom": "^29.1.1",
+    "oxlint": "^1.71.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.1.1",
+    "vitest": "^4.1.11"
+  },
+  "optionalDependencies": {
+    "@oxlint/binding-linux-x64-gnu": "1.73.0"
+  }
+}
+{
+  "name": "terminal-l1-l2",
+  "private": true,
+  "version": "0.0.0",
+  "engines": {
+    "node": "24.21.0"
+  },
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "precheck": "node scripts/verify-node-version.cjs",
+    "pretest": "node scripts/verify-node-version.cjs",
+    "prebuild": "node scripts/verify-node-version.cjs",
+    "build": "npm run build --workspace web",
+    "docs:check": "node scripts/validate-docs.cjs",
+    "mutation:stale": "node apps/runtime/scripts/verify/mutation-stale.js",
+    "doctor": "node --env-file-if-exists=.env apps/runtime/scripts/verify/doctor.js",
+    "bench:o2": "node apps/runtime/scripts/bench/o2-campaign.js",
+    "lint": "eslint . && npm run lint --workspace web",
+    "test": "npm run test --workspaces --if-present",
+    "check": "npm run docs:check && npm run lint && npm test && npm run build",
+    "gate": "node scripts/gate.cjs",
+    "l2-memory:test": "npm run l2-memory:test --workspace @terminal-l1-l2/runtime",
+    "l2-memory:live": "npm run l2-memory:live --workspace @terminal-l1-l2/runtime --"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.0",
+    "eslint": "^9.39.0",
+    "globals": "^15.0.0",
+    "jsdom": "^29.1.1"
+  }
+}
+      let changed = true;
+      while (changed) {
+        changed = false;
+        for (const id of resolved) {
+          const def = RUNTIME_DEFS_BY_ID.get(id);
+          if (
+            def?.placement.kind === "sharedPane" &&
+            !resolved.has(def.placement.withIndicatorId as IndicatorId)
+          ) {
+            resolved.delete(id);
+            changed = true;
+          }
+        }
+      }
+      return resolved;
+    }
+
+    function syncRuntimeIndicatorSeries(runtimeIds: ReadonlySet<IndicatorId>) {
+      const chart = chartRef.current;
+      if (!chart) return;
+
+      for (const [id, entries] of runtimeIndicatorSeriesRef.current) {
+        if (runtimeIds.has(id)) continue;
+        for (const entry of entries) {
+          const paneIndex = entry.series.getPane().paneIndex();
+          const kernel = drawKernelPrimitivesRef.current.get(paneIndex);
+          if (
+            kernel &&
+            drawKernelHostsRef.current.get(paneIndex) === entry.series
+          ) {
+            // A primitive/marker controller belongs to a concrete series. Move
+            // it off this host before removing the series; the next owner in
+            // the pane will receive it during syncDrawKernelsToPanes().
+            entry.series.detachPrimitive(kernel);
+            drawKernelHostsRef.current.delete(paneIndex);
+            markerSeriesControllersRef.current.get(paneIndex)?.detach();
+          }
+          chart.removeSeries(entry.series);
+        }
+        runtimeIndicatorSeriesRef.current.delete(id);
+        runtimePriceLinesRef.current.delete(id);
+      }
+
+      const pending = new Set(
+        [...runtimeIds].filter(
+          (id) => !runtimeIndicatorSeriesRef.current.has(id),
+        ),
+      );
+      while (pending.size > 0) {
+        let created = false;
+        for (const id of [...pending]) {
+          const def = RUNTIME_DEFS_BY_ID.get(id);
+          if (!def) {
+            pending.delete(id);
+            continue;
+          }
+
+          const placement = def.placement;
+          const isOwnPane = placement.kind === "ownPane";
+          const sharedEntries =
+            placement.kind === "sharedPane"
+              ? runtimeIndicatorSeriesRef.current.get(
+                  placement.withIndicatorId as IndicatorId,
+                )
+              : undefined;
+          if (placement.kind === "sharedPane" && !sharedEntries?.[0]) continue;
+          const paneIndex = isOwnPane
+            ? chart.panes().length
+            : (sharedEntries?.[0].series.getPane().paneIndex() ?? 0);
+          const autoscaleRange = isOwnPane
+            ? placement.autoscaleRange
+            : undefined;
+          const entries = def.lines.map((line) => {
+            return {
+              series: chart.addSeries(
+                LineSeries,
+                {
+                  color: INDICATOR_PALETTE.refLine,
+                  lineWidth: (line.lineWidth ??
+                    INDICATOR_LINE_WIDTH) as LineWidth,
+                  priceLineVisible: false,
+                  lastValueVisible: false,
+                  ...(autoscaleRange
+                    ? {
+                        autoscaleInfoProvider: () => ({
+                          priceRange: {
+                            minValue: autoscaleRange.min,
+                            maxValue: autoscaleRange.max,
+                          },
+                        }),
+                      }
+                    : {}),
+                },
+                paneIndex,
+              ),
+              lineKey: line.key,
+            };
+          });
+
+          const priceLines = isOwnPane ? placement.priceLines : undefined;
+          if (priceLines && entries[0]) {
+            runtimePriceLinesRef.current.set(
+              id,
+              priceLines.map((level) =>
+                entries[0].series.createPriceLine({
+                  price: level,
+                  color: INDICATOR_PALETTE.refLine,
+                  lineWidth: 1,
+                  lineStyle: LineStyle.Dotted,
+                  axisLabelVisible: true,
+                }),
+
+    /**
+     * Content, not topology: which of each pane's owners are currently shown
+     * (an activated-but-hidden indicator's drawn objects must disappear the
+     * same way its line series' data already does), plus each shown owner's
+     * fill points and markers -- called once per bar-transition and once on
+     * every visibility/settings recompute, never once per draw call inside an
+     * indicator's own onBar.
+     */
+    function flushDrawState() {
+      const enabled = enabledIndicatorsRef.current;
+      const visible = visibleIndicatorsRef.current;
+      const nextTables: {
+        key: string;
+        position: TablePosition;
+        committedGrid: Record<string, TableCell>;
+      }[] = [];
+
+      for (const [paneIndex, owners] of ownersByPaneRef.current) {
+        const kernel = drawKernelPrimitivesRef.current.get(paneIndex);
+        const controller = markerSeriesControllersRef.current.get(paneIndex);
+        const shownOwners = owners.filter(
+          (id) => enabled.has(id) && visible.has(id),
+        );
+        const drawOwnerIds = shownOwners
+          .map((id) => indicatorRuntimeRef.current.getDrawOwnerId(id))
+          .filter((ownerId): ownerId is string => ownerId !== null);
+        kernel?.setOwnerIds(drawOwnerIds);
+
+        const markers: MarkerCall[] = [];
+        for (const id of shownOwners) {
+          const drawOwnerId = indicatorRuntimeRef.current.getDrawOwnerId(id);
+          if (!drawOwnerId) continue;
+          // One entry per named band: an indicator may fill several regions at
+          // once, and each keeps its own colour. The owner id prefixes the band
+          // key because the kernel files fills by a single string, and
+          // `setOwnerIds` above prunes by exact match -- so a hidden indicator's
+          // fills are dropped here and simply never re-set.
+          for (const fillKey of indicatorRuntimeRef.current.getFillKeys(id) ?? []) {
+            const fill = indicatorRuntimeRef.current.getFillPoints(id, fillKey);
+            if (!fill) continue;
+            kernel?.setFillPoints(`${drawOwnerId}:${fillKey}`, fill.points, fill.options);
+          }
+          const ownMarkers = indicatorRuntimeRef.current.getMarkers(id);
+          if (ownMarkers) markers.push(...ownMarkers);
+          for (const record of handlesForOwners([drawOwnerId])) {
+            if (record.kind === "table") {
+              nextTables.push({
+                key: `${drawOwnerId}:${record.handleId}`,
+                position: (record.data as TableData).position,
+                committedGrid: (record.data as TableData).committedGrid,
+              });
+            }
+          }
+        }
+        controller?.setMarkers(markers);
+      }
+
+      setBottomTableRightPx((chartRef.current?.priceScale("right").width() ?? 0) + AXIS_INSET_GAP_PX);
+      setTableOverlays((current) =>
+        current.length === nextTables.length &&
+        current.every(
+          (entry, index) =>
+            entry.key === nextTables[index].key &&
+            entry.committedGrid === nextTables[index].committedGrid,
+        )
+          ? current
+          : nextTables,
+      );
+    }
+
+    function tableGridDimensions(grid: Record<string, TableCell>): {
+      rows: number;
+      cols: number;
+    } {
+      let maxRow = -1;
+      let maxCol = -1;
+      for (const key of Object.keys(grid)) {
+        const [rowPart, colPart] = key.split(",");
+        maxRow = Math.max(maxRow, Number(rowPart));
+        maxCol = Math.max(maxCol, Number(colPart));
+      }
+      return { rows: maxRow + 1, cols: maxCol + 1 };
+    }
+
+    /**
+          >
+            <div className="fvg-tooltip-title">
+              {fvgTooltip.hover.kind === "bullish" ? "Bullish" : "Bearish"} FVG
+            </div>
+            <div>Score: {fvgTooltip.hover.score} / 10</div>
+            <div>
+              Buy volume: {fvgTooltip.hover.buyVolume.toLocaleString("en-US")}
+            </div>
+            <div>
+              Sell volume: {fvgTooltip.hover.sellVolume.toLocaleString("en-US")}
+            </div>
+            <div>
+              Delta: {fvgTooltip.hover.delta >= 0 ? "+" : ""}
+              {fvgTooltip.hover.delta.toLocaleString("en-US")}
+            </div>
+            <div>
+              Level:{" "}
+              {seriesRef.current
+                ?.priceFormatter()
+                .format(fvgTooltip.hover.levelPrice) ??
+                fvgTooltip.hover.levelPrice.toFixed(2)}
+            </div>
+          </div>
+        )}
+        {liveRangeShown && liveRangeReport !== null && liveRangeCardPosition !== null && (
+          <LiveRangeCard
+            report={liveRangeReport}
+            settings={liveRangeSettingsState}
+            position={liveRangeCardPosition}
+            paneOf={liveRangePaneOf}
+            onMove={moveLiveRangeCard}
+            onReset={resetLiveRangeCard}
+          />
+        )}
+        {(["top-right", "bottom-right"] as const).map((position) => {
+          const stack = tableOverlays.filter((entry) => entry.position === position);
+          const monitor = position === "top-right" && exhaustionShown && exhaustionSettingsState?.showMonitor !== false && exhaustionCandleMsState !== null;
+          const liveRange = position === "top-right" && liveRangeShown && liveRangeReport !== null && liveRangeCardPosition === null;
+          const cards = monitor || liveRange;
+          if (stack.length === 0 && !cards) return null;
+          return (
+          <div key={position} className={position === "bottom-right" ? "draw-table-overlay-stack draw-table-overlay-stack--bottom" : cards ? "draw-table-overlay-stack draw-table-overlay-stack--monitor" : "draw-table-overlay-stack"} style={position === "bottom-right" ? { right: bottomTableRightPx } : cards ? { right: (chartRef.current?.priceScale("right").width() ?? 0) + AXIS_INSET_GAP_PX } : undefined}>
+            {monitor && (
+              <CandleMonitor
+                entry={candleMonitorState?.frame.entries.find((entry) => entry.candleMs === exhaustionCandleMsState) ?? null}
+                receivedAt={candleMonitorState?.receivedAt ?? null}
+                frameTs={candleMonitorState?.frame.ts ?? null}
+                unit={exhaustionUnit}
+                formatPrice={formatSeriesPrice}
+              />
+            )}
+            {liveRange && liveRangeReport !== null && (
+              <LiveRangeCard
+                report={liveRangeReport}
+                settings={liveRangeSettingsState}
+                paneOf={liveRangePaneOf}
+                onMove={moveLiveRangeCard}
+                onReset={resetLiveRangeCard}
+              />
+            )}
+            {stack.map(({ key, committedGrid }) => {
+              const { rows, cols } = tableGridDimensions(committedGrid);
+              if (rows <= 0 || cols <= 0) return null;
+              return (
+                <table key={key} className="draw-table-overlay">
+                  <tbody>
+                    {Array.from({ length: rows }, (_, row) => (
+                      <tr key={row}>
+                        {Array.from({ length: cols }, (_, col) => {
+                          const cell = committedGrid[`${row},${col}`];
+                          return (
+                            <td
+                              key={col}
+                              style={{
+                                backgroundColor: cell?.bgColor,
+                                color: cell?.textColor,
+                              }}
+                            >
+                              {cell?.text ?? ""}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              );
+            })}
+          </div>
+          );
+        })}
+      </div>
+    );
+  },
+);
+
+exec
+/bin/bash -lc "git show ux/table-axis-inset:apps/web/src/components/chart/tests/ChartPanel.lifecycle.test.tsx | sed -n '1540,1615p'; rg -n 'flushDrawState\\(|ResizeObserver|priceScale\\(\"right\"\\)|crosshairMarkerVisible' apps/web/src/components/chart/ChartPanel.tsx; rg --files -g '*config*' apps/web | head -20; git diff --stat main...ux/table-axis-inset" in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+  it("does not silently draw a shared-pane indicator on price when its declared parent is absent, then resolves it once the parent is active", async () => {
+    const ref = await mountChart();
+    act(() => ref.current?.applySnapshot([bar(0), bar(60_000)]));
+    chartMock.chart.addSeries.mockClear();
+
+    act(() => {
+      ref.current?.setIndicators(["sharedTestOnly" as never]);
+      ref.current?.setIndicatorVisibility(["sharedTestOnly" as never]);
+    });
+    expect(chartMock.chart.addSeries).not.toHaveBeenCalled();
+
+    act(() => {
+      ref.current?.setIndicators(["rsi", "sharedTestOnly" as never]);
+      ref.current?.setIndicatorVisibility(["rsi", "sharedTestOnly" as never]);
+    });
+    expect(chartMock.chart.addSeries).toHaveBeenCalledTimes(2);
+  });
+
+  it("removes a timeframe-gated runtime indicator when a snapshot changes to an ineligible interval", async () => {
+    const ref = await mountChart();
+    act(() => ref.current?.applySnapshot([bar(0), bar(60_000)]));
+    chartMock.chart.addSeries.mockClear();
+
+    act(() => {
+      ref.current?.setIndicators(["gatedTestOnly" as never]);
+      ref.current?.setIndicatorVisibility(["gatedTestOnly" as never]);
+    });
+    expect(chartMock.chart.addSeries).toHaveBeenCalledTimes(1);
+
+    chartMock.chart.removeSeries.mockClear();
+    act(() =>
+      ref.current?.applySnapshot([
+        { ...bar(0), interval_ms: 5 * 60_000 },
+        { ...bar(5 * 60_000), interval_ms: 5 * 60_000 },
+      ]),
+    );
+    expect(chartMock.chart.removeSeries).toHaveBeenCalledTimes(1);
+  });
+
+  it("a draw.table() placed bottom-right renders in its own stack above the time axis, apart from the top-right one, and both stacks sit clear of the price axis", async () => {
+    const ref = await mountChart();
+    act(() => ref.current?.applySnapshot([bar(0), bar(60_000)]));
+    act(() => {
+      ref.current?.setIndicators(["tableTestOnly" as never, "bottomTableTestOnly" as never]);
+      ref.current?.setIndicatorVisibility(["tableTestOnly" as never, "bottomTableTestOnly" as never]);
+    });
+    const stacks = container.querySelectorAll(".draw-table-overlay-stack");
+    expect(stacks).toHaveLength(2);
+    expect(stacks[0].classList.contains("draw-table-overlay-stack--bottom")).toBe(false);
+    expect(stacks[1].classList.contains("draw-table-overlay-stack--bottom")).toBe(true);
+    expect(stacks[0].querySelectorAll(".draw-table-overlay")).toHaveLength(1);
+    expect(stacks[1].querySelectorAll(".draw-table-overlay")).toHaveLength(1);
+    expect((stacks[0] as HTMLElement).style.right).toBe(`${64 + AXIS_INSET_GAP_PX}px`);
+    expect((stacks[1] as HTMLElement).style.right).toBe(`${64 + AXIS_INSET_GAP_PX}px`);
+  });
+
+  it("draw.table() content is rendered as a real DOM overlay, replaced once per bar rather than accumulating", async () => {
+    const ref = await mountChart();
+    act(() => ref.current?.applySnapshot([bar(0), bar(60_000)]));
+
+    act(() => {
+      ref.current?.setIndicators(["tableTestOnly" as never]);
+      ref.current?.setIndicatorVisibility(["tableTestOnly" as never]);
+    });
+
+    let cells = container.querySelectorAll(".draw-table-overlay td");
+    expect(cells).toHaveLength(2);
+    expect(cells[0].textContent).toBe("VPIN");
+    expect(cells[1].textContent).toBe("2");
+
+    act(() => ref.current?.applyBar(bar(120_000)));
+    cells = container.querySelectorAll(".draw-table-overlay td");
+    expect(cells).toHaveLength(2); // still one row, not one appended per bar
+    expect(cells[1].textContent).toBe("3");
+
+    act(() => {
+1369:      flushDrawState();
+1414:      flushDrawState();
+1838:      flushDrawState();
+1849:    function flushDrawState() {
+1898:      setBottomTableRightPx((chartRef.current?.priceScale("right").width() ?? 0) + AXIS_INSET_GAP_PX);
+2320:      const observer = new ResizeObserver(onResize);
+3941:          <div key={position} className={position === "bottom-right" ? "draw-table-overlay-stack draw-table-overlay-stack--bottom" : cards ? "draw-table-overlay-stack draw-table-overlay-stack--monitor" : "draw-table-overlay-stack"} style={position === "bottom-right" ? { right: bottomTableRightPx } : cards ? { right: (chartRef.current?.priceScale("right").width() ?? 0) + AXIS_INSET_GAP_PX } : undefined}>
+apps/web/tsconfig.json
+apps/web/tsconfig.node.json
+apps/web/vite.config.ts
+apps/web/tsconfig.app.json
+apps/web/proxy-config.ts
+apps/web/vite.config.test.ts
+ apps/web/src/components/chart/ChartPanel.tsx                      | 7 ++++---
+ apps/web/src/components/chart/tests/ChartPanel.lifecycle.test.tsx | 6 +++---
+ 2 files changed, 7 insertions(+), 6 deletions(-)
+
+exec
+/bin/bash -lc "git show ux/table-axis-inset:apps/web/src/components/chart/ChartPanel.tsx | nl -ba | sed -n '1710,1735p;1890,1910p;3935,3950p'; rg -n 'priceScale|width:|AXIS_INSET_GAP_PX' apps/web/src/components/chart/tests/ChartPanel.lifecycle.test.tsx | head -25" in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+  1710	            ? placement.autoscaleRange
+  1711	            : undefined;
+  1712	          const entries = def.lines.map((line) => {
+  1713	            return {
+  1714	              series: chart.addSeries(
+  1715	                LineSeries,
+  1716	                {
+  1717	                  color: INDICATOR_PALETTE.refLine,
+  1718	                  lineWidth: (line.lineWidth ??
+  1719	                    INDICATOR_LINE_WIDTH) as LineWidth,
+  1720	                  priceLineVisible: false,
+  1721	                  lastValueVisible: false,
+  1722	                  crosshairMarkerVisible: false,
+  1723	                  ...(autoscaleRange
+  1724	                    ? {
+  1725	                        autoscaleInfoProvider: () => ({
+  1726	                          priceRange: {
+  1727	                            minValue: autoscaleRange.min,
+  1728	                            maxValue: autoscaleRange.max,
+  1729	                          },
+  1730	                        }),
+  1731	                      }
+  1732	                    : {}),
+  1733	                },
+  1734	                paneIndex,
+  1735	              ),
+  1890	                position: (record.data as TableData).position,
+  1891	                committedGrid: (record.data as TableData).committedGrid,
+  1892	              });
+  1893	            }
+  1894	          }
+  1895	        }
+  1896	        controller?.setMarkers(markers);
+  1897	      }
+  1898	
+  1899	      setTableRightPx((chartRef.current?.priceScale("right").width() ?? 0) + AXIS_INSET_GAP_PX);
+  1900	      setTableOverlays((current) =>
+  1901	        current.length === nextTables.length &&
+  1902	        current.every(
+  1903	          (entry, index) =>
+  1904	            entry.key === nextTables[index].key &&
+  1905	            entry.committedGrid === nextTables[index].committedGrid,
+  1906	        )
+  1907	          ? current
+  1908	          : nextTables,
+  1909	      );
+  1910	    }
+  3935	        {(["top-right", "bottom-right"] as const).map((position) => {
+  3936	          const stack = tableOverlays.filter((entry) => entry.position === position);
+  3937	          const monitor = position === "top-right" && exhaustionShown && exhaustionSettingsState?.showMonitor !== false && exhaustionCandleMsState !== null;
+  3938	          const liveRange = position === "top-right" && liveRangeShown && liveRangeReport !== null && liveRangeCardPosition === null;
+  3939	          const cards = monitor || liveRange;
+  3940	          if (stack.length === 0 && !cards) return null;
+  3941	          return (
+  3942	          <div key={position} className={position === "bottom-right" ? "draw-table-overlay-stack draw-table-overlay-stack--bottom" : cards ? "draw-table-overlay-stack draw-table-overlay-stack--monitor" : "draw-table-overlay-stack"} style={{ right: tableRightPx }}>
+  3943	            {monitor && (
+  3944	              <CandleMonitor
+  3945	                entry={candleMonitorState?.frame.entries.find((entry) => entry.candleMs === exhaustionCandleMsState) ?? null}
+  3946	                receivedAt={candleMonitorState?.receivedAt ?? null}
+  3947	                frameTs={candleMonitorState?.frame.ts ?? null}
+  3948	                unit={exhaustionUnit}
+  3949	                formatPrice={formatSeriesPrice}
+  3950	              />
+30:import { AXIS_INSET_GAP_PX } from "../../../lib/chart/axisInset";
+96:  const priceScale = { applyOptions: vi.fn(), width: vi.fn(() => 64) };
+101:    priceScale: vi.fn(() => priceScale),
+117:    priceScale: vi.fn(() => priceScale),
+126:  return { chart, series, timeScale, priceScale };
+355:  row_width: 2,
+614:    expect(stack!.style.right).toBe(`${64 + AXIS_INSET_GAP_PX}px`);
+697:    // gates), so it is excluded by line width: the data series is drawn at
+706:          { priceScaleId?: string; lineWidth?: number },
+711:          options.priceScaleId === "cvd-divergence-cumulative" &&
+912:    expect(chartMock.priceScale.applyOptions).toHaveBeenCalledTimes(1);
+1502:      priceScale: vi.fn(() => ({ applyOptions: vi.fn(), width: vi.fn(() => 64) })),
+1593:    expect((stacks[1] as HTMLElement).style.right).toBe(`${64 + AXIS_INSET_GAP_PX}px`);
+1849:    expect(inset(1_200)).toBe(60 + AXIS_INSET_GAP_PX);
+1888:    expect(tickInset.mock.calls.at(-1)![0]!(1_200)).toBe(60 + AXIS_INSET_GAP_PX);
+1889:    expect(setRightInset.mock.calls.at(-1)![0](1_200)).toBe(60 + AXIS_INSET_GAP_PX + profileWidth + AXIS_INSET_GAP_PX);
+1906:    expect(setNeighbour.mock.calls.at(-1)![0]?.widthPx(1_200)).toBe(60 + AXIS_INSET_GAP_PX + profileWidth);
+1920:    delta.frame = { ...(delta.frame ?? {}), width: 1_200, right: 1_100, reach: 150 } as NonNullable<LiveDeltaProfilePrimitive["frame"]>;
+1922:    expect(inset(1_200)).toBe(1_200 - 1_100 + 150 + AXIS_INSET_GAP_PX);
+1936:    book.frame = { ...(book.frame ?? {}), width: 1_200, right: 1_000, reach: 120 } as NonNullable<LiveOrderBookProfilePrimitive["frame"]>;
+1938:    expect(inset(1_200)).toBe(1_200 - 1_000 + 120 + AXIS_INSET_GAP_PX);
+1957:    book.frame = { ...(book.frame ?? {}), width: 1_200, right: 900, reach: 300 } as NonNullable<LiveOrderBookProfilePrimitive["frame"]>;
+2028:      type: "liquidity", provider: "BINANCE", marketKind: "SPOT", symbol: "BTC-USDT", ts: 1_000, seq: 1, reset: true, row_width: 2, column_ms: 1_000,
+2130:    expect(inset(1_200)).toBe(BOOK_MAP_PROFILE_EDGE_GAP_PX + bookMapProfileWidthPx(1_200) + AXIS_INSET_GAP_PX);
+2979:    pane.getBoundingClientRect = () => ({ left: 100, top: 20, width: 1_200, height: 800, right: 1_300, bottom: 820, x: 100, y: 20, toJSON: () => ({}) });
+
+codex
+No findings requiring changes.
+
+The diff implements both SDK rulings: every table stack uses the price-axis width plus `AXIS_INSET_GAP_PX`, and runtime indicator lines disable crosshair markers. Tests assert both stack offsets and the line option.
+
+No indicator math, data gates, replay behavior, buy/sell handling, incremental state, or settings schemas change.
+
+Tests were inspected, not executed: the workspace is on `main` and filesystem access is read-only.
+
+VERDICT: APPROVED
+tokens used
+25,513
+No findings requiring changes.
+
+The diff implements both SDK rulings: every table stack uses the price-axis width plus `AXIS_INSET_GAP_PX`, and runtime indicator lines disable crosshair markers. Tests assert both stack offsets and the line option.
+
+No indicator math, data gates, replay behavior, buy/sell handling, incremental state, or settings schemas change.
+
+Tests were inspected, not executed: the workspace is on `main` and filesystem access is read-only.
+
+VERDICT: APPROVED
+--- last message saved to /home/user/Terminal-L1-L2/PM/log/codex/20261026T162559Z-code-ux-table-axis-inset.last.md
+VERDICT: APPROVED
+exit 0

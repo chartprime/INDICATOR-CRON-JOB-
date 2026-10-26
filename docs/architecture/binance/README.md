@@ -82,11 +82,67 @@ Side, `buy_volume` and `trade_count` follow `src/server/frames.js`, so
 indicators see the same data as from the runtime; every frame still passes the
 browser's own frame parser. The status chip reads `LIVE (BROWSER_DIRECT)`.
 
+### Tape-derived frames (L1 parity)
+
+The frames the runtime derives from the tape are computed in the worker with
+the runtime's own algorithms. `apps/web/src/lib/tape/largeTradeDetection.ts`
+and `aggressivePool.ts` mirror `src/indicators/large-trade/large-trade-detection.js`
+and `src/server/aggressive-pool.js` (with `print-floor.js` and `floorAbove`)
+line for line, and `lib/chart/markerRetention.ts` is the browser's copy of
+`src/server/history.js`'s per-minute retention;
+`apps/web/src/workers/tests/tapeParity.test.ts` requires the runtime files and
+asserts identical output on 10,000 recorded BTC-USDT aggregate trades
+(`workers/tests/fixtures/binance-mirror/aggtrades-btcusdt-10k.json.gz`).
+
+- `marker`: every live trade goes through the retention (four prints of
+  largest USD notional per minute and side, 100,000 at most, seven days); an
+  admitted print is sent as a `marker` right behind its `trade`, as the
+  runtime does. No `baseline_log_*` fields: the runtime sends none for Binance.
+- Bootstrap: after the first snapshot, alongside the stream, the worker pages
+  `GET /api/v3/aggTrades?symbol=…&limit=1000` from the mirror, newest first by
+  `fromId`, at most 30 pages (weight 4 each) or seven days, one 10 s timeout
+  per page. Rows are aggregate trades, ids `a<aggTradeId>` (a separate id
+  space from the stream's trade ids; a bootstrap print is one taker order at
+  one price, so it can be larger than any single fill the runtime saw); rows
+  at or after the first live trade are dropped so nothing is counted twice.
+  Then the `snapshot` is re-broadcast (every closed bar held, the last 100
+  live trades, the newest 5,000 markers, the pool), the forming bar is
+  re-sent, and a client that opted in through `capabilities` gets the full
+  marker set as `marker_history` (`reset` on the first frame, 5,000 rows each).
+  On BTC-USDT 30 pages are about twenty minutes of tape; on a quiet pair,
+  hours. The runtime's baseline is seven days of storage.
+- `aggressive_prints`, `aggressive_prints_floor`, `aggressive_prints_from`:
+  the runtime's pool (floor from the 98th percentile of the last 4,096 sizes
+  once 200 are seen, never falling; four hours; 20,000 prints). Live trades
+  `record`; the bootstrap's newest fifteen minutes `seed` with
+  `calibrate: true`, older rows at the floor; `from` never precedes the oldest
+  row actually read, so `coverageOf` is "thin" over the bootstrap and "all"
+  from connect.
+- `aggressive_history`: answered from the pool, `complete: true` only for a
+  window from no earlier than the pool's `from` at or above its floor, 10,000
+  trades a page with `CAP_REACHED` and a cursor bound to the request;
+  otherwise `complete: false`, `reason: "STORAGE_UNAVAILABLE"`, which the
+  client retries three times and then rests.
+- Degraded: when the first page fails three times, the READY health frame
+  carries `reason: "BROWSER_DIRECT_NO_TAPE_HISTORY"` (chip
+  `LIVE (BROWSER_DIRECT_NO_TAPE_HISTORY)`); markers and the pool start at
+  connect; retries continue and a later success publishes the snapshot and
+  restores `BROWSER_DIRECT`. A page failing after others keeps what was read.
+
+| L1 indicator | Reads | Browser-direct |
+|---|---|---|
+| Aggressive Order Flow, Delta Divergence, CVD Divergence, Market Structure Delta, FVG Delta, FVG Boxes, L1 Order Blocks, Volume Profile OHLC | bars via `barSides` | works |
+| Large Trade Detector | `markers`, `marker`, `marker_history`; `trade_count` of the snapshot bars for the top-N% target | works: live markers from connect, bootstrap markers for the pages read; the legend appends ` · partial` while the selection is short of its target |
+| VWAP Bands, Large Trade Bubbles | the tick store (live tape, `aggressive_prints`, `aggressive_history`) | works: "all" from connect, "thin" over the bootstrap |
+| Live Delta Profile, Volume Profile (Ticks) | live trades plus `delta_profile` (every trade per price row) | forming window from connect only; `delta_profile` stays `STORAGE_UNAVAILABLE` because the pool is floor-filtered and cannot give a faithful pre-connect profile |
+| VPIN Cloud | `vpin` frames (server study) | unavailable: `vpin_status: "DISABLED"` |
+
 What it does not have: the L2 engine and heatmap, walls, icebergs, exhaustion,
 initiative, candle monitor, live profiles and VPIN (their requests get the
 contract's unavailable reply, so those indicators show their own "needs the
-runtime" state); history past 900 bars; trades from before the page opened;
-the marker pool; a book deeper than 20 levels. Spot only: perpetual pairs are
+runtime" state); history past 900 bars; individual trades from before the page
+opened (the bootstrap is aggregate trades, bounded as above); a book deeper
+than 20 levels. Spot only: perpetual pairs are
 attempted on `fapi`/`fstream` and report
 `BROWSER_DIRECT_PERPETUAL_UNREACHABLE` when the browser cannot reach them;
 dxFeed instruments report `BROWSER_DIRECT_NO_DXFEED`. A dropped spot stream

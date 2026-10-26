@@ -10,8 +10,19 @@
 // Spot pairs use Binance's public mirror (CORS-enabled REST and streams);
 // perpetual pairs are attempted on the futures endpoints and fail honestly
 // when the browser cannot reach them; dxFeed instruments are unavailable.
+//
+// Tape-derived frames (L1 parity): the worker also runs the runtime's own
+// large-trade retention and aggressive-print pool over the live tape and over
+// a bounded REST bootstrap of recent aggregate trades, so `marker`, the
+// snapshot's `markers` and `aggressive_prints*`, `marker_history` and
+// `aggressive_history` are produced here as the runtime would produce them
+// (lib/tape mirrors the runtime modules; workers/tests/tapeParity.test.ts
+// proves them equal).
 import marketInstrumentCatalog from "../../../../config/market-instruments.json";
-import type { FrameIdentity, MarketKind } from "../types/frames";
+import type { FrameIdentity, MarketKind, MarkerFrame, TradeFrame } from "../types/frames";
+import { createTimeCoveredMarkerRetentionBuffer, type MarkerRetentionBuffer } from "../lib/chart/markerRetention";
+import { createAggressivePool, DEFAULT_CALIBRATION_MS, type AggressivePool } from "../lib/tape/aggressivePool";
+import { MARKER_BUCKET_MS, MARKERS_PER_BUCKET_SIDE } from "../lib/tape/largeTradeDetection";
 
 export const BROWSER_BINANCE_SOURCE = "browser-binance";
 export type DataSource = typeof BROWSER_BINANCE_SOURCE;
@@ -104,7 +115,30 @@ export const CLOSE_CONFIRMATION_MARGIN_MS = 5_000;
 /** Consecutive fills that found the same minute missing before the history is re-read as a snapshot that carries the gap as a gap. */
 export const MAX_HOLE_RETRIES = 3;
 
+/** Aggregate trades per REST page while bootstrapping the tape; Binance's maximum. */
+export const TAPE_BOOTSTRAP_PAGE = 1_000;
+/** Pages the bootstrap walks back from now (weight 4 each: 120 of the 6,000 per minute budget). On BTC-USDT this is minutes of tape, on a quiet pair hours. */
+export const MAX_TAPE_BOOTSTRAP_PAGES = 30;
+/** Failed attempts (no page read at all) before the READY health frame says the tape history is missing; retries continue. */
+export const TAPE_BOOTSTRAP_FAILURES_BEFORE_DEGRADED = 3;
+/** How far back a marker is kept, as the runtime's large-trade history window (BACKFILL_DAYS). */
+export const MARKER_HISTORY_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+/** The runtime's history buffer caps (history.js DEFAULT_MAX_MARKERS, DEFAULT_MAX_TRADES) and the wire's snapshot caps (frames.js). */
+export const MAX_RETAINED_MARKERS = 100_000;
+export const SNAPSHOT_RECENT_TRADES = 100;
+export const MAX_SNAPSHOT_MARKERS = 5_000;
+export const MAX_MARKER_HISTORY_ROWS = 5_000;
+export const MAX_SNAPSHOT_CLOSED_BARS = 10_080;
+/** aggressive_history contract limits (frames.js MAX_AGGRESSIVE_HISTORY_TRADES, aggressive-history.js). */
+export const MAX_AGGRESSIVE_HISTORY_TRADES = 10_000;
+export const MAX_AGGRESSIVE_HISTORY_WINDOW_MS = 24 * 60 * 60 * 1000;
+export const AGGRESSIVE_HISTORY_FUTURE_SKEW_MS = 60_000;
+const MAX_HISTORY_CURSOR_LENGTH = 512;
+const HISTORY_CURSOR_VERSION = 1;
+
 export const HEALTH_REASON_READY = "BROWSER_DIRECT";
+/** READY, but the REST bootstrap of recent trades failed: markers and the print pool start at connect. */
+export const HEALTH_REASON_NO_TAPE_HISTORY = "BROWSER_DIRECT_NO_TAPE_HISTORY";
 export const HEALTH_REASON_STREAM_CLOSED = "BROWSER_DIRECT_STREAM_CLOSED";
 export const HEALTH_REASON_STREAM_UNAVAILABLE = "BROWSER_DIRECT_STREAM_UNAVAILABLE";
 export const HEALTH_REASON_REST_FAILED = "BROWSER_DIRECT_REST_FAILED";
@@ -146,7 +180,43 @@ type Session = {
   abort: AbortController | null;
   timer: unknown;
   closed: boolean;
+  /** Every closed bar delivered so far, by open time, for the snapshot re-broadcasts; bounded like the runtime's history buffer. */
+  closedBars: Map<number, ClosedBar>;
+  /** The newest forming bar delivered, re-sent after a snapshot re-broadcast so the chart keeps its forming minute. */
+  lastFormingBar: KlineRow | null;
+  /** The newest live trades, as the runtime's snapshot carries its last 100. */
+  recentTrades: TradeFrame[];
+  /** The runtime's large-trade retention: four prints of largest notional per minute and side. */
+  markers: MarkerRetentionBuffer;
+  /** The runtime's aggressive-print pool over the bootstrap and the live tape. */
+  pool: AggressivePool<TradeFrame>;
+  /** The first live trade's exchange time: bootstrap rows at or after it are the stream's and are dropped. */
+  firstLiveTradeTs: number | null;
+  /** The oldest bootstrap row read (what the pool honestly covers), or null when nothing was read. */
+  tapeCoveredFrom: number | null;
+  tape: TapeBootstrap;
+  markerHistorySeq: number;
 };
+
+type TapeBootstrap = {
+  started: boolean;
+  inFlight: boolean;
+  done: boolean;
+  /** Attempts that read nothing at all. */
+  attempts: number;
+  /** The READY health frame carries HEALTH_REASON_NO_TAPE_HISTORY. */
+  unavailable: boolean;
+  backoffMs: number;
+  abort: AbortController | null;
+  timer: unknown;
+};
+
+type ClosedBar = KlineRow & { reconstructed: boolean };
+
+/** One REST aggregate trade: [a] id, [p] price, [q] summed quantity, [T] time, [m] buyer is maker. */
+type AggTradeRow = { a: number; p: number; q: number; T: number; m: boolean };
+
+type AggressiveHistoryRequest = { requestId: number; fromMs: number; toMs: number; minSize: number; cursor: string | null };
 
 type KlineRow = {
   openTime: number;
@@ -277,6 +347,98 @@ function barFrame(selection: Selection, bar: KlineRow, closed: boolean, reconstr
   };
 }
 
+/** Parses one REST aggTrades row: { a, p, q, f, l, T, m, M }. */
+export function parseAggTradeRow(raw: unknown): AggTradeRow | null {
+  if (!isRecord(raw)) return null;
+  const price = finiteNumber(raw.p);
+  const size = finiteNumber(raw.q);
+  if (price === undefined || size === undefined || price <= 0 || size <= 0) return null;
+  if (!Number.isSafeInteger(raw.a) || (raw.a as number) < 0 || !Number.isSafeInteger(raw.T) || (raw.T as number) < 0 || typeof raw.m !== "boolean") return null;
+  return { a: raw.a as number, p: price, q: size, T: raw.T as number, m: raw.m };
+}
+
+/**
+ * A bootstrap print as a trade frame. Aggregate trade ids are a separate
+ * sequence from the stream's trade ids, so they carry an `a` prefix: the two
+ * can never be mistaken for one another, and nothing is counted twice.
+ */
+function aggTradeFrame(selection: Selection, row: AggTradeRow): TradeFrame {
+  return { type: "trade", ...selection, ts_exchange: row.T, price: row.p, size: row.q, side: row.m ? "sell" : "buy", trade_id: `a${row.a}` };
+}
+
+function markerOf(trade: TradeFrame): MarkerFrame {
+  return { ...trade, type: "marker" };
+}
+
+function markerHistoryRow(marker: MarkerFrame): [number, number, number, "b" | "s", string] {
+  return [marker.ts_exchange, marker.price, marker.size, marker.side === "buy" ? "b" : "s", marker.trade_id];
+}
+
+function tradeOrder(a: { ts_exchange: number; trade_id: string }, b: { ts_exchange: number; trade_id: string }): number {
+  return a.ts_exchange - b.ts_exchange || (a.trade_id < b.trade_id ? -1 : a.trade_id > b.trade_id ? 1 : 0);
+}
+
+/** The runtime's request validation (aggressive-history.js parseAggressiveHistoryRequest), minus the exact-key check the worker already applies. */
+export function parseAggressiveHistoryRequest(msg: Record<string, unknown>, nowMs: number): AggressiveHistoryRequest | null {
+  const { request_id: requestId, from_ts: fromMs, to_ts: toMs, min_size: minSize, cursor } = msg;
+  if (!Number.isSafeInteger(requestId) || (requestId as number) < 0) return null;
+  if (!Number.isSafeInteger(fromMs) || (fromMs as number) < 0) return null;
+  if (!Number.isSafeInteger(toMs) || (toMs as number) <= (fromMs as number)) return null;
+  if ((toMs as number) > nowMs + AGGRESSIVE_HISTORY_FUTURE_SKEW_MS) return null;
+  if ((toMs as number) - (fromMs as number) > MAX_AGGRESSIVE_HISTORY_WINDOW_MS) return null;
+  if (typeof minSize !== "number" || !Number.isFinite(minSize) || minSize < 0) return null;
+  if (cursor !== undefined && (typeof cursor !== "string" || cursor.length === 0 || cursor.length > MAX_HISTORY_CURSOR_LENGTH || !/^[A-Za-z0-9_-]+$/.test(cursor))) return null;
+  return { requestId: requestId as number, fromMs: fromMs as number, toMs: toMs as number, minSize, cursor: typeof cursor === "string" ? cursor : null };
+}
+
+function base64UrlEncode(text: string): string | null {
+  try {
+    return btoa(text).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  } catch {
+    return null;
+  }
+}
+
+function base64UrlDecode(token: string): string | null {
+  try {
+    const padded = token.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - (token.length % 4)) % 4);
+    return atob(padded);
+  } catch {
+    return null;
+  }
+}
+
+/** A page cursor bound to its request (as the runtime's: version, instrument, window, floor, position), so a stale or foreign one is refused. */
+export function encodeHistoryCursor(selection: Selection, request: AggressiveHistoryRequest, last: { ts_exchange: number; trade_id: string }): string | null {
+  const scope = selection.provider === "BINANCE" ? selection.marketKind : selection.assetClass;
+  const token = base64UrlEncode(JSON.stringify({
+    v: HISTORY_CURSOR_VERSION, s: selection.symbol, k: scope, f: request.fromMs, t: request.toMs, m: request.minSize, x: last.ts_exchange, i: last.trade_id,
+  }));
+  return token !== null && token.length <= MAX_HISTORY_CURSOR_LENGTH ? token : null;
+}
+
+export function decodeHistoryCursor(token: string, selection: Selection, request: AggressiveHistoryRequest): { ts_exchange: number; trade_id: string } | null {
+  const text = base64UrlDecode(token);
+  if (text === null) return null;
+  let decoded: unknown;
+  try {
+    decoded = JSON.parse(text);
+  } catch {
+    return null;
+  }
+  if (!isRecord(decoded)) return null;
+  const scope = selection.provider === "BINANCE" ? selection.marketKind : selection.assetClass;
+  if (
+    decoded.v !== HISTORY_CURSOR_VERSION || decoded.s !== selection.symbol || decoded.k !== scope ||
+    decoded.f !== request.fromMs || decoded.t !== request.toMs || decoded.m !== request.minSize ||
+    !Number.isSafeInteger(decoded.x) || (decoded.x as number) < request.fromMs || (decoded.x as number) >= request.toMs ||
+    typeof decoded.i !== "string" || decoded.i.length === 0
+  ) {
+    return null;
+  }
+  return { ts_exchange: decoded.x as number, trade_id: decoded.i };
+}
+
 function bookLevels(raw: unknown): Array<{ price: number; size: number }> | null {
   if (!Array.isArray(raw)) return null;
   const levels: Array<{ price: number; size: number }> = [];
@@ -307,6 +469,8 @@ export class BrowserBinanceTransport implements TransportSocket {
   private readonly endpoints: BrowserBinanceEndpoints;
   private session: Session | null = null;
   private openTimer: unknown = null;
+  /** The worker opted in to marker_history frames (its `capabilities` message), as the runtime remembers per client. */
+  private markerHistoryOptIn = false;
 
   constructor(url: string, options: BrowserBinanceTransportOptions = {}) {
     this.url = url;
@@ -348,6 +512,15 @@ export class BrowserBinanceTransport implements TransportSocket {
       if (selection !== null) this.select(selection);
       return;
     }
+    if (msg.type === "capabilities") {
+      // As the runtime: opting in gets the current marker set at once (nothing
+      // when there is none yet; the bootstrap sends it when it completes).
+      const optIn = msg.marker_history === true;
+      const session = this.session;
+      this.markerHistoryOptIn = optIn;
+      if (optIn && session !== null) this.setTimer(() => this.deliverMarkerHistory(session), 0);
+      return;
+    }
     const reply = this.replyFor(msg);
     if (reply !== null) this.setTimer(() => this.deliver(reply), 0);
   }
@@ -376,11 +549,8 @@ export class BrowserBinanceTransport implements TransportSocket {
       return fields;
     };
     switch (msg.type) {
-      case "aggressive_history": {
-        const fields = echo(["request_id", "from_ts", "to_ts", "min_size"]);
-        if (fields === null) return null;
-        return { type: "aggressive_history", ...identity, ...fields, complete: false, reason: "STORAGE_UNAVAILABLE", next_cursor: null, retry_after_ms: null, trades: [] };
-      }
+      case "aggressive_history":
+        return this.aggressiveHistoryReply(session, msg);
       case "delta_profile": {
         const fields = echo(["request_id", "from_ts", "to_ts", "row_width"]);
         if (fields === null) return null;
@@ -431,6 +601,12 @@ export class BrowserBinanceTransport implements TransportSocket {
     if (session.timer !== null) {
       this.clearTimer(session.timer);
       session.timer = null;
+    }
+    session.tape.abort?.abort();
+    session.tape.abort = null;
+    if (session.tape.timer !== null) {
+      this.clearTimer(session.tape.timer);
+      session.tape.timer = null;
     }
     this.closeStream(session);
   }
@@ -483,6 +659,15 @@ export class BrowserBinanceTransport implements TransportSocket {
       abort: null,
       timer: null,
       closed: false,
+      closedBars: new Map(),
+      lastFormingBar: null,
+      recentTrades: [],
+      markers: createTimeCoveredMarkerRetentionBuffer(MAX_RETAINED_MARKERS, MARKER_BUCKET_MS, MARKERS_PER_BUCKET_SIDE),
+      pool: createAggressivePool<TradeFrame>({ now: this.now }),
+      firstLiveTradeTs: null,
+      tapeCoveredFrom: null,
+      tape: { started: false, inFlight: false, done: false, attempts: 0, unavailable: false, backoffMs: STREAM_BACKOFF_INITIAL_MS, abort: null, timer: null },
+      markerHistorySeq: 0,
     };
     this.session = session;
     this.deliver({ type: "selection", ...identityFields(selection) });
@@ -588,6 +773,8 @@ export class BrowserBinanceTransport implements TransportSocket {
       vpin_status: "DISABLED",
     });
     session.lastClosedOpen = closedRows.length > 0 ? closedRows[closedRows.length - 1].openTime : -1;
+    session.closedBars = new Map(closedRows.map((row) => [row.openTime, { ...row, reconstructed: true }]));
+    session.lastFormingBar = null;
     session.heldClosedBars.clear();
     session.heldFormingBar = null;
     session.recovering = false;
@@ -596,11 +783,22 @@ export class BrowserBinanceTransport implements TransportSocket {
     session.holeRetries = 0;
     session.degraded = false;
     session.bookLive = false;
-    this.deliverHealth(session, "READY", HEALTH_REASON_READY);
+    this.deliverHealth(session, "READY", this.readyReason(session));
     this.deliver({ type: "book", ...identity, status: "UNAVAILABLE", reason: BOOK_REASON_STREAM_CONNECTING });
-    if (forming !== undefined) this.deliver(barFrame(session.selection, forming, false, false));
+    if (forming !== undefined) this.deliverFormingBar(session, forming);
     session.backoffMs = STREAM_BACKOFF_INITIAL_MS;
     this.openStream(session);
+    this.startTapeBootstrap(session);
+  }
+
+  /** The READY reason: plain, or saying that the tape bootstrap failed and markers start at connect. */
+  private readyReason(session: Session): string {
+    return session.tape.unavailable ? HEALTH_REASON_NO_TAPE_HISTORY : HEALTH_REASON_READY;
+  }
+
+  private deliverFormingBar(session: Session, bar: KlineRow): void {
+    session.lastFormingBar = bar;
+    this.deliver(barFrame(session.selection, bar, false, false));
   }
 
   private streamUrl(session: Session): string {
@@ -819,13 +1017,13 @@ export class BrowserBinanceTransport implements TransportSocket {
     }
     const forming = session.heldFormingBar;
     session.heldFormingBar = null;
-    if (forming !== null && forming.openTime > session.lastClosedOpen) this.deliver(barFrame(session.selection, forming, false, false));
+    if (forming !== null && forming.openTime > session.lastClosedOpen) this.deliverFormingBar(session, forming);
     session.recovering = false;
     session.awaitingBoundary = null;
     session.backoffMs = STREAM_BACKOFF_INITIAL_MS;
     if (session.degraded) {
       session.degraded = false;
-      this.deliverHealth(session, "READY", HEALTH_REASON_READY);
+      this.deliverHealth(session, "READY", this.readyReason(session));
     }
     return true;
   }
@@ -845,6 +1043,13 @@ export class BrowserBinanceTransport implements TransportSocket {
   private deliverClosedBar(session: Session, bar: KlineRow, reconstructed: boolean): void {
     this.deliver(barFrame(session.selection, bar, true, reconstructed));
     session.lastClosedOpen = bar.openTime;
+    session.closedBars.set(bar.openTime, { ...bar, reconstructed });
+    while (session.closedBars.size > MAX_SNAPSHOT_CLOSED_BARS) {
+      let oldest: number | undefined;
+      for (const openTime of session.closedBars.keys()) if (oldest === undefined || openTime < oldest) oldest = openTime;
+      if (oldest === undefined) break;
+      session.closedBars.delete(oldest);
+    }
   }
 
   private routeStreamMessage(session: Session, parsed: unknown): void {
@@ -884,7 +1089,7 @@ export class BrowserBinanceTransport implements TransportSocket {
         return;
       }
       if (bar.closed) this.deliverClosedBar(session, bar, false);
-      else this.deliver(barFrame(session.selection, bar, false, false));
+      else this.deliverFormingBar(session, bar);
       return;
     }
     if (payload.e === "trade") {
@@ -892,15 +1097,23 @@ export class BrowserBinanceTransport implements TransportSocket {
       const size = finiteNumber(payload.q);
       if (price === undefined || size === undefined || price <= 0 || size <= 0) return;
       if (!Number.isSafeInteger(payload.T) || !Number.isSafeInteger(payload.t) || typeof payload.m !== "boolean") return;
-      this.deliver({
+      const trade: TradeFrame = {
         type: "trade",
-        ...identityFields(session.selection),
-        ts_exchange: payload.T,
+        ...session.selection,
+        ts_exchange: payload.T as number,
         price,
         size,
         side: payload.m ? "sell" : "buy",
         trade_id: String(payload.t),
-      });
+      };
+      if (session.firstLiveTradeTs === null) session.firstLiveTradeTs = trade.ts_exchange;
+      session.recentTrades.push(trade);
+      if (session.recentTrades.length > SNAPSHOT_RECENT_TRADES) session.recentTrades.shift();
+      this.deliver(trade);
+      // As the runtime's handleEnvelope: the pool records every new trade, and
+      // a print the retention admits goes out as a marker right behind it.
+      session.pool.record(trade);
+      this.offerMarker(session, trade, true);
       return;
     }
     const isSpotPartial = Array.isArray(payload.bids) && Array.isArray(payload.asks) && Number.isSafeInteger(payload.lastUpdateId);
@@ -920,5 +1133,246 @@ export class BrowserBinanceTransport implements TransportSocket {
       lastUpdateId: (isSpotPartial ? payload.lastUpdateId : payload.u) as number,
       stale: false,
     });
+  }
+
+  // ---- Tape-derived frames: markers, the aggressive pool, their history ----
+
+  /** Offers a print to the runtime's large-trade retention; an admitted one is broadcast as a `marker` when asked. */
+  private offerMarker(session: Session, trade: TradeFrame, broadcast: boolean): void {
+    const marker = markerOf(trade);
+    if (session.markers.insertAll([marker]) && broadcast) this.deliver(marker);
+  }
+
+  /** The newest markers the runtime would still hold: within its seven-day window, oldest first, the newest 5,000 for a snapshot. */
+  private retainedMarkers(session: Session): MarkerFrame[] {
+    const oldestKept = this.now() - MARKER_HISTORY_WINDOW_MS;
+    return session.markers.snapshot().filter((marker) => marker.ts_exchange >= oldestKept);
+  }
+
+  /**
+   * The pool's own `from` is the runtime's: a live trade recorded before any
+   * seed sets it to the window's start, which is only honest once storage has
+   * filled the window. The browser's history is what the bootstrap read, so
+   * coverage never claims to start before the oldest row that was fetched.
+   */
+  private poolCoverage(session: Session): { prints: readonly TradeFrame[]; floor: number; from: number } {
+    const snapshot = session.pool.snapshot();
+    const coveredFrom = session.tapeCoveredFrom ?? session.firstLiveTradeTs ?? this.now();
+    return { prints: snapshot.prints, floor: snapshot.floor, from: Math.max(snapshot.from, coveredFrom) };
+  }
+
+  /** The runtime's snapshot for the pair as this transport knows it: every closed bar, the last 100 live trades, the newest markers, the print pool. */
+  private snapshotFrame(session: Session): Record<string, unknown> {
+    const bars = [...session.closedBars.values()].sort((a, b) => a.openTime - b.openTime);
+    const markers = this.retainedMarkers(session);
+    const pool = this.poolCoverage(session);
+    return {
+      type: "snapshot",
+      ...identityFields(session.selection),
+      bars: bars.map((row) => barFrame(session.selection, row, true, row.reconstructed)),
+      trades: [...session.recentTrades],
+      markers: markers.slice(-MAX_SNAPSHOT_MARKERS),
+      vpin_status: "DISABLED",
+      aggressive_prints: [...pool.prints],
+      aggressive_prints_floor: pool.floor,
+      aggressive_prints_from: pool.from,
+    };
+  }
+
+  /** The full marker set as marker_history frames, 5,000 rows each, `reset` on the first, as the runtime's markerHistoryFrames. */
+  private deliverMarkerHistory(session: Session): void {
+    if (!this.isCurrent(session) || !this.markerHistoryOptIn) return;
+    const markers = this.retainedMarkers(session);
+    if (markers.length === 0) return;
+    session.markerHistorySeq = 0;
+    for (let start = 0; start < markers.length; start += MAX_MARKER_HISTORY_ROWS) {
+      this.deliver({
+        type: "marker_history",
+        ...identityFields(session.selection),
+        reset: start === 0,
+        seq: session.markerHistorySeq,
+        rows: markers.slice(start, start + MAX_MARKER_HISTORY_ROWS).map(markerHistoryRow),
+      });
+      session.markerHistorySeq += 1;
+    }
+  }
+
+  /** After the bootstrap: the snapshot again (as the runtime re-broadcasts it after a warm-up chunk), the forming bar, and the marker history for a client that opted in. */
+  private publishTapeState(session: Session): void {
+    this.deliver(this.snapshotFrame(session));
+    const forming = session.lastFormingBar;
+    if (!session.recovering && forming !== null && forming.openTime > session.lastClosedOpen) this.deliver(barFrame(session.selection, forming, false, false));
+    this.deliverMarkerHistory(session);
+  }
+
+  /**
+   * The runtime answers from storage; this answers from the pool, and only
+   * claims completeness for a window the pool covers at the requested floor:
+   * from no earlier than the oldest row the bootstrap read, at or above the
+   * pool's floor. Anything else is honestly STORAGE_UNAVAILABLE, which the
+   * client retries three times and then rests. Pages of 10,000 with a cursor
+   * bound to the request, as the contract has it.
+   */
+  private aggressiveHistoryReply(session: Session, msg: Record<string, unknown>): Record<string, unknown> | null {
+    const request = parseAggressiveHistoryRequest(msg, this.now());
+    if (request === null) return null;
+    const after = request.cursor === null ? null : decodeHistoryCursor(request.cursor, session.selection, request);
+    if (request.cursor !== null && after === null) {
+      console.warn("browserBinanceTransport: dropped aggressive_history request: cursor does not match the selected history window");
+      return null;
+    }
+    const reply = {
+      type: "aggressive_history",
+      ...identityFields(session.selection),
+      request_id: request.requestId,
+      from_ts: request.fromMs,
+      to_ts: request.toMs,
+      min_size: request.minSize,
+      retry_after_ms: null,
+    };
+    const pool = this.poolCoverage(session);
+    const covered = session.tape.done && request.fromMs >= pool.from && request.minSize >= pool.floor;
+    if (!covered) return { ...reply, complete: false, reason: "STORAGE_UNAVAILABLE", next_cursor: null, trades: [] };
+    const matching = pool.prints
+      .filter((print) =>
+        print.ts_exchange >= request.fromMs && print.ts_exchange < request.toMs && print.size >= request.minSize &&
+        (after === null || tradeOrder(print, after) > 0))
+      .sort(tradeOrder);
+    const capped = matching.length > MAX_AGGRESSIVE_HISTORY_TRADES;
+    const page = capped ? matching.slice(0, MAX_AGGRESSIVE_HISTORY_TRADES) : matching;
+    const nextCursor = capped ? encodeHistoryCursor(session.selection, request, page[page.length - 1]) : null;
+    if (capped && nextCursor === null) return { ...reply, complete: false, reason: "CONVERSION_INCOMPLETE", next_cursor: null, trades: page };
+    return { ...reply, complete: !capped, reason: capped ? "CAP_REACHED" : null, next_cursor: nextCursor, trades: page };
+  }
+
+  private aggTradesUrl(session: Session, fromId: number | null): string {
+    const path = session.selection.provider === "BINANCE" && session.selection.marketKind === "PERPETUAL" ? "/fapi/v1/aggTrades" : "/api/v3/aggTrades";
+    const params = new URLSearchParams({ symbol: session.binanceSymbol, limit: String(TAPE_BOOTSTRAP_PAGE) });
+    if (fromId !== null) params.set("fromId", String(fromId));
+    return `${session.restBase}${path}?${params.toString()}`;
+  }
+
+  /** One page of aggregate trades, oldest first; without `fromId` the newest page. */
+  private async fetchAggTrades(session: Session, fromId: number | null): Promise<AggTradeRow[]> {
+    const controller = new AbortController();
+    session.tape.abort = controller;
+    const timer = this.setTimer(() => controller.abort(), REST_TIMEOUT_MS);
+    try {
+      const response = await this.fetchImpl(this.aggTradesUrl(session, fromId), { signal: controller.signal });
+      if (!response.ok) throw new Error(`aggTrades: HTTP ${response.status}`);
+      const body: unknown = await response.json();
+      if (!Array.isArray(body)) throw new Error("aggTrades: body is not an array");
+      const rows: AggTradeRow[] = [];
+      for (const raw of body) {
+        const row = parseAggTradeRow(raw);
+        if (row !== null) rows.push(row);
+      }
+      rows.sort((a, b) => a.a - b.a);
+      return rows;
+    } finally {
+      this.clearTimer(timer);
+      if (session.tape.abort === controller) session.tape.abort = null;
+    }
+  }
+
+  private startTapeBootstrap(session: Session): void {
+    if (session.tape.started) return;
+    session.tape.started = true;
+    void this.bootstrapTape(session);
+  }
+
+  /**
+   * The runtime seeds markers and the pool from storage; the browser reads
+   * recent aggregate trades from the mirror, newest page first by id, within a
+   * bounded page budget, and feeds them through the same retention and pool.
+   * Rows at or after the first live trade are the stream's and are skipped.
+   * A page that fails after others succeeded ends the walk with what was
+   * read; a first page that fails is retried with backoff, and after three
+   * such failures the READY health frame says the tape history is missing.
+   */
+  private async bootstrapTape(session: Session): Promise<void> {
+    const tape = session.tape;
+    tape.inFlight = true;
+    const nowMs = this.now();
+    const oldestWanted = nowMs - MARKER_HISTORY_WINDOW_MS;
+    const calibrationFrom = nowMs - DEFAULT_CALIBRATION_MS;
+    let fromId: number | null = null;
+    let pages = 0;
+    let rowsRead = 0;
+    try {
+      while (pages < MAX_TAPE_BOOTSTRAP_PAGES) {
+        let rows: AggTradeRow[];
+        try {
+          rows = await this.fetchAggTrades(session, fromId);
+        } catch (error) {
+          if (!this.isCurrent(session)) return;
+          if (pages === 0) throw error;
+          console.warn("browserBinanceTransport: a trade history page failed; keeping what was read", error);
+          break;
+        }
+        if (!this.isCurrent(session)) return;
+        pages += 1;
+        if (rows.length === 0) break;
+        rowsRead += this.seedTape(session, rows, calibrationFrom);
+        const oldest = rows[0];
+        if (rows.length < TAPE_BOOTSTRAP_PAGE || oldest.a === 0 || oldest.T < oldestWanted) break;
+        fromId = Math.max(0, oldest.a - TAPE_BOOTSTRAP_PAGE);
+      }
+    } catch (error) {
+      if (!this.isCurrent(session)) return;
+      tape.inFlight = false;
+      tape.attempts += 1;
+      console.warn("browserBinanceTransport: trade history request failed", error);
+      if (tape.attempts >= TAPE_BOOTSTRAP_FAILURES_BEFORE_DEGRADED && !tape.unavailable) {
+        tape.unavailable = true;
+        if (!session.degraded && !session.recovering) this.deliverHealth(session, "READY", this.readyReason(session));
+      }
+      this.scheduleTapeRetry(session);
+      return;
+    }
+    tape.inFlight = false;
+    tape.done = true;
+    const wasUnavailable = tape.unavailable;
+    tape.unavailable = false;
+    if (rowsRead > 0) this.publishTapeState(session);
+    if (wasUnavailable && !session.degraded && !session.recovering) this.deliverHealth(session, "READY", HEALTH_REASON_READY);
+  }
+
+  private scheduleTapeRetry(session: Session): void {
+    if (!this.isCurrent(session)) return;
+    const tape = session.tape;
+    if (tape.timer !== null) this.clearTimer(tape.timer);
+    const delay = tape.backoffMs;
+    tape.backoffMs = Math.min(tape.backoffMs * 2, STREAM_BACKOFF_CAP_MS);
+    tape.timer = this.setTimer(() => {
+      tape.timer = null;
+      if (this.isCurrent(session)) void this.bootstrapTape(session);
+    }, delay);
+  }
+
+  /**
+   * One page into the retention and the pool, as the runtime's warm-up seeds
+   * a storage chunk: the newest fifteen minutes calibrate the floor
+   * (`calibrate: true`, every size counted), older rows are admitted at the
+   * floor; `fromMs` is the oldest row of the page, never further back.
+   * Returns the rows kept.
+   */
+  private seedTape(session: Session, rows: readonly AggTradeRow[], calibrationFrom: number): number {
+    const cutoff = session.firstLiveTradeTs;
+    const calibration: TradeFrame[] = [];
+    const older: TradeFrame[] = [];
+    let oldestTs = Infinity;
+    for (const row of rows) {
+      if (cutoff !== null && row.T >= cutoff) continue;
+      const trade = aggTradeFrame(session.selection, row);
+      if (row.T < oldestTs) oldestTs = row.T;
+      (row.T >= calibrationFrom ? calibration : older).push(trade);
+      this.offerMarker(session, trade, false);
+    }
+    if (oldestTs === Infinity) return 0;
+    if (calibration.length > 0) session.pool.seed(calibration, { fromMs: oldestTs, calibrate: true });
+    if (older.length > 0) session.pool.seed(older, { fromMs: oldestTs });
+    if (session.tapeCoveredFrom === null || oldestTs < session.tapeCoveredFrom) session.tapeCoveredFrom = oldestTs;
+    return calibration.length + older.length;
   }
 }

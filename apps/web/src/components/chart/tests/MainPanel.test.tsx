@@ -715,9 +715,11 @@ describe("MainPanel", () => {
       expect(
         container.querySelector(".indicator-legend-label")?.textContent,
       ).toBe("Large Trade Detector");
+      // 1,000 tape trades and no markers yet: the selection is short of its
+      // target, and the legend says so instead of implying a full top 0.05%.
       expect(
         container.querySelector(".indicator-legend-detail")?.textContent,
-      ).toBe("top 0.05%");
+      ).toBe("top 0.05% · partial");
     });
 
     it("switching to size mode updates the legend detail to the dollar threshold", async () => {

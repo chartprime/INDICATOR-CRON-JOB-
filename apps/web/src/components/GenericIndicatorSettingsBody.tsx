@@ -60,16 +60,23 @@ function NumericField<T>({ field, value, onCommit }: NumericFieldProps<T>) {
   );
 }
 
+/** Advanced fields are inputs shown under a collapsed group, so they belong to the Inputs tab. */
 function fieldTab<T>(field: SettingsFieldSchema<T>): SettingsTab {
-  return field.tab ?? "inputs";
+  return field.tab === "visibility" ? "visibility" : "inputs";
+}
+
+function isAdvanced<T>(field: SettingsFieldSchema<T>): boolean {
+  return field.tab === "advanced";
 }
 
 export function GenericIndicatorSettingsBody<T>({ schema, settings, onChange, visibility }: GenericIndicatorSettingsBodyProps<T>) {
-  const usesTabs = schema.some((field) => field.tab !== undefined);
+  const usesTabs = schema.some((field) => field.tab !== undefined && !isAdvanced(field));
   const [activeTab, setActiveTab] = useState<SettingsTab>("inputs");
 
   const visibleFields = schema.filter((field) => (field.visibleIf ? field.visibleIf(settings) : true));
-  const fieldsToRender = usesTabs ? visibleFields.filter((field) => fieldTab(field) === activeTab) : visibleFields;
+  const tabFields = usesTabs ? visibleFields.filter((field) => fieldTab(field) === activeTab) : visibleFields;
+  const fieldsToRender = tabFields.filter((field) => !isAdvanced(field));
+  const advancedFields = tabFields.filter(isAdvanced);
 
   function setKey(key: keyof T, value: unknown) {
     onChange({ ...settings, [key]: value } as T);
@@ -228,6 +235,12 @@ export function GenericIndicatorSettingsBody<T>({ schema, settings, onChange, vi
       )}
       <div className="indicator-settings-body">
         {fieldsToRender.map((field, index) => renderField(field, index))}
+        {advancedFields.length > 0 && (
+          <details className="indicator-settings-advanced">
+            <summary>Advanced</summary>
+            {advancedFields.map((field, index) => renderField(field, fieldsToRender.length + index))}
+          </details>
+        )}
         {(!usesTabs || activeTab === "visibility") && visibility && (
           <label className="indicator-settings-checkbox">
             <input

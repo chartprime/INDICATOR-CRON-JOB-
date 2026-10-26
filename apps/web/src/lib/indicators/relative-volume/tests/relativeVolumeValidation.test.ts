@@ -9,6 +9,8 @@ import {
   checkLiveReplayEquivalence,
   checkRebuiltEquivalence,
   checkTruncationInvariance,
+  BINANCE_PERP,
+  barFrame,
   compressionBreakoutBars,
   countMarkers,
   countMarkersOver,
@@ -17,6 +19,7 @@ import {
   duplicateClosedArrivals,
   formingRevisions,
   liveArrivals,
+  openLiveSession,
   relativeVolumeCryptoFixture,
   relativeVolumeEquityFixture,
   replayCapture,
@@ -78,7 +81,7 @@ describe("relativeVolume -- replay versus live equivalence (protocol check 2)", 
     noNaN(report.replay.outputs);
   }, 120_000);
 
-  it("a bar whose close never arrived is committed by the next bar: its numbers match the replay, its marker stays provisional and is excluded", () => {
+  it("a bar whose close never arrived contributes nothing: every other bar equals a replay without it, its own reading and marker stay provisional (rule 7(b) withdrawn)", () => {
     // Every anomaly bar loses its closed dispatch: the forming revisions arrive, then the next bar.
     const anomalyIndices = new Set(EQUITY.labels.anomalyIndices);
     const arrivals: Arrival[] = [];
@@ -88,12 +91,27 @@ describe("relativeVolume -- replay versus live equivalence (protocol check 2)", 
       for (const frame of frames) arrivals.push({ bar: frame });
     });
     const live = driveLive(relativeVolumeIndicator, arrivals, SETTINGS);
-    const replay = replayCapture(relativeVolumeIndicator, EQUITY.bars, SETTINGS);
-    // The last forming revision carries 3/4 of the bar's volume; the replay sees the whole bar, so compare on the volumes live saw.
-    const liveBars = live.bars;
-    const replayOfLiveBars = replayCapture(relativeVolumeIndicator, liveBars.map((bar) => ({ ...bar, closed: true })), SETTINGS);
-    expect(diffOutputs(live.outputs, replayOfLiveBars.outputs)).toEqual([]);
-    expect(replay.markers.length).toBeGreaterThanOrEqual(EQUITY.labels.anomalies.length);
+    const without = EQUITY.bars.filter((_, index) => !anomalyIndices.has(index));
+    const replayWithout = replayCapture(relativeVolumeIndicator, without, SETTINGS);
+    // Outputs of the bars that did close equal a replay in which the never-closed bars do not exist at all.
+    let cursor = 0;
+    EQUITY.bars.forEach((_, index) => {
+      if (anomalyIndices.has(index)) {
+        expect(live.outputs.rvol[index]).not.toBeNull();
+        return;
+      }
+      expect(live.outputs.rvol[index]).toBe(replayWithout.outputs.rvol[cursor]);
+      expect(live.outputs.rolling[index]).toBe(replayWithout.outputs.rolling[cursor]);
+      cursor += 1;
+    });
+    expect(cursor).toBe(without.length);
+    const engine = createRelativeVolumeEngine({ sessions: 10, minSessions: 3, clock: "auto" });
+    for (const arrival of arrivals) engine.onBar(arrival.bar);
+    for (const index of anomalyIndices) {
+      const bar = EQUITY.bars[index];
+      expect(engine.slotRing(slotKeyOf(bar.ts_open, "newYork")!)!.items.some((item) => item.tsOpen === bar.ts_open)).toBe(false);
+      expect(engine.rollingRing.items.some((item) => item.tsOpen === bar.ts_open)).toBe(false);
+    }
     const provisional = live.markers.filter((call) => call.color.startsWith("rgba("));
     const confirmed = live.markers.filter((call) => !call.color.startsWith("rgba("));
     expect(provisional.length).toBeGreaterThan(0);
@@ -270,6 +288,45 @@ describe("relativeVolume -- warm-up, empty input and NaN (protocol check 4)", ()
     for (const bar of EQUITY.bars.slice(0, 100)) last = engine.onBar(bar);
     expect(last!.rolling).not.toBeNull();
   });
+});
+
+describe("relativeVolume -- rollover and reconnect (ruling 2): the latest ratio can change when a replay holds fewer prior observations than live state did", () => {
+  /** Eleven days of one-minute crypto: 100 per minute for five days, then 300, the last bar 450. */
+  function elevenDays(): BarFrame[] {
+    const t0 = Date.UTC(2026, 2, 2);
+    return Array.from({ length: 11 * 1_440 }, (_, index) =>
+      barFrame(t0 + index * 60_000, { open: 1, close: 1, high: 1, low: 1, volume: index === 11 * 1_440 - 1 ? 450 : index < 5 * 1_440 ? 100 : 300 }, BINANCE_PERP),
+    );
+  }
+
+  it("rollover and reconnect: live 2.25x against ten prior; a replay of the retained seven days and an older duplicate (REBUILT) both read 1.5x; a settings update that changes no recompute key changes nothing", () => {
+    const bars = elevenDays();
+    const session = openLiveSession(relativeVolumeIndicator, SETTINGS, {}, []);
+    try {
+      for (const bar of bars) session.dispatch({ bar });
+      expect(session.bars).toHaveLength(10_080);
+      const live = session.capture();
+      const lastOpen = bars[bars.length - 1].ts_open;
+      expect(live.outputs.rvol.at(-1)).toBe(2.25);
+      expect(live.markers.some((call) => call.time === lastOpen && !call.color.startsWith("rgba("))).toBe(true);
+      // A reconnect replays the retained bars: six prior observations at 300 for the last slot, median 300.
+      const retained = [...session.bars];
+      const replay = replayCapture(relativeVolumeIndicator, retained, SETTINGS);
+      expect(replay.outputs.rvol.at(-1)).toBe(1.5);
+      expect(replay.markers.some((call) => call.time === lastOpen)).toBe(false);
+      // An update that changes no recompute key must not replay: every output and marker stays.
+      session.updateSettings({ ...SETTINGS });
+      expect(session.capture().outputs.rvol.at(-1)).toBe(2.25);
+      expect(session.capture().markers).toEqual(live.markers);
+      // An identical closed duplicate of an older retained bar is a REBUILT and replays the retained bars.
+      session.dispatch({ bar: { ...retained[100] } });
+      expect(session.mutations.at(-1)).toBe("REBUILT");
+      expect(session.capture().outputs.rvol.at(-1)).toBe(1.5);
+      expect(session.capture().markers.some((call) => call.time === lastOpen)).toBe(false);
+    } finally {
+      session.close();
+    }
+  }, 120_000);
 });
 
 describe("relativeVolume -- crypto fixture: rollover and REBUILT equivalence at sessions = 3 (amendment 7)", () => {

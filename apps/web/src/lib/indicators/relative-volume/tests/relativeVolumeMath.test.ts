@@ -13,6 +13,7 @@ import {
   readingOf,
   requiredPriorOf,
   resolveRvolClock,
+  ringCapacityOf,
   ringInsert,
   ringMean,
   ringMedian,
@@ -225,15 +226,22 @@ describe("relativeVolumeMath -- hand-computed three-session fixture (success cri
     expect(engine.slotRing(600)!.items.map((item) => item.volume)).toEqual([100, 100, 100]);
   });
 
-  it("a close that never arrived is committed with its last known volume when the next bar arrives, and stays unconfirmed", () => {
+  it("a bar superseded without ever closing contributes no observation to either ring and stays provisional (rule 7(b) withdrawn)", () => {
     const engine = createRelativeVolumeEngine(SETTINGS);
     const bars = threeSessionBars();
     for (const bar of bars.slice(0, 72)) engine.onBar(bar);
-    expect(engine.onBar(hourlyBar(3, 0, 400, false)).confirmed).toBe(false);
-    engine.onBar(hourlyBar(3, 1, 100));
-    expect(engine.slotRing(0)!.items.map((item) => item.volume)).toEqual([100, 300, 200, 400]);
-    expect(engine.rollingRing.items[18]).toEqual({ tsOpen: T0 + 3 * 24 * HOUR_MS, volume: 400 });
-    expect(engine.rollingRing.items[19].volume).toBe(100);
+    const open = engine.onBar(hourlyBar(3, 0, 400, false));
+    expect(open.confirmed).toBe(false);
+    expect(open.status).toBe("forming");
+    expect(open.rvol).toBe(2);
+    const next = engine.onBar(hourlyBar(3, 1, 100));
+    expect(engine.slotRing(0)!.items.map((item) => item.volume)).toEqual([100, 300, 200]);
+    expect(engine.rollingRing.items.some((item) => item.tsOpen === T0 + 3 * 24 * HOUR_MS)).toBe(false);
+    expect(engine.rollingRing.items[19]).toEqual({ tsOpen: T0 + 3 * 24 * HOUR_MS + HOUR_MS, volume: 100 });
+    // The superseded bar never entered the rolling mean either: the next bar's twenty predecessors are all 100.
+    expect(next.rolling).toBe(1);
+    // Day 5 slot 0 still sees three prior observations.
+    expect(engine.onBar(hourlyBar(4, 0, 200)).priorCount).toBe(3);
   });
 });
 
@@ -282,10 +290,14 @@ describe("relativeVolumeMath -- corrections and eviction rollback (amendments 1 
     expect(engine.slotRing(0)!.evictedByTail).toBeNull();
   });
 
-  it("minSessions is clamped to sessions at read time", () => {
-    expect(requiredPriorOf({ sessions: 2, minSessions: 5, clock: "utc" })).toBe(2);
+  it("minSessions is clamped to sessions at read time, and sessions itself to 3..60", () => {
+    expect(requiredPriorOf({ sessions: 4, minSessions: 5, clock: "utc" })).toBe(4);
+    expect(requiredPriorOf({ sessions: 2, minSessions: 5, clock: "utc" })).toBe(3);
     expect(requiredPriorOf({ sessions: 10, minSessions: 3, clock: "utc" })).toBe(3);
     expect(requiredPriorOf({ sessions: 10, minSessions: 0, clock: "utc" })).toBe(1);
+    expect(ringCapacityOf({ sessions: 2, minSessions: 1, clock: "utc" })).toBe(3);
+    expect(ringCapacityOf({ sessions: 61, minSessions: 1, clock: "utc" })).toBe(60);
+    expect(createRelativeVolumeEngine({ sessions: 2, minSessions: 2, clock: "utc" }).rollingRing.capacity).toBe(20);
   });
 });
 

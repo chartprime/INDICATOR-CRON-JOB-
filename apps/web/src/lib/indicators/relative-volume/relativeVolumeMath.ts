@@ -17,6 +17,11 @@ import { nyLocalMinuteOfDay } from "../killzones/killzones";
  * invalid-to-valid re-inserts it. A correction to any older bar reaches the
  * indicator as a full replay, which recreates this state from scratch.
  *
+ * Only a closed bar is ever filed. A bar that is superseded by a newer bar
+ * without ever closing (a close that never arrived, a resampled bucket cut
+ * short by a source gap) contributes no observation to either ring and its
+ * own reading stays provisional: missing data contributes nothing.
+ *
  * Exported so that a later indicator (Squeeze Breakout Context) can import the
  * slot-median machinery as its volume confirmation.
  */
@@ -29,7 +34,8 @@ export const MINUTES_PER_DAY = 1_440;
 export const RVOL_MAX_INTERVAL_MS = HOUR_MS;
 export const RVOL_ROLLING_LENGTH = 20;
 export const RVOL_DEFAULT_SESSIONS = 10;
-export const RVOL_MIN_SESSIONS_SETTING = 2;
+/** Three, not two: with two observations the even-count median is a mean, and one news day would halve tomorrow's ratio. */
+export const RVOL_MIN_SESSIONS_SETTING = 3;
 export const RVOL_MAX_SESSIONS_SETTING = 60;
 export const RVOL_DEFAULT_MIN_SESSIONS = 3;
 
@@ -37,7 +43,7 @@ export type RvolClock = "auto" | "newYork" | "utc";
 export type ResolvedRvolClock = "newYork" | "utc";
 
 export interface RelativeVolumeMathSettings {
-  /** Ring capacity per slot key: the last N matching bars (2..60). */
+  /** Ring capacity per slot key: the last N matching bars (3..60). */
   sessions: number;
   /** Prior observations a slot needs before a ratio is shown; clamped to `sessions` at read time. */
   minSessions: number;
@@ -187,7 +193,7 @@ export interface TailRecord {
   /** Last known volume, null when the latest dispatch carried no usable volume. */
   volume: number | null;
   baselineAtOpen: BaselineAtOpen;
-  /** The commit event (first closed dispatch, or a newer bar arriving) has happened. */
+  /** The commit event (the first closed dispatch of this bar) has happened. */
   committed: boolean;
   /** An observation for this bar currently sits in both rings. */
   inRings: boolean;
@@ -226,10 +232,15 @@ export interface RelativeVolumeEngine {
   readonly slotCount: number;
 }
 
+/** The slot ring capacity: `sessions` brought into 3..60. */
+export function ringCapacityOf(settings: RelativeVolumeMathSettings): number {
+  if (!Number.isFinite(settings.sessions)) return RVOL_DEFAULT_SESSIONS;
+  return Math.min(RVOL_MAX_SESSIONS_SETTING, Math.max(RVOL_MIN_SESSIONS_SETTING, Math.floor(settings.sessions)));
+}
+
 export function requiredPriorOf(settings: RelativeVolumeMathSettings): number {
-  const sessions = Number.isFinite(settings.sessions) ? Math.floor(settings.sessions) : RVOL_DEFAULT_SESSIONS;
   const minimum = Number.isFinite(settings.minSessions) ? Math.floor(settings.minSessions) : RVOL_DEFAULT_MIN_SESSIONS;
-  return Math.max(1, Math.min(minimum, sessions));
+  return Math.max(1, Math.min(minimum, ringCapacityOf(settings)));
 }
 
 function ratioOf(volume: number, denominator: number | null): number | null {
@@ -279,9 +290,7 @@ export function readingOf(tail: TailRecord, settings: RelativeVolumeMathSettings
 }
 
 export function createRelativeVolumeEngine(settings: RelativeVolumeMathSettings): RelativeVolumeEngine {
-  const capacity = Number.isFinite(settings.sessions)
-    ? Math.min(RVOL_MAX_SESSIONS_SETTING, Math.max(RVOL_MIN_SESSIONS_SETTING, Math.floor(settings.sessions)))
-    : RVOL_DEFAULT_SESSIONS;
+  const capacity = ringCapacityOf(settings);
   const slots = new Map<number, ObservationRing>();
   const rolling = createRing(RVOL_ROLLING_LENGTH);
   const clockCache = createClockCache();
@@ -309,7 +318,7 @@ export function createRelativeVolumeEngine(settings: RelativeVolumeMathSettings)
     };
   }
 
-  /** Rule 7: the commit event for the tail, filing its last known volume when it is usable. */
+  /** Rule 7(a): the commit event for the tail on its first closed dispatch, filing its volume when it is usable. */
   function commit(record: TailRecord): void {
     record.committed = true;
     if (!record.supported || record.key === null || record.volume === null) return;
@@ -352,10 +361,8 @@ export function createRelativeVolumeEngine(settings: RelativeVolumeMathSettings)
       return current ?? readingOf(tail, settings);
     }
     if (tail === null || tsOpen > tail.tsOpen) {
-      if (tail !== null) {
-        if (!tail.committed) commit(tail); // rule 7(b): a close that never arrived
-        supersede(tail);
-      }
+      // A tail superseded without ever closing files nothing (rule 7(b) was withdrawn): only a closed bar is an observation.
+      if (tail !== null) supersede(tail);
       const intervalOk = Number.isFinite(bar.interval_ms) && bar.interval_ms > 0 && bar.interval_ms <= RVOL_MAX_INTERVAL_MS;
       const key = intervalOk ? slotKeyOf(tsOpen, resolveRvolClock(settings.clock, bar.provider), clockCache) : null;
       tail = {

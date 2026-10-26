@@ -10,6 +10,7 @@ import {
   RELATIVE_VOLUME_DEFAULT_SETTINGS,
   RELATIVE_VOLUME_SETTINGS_SCHEMA,
   RVOL_BELOW_ONE_COLOR,
+  RVOL_FILL_COLOR_ABOVE,
   RVOL_HOT_COLOR,
   RVOL_LINE_COLOR,
   RVOL_TABLE_TEXT_COLOR,
@@ -120,13 +121,13 @@ describe("relativeVolume -- settings schema (UX standard part 2)", () => {
     expect(advanced.map(keyOf)).toEqual(["minSessions", "clock"]);
     expect(advanced.map(labelOf)).toEqual(["Minimum prior bars", "Clock"]);
     const visibility = fields.filter((field) => field.tab === "visibility");
-    expect(visibility.map(keyOf)).toEqual(["showRolling", "showMarkers", "lineColor", "hotColor", "rollingColor"]);
-    expect(visibility.map(labelOf)).toEqual(["Show rolling 20", "Show unusual markers", "Line colour", "Unusual colour", "Rolling colour"]);
+    expect(visibility.map(keyOf)).toEqual(["showRolling", "showMarkers"]);
+    expect(visibility.map(labelOf)).toEqual(["Show rolling 20", "Show unusual markers"]);
     const clock = advanced.find((field) => field.kind === "select");
     expect(clock && clock.kind === "select" ? clock.options.map((option) => option.label) : []).toEqual(["Automatic", "New York", "UTC"]);
   });
 
-  it("every setting that changes the math, the colouring of history or a marker replays; only the colour pickers are cosmetic", () => {
+  it("every setting changes the math, the colouring of history or a marker, so every setting replays; there is no cosmetic setting and the colours are fixed", () => {
     const affects = Object.fromEntries(fields.map((field) => [keyOf(field), affectsOf(field)]));
     expect(affects).toEqual({
       sessions: "recompute",
@@ -135,10 +136,11 @@ describe("relativeVolume -- settings schema (UX standard part 2)", () => {
       clock: "recompute",
       showRolling: "recompute",
       showMarkers: "recompute",
-      lineColor: "cosmetic",
-      hotColor: "cosmetic",
-      rollingColor: "cosmetic",
     });
+    expect(fields.some((field) => field.kind === "color")).toBe(false);
+    const sessions = fields.find((field) => keyOf(field) === "sessions");
+    expect(sessions && sessions.kind === "numeric" ? [sessions.min, sessions.max, sessions.step] : null).toEqual([3, 60, 1]);
+    for (const line of relativeVolumeIndicator.lines) expect(typeof line.recolor).toBe("function");
     const hints = RELATIVE_VOLUME_SETTINGS_SCHEMA.filter((field) => field.kind === "staticHint");
     for (const hint of hints) {
       expect(hint.kind === "staticHint" ? hint.text.endsWith("Replays every bar.") : false).toBe(true);
@@ -154,9 +156,6 @@ describe("relativeVolume -- settings schema (UX standard part 2)", () => {
       clock: "auto",
       showRolling: false,
       showMarkers: true,
-      lineColor: "#8672b3",
-      hotColor: "#2563eb",
-      rollingColor: "#787b86",
     });
   });
 });
@@ -248,7 +247,7 @@ describe("relativeVolume -- markers, fill and replace semantics", () => {
     expect(capture.calls).toHaveLength(1);
     expect(capture.calls[0]).toMatchObject({ shape: "circle", position: "aboveBar", color: RVOL_HOT_COLOR, size: 2 });
     expect(fills[fills.length - 1]).toEqual([relativeVolumeIndicator.readOutput(state).rvol, 1]);
-    expect(state.fillOptions).toEqual({ colorAbove: "rgba(134,114,179,0.15)", colorBelow: "transparent" });
+    expect(RVOL_FILL_COLOR_ABOVE).toBe("rgba(134,114,179,0.15)");
   });
 
   it("showMarkers off draws no marker while the ratio is unchanged; a threshold above 3 makes every drawn marker large", () => {

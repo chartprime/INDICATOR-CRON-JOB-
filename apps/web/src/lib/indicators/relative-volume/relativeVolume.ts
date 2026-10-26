@@ -27,12 +27,13 @@ import {
 export const RVOL_DEFAULT_HOT_THRESHOLD = 2;
 /** A drawn marker is enlarged from this ratio up (brief amendment 6). */
 export const RVOL_LARGE_MARKER_FROM = 3;
+/** Fixed for this version: a colour picker would force a replay over the retained bars, which can change a number. */
 export const RVOL_LINE_COLOR = "#8672b3";
 export const RVOL_HOT_COLOR = "#2563eb";
 export const RVOL_BELOW_ONE_COLOR = "#787b86";
 export const RVOL_ROLLING_COLOR = "#787b86";
+export const RVOL_FILL_COLOR_ABOVE = "rgba(134,114,179,0.15)";
 export const RVOL_TABLE_TEXT_COLOR = "#d1d4dc";
-export const RVOL_FILL_ALPHA = 0.15;
 export const RVOL_PROVISIONAL_ALPHA = 0.5;
 export const RVOL_UNAVAILABLE = "—";
 
@@ -43,9 +44,6 @@ export interface RelativeVolumeSettings {
   clock: RvolClock;
   showRolling: boolean;
   showMarkers: boolean;
-  lineColor: string;
-  hotColor: string;
-  rollingColor: string;
 }
 
 export interface RelativeVolumeState {
@@ -54,8 +52,6 @@ export interface RelativeVolumeState {
   reading: RvolReading | null;
   /** The rolling line's value for this bar, null when the line is switched off. */
   rollingLine: number | null;
-  fillColor: string;
-  fillOptions: FillOptions;
 }
 
 export const RELATIVE_VOLUME_DEFAULT_SETTINGS: RelativeVolumeSettings = Object.freeze({
@@ -65,10 +61,13 @@ export const RELATIVE_VOLUME_DEFAULT_SETTINGS: RelativeVolumeSettings = Object.f
   clock: "auto",
   showRolling: false,
   showMarkers: true,
-  lineColor: RVOL_LINE_COLOR,
-  hotColor: RVOL_HOT_COLOR,
-  rollingColor: RVOL_ROLLING_COLOR,
 });
+
+const RVOL_FILL_OPTIONS: FillOptions = Object.freeze({ colorAbove: RVOL_FILL_COLOR_ABOVE, colorBelow: "transparent" });
+const RVOL_LINE_PROVISIONAL = withAlpha(RVOL_LINE_COLOR, RVOL_PROVISIONAL_ALPHA);
+const RVOL_HOT_PROVISIONAL = withAlpha(RVOL_HOT_COLOR, RVOL_PROVISIONAL_ALPHA);
+const RVOL_BELOW_ONE_PROVISIONAL = withAlpha(RVOL_BELOW_ONE_COLOR, RVOL_PROVISIONAL_ALPHA);
+const RVOL_ROLLING_PROVISIONAL = withAlpha(RVOL_ROLLING_COLOR, RVOL_PROVISIONAL_ALPHA);
 
 /** `#rgb` or `#rrggbb` with an alpha; any other colour string is returned unchanged. */
 export function withAlpha(color: string, alpha: number): string {
@@ -88,16 +87,16 @@ export function isHot(reading: RvolReading | null, hotThreshold: number): boolea
 
 /** The rvol line's colour for the bar: unusual, at or above 1, below 1; provisional while the bar forms. */
 export function rvolLineColor(reading: RvolReading | null, settings: RelativeVolumeSettings): string {
-  let color = settings.lineColor;
+  const provisional = reading !== null && !reading.confirmed;
   if (reading !== null && reading.rvol !== null) {
-    if (isHot(reading, settings.hotThreshold)) color = settings.hotColor;
-    else if (reading.rvol < 1) color = RVOL_BELOW_ONE_COLOR;
+    if (isHot(reading, settings.hotThreshold)) return provisional ? RVOL_HOT_PROVISIONAL : RVOL_HOT_COLOR;
+    if (reading.rvol < 1) return provisional ? RVOL_BELOW_ONE_PROVISIONAL : RVOL_BELOW_ONE_COLOR;
   }
-  return reading !== null && !reading.confirmed ? withAlpha(color, RVOL_PROVISIONAL_ALPHA) : color;
+  return provisional ? RVOL_LINE_PROVISIONAL : RVOL_LINE_COLOR;
 }
 
-function rollingLineColor(reading: RvolReading | null, settings: RelativeVolumeSettings): string {
-  return reading !== null && !reading.confirmed ? withAlpha(settings.rollingColor, RVOL_PROVISIONAL_ALPHA) : settings.rollingColor;
+function rollingLineColor(reading: RvolReading | null): string {
+  return reading !== null && !reading.confirmed ? RVOL_ROLLING_PROVISIONAL : RVOL_ROLLING_COLOR;
 }
 
 function formatRatio(value: number | null): string {
@@ -140,20 +139,11 @@ export function relativeVolumeTableRows(reading: RvolReading | null, settings: R
 }
 
 const RELATIVE_VOLUME_LINES: readonly LineOutputSpec<RelativeVolumeState, RelativeVolumeSettings>[] = [
-  {
-    key: "rvol",
-    lineWidth: 2,
-    // No `recolor`: the colour of a past bar depends on which class it fell in,
-    // which the old colour string alone cannot say, so a colour change replays.
-    color: (state, settings) => rvolLineColor(state.reading, settings),
-  },
-  {
-    key: "rolling",
-    lineWidth: 1,
-    color: (state, settings) => rollingLineColor(state.reading, settings),
-    recolor: (current, settings) =>
-      current !== undefined && current.startsWith("rgba(") ? withAlpha(settings.rollingColor, RVOL_PROVISIONAL_ALPHA) : settings.rollingColor,
-  },
+  // The colours are constants, so `recolor` keeps every bar's colour as it is:
+  // a settings update that changes no recompute key never replays (a replay
+  // over the retained bars can change a number, which a cosmetic change must not).
+  { key: "rvol", lineWidth: 2, color: (state, settings) => rvolLineColor(state.reading, settings), recolor: (current) => current ?? RVOL_LINE_COLOR },
+  { key: "rolling", lineWidth: 1, color: (state) => rollingLineColor(state.reading), recolor: (current) => current ?? RVOL_ROLLING_COLOR },
 ];
 
 const RELATIVE_VOLUME_PLACEMENT: PlacementSpec = {
@@ -190,9 +180,6 @@ export const RELATIVE_VOLUME_SETTINGS_SCHEMA: readonly SettingsFieldSchema<Relat
   },
   { kind: "boolean", key: "showRolling", label: "Show rolling 20", affects: "recompute", tab: "visibility" },
   { kind: "boolean", key: "showMarkers", label: "Show unusual markers", affects: "recompute", tab: "visibility" },
-  { kind: "color", key: "lineColor", label: "Line colour", affects: "cosmetic", tab: "visibility" },
-  { kind: "color", key: "hotColor", label: "Unusual colour", affects: "cosmetic", tab: "visibility" },
-  { kind: "color", key: "rollingColor", label: "Rolling colour", affects: "cosmetic", tab: "visibility" },
 ];
 
 export const relativeVolumeIndicator: RuntimeIndicatorDef<RelativeVolumeState, RelativeVolumeSettings> = {
@@ -209,8 +196,6 @@ export const relativeVolumeIndicator: RuntimeIndicatorDef<RelativeVolumeState, R
     table: draw.table(),
     reading: null,
     rollingLine: null,
-    fillColor: settings.lineColor,
-    fillOptions: { colorAbove: withAlpha(settings.lineColor, RVOL_FILL_ALPHA), colorBelow: "transparent" },
   }),
   onBar: (ctx) => {
     const { bar, state, settings } = ctx;
@@ -218,17 +203,13 @@ export const relativeVolumeIndicator: RuntimeIndicatorDef<RelativeVolumeState, R
     state.reading = reading;
     state.rollingLine = settings.showRolling ? reading.rolling : null;
 
-    if (state.fillColor !== settings.lineColor) {
-      state.fillColor = settings.lineColor;
-      state.fillOptions = { colorAbove: withAlpha(settings.lineColor, RVOL_FILL_ALPHA), colorBelow: "transparent" };
-    }
-    ctx.draw.fill(reading.rvol, 1, state.fillOptions);
+    ctx.draw.fill(reading.rvol, 1, RVOL_FILL_OPTIONS);
 
     if (settings.showMarkers && isHot(reading, settings.hotThreshold)) {
       ctx.markers.plotshape({
         shape: "circle",
         position: "aboveBar",
-        color: reading.confirmed ? settings.hotColor : withAlpha(settings.hotColor, RVOL_PROVISIONAL_ALPHA),
+        color: reading.confirmed ? RVOL_HOT_COLOR : RVOL_HOT_PROVISIONAL,
         size: reading.rvol !== null && reading.rvol >= RVOL_LARGE_MARKER_FROM ? 2 : 1,
       });
     }

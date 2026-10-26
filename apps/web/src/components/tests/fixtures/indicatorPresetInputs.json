@@ -1686,7 +1686,7 @@
     {
       "key": "sessions",
       "kind": "numeric",
-      "min": 2,
+      "min": 3,
       "max": 60,
       "step": 1
     },
@@ -1720,18 +1720,6 @@
     {
       "key": "showMarkers",
       "kind": "boolean"
-    },
-    {
-      "key": "lineColor",
-      "kind": "color"
-    },
-    {
-      "key": "hotColor",
-      "kind": "color"
-    },
-    {
-      "key": "rollingColor",
-      "kind": "color"
     }
   ],
   "sessionDeltaProfile": [

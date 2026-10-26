@@ -39,8 +39,8 @@ function minuteBars(count: number, volumeAt: (index: number) => number): BarFram
 /** Codex items 1 and 2: eleven days of one-minute crypto, 100 then 300 per minute, last bar 450. */
 const ELEVEN_DAYS = minuteBars(11 * 1_440, (index) => (index === 11 * 1_440 - 1 ? 450 : index < 5 * 1_440 ? 100 : 300));
 
-describe("Codex item 1: a colour change replays and can change a number (reproduced; ruling: builder must fix)", () => {
-  it("rollingColor alone drops the latest ratio from 2.25x to 1.5x and removes its confirmed marker on ce8d11c", () => {
+describe("Codex item 1: a colour change replays and can change a number (reproduced on ce8d11c; ruling: builder must fix, applied in fix round 1: the pickers are gone and a settings update that changes no recompute key never replays)", () => {
+  it("a settings update carrying only a stale colour key leaves the latest ratio at 2.25x and keeps its confirmed marker", () => {
     const session = openLiveSession(relativeVolumeIndicator, SETTINGS, {}, []);
     try {
       for (const bar of ELEVEN_DAYS) session.dispatch({ bar });
@@ -50,10 +50,11 @@ describe("Codex item 1: a colour change replays and can change a number (reprodu
       expect(before.markers.some((call) => call.time === ELEVEN_DAYS[ELEVEN_DAYS.length - 1].ts_open)).toBe(true);
       session.updateSettings({ ...SETTINGS, rollingColor: "#123456" });
       const after = session.capture();
-      // Live state held ten prior observations for the slot (five at 100, five at 300: median 200);
-      // the replay over the retained seven days holds at most six (median 300).
-      expect(after.outputs.rvol.at(-1)).toBe(1.5);
-      expect(after.markers.some((call) => call.time === ELEVEN_DAYS[ELEVEN_DAYS.length - 1].ts_open)).toBe(false);
+      // Live state holds ten prior observations for the slot (five at 100, five at 300: median 200); a replay over
+      // the retained seven days would hold six (median 300) and read 1.5x. On ce8d11c this update replayed; it no longer does.
+      expect(after.outputs.rvol.at(-1)).toBe(2.25);
+      expect(after.outputs).toEqual(before.outputs);
+      expect(after.markers).toEqual(before.markers);
     } finally {
       session.close();
     }
@@ -100,8 +101,8 @@ describe("Codex item 2: default lookback 10 exceeds one-minute crypto retention 
   });
 });
 
-describe("Codex item 3: a resampled bucket truncated by a source gap is committed (reproduced; ruling: rule 7(b) withdrawn, settling test in rules.test.ts)", () => {
-  it("on ce8d11c the half-filled hour enters the baseline: lookback two, observations [60, 30], next normal hour reads 1.33x", () => {
+describe("Codex item 3: a resampled bucket truncated by a source gap was committed (reproduced on ce8d11c; ruling: rule 7(b) withdrawn, applied in fix round 1; settling test in rules.test.ts)", () => {
+  it("the half-filled hour files nothing: observations [60], and the next normal hour is still learning at minSessions 2", () => {
     const engine = createRelativeVolumeEngine({ sessions: 2, minSessions: 2, clock: "utc" });
     const hourly = (day: number, hour: number, volume: number, closed = true) =>
       barFrame(T0 + day * 24 * HOUR_MS + hour * HOUR_MS, { open: 1, close: 1, high: 1, low: 1, volume }, BINANCE_PERP, HOUR_MS, closed);
@@ -110,9 +111,11 @@ describe("Codex item 3: a resampled bucket truncated by a source gap is committe
     engine.onBar(hourly(1, 1, 60));
     const filed = engine.slotRing(0)!.items.map((item) => item.volume);
     const reading = engine.onBar(hourly(2, 0, 60));
-    // Reproduction of the defect as built; the amended rule requires [60] and a learning null here.
-    expect(filed).toEqual([60, 30]);
-    expect(reading.rvol).toBeCloseTo(60 / 45, 12);
+    // On ce8d11c this filed [60, 30] and read 60 / 45; the amended rule files [60] and reads a learning null.
+    expect(filed).toEqual([60]);
+    expect(reading.priorCount).toBe(1);
+    expect(reading.rvol).toBeNull();
+    expect(reading.status).toBe("learning");
   });
 });
 

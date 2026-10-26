@@ -40,9 +40,11 @@ One bar at a time, incrementally; `onBar` never rebuilds from an array.
 3. **Observation.** The bar's `volume`. A volume that is not a finite number
    at or above zero contributes nothing and the bar reads `null`.
 4. **Baseline.** Per slot key, a ring of the last `sessions` committed
-   observations (default 10, range 2..60) and their median (even count: mean
-   of the two middle values). Median, not mean, so one news day does not
-   inflate tomorrow's baseline. The ring capacity is the only bound.
+   observations (default 10, range 3..60) and their median (even count: mean
+   of the two middle values). Median, not mean: the median limits one news
+   day's influence on tomorrow's baseline instead of letting it inflate the
+   denominator. The minimum is three because with two observations the
+   even-count median is a mean. The ring capacity is the only bound.
 5. **Rolling comparison.** A ring of the last 20 committed bars; its mean is
    the plain relative-volume baseline, shown for comparison.
 6. **Read before write.** When a bar first arrives, the slot median, the count
@@ -50,15 +52,17 @@ One bar at a time, incrementally; `onBar` never rebuilds from an array.
    record. Every later recomputation of that bar (a forming revision, a
    corrected close) divides by those stored values. A bar never sees its own
    volume in its denominator.
-7. **Commit.** One observation per `ts_open`, filed into both rings at the
-   first of: the first dispatch with `closed: true`, or the arrival of a bar
-   with a greater `ts_open` while the record is still open (a close that never
-   arrived; the last known volume is filed). A later closed dispatch of the
-   same bar with a different volume updates the observation in place; a
-   valid-to-invalid correction removes it and restores whatever its insertion
-   evicted; invalid-to-valid re-inserts it. Corrections are tail-only: a
-   correction to an older bar reaches the indicator as the runtime's full
-   replay, which recreates this state from scratch.
+7. **Commit.** One observation per `ts_open`, filed into both rings on the
+   bar's first dispatch with `closed: true`. Only a closed bar is ever filed:
+   a bar that is superseded by a newer bar without ever closing (a close that
+   never arrived, a resampled bucket cut short by a source gap) contributes
+   **nothing** to either ring and its own ratio stays provisional. Missing
+   data contributes nothing. A later closed dispatch of the same bar with a
+   different volume updates the observation in place; a valid-to-invalid
+   correction removes it and restores whatever its insertion evicted;
+   invalid-to-valid re-inserts it. Corrections are tail-only: a correction to
+   an older bar reaches the indicator as the runtime's full replay, which
+   recreates this state from scratch.
 8. **Outputs.** `rvol = volume / slot median`, `null` while the slot has fewer
    than `minSessions` prior observations (default 3, clamped to `sessions`)
    or the median is zero. `rolling = volume / rolling mean`, `null` until 20
@@ -127,7 +131,7 @@ Inputs tab (two primary controls, each with a one-line hint):
 
 | Key | Label | Default | Range | Effect |
 |---|---|---|---|---|
-| `sessions` | Lookback (prior bars) | 10 | 2..60, step 1 | Ring capacity per slot. Replays every bar. |
+| `sessions` | Lookback (prior bars) | 10 | 3..60, step 1 | Ring capacity per slot. Replays every bar. |
 | `hotThreshold` | Unusual above (×) | 2 | 1..10, step 0.5 | Colours the line and marks the bar. Replays every bar. |
 
 Advanced group (collapsed at the end of the Inputs tab):
@@ -143,17 +147,16 @@ Visibility tab:
 |---|---|---|---|
 | `showRolling` | Show rolling 20 | off | Draws the rolling comparison line. Replays. |
 | `showMarkers` | Show unusual markers | on | Draws the circles. Replays. |
-| `lineColor` | Line colour | `#8672b3` | Line at or above 1 and the fill. |
-| `hotColor` | Unusual colour | `#2563eb` | Unusual bars and their markers. |
-| `rollingColor` | Rolling colour | `#787b86` | The rolling line. |
 
-`hotThreshold`, `showMarkers` and `showRolling` are `recompute`: a per-bar
-colour or marker cannot be reclassified from the old colour alone, and fills
-and markers need refreshing, so these replay (well under a second for 10,080
-bars). The colour pickers are `cosmetic`; the rolling line recolours in place,
-and a change to the line or unusual colour also replays, for the same reason.
-Every key is in the schema, so [presets](setting-presets.md) work without any
-extra code.
+Every setting is `recompute`: `hotThreshold`, `showMarkers` and `showRolling`
+change which bars are coloured or marked, which cannot be reclassified from a
+stored colour alone, so they replay (well under a second for 10,080 bars).
+There is no cosmetic setting and the colours are fixed in this version. The
+reason is a rule, not a shortcut: a cosmetic setting must never change a
+number, and a replay over the retained bars can (section "Replay and
+Historical Mode"), so no setting is allowed to trigger one unless it changes
+the mathematics. Every key is in the schema, so [presets](setting-presets.md)
+work without any extra code.
 
 ## Alert conditions
 
@@ -170,20 +173,34 @@ adds or removes it on the next dispatch; a forming revision redraws rather than
 duplicates. A bar whose close never arrived keeps its provisional marker. The
 table's first row carries the same ratio in the same colour.
 
-Fixture rate: on the frozen 15-session equity fixture at the default threshold,
-13 markers over the 4,680 evaluated bars (sessions 4..15), 0.28 per 100 bars
-(2.2 per 1,000), at most one per bar; the twelve labelled anomalies plus one
-noise bar. The protocol ceiling is 40 per 1,000 for a signal tool.
+Fixture rates, both quoted because they differ by design:
+
+- Frozen 15-session equity fixture at the default threshold: 13 markers over
+  the 4,680 evaluated bars (sessions 4..15), 0.28 per 100 bars (2.2 per
+  1,000), at most one per bar; the twelve labelled anomalies plus one noise
+  bar.
+- Session-wide volume shift (three days at 100 per minute, then a day at
+  250): 1,440 of 1,440 eligible bars are marked, 1,000 per 1,000. That is
+  correct behaviour for a descriptive tool: every bar of such a session is
+  unusual relative to the prior sessions at its own minute, and no cooldown
+  hides it. A one-hour 3× burst on an ordinary day marks exactly those 60
+  bars.
+
+The tool is classified as a descriptive annotation under the protocol's 200
+per 1,000 ceiling on typical data; the frozen fixture sits at 2.2 per 1,000.
 
 ## Warm-up
 
 A slot shows a ratio once it holds `minSessions` prior observations (three by
 default), so a fresh symbol shows `Learning · n of 3 prior` for three sessions
-at every minute. The rolling comparison needs 20 committed bars. On one-minute
-bars the chart retains 10,080 bars: about seven UTC days for crypto, about 25
-regular sessions for equities, so the default lookback of ten fits; a
-60-bar lookback on one-minute crypto never fills. Hourly bars warm up after
-three sessions as well, since the key is the start minute, not the bar count.
+at every minute. The rolling comparison needs 20 committed bars. The chart
+retains 10,080 bars: about seven UTC days of one-minute crypto, about 25
+regular sessions of one-minute equities. After a reload, one-minute crypto
+therefore has **at most six prior observations per minute** until the chart
+has run for ten days; the default lookback of ten fills only as the live
+session keeps running, and a 60-bar lookback never fills on one-minute bars.
+Hourly bars warm up after three sessions as well, since the key is the start
+minute, not the bar count.
 
 ## Replay and Historical Mode
 
@@ -198,9 +215,15 @@ has already discarded past its 10,080-bar retention, while a replay starts
 from the retained bars. Live-versus-replay equivalence therefore holds for
 every bar whose full lookback lies within the retained series; on the 12,000-bar
 crypto fixture at a lookback of 3 that is 5,760 of the 10,080 retained bars,
-and the first 1,920 retained bars differ by design. A bar committed because its
-close never arrived keeps provisional styling live, which a replay (where every
-bar is closed) does not show; its numbers still match.
+and the first 1,920 retained bars differ by design. On one-minute crypto with
+the default lookback of ten this means a rebuild or a reconnect (a late bar,
+a snapshot, any `REBUILT` replay) **can change the latest ratio**: after
+eleven live days a bar at 450 against ten prior observations of 100 and 300
+reads 2.25× live and 1.5× after a replay that holds only the six retained
+prior observations at 300. The test `rollover and reconnect` pins exactly
+this. A bar that never closed before the next bar arrived is never filed; it
+keeps its provisional styling live and a replay of the retained bars does not
+contain it as an observation either, so the two agree.
 
 Truncation invariance (no future data) holds at every cut: a bar's committed
 output and confirmed marker never change when later bars are added.
@@ -223,6 +246,8 @@ detection on an eligible non-anomaly bar. Reproduced by
 | Time of day (slot median, this indicator) | 4680 | 13 | 12/12 | 100.00% | 1 | 0.02% | 240 | 0 | 0.00% |
 | Same-slot mean | 4680 | 12 | 12/12 | 100.00% | 0 | 0.00% | 240 | 0 | 0.00% |
 | Rolling 20 mean (plain RVOL) | 4680 | 32 | 12/12 | 100.00% | 20 | 0.43% | 240 | 19 | 7.92% |
+
+False-positive rates divide by the eligible non-anomaly bars (4,668).
 
 What the tool shows that the baseline hides: the rolling baseline fires on 19
 of the 240 opening and closing minutes of the evaluated sessions, where volume
@@ -253,17 +278,28 @@ harness's pooled probe (three untimed warm-up replays, five timed replays of
 the first 10,080 bars of the frozen crypto fixture, `onBar` plus `readOutput`
 per bar with no-op draw and marker namespaces, p99 by nearest rank; drawing is
 excluded): p50 0.001 ms, p99 0.004 ms, against the brief's 0.05 ms ceiling.
-The real-runtime activation replay of the same bars took 68 ms wall with an
-`onBar` p99 of 0.007 ms. After rolling 1,000 bars past the retention cap every
-output line holds exactly 10,080 entries and no marker is older than the
-oldest retained bar. State is at most 1,440 slot rings of `sessions`
-observations, one ring of 20, and one tail record.
+The real-runtime activation replay of the same bars took 43 ms wall with an
+`onBar` p99 of 0.005 ms. The forming-bar probe warms every slot with all
+10,080 fixture bars first and then revises the next bar 500 times, crossing
+the unusual threshold on every revision so the marker appears and disappears
+each time: `onBar` p50 0.0024 ms, p99 0.0298 ms, max 0.184 ms (the validator
+measured p99 0.0317 ms, max 0.085 ms), reported beside the pooled replay p99
+of 0.0041 ms by `relativeVolumePerf.test.ts` and in its JSON. After rolling
+1,000 bars past the retention cap every output line holds exactly 10,080
+entries, no marker is older than the oldest retained bar and the heap grows
+about 630 to 660 bytes per bar (the harness floor is about 370).
+State is at most 1,440 slot rings of `sessions` observations, one ring of 20,
+and one tail record.
 
 ## Limitations
 
 - Needs `minSessions` prior observations per slot: one-minute crypto retains
   seven UTC days, one-minute equities about 25 sessions; a fresh symbol shows
-  "learning" for three sessions.
+  "learning" for three sessions, and after a reload one-minute crypto has at
+  most six prior observations per minute until the chart has run for ten days.
+- A bar that never closed contributes nothing; a session-wide volume shift
+  marks every bar of that session (section "Alert conditions").
+- Colours are fixed in this version; there is no cosmetic setting.
 - Holidays and early closes are ordinary sessions; an early-close session's
   short last bar is one observation among `sessions` (section "Data").
 - No duration normalisation (nominal `interval_ms`).

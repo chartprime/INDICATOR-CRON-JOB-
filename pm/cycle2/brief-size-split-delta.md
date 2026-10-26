@@ -1,4 +1,4 @@
-# Build brief: Size-Split Delta (G1 round 2, L1 specialist, 2026-10-26)
+# Build brief: Size-Split Delta (G1 round 3, L1 specialist, 2026-10-26)
 
 Shared rules: `PM/WORKER-BRIEF.md`, `PM/CAPABILITIES.md` (sections 5 and 9),
 `PM/cycle1/ux-standard.md` (binding), `PM/cycle1/validation-protocol.md`.
@@ -7,7 +7,8 @@ Structure follows `PM/cycle1/brief-rvol-clock.md` after its five rounds.
 ## The trading question
 
 "Does large-print flow confirm this price extreme?" Small-print flow is
-shown as context (is the crowd on the other side), not as a second question.
+shown as context (are the small prints on the other side), not as a second
+question.
 
 ## Target user and decision
 
@@ -23,10 +24,13 @@ prints small). Descriptive only.
 - Folder `apps/web/src/lib/indicators/size-split-delta/`; def
   `sizeSplitDelta.ts`; pure math `sizeSplitDeltaMath.ts`; tests in `tests/`.
 - id `sizeSplitDelta`, label `"Size-Split Delta (large vs small)"`, category
-  `"l1"`, `ticksWanted: true`, `{ kind: "ownPane", priceLines: [0] }`, no
-  `autoscaleRange` (a cumulative sum has no fixed range), no `timeframeGate`.
-  The doc qualifies "large": a p98 estimated from preceding frames, ties
-  included, so more than 2 percent of a bar's prints can classify large.
+  `"l1"`, `ticksWanted: true`, `maxReplayBars: 10_080`, `{ kind: "ownPane",
+  priceLines: [0] }`, no `autoscaleRange` (a cumulative sum has no fixed
+  range), no `timeframeGate`. The doc qualifies "large": a p98 estimated
+  from preceding frames, ties included, so more than 2 percent of a bar's
+  prints can classify large. Cumulative-since-anchor is a presentation
+  choice; the brief claims no benefit over a per-bar view (v2 adds a per-bar
+  histogram display mode).
 - Historical Mode policy: `unavailableReason: "Needs the live tape: the
   archive keeps only the largest prints of each minute."`
 
@@ -89,28 +93,34 @@ fixture numbers do not transfer between transports.
    tierAtOpen, largeBar, smallBar, tapeVolume, share, eligible, coverage,
    committed}`. The tail commits at the first of (a) its first dispatch with
    `bar.closed === true`, (b) the first dispatch of a greater `ts_open`
-   while uncommitted. Sequence, within one `onBar` on (b): 1 rescan the
-   tail's window once from the store; 2 compute `share` and `eligible` from
-   its last seen `bar.volume`, freeze flow **and** eligibility; 3 if
-   coverage is `"all"`, push its sizes into the ring and re-sort; 4 advance
-   the cumulatives if eligible, else rule 9; 5 create the new record and
-   read its `tierAtOpen` (rule 2). On (a) steps 1 to 4 run at the close and
-   step 5 on the next bar's first dispatch, so replay and explicit close
-   read identical thresholds. After commit nothing changes on a later
-   dispatch of the same `ts_open` (duplicate close, changed volume) or a
-   late print; only a `REBUILT` or `setTicks` replay rebuilds, from the
-   store. A dispatch older than the tail is ignored.
+   while uncommitted. On (a), which the runtime publishes: 1 rescan the
+   window once from the store; 2 compute `share` and `eligible` from
+   `bar.volume`, freeze flow **and** eligibility; 3 if coverage is `"all"`,
+   push its sizes into the ring and re-sort; 4 advance the cumulatives if
+   eligible, else rule 9. On (b), which cannot republish the previous bar
+   (the runtime appends only the current output), steps 2 to 4 run on the
+   tail's **last revision values, no rescan**, so the committed history
+   equals what was displayed; a print that arrived after the last revision
+   and before supersession is excluded until a `REBUILT` or `setTicks`
+   replay, and the doc says so. Step 5, on the new bar's first dispatch
+   after either path: create the record and read its `tierAtOpen` (rule 2).
+   After commit nothing changes on a later dispatch of the same `ts_open`
+   (duplicate close, changed volume) or a late print. A dispatch older than
+   the tail is ignored.
 7. **Forming bar.** Every `replace: true` rescans the forming window from
    scratch (0.0105 ms measured for 1,000 prints in a 250,000-print store)
-   and overwrites the tail: no cursor, no double counting. Forming outputs
-   are the frozen cumulative plus the tail, provisional (50 percent alpha,
-   row `Forming`).
+   and overwrites the tail: no cursor, no double counting. Forming output =
+   the frozen cumulative **under the current anchor** plus the forming
+   contribution, provisional (50 percent alpha, row `Forming`); the
+   forming-prefix test checks this identity at every revision.
 8. **Anchor and reset.** `anchor`: `day` (default) or `week`, the shared
    session kernel's UTC-aligned windows (`sessionWindowStartFor`, as VWAP
-   Bands), or `tape` (from the first covered bar). Both cumulatives reset to
-   0 at the first committed bar whose window differs from the previous
-   committed bar's. No bar-count anchor: one placed from `barCount` fails
-   truncation invariance by design.
+   Bands), or `tape` (from the first covered bar). On the **first dispatch
+   inside a new anchor window** (forming included): the cumulative base
+   becomes zero, the marker ring empties, table rows (a) and (b) clear; the
+   first bar of the window shows only its own contribution. No bar-count
+   anchor: one placed from `barCount` fails truncation invariance by
+   design.
 9. **Gaps.** A `null` or ineligible bar adds nothing; both lines are `null`
    on it; the cumulative resumes unchanged at the next eligible bar (row
    `Tape gap · 3 bars`); the doc says the sum omits the gap's flow. A
@@ -128,7 +138,9 @@ fixture numbers do not transfer between transports.
     cumulative `large`); a `null` or ineligible bar or an anchor reset
     empties it, so no comparison crosses a reset or a gap. `mabsL`, `mabsS`
     = means of `|largeBar|`, `|smallBar|` over the ring, bar `t` excluded.
-    Nothing fires until the ring is full.
+    Nothing fires until the ring is full. An **extreme** is strict:
+    `close_t > max` ring close (or `< min`). When both markers fire on one
+    bar, divergence wins row (b).
     - **Large-tier divergence** (`arrowDown` above bearish, `arrowUp` below
       bullish, the large line's colour): `h` = ring bar with the highest
       close (latest if tied); bearish fires when `close_t > close_h` and
@@ -156,14 +168,19 @@ fixture numbers do not transfer between transports.
 ## Default view
 
 Own pane: `large` purple `#8672b3` width 2, `small` blue `#2563eb` width 1,
-dotted zero line, no fill. Table top right, three rows of at most 30
-characters: (a) current state from the signs of the sums of the last `N = 3`
-committed contributions, `Large selling · small buying` (`flat` for an exact
-zero, `—` under 3 valid); (b) the last condition with time in the
-instrument's clock (as Relative Volume resolves it) and value, `Div ↓ 12:34
-· −8.1` (depth `large_t - large_h`) or `Conflict 12:34 · +4.2/−3.1` (the two
-sums); (c) the status row. Before warm-up the pane is empty. Same hues on
-the dark chart; markers take the large line's colour, never green/red.
+dotted zero line, no fill. Divergence/confirmation is the primary state;
+conflict circles are secondary context, off by default. Table top right,
+three rows of at most 30 characters: (a) the confirmation state at the
+current bar with compact values, `L +12.4 · S −8.1 · confirms` when
+`close_t` is a strict ring extreme and `large_t` strictly exceeds the ring's
+matching `large` extreme, `… · lags` when the close is a strict extreme but
+`large_t` is not, `… · no extreme` otherwise; `—` while the ring is not
+full; reset with the ring on gaps and anchors; (b) the last condition with
+time in the instrument's clock (as Relative Volume resolves it) and value,
+`Div ↓ 12:34 · −8.1` (depth `large_t - large_h`) or `Conflict 12:34 ·
++4.2/−3.1`, cleared on anchor reset; (c) the status row. Warm-up stays one
+row (pane empty). Same hues on the dark chart; markers take the large
+line's colour, never green/red.
 
 ## Controls
 
@@ -175,11 +192,12 @@ shares); `anchor` select `day` / `week` / `tape`. All recompute.
 Advanced (`tab: "advanced"`): `K` "Window (bars)" 10..60 step 5; `m`
 "Divergence depth (×)" 1..4 step 0.5; `q` "Conflict strength (×)" 1..4 step
 0.5; `minTapeShare` "Minimum tape share" 0.2..1 step 0.05; recompute.
-Visibility: `showSmall`, `showDivergence`, `showConflict` (recompute). No
-colour pickers (RVOL G3 ruling 1). A `staticHint` names the warm-up (200
-sizes, about two minutes on BTC-USDT, `"all"` coverage), the tape-start
-rule and the markers ("arrow: price made a new extreme the large tier did
-not; circle: the two tiers started pulling apart").
+Visibility: `showSmall` (true), `showDivergence` (true), `showConflict`
+(**false**); all recompute. No colour pickers (RVOL G3 ruling 1). A
+`staticHint` names the warm-up (200 sizes, about two minutes on BTC-USDT,
+`"all"` coverage), the tape-start rule and the markers ("arrow: price made
+a new extreme the large tier did not; circle: the two tiers started pulling
+apart").
 
 ## Frozen fixtures in `validation/fixtures.ts`
 
@@ -198,51 +216,57 @@ per bar in order: large sides, small sides, close noise, print price noise.
   `2 (u - 0.5)`; the final print trades exactly at the target.
 - **Planted divergences** at bars `45 + 30 j`, `j = 0..7`: at `p-2..p` both
   large prints take side `-d`; at `p` the target is `max(close_{p-20..p-1})
-  + 30` (`min - 30` for `d = -1`) and small prints are buys with
-  probability 0.9 (sells for `d = -1`): the crowd chases, the whales sell
-  into it. Labels `plantedIndices`, `direction`, `eligibleFrom` (first bar
-  with a full ring). The `barSides` delta at `p` is about `+0.35 d`, so
-  baseline (a) sees no divergence.
-- Threshold assertion, warm-up excluded: from the first bar with
-  `tierAtOpen !== null` the test recomputes the nearest-rank p98 from the
-  ring the fixture actually produces and asserts equality, and that every
-  1.0 print classified large and every small print small.
+  + 30` (`min - 30` for `d = -1`, a strict new extreme) and small prints
+  are buys with probability 0.9 (sells for `d = -1`): the small prints
+  chase, the large prints oppose the move. Labels `plantedIndices`,
+  `direction`, `eligibleFrom` (first bar with a full ring). The `barSides`
+  delta at `p` is about `+0.35 d`, so the CVD baseline sees no divergence.
+- Threshold and contribution assertion, warm-up excluded: from the first bar
+  with `tierAtOpen !== null`, the test recomputes the nearest-rank p98 from
+  the ring the fixture actually produces and asserts equality, then derives
+  the expected `largeBar`/`smallBar` with a reference implementation that
+  classifies `size >= threshold`, boundary print included, and asserts
+  equality. No perfect-separation claim: after two bars the p98 is the
+  largest small print, which classifies large.
 
 **Regime generator `sizeSplitRegimeBars({ seed, priceFollows })`**: 600
 bars, the same print structure and side model (`d` flipping every 30 bars,
 large side `d` at 0.65, small buy at `0.5 - 0.15 d`); target close by
 `priceFollows`: `"large"` `open + 25 · netLarge + noise`, `"small"` `open +
 60 · netSmall + noise` (net small BTC), `"none"` `open + 30 (u - 0.5)`.
-Seeds 1..10 per regime, declared before any run. Label: `t` is a true
-divergence when `close_t` is a `K`-window extreme and the driving tier's
-net over `t-2..t` opposes it by at least `2 · mabs`; `"none"` has no
-labels, so every marker there is false. Eligibility (full ring, eligible
-bar) is identical for the tool and both baselines.
+Seeds 1..10 per regime, declared before any run. **Labels come from the
+generator's hidden state, independent of any detector**: in `"large"` it
+plants 10 events per seed at bars `60 + 55 j`, `j = 0..9`, exactly as the
+mechanism fixture does (large prints oppose a forced strict new extreme over
+`p-2..p`); `"small"` and `"none"` plant nothing and carry no
+large-divergence labels, so every marker there is false. A hit is a marker
+on the planted bar exactly. Eligibility (full ring, eligible bar) is
+identical for every compared configuration.
 
-## Baselines (test-only `RuntimeIndicatorDef`s in `tests/`)
+## Comparisons (test-only `RuntimeIndicatorDef`s in `tests/`)
 
-(a) The `orderFlow` CVD from `barSides`, rule 11 applied to cumulative total
-delta with its own `mabs`. (b) Codex's simplest alternative: a fixed
-threshold (the suggested `tierSize`; 0.5 BTC on the fixtures), two per-bar
-deltas, no cumulative, the same gates; scored by the divergence rule in
-per-bar form: bearish when `close_t` is the ring high and `sum_{t-2..t}
-largeBar <= -m · mabsL`.
+One controlled comparison: the indicator in `auto` mode versus the same
+indicator in `fixed` mode (`tierSize` 0.5 BTC on the fixtures), identical
+cumulative detector, identical gates; the only difference is the tier. Plus
+the `orderFlow` CVD from `barSides` with rule 11 applied to cumulative total
+delta and its own `mabs`, as "what candles alone show".
 
 ## Acceptance (`anchor: tape`, defaults, counts pinned in tests)
 
 - Mechanism fixture: divergence recall on the 8 planted bars `>= 7/8`, each
   on bar `p` exactly; false divergences on eligible non-planted bars `<= 2`
-  and `<=` baseline (a)'s; tier-conflict onsets pinned to the exact count
-  the frozen rule produces; combined budget `<= 40` per 1,000, `maxPerBar
-  <= 2`.
+  and `<=` the CVD baseline's; tier-conflict onsets pinned to the exact
+  count the frozen rule produces; combined budget `<= 40` per 1,000,
+  `maxPerBar <= 2`.
 - Regime fixtures, per regime over 10 seeds: hits, false markers and
-  eligible bars for the tool, (a) and (b) in one table. The adaptive
-  cumulative tool must beat (b): fewer false markers on `"none"` at equal
-  or better recall on `"large"`, summed over seeds. Otherwise **the build
-  ships (b)'s rule set** (fixed tier, per-bar deltas, per-bar divergence)
-  under this id, and the doc says so.
-- `whaleVersusCrowd()` (whale 50 BTC): whale tape `largeBar +50, smallBar 0`,
-  crowd tape `0, +50`, identical candles, baseline (a) `+50` on both.
+  eligible bars for `auto`, `fixed` and CVD in one table. `auto` must beat
+  or match `fixed`: false markers on `"none"` and `"small"` no higher, at
+  equal or better recall on `"large"`, summed over seeds. If it does not,
+  the build fails acceptance like any other failure and the PM decides; no
+  fallback ships from this brief.
+- `whaleVersusCrowd()` in **fixed mode, `tierSize` 1.0 BTC** (auto cannot
+  classify an isolated tape before 200 sizes): whale tape `largeBar +50,
+  smallBar 0`, crowd tape `0, +50`, identical candles, CVD `+50` on both.
 - 10k aggregate fixture, `candleOf` per minute (five full minutes): the auto
   tier after each commit equals the nearest-rank p98 the test computes from
   the same ring, `share = 1.0 ± 1e-9`, tier totals equal the signed sum.
@@ -256,20 +280,28 @@ uncovered windows `null`, nothing stale. Shuffled `tapeOf` equals in-order.
 row. Equity: a `DXFEED_EQUITY` tape totalling 0.6 of `bar.volume` draws,
 0.4 is `null` with the share row; `equityUnsidedBars()` without a tape is
 `null` throughout and the code never reads `buy_volume`. `timeGapBars()`:
-the cumulative carries. Forming tail stays provisional. Session rollover:
-both lines equal the first bar's contribution and the marker ring is empty.
+the cumulative carries. Forming tail stays provisional. Anchor rollover:
+the first forming dispatch of the new window shows only its own
+contribution, rows (a) and (b) are cleared and the ring is empty. Late print
+before supersession: a print added to the store after the tail's last
+revision and before the next bar's first dispatch leaves the committed
+outputs equal to the displayed history and to a replay built from the same
+displayed decisions; a `REBUILT` replay then includes it.
 
 ## Replay, live and retention
 
-Both read the same store, so `checkLiveReplayEquivalence` with the fixture
-tape as `extras.ticks` must agree on `largeBar` and `smallBar` for **every
-covered committed bar**, and on `large`, `small` and markers whenever the
-anchor lies inside the retained series; the forming tail is excluded.
-Records are trimmed with `discardLeading`; the ring's 4,096 sizes may
-predate the oldest retained bar, so the per-bar comparison is required only
-where those sizes are retained, with a non-zero compared count asserted.
-The only documented difference is a changed store (reconnect). The
-future-prints test of rule 13 runs here.
+`discardLeading` trims runtime outputs and markers only; it does not notify
+indicator state, so the indicator bounds its own: two running totals, the
+4,096-size ring, the `K`-window ring, and a per-bar record ring of fixed
+capacity `maxReplayBars` (10,080); nothing else grows. Both paths read the
+same store, so `checkLiveReplayEquivalence` with the fixture tape as
+`extras.ticks` must agree on `largeBar`, `smallBar`, `large`, `small` and
+markers from the **first retained committed bar whose anchor start and
+whose preceding 4,096 committed sizes both lie inside the retained
+series**, with a non-zero compared count asserted; the forming tail is
+excluded. The only documented difference is a changed store (reconnect).
+The future-prints test of rule 13 and the forming-prefix test of rule 7
+run here.
 
 ## Performance (frozen method)
 
@@ -279,8 +311,8 @@ in one `tapeOf` store (201,600 prints, under the cap): p99 `<= 0.5 ms`,
 wall `<= 5 s`. `probeFormingBar` (60 s, 50 a second, 1,000 prints): p99
 `<= 0.1 ms`. `probeRollover`: every output key 10,080 long,
 `markersBeforeRetention === 0`, `bytesPerExtraBar` within 3× the 370 B
-floor. State: 9 numbers per retained bar (under 1 MB), two 32 KB arrays,
-the K-ring.
+floor. State: a 10,080-record ring of 9 numbers (under 1 MB), two 32 KB
+arrays, the K-ring, two totals.
 
 ## Success criteria
 
@@ -301,20 +333,22 @@ the K-ring.
 
 Print size is not participant size; the tier follows the delivered trade
 frame. Lines start at the tape start (about 2.6 hours back on BTC-USDT at
-most), never in Historical Mode or on the REST transport. Equities show
-sided flow only, `null` under the share gate on most bars. Descriptive; no
-forward claim.
+most), never in Historical Mode or on the REST transport. A bar superseded
+without a close keeps its last displayed values until a rebuild. Equities
+show sided flow only, `null` under the share gate on most bars.
+Cumulative-since-anchor is a presentation choice (per-bar histogram mode in
+v2). Descriptive; no forward claim.
 
 ## Summary (ten lines)
 
 1. Question: does large-print flow confirm this price extreme; two cumulative lines plus per-bar seams.
 2. Tier fixed at bar open from a 4,096-size ring of committed `"all"` windows (nearest-rank p98, ties large, 200 minimum) or fixed.
-3. Commit at close or supersession as a numbered sequence: rescan, freeze flow and eligibility, ring, cumulative, next tier.
+3. Commit at close (rescan from the store) or supersession (last revision values, no rescan); freeze flow and eligibility, ring, cumulative, next tier.
 4. Honest nulls on `"thin"`, `"none"`, REST, Historical Mode, unknown or low share; coverage is the only tick gate.
-5. Anchor `day`/`week`/`tape`; the cumulative starts at the later of anchor and tape start; gaps carry and clear the ring.
-6. Two markers on exactly `K` prior valid bars: divergence (arrows), conflict onset (circle); 40 per 1,000 combined.
-7. Mechanism fixture (300 bars, 8 planted divergences) plus regime generator (large / small / none, 10 seeds each).
-8. Two baselines (CVD, fixed-tier per-bar); ship (b)'s rule set if the adaptive cumulative shows no benefit.
+5. Anchor `day`/`week`/`tape`; reset on the first dispatch in a new window (zero base, empty ring, rows cleared); gaps carry.
+6. Two markers on exactly `K` prior valid bars: divergence (arrows, primary), conflict onset (circle, off by default); 40 per 1,000 combined.
+7. Mechanism fixture (300 bars, 8 planted) plus regime generator (large plants 10 per seed; small and none plant none; 10 seeds each).
+8. One controlled comparison, auto versus fixed tier with the identical detector, plus the CVD "candles alone" baseline; no fallback ships.
 9. Pooled p99 `<= 0.5 ms`, forming p99 `<= 0.1 ms`, rollover flat; state under 1 MB plus 64 KB.
 10. Three primary controls; three-row table within 30 characters; no colour pickers.
 
@@ -365,3 +399,32 @@ effort M. Proceed to Codex plan round 1.
    cumulative shows no benefit.
 10. Kept: 4,096 ring, p98, 200 minimum, anchors, no `barSides`, three
     primary controls, honest nulls.
+
+## Round 3 changes (after Codex plan round 2, PM rulings 1 to 10)
+
+1. "Large prints oppose the move" replaces "whales" throughout.
+2. Supersession commits the tail's last revision values without a rescan
+   (the runtime cannot republish the previous bar); only an explicit close
+   rescans; a print between the last revision and supersession is excluded
+   until `REBUILT`/`setTicks`, documented and tested.
+3. Anchor reset on the first dispatch inside a new window: zero base for
+   the forming output, empty ring, rows (a) and (b) cleared; forming-prefix
+   checks at every revision.
+4. Own bounded state named (totals, size ring, `K`-ring, 10,080-record
+   ring, `maxReplayBars: 10_080`); exact equivalence eligibility: anchor
+   start and preceding 4,096 sizes both retained, non-zero count.
+5. Divergence/confirmation is the primary state; `showConflict` false; row
+   (a) `L +12.4 · S −8.1 · confirms | lags | no extreme` with strict
+   extremes; row (b) cleared on reset, divergence wins; warm-up one row.
+6. Perfect-separation claim removed; expected contributions from a
+   reference implementation with `size >= threshold`, boundary included.
+7. One controlled comparison, `auto` versus `fixed` with the identical
+   cumulative detector; CVD stays as the candles-alone baseline; the
+   per-bar detector and the "ship (b)" fallback are gone; failure is an
+   acceptance failure for the PM.
+8. Labels from the generator's hidden state: `"large"` plants 10 per seed
+   at `60 + 55 j`; `"small"` and `"none"` plant none; strict extremes,
+   exact-bar hits.
+9. `whaleVersusCrowd` runs in fixed mode, `tierSize` 1.0 BTC.
+10. Per-bar histogram display deferred to v2; cumulative-since-anchor stated
+    as a presentation choice with no claimed benefit.

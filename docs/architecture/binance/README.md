@@ -193,6 +193,15 @@ the request went out; the minute at the edge takes the stream's own close. A
 missing minute keeps the feed recovering; a gap past 11,000 minutes re-reads
 the history as a fresh snapshot.
 
+Two known limitations remain from the final code review and are tracked as a
+follow-up (see `pm/BACKLOG.md`): coverage merges adjacent or overlapping
+milliseconds from two independently observed stream spans without checking
+fill-id continuity, so a stream that resumes within the same or the next
+millisecond could close a seam over missing fills; and a pair switch during
+the two-second bootstrap grace discards the staged pages while the cached
+state remembers the read as done, so returning to that pair skips its
+bootstrap until the page is reloaded.
+
 To build a static bundle with the mode baked in and relative asset paths:
 
 ```bash

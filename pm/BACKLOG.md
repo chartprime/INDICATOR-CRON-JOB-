@@ -47,6 +47,11 @@ replenishment rate after a wall is eaten.
 | Browser-direct Binance mode (test link) | Platform/Web | DONE: merged to main; link at version 4 (4 Codex rounds, 9 findings fixed) |
 | Binance spot URL overrides (stage A) and REST candle transport (stage B) | Platform | DONE: merged to main (4 Codex rounds, 10 findings fixed); stage B2 aggregate trades and stage C depth remain behind capability contracts |
 | VPS test host recipe | PM | done (`ops/test-host-recipe.md`) |
+| Browser-direct L1 parity (markers, big-print pool, tape coverage) | L1 specialist | DONE: merged to main after 4 Codex rounds (10 findings fixed); two WARNING left as documented limitations |
+| L1 parity follow-up: fill-id continuity before merging adjacent stream spans; keep staged bootstrap pages across a pair switch during the grace period | L1 specialist | TODO: own small branch from main, one Codex round |
+| Squeeze Breakout Context brief | OHLCV specialist | Codex plan rounds 1 and 2 REVISE; round 3 (last) in revision |
+| Size-Split Delta brief | L1 specialist | Codex plan rounds 1 and 2 REVISE; round 3 (last) in revision |
+| Depth capture on the owner's test host (`ops/enable-capture.sh`) | Owner | waiting for the host address and team credentials |
 
 ## Harness debt
 

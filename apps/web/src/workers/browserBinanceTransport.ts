@@ -21,7 +21,7 @@
 import marketInstrumentCatalog from "../../../../config/market-instruments.json";
 import type { FrameIdentity, MarketKind, MarkerFrame, TradeFrame } from "../types/frames";
 import { createTimeCoveredMarkerRetentionBuffer, type MarkerRetentionBuffer } from "../lib/chart/markerRetention";
-import { createAggressivePool, DEFAULT_CALIBRATION_MS, type AggressivePool } from "../lib/tape/aggressivePool";
+import { createAggressivePool, DEFAULT_CALIBRATION_MS, DEFAULT_WINDOW_MS as POOL_WINDOW_MS, type AggressivePool } from "../lib/tape/aggressivePool";
 import { MARKER_BUCKET_MS, MARKERS_PER_BUCKET_SIDE } from "../lib/tape/largeTradeDetection";
 
 export const BROWSER_BINANCE_SOURCE = "browser-binance";
@@ -125,6 +125,13 @@ export const TAPE_BOOTSTRAP_FAILURES_BEFORE_DEGRADED = 3;
 export const MAX_SEAM_FILL_PAGES = 10;
 /** Failed reads of one seam before its gap is left open. */
 export const SEAM_FILL_FAILURES_BEFORE_GIVING_UP = 3;
+/** With a stream open but silent when the bootstrap pages are all read, how long they wait for a first trade before committing without one. */
+export const BOOTSTRAP_COMMIT_GRACE_MS = 2_000;
+/** Bounds on the coverage bookkeeping, beyond the retention pruning. */
+export const MAX_COVERAGE_ENTRIES = 128;
+export const MAX_UNVERIFIED_MS = 1_024;
+/** Pairs whose tape state (markers, pool, coverage) is kept across transport instances, so a reconnect does not bootstrap again. */
+export const MAX_TAPE_STATES = 4;
 /** How far back a marker is kept, as the runtime's large-trade history window (BACKFILL_DAYS). */
 export const MARKER_HISTORY_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 /** The runtime's history buffer caps (history.js DEFAULT_MAX_MARKERS, DEFAULT_MAX_TRADES) and the wire's snapshot caps (frames.js). */
@@ -194,8 +201,6 @@ type Session = {
   markers: MarkerRetentionBuffer;
   /** The runtime's aggressive-print pool over the bootstrap and the live tape. */
   pool: AggressivePool<TradeFrame>;
-  /** The first live trade's exchange time: bootstrap rows at or after it are the stream's and are dropped. */
-  firstLiveTradeTs: number | null;
   /**
    * The stretches of tape observed in full, oldest first, merged when they
    * touch: the bootstrap's id-contiguous pages, seam fills, and every closed
@@ -203,10 +208,14 @@ type Session = {
    * one of them, or the open stream span.
    */
   observed: TapeInterval[];
-  /** The open stream span: its first and last live trade so far; null while no stream delivers. */
-  live: { from: number; last: number } | null;
+  /** Every closed stream span with its first and last trade ids: REST rows inside one are tape the stream delivered. */
+  liveSpans: LiveSpan[];
+  /** The open stream span (`to` Infinity): its first and last live trade so far; null while no stream delivers. */
+  live: (LiveSpan & { last: number }) | null;
   /** Gaps between observed stretches that a seam fill could not close; they stay open. */
   unfillable: TapeInterval[];
+  /** Boundary milliseconds whose aggregate trades straddle a live span's first or last trade and cannot be split by id: outside every claim. */
+  unverified: number[];
   /** The bootstrap's calibration window start: rows from it calibrate the pool's floor, as the runtime's newest warm-up chunk does. */
   calibrationFrom: number;
   tape: TapeBootstrap;
@@ -214,8 +223,35 @@ type Session = {
   markerHistorySeq: number;
 };
 
-/** A closed, inclusive stretch of exchange time. */
-type TapeInterval = { from: number; to: number };
+/** A closed, inclusive stretch of exchange time, with the trade or aggregate id its ends were observed at, when known. */
+type TapeInterval = { from: number; to: number; startTradeId?: number; endTradeId?: number; endAggId?: number };
+
+/** A stream span: exchange time and trade id of its first and last trade (`to`/`lastId` Infinity while open). */
+type LiveSpan = { from: number; to: number; firstId: number; lastId: number };
+
+/** The tape state of a pair, kept across transport instances (a lost stream closes the transport, as a lost runtime socket would). */
+type TapeState = {
+  markers: MarkerRetentionBuffer;
+  pool: AggressivePool<TradeFrame>;
+  observed: TapeInterval[];
+  liveSpans: LiveSpan[];
+  unfillable: TapeInterval[];
+  unverified: number[];
+  calibrationFrom: number;
+  recentTrades: TradeFrame[];
+  done: boolean;
+};
+
+const tapeStates = new Map<string, TapeState>();
+
+function tapeStateKey(selection: Selection): string {
+  return selection.provider === "BINANCE" ? `BINANCE:${selection.symbol}:${selection.marketKind}` : `${selection.provider}:${selection.symbol}:${selection.assetClass}`;
+}
+
+/** Forgets every pair's kept tape state (tests). */
+export function clearBrowserTapeStates(): void {
+  tapeStates.clear();
+}
 
 type SeamFill = {
   inFlight: boolean;
@@ -240,12 +276,15 @@ type TapeBootstrap = {
   backoffMs: number;
   abort: AbortController | null;
   timer: unknown;
+  /** Validated pages read and not yet reconciled against the live tape, newest page first. */
+  staged: AggTradeRow[][];
+  graceTimer: unknown;
 };
 
 type ClosedBar = KlineRow & { reconstructed: boolean };
 
-/** One REST aggregate trade: [a] id, [p] price, [q] summed quantity, [T] time, [m] buyer is maker. */
-type AggTradeRow = { a: number; p: number; q: number; T: number; m: boolean };
+/** One REST aggregate trade: [a] id, [p] price, [q] summed quantity, [f]/[l] first and last fill (trade) id, [T] time, [m] buyer is maker. */
+type AggTradeRow = { a: number; p: number; q: number; f: number; l: number; T: number; m: boolean };
 
 type AggressiveHistoryRequest = { requestId: number; fromMs: number; toMs: number; minSize: number; cursor: string | null };
 
@@ -385,7 +424,8 @@ export function parseAggTradeRow(raw: unknown): AggTradeRow | null {
   const size = finiteNumber(raw.q);
   if (price === undefined || size === undefined || price <= 0 || size <= 0) return null;
   if (!Number.isSafeInteger(raw.a) || (raw.a as number) < 0 || !Number.isSafeInteger(raw.T) || (raw.T as number) < 0 || typeof raw.m !== "boolean") return null;
-  return { a: raw.a as number, p: price, q: size, T: raw.T as number, m: raw.m };
+  if (!Number.isSafeInteger(raw.f) || !Number.isSafeInteger(raw.l) || (raw.f as number) < 0 || (raw.l as number) < (raw.f as number)) return null;
+  return { a: raw.a as number, p: price, q: size, f: raw.f as number, l: raw.l as number, T: raw.T as number, m: raw.m };
 }
 
 /**
@@ -413,18 +453,41 @@ export function parseAggTradesPage(body: unknown, fromId: number | null): AggTra
   return rows;
 }
 
-/** Merges a closed stretch into the list, joining stretches that overlap or touch (adjacent milliseconds). */
-function addInterval(intervals: TapeInterval[], from: number, to: number): void {
-  if (!(to >= from)) return;
-  let merged: TapeInterval = { from, to };
+/** Merges a closed stretch into the list, joining stretches that overlap or touch (adjacent milliseconds); the ends keep the ids of whichever stretch reaches furthest. */
+function addInterval(intervals: TapeInterval[], added: TapeInterval): void {
+  if (!(added.to >= added.from)) return;
+  let merged: TapeInterval = { ...added };
   const apart: TapeInterval[] = [];
   for (const interval of intervals) {
-    if (interval.to + 1 < merged.from || interval.from > merged.to + 1) apart.push(interval);
-    else merged = { from: Math.min(interval.from, merged.from), to: Math.max(interval.to, merged.to) };
+    if (interval.to + 1 < merged.from || interval.from > merged.to + 1) {
+      apart.push(interval);
+      continue;
+    }
+    const start = interval.from < merged.from || (interval.from === merged.from && merged.startTradeId === undefined) ? interval : merged;
+    const end = interval.to > merged.to || (interval.to === merged.to && merged.endTradeId === undefined && merged.endAggId === undefined) ? interval : merged;
+    merged = { from: start.from, to: end.to, startTradeId: start.startTradeId, endTradeId: end.endTradeId, endAggId: end.endAggId };
   }
   apart.push(merged);
   apart.sort((a, b) => a.from - b.from);
   intervals.splice(0, intervals.length, ...apart);
+}
+
+/** The stretches with the given milliseconds cut out (an unverified boundary millisecond splits the stretch around it). */
+function subtractMilliseconds(intervals: TapeInterval[], milliseconds: readonly number[]): TapeInterval[] {
+  let result = intervals;
+  for (const ms of milliseconds) {
+    const next: TapeInterval[] = [];
+    for (const interval of result) {
+      if (ms < interval.from || ms > interval.to) {
+        next.push(interval);
+        continue;
+      }
+      if (ms > interval.from) next.push({ from: interval.from, to: ms - 1, startTradeId: interval.startTradeId });
+      if (ms < interval.to) next.push({ from: ms + 1, to: interval.to, endTradeId: interval.endTradeId, endAggId: interval.endAggId });
+    }
+    result = next;
+  }
+  return result;
 }
 
 /**
@@ -568,6 +631,13 @@ export class BrowserBinanceTransport implements TransportSocket {
     return this.session?.heldClosedBars.size ?? 0;
   }
 
+  /** Sizes of the tape coverage bookkeeping (diagnostics and tests). */
+  get tapeCoverage(): { observed: number; liveSpans: number; unfillable: number; unverified: number; staged: number } {
+    const session = this.session;
+    if (session === null) return { observed: 0, liveSpans: 0, unfillable: 0, unverified: 0, staged: 0 };
+    return { observed: session.observed.length, liveSpans: session.liveSpans.length, unfillable: session.unfillable.length, unverified: session.unverified.length, staged: session.tape.staged.length };
+  }
+
   send(data: string): void {
     if (this.readyState !== OPEN) throw new DOMException("transport is not open", "InvalidStateError");
     let msg: unknown;
@@ -684,7 +754,53 @@ export class BrowserBinanceTransport implements TransportSocket {
       this.clearTimer(session.seam.timer);
       session.seam.timer = null;
     }
+    if (session.tape.graceTimer !== null) {
+      this.clearTimer(session.tape.graceTimer);
+      session.tape.graceTimer = null;
+    }
     this.closeStream(session);
+    this.keepTapeState(session);
+  }
+
+  /** Keeps the pair's tape state for the next instance or the next selection of the pair; the oldest pair goes when too many are kept. */
+  private keepTapeState(session: Session): void {
+    if (session.selection.provider !== "BINANCE") return;
+    const key = tapeStateKey(session.selection);
+    tapeStates.delete(key);
+    tapeStates.set(key, {
+      markers: session.markers,
+      pool: session.pool,
+      observed: session.observed,
+      liveSpans: session.liveSpans,
+      unfillable: session.unfillable,
+      unverified: session.unverified,
+      calibrationFrom: session.calibrationFrom,
+      recentTrades: session.recentTrades,
+      done: session.tape.done,
+    });
+    while (tapeStates.size > MAX_TAPE_STATES) {
+      const oldest = tapeStates.keys().next().value;
+      if (oldest === undefined) break;
+      tapeStates.delete(oldest);
+    }
+  }
+
+  /**
+   * The upstream stream was lost after delivering trades: the tick store on
+   * the main thread has a live span open that must end where the trades
+   * stopped. A lost runtime socket does exactly that through the worker's
+   * close and reconnect, so this transport closes the same way; the pair's
+   * tape state is kept for the instance the worker creates next, which
+   * reconciles the hole from REST or leaves it outside every claim.
+   */
+  private lostUpstream(session: Session): void {
+    if (!this.isCurrent(session)) return;
+    console.warn("browserBinanceTransport: the stream was lost after delivering trades; closing so the worker reconnects");
+    this.close();
+    const event = typeof CloseEvent === "function"
+      ? new CloseEvent("close", { code: 1006, reason: "upstream stream lost" })
+      : ({ code: 1006, reason: "upstream stream lost" } as unknown as CloseEvent);
+    this.onclose?.(event);
   }
 
   private closeStream(session: Session): void {
@@ -697,7 +813,8 @@ export class BrowserBinanceTransport implements TransportSocket {
     // which a seam fill closes from REST or which stays open.
     const live = session.live;
     if (live !== null) {
-      addInterval(session.observed, live.from, live.last);
+      session.liveSpans.push({ from: live.from, to: live.last, firstId: live.firstId, lastId: live.lastId });
+      addInterval(session.observed, { from: live.from, to: live.last, startTradeId: live.firstId, endTradeId: live.lastId });
       session.live = null;
     }
     const stream = session.stream;
@@ -748,15 +865,34 @@ export class BrowserBinanceTransport implements TransportSocket {
       recentTrades: [],
       markers: createTimeCoveredMarkerRetentionBuffer(MAX_RETAINED_MARKERS, MARKER_BUCKET_MS, MARKERS_PER_BUCKET_SIDE),
       pool: createAggressivePool<TradeFrame>({ now: this.now }),
-      firstLiveTradeTs: null,
       observed: [],
+      liveSpans: [],
       live: null,
       unfillable: [],
+      unverified: [],
       calibrationFrom: this.now() - DEFAULT_CALIBRATION_MS,
-      tape: { started: false, inFlight: false, done: false, attempts: 0, unavailable: false, backoffMs: STREAM_BACKOFF_INITIAL_MS, abort: null, timer: null },
+      tape: { started: false, inFlight: false, done: false, attempts: 0, unavailable: false, backoffMs: STREAM_BACKOFF_INITIAL_MS, abort: null, timer: null, staged: [], graceTimer: null },
       seam: { inFlight: false, gap: null, failures: 0, backoffMs: STREAM_BACKOFF_INITIAL_MS, abort: null, timer: null, publishWhenSettled: false },
       markerHistorySeq: 0,
     };
+    const kept = selection.provider === "BINANCE" ? tapeStates.get(tapeStateKey(selection)) : undefined;
+    if (kept !== undefined) {
+      // The pair was streamed before (by this instance or the one before it):
+      // its markers, pool and coverage carry on; a bootstrap that had not
+      // finished starts over, its pages deduplicated by id.
+      session.markers = kept.markers;
+      session.pool = kept.pool;
+      session.observed = kept.observed;
+      session.liveSpans = kept.liveSpans;
+      session.unfillable = kept.unfillable;
+      session.unverified = kept.unverified;
+      session.recentTrades = kept.recentTrades;
+      if (kept.done) {
+        session.calibrationFrom = kept.calibrationFrom;
+        session.tape.started = true;
+        session.tape.done = true;
+      }
+    }
     this.session = session;
     this.deliver({ type: "selection", ...identityFields(selection) });
     if (selection.provider !== "BINANCE") {
@@ -852,16 +988,12 @@ export class BrowserBinanceTransport implements TransportSocket {
     const closedRows = rows.filter((row) => row.closeTime < confirmedBefore).slice(-SNAPSHOT_BARS);
     const forming = rows.find((row) => row.closeTime >= confirmedBefore && row.openTime <= now);
     const identity = identityFields(session.selection);
-    this.deliver({
-      type: "snapshot",
-      ...identity,
-      bars: closedRows.map((row) => barFrame(session.selection, row, true, true)),
-      trades: [],
-      markers: [],
-      vpin_status: "DISABLED",
-    });
     session.lastClosedOpen = closedRows.length > 0 ? closedRows[closedRows.length - 1].openTime : -1;
     session.closedBars = new Map(closedRows.map((row) => [row.openTime, { ...row, reconstructed: true }]));
+    // The connect snapshot: the closed bars, and the pair's markers, recent
+    // trades and pool when its tape state was kept from an earlier instance
+    // (as the runtime's connect snapshot carries what its buffers hold).
+    this.deliver(this.snapshotFrame(session));
     session.lastFormingBar = null;
     session.heldClosedBars.clear();
     session.heldFormingBar = null;
@@ -874,6 +1006,8 @@ export class BrowserBinanceTransport implements TransportSocket {
     this.deliverHealth(session, "READY", this.readyReason(session));
     this.deliver({ type: "book", ...identity, status: "UNAVAILABLE", reason: BOOK_REASON_STREAM_CONNECTING });
     if (forming !== undefined) this.deliverFormingBar(session, forming);
+    // A kept tape state has its markers already: a client that opted in gets them now, as on the runtime's connect.
+    if (session.tape.done) this.deliverMarkerHistory(session);
     session.backoffMs = STREAM_BACKOFF_INITIAL_MS;
     this.openStream(session);
     this.startTapeBootstrap(session);
@@ -941,10 +1075,15 @@ export class BrowserBinanceTransport implements TransportSocket {
     };
     stream.onclose = () => {
       if (!this.isCurrent(session) || session.stream !== stream) return;
+      const deliveredTrades = session.live !== null;
       this.closeStream(session);
       // A gap fill in flight belongs to the stream that just died: abandon it.
       session.abort?.abort();
       session.awaitingBoundary = null;
+      if (deliveredTrades) {
+        this.lostUpstream(session);
+        return;
+      }
       this.streamLost(session);
     };
     stream.onerror = () => {
@@ -1194,10 +1333,12 @@ export class BrowserBinanceTransport implements TransportSocket {
         side: payload.m ? "sell" : "buy",
         trade_id: String(payload.t),
       };
-      if (session.firstLiveTradeTs === null) session.firstLiveTradeTs = trade.ts_exchange;
       const opensSpan = session.live === null;
-      if (session.live === null) session.live = { from: trade.ts_exchange, last: trade.ts_exchange };
-      else session.live.last = Math.max(session.live.last, trade.ts_exchange);
+      if (session.live === null) session.live = { from: trade.ts_exchange, to: Infinity, last: trade.ts_exchange, firstId: payload.t as number, lastId: payload.t as number };
+      else {
+        session.live.last = Math.max(session.live.last, trade.ts_exchange);
+        session.live.lastId = Math.max(session.live.lastId, payload.t as number);
+      }
       session.recentTrades.push(trade);
       if (session.recentTrades.length > SNAPSHOT_RECENT_TRADES) session.recentTrades.shift();
       this.deliver(trade);
@@ -1205,8 +1346,12 @@ export class BrowserBinanceTransport implements TransportSocket {
       // a print the retention admits goes out as a marker right behind it.
       session.pool.record(trade);
       this.offerMarker(session, trade, true);
-      // A new stream span: the hole before it is filled from REST or left open.
-      if (opensSpan) this.fillNextSeam(session);
+      // A new stream span: staged pages can be reconciled against it, and
+      // the hole before it is filled from REST or left open.
+      if (opensSpan) {
+        this.commitStagedWhenSafe(session);
+        this.fillNextSeam(session);
+      }
       return;
     }
     const isSpotPartial = Array.isArray(payload.bids) && Array.isArray(payload.asks) && Number.isSafeInteger(payload.lastUpdateId);
@@ -1243,14 +1388,38 @@ export class BrowserBinanceTransport implements TransportSocket {
   }
 
   /**
+   * Forgets coverage older than the pool's retention (nothing older can be
+   * claimed: the pool has no print for it) and bounds every list, so
+   * reconnects over a long session cannot grow them without end. The gap a
+   * seam fill is working on, and the stretches beside it, are kept.
+   */
+  private pruneCoverage(session: Session): void {
+    const cutoff = this.now() - POOL_WINDOW_MS;
+    const active = session.seam.gap;
+    const keepsActive = (interval: TapeInterval): boolean =>
+      active !== null && (interval.to === active.from || interval.from === active.to || (interval.from === active.from && interval.to === active.to));
+    const clip = (interval: TapeInterval): TapeInterval =>
+      interval.from >= cutoff ? interval : { from: cutoff, to: interval.to, endTradeId: interval.endTradeId, endAggId: interval.endAggId };
+    session.observed = session.observed.filter((interval) => interval.to >= cutoff || keepsActive(interval)).map(clip);
+    session.liveSpans = session.liveSpans.filter((span) => span.to >= cutoff);
+    session.unfillable = session.unfillable.filter((gap) => gap.to >= cutoff || keepsActive(gap));
+    session.unverified = session.unverified.filter((ms) => ms >= cutoff);
+    if (session.observed.length > MAX_COVERAGE_ENTRIES) session.observed.splice(0, session.observed.length - MAX_COVERAGE_ENTRIES);
+    if (session.liveSpans.length > MAX_COVERAGE_ENTRIES) session.liveSpans.splice(0, session.liveSpans.length - MAX_COVERAGE_ENTRIES);
+    if (session.unfillable.length > MAX_COVERAGE_ENTRIES) session.unfillable.splice(0, session.unfillable.length - MAX_COVERAGE_ENTRIES);
+    if (session.unverified.length > MAX_UNVERIFIED_MS) session.unverified.splice(0, session.unverified.length - MAX_UNVERIFIED_MS);
+  }
+
+  /**
    * Every stretch of tape observed in full: the closed ones, plus the open
    * stream span reaching into the future while a stream delivers, merged
-   * where they touch.
+   * where they touch, with every unverified boundary millisecond cut out.
    */
   private coverageIntervals(session: Session): TapeInterval[] {
+    this.pruneCoverage(session);
     const intervals = session.observed.map((interval) => ({ ...interval }));
-    if (session.live !== null) addInterval(intervals, session.live.from, Infinity);
-    return intervals;
+    if (session.live !== null) addInterval(intervals, { from: session.live.from, to: Infinity, startTradeId: session.live.firstId });
+    return subtractMilliseconds(intervals, session.unverified);
   }
 
   /** Where the stretch of complete tape that reaches now begins, or null while no stream delivers. */
@@ -1284,9 +1453,9 @@ export class BrowserBinanceTransport implements TransportSocket {
       trades: [...session.recentTrades],
       markers: markers.slice(-MAX_SNAPSHOT_MARKERS),
       vpin_status: "DISABLED",
-      aggressive_prints: [...pool.prints],
-      aggressive_prints_floor: pool.floor,
-      aggressive_prints_from: pool.from,
+      ...(session.tape.done || session.observed.length > 0 || session.live !== null
+        ? { aggressive_prints: [...pool.prints], aggressive_prints_floor: pool.floor, aggressive_prints_from: pool.from }
+        : {}),
     };
   }
 
@@ -1392,14 +1561,14 @@ export class BrowserBinanceTransport implements TransportSocket {
   /**
    * The runtime seeds markers and the pool from storage; the browser reads
    * recent aggregate trades from the mirror, newest page first by id, within a
-   * bounded page budget, and feeds them through the same retention and pool.
-   * Rows at or after the first live trade are the stream's and are skipped.
-   * The pages read are one id-contiguous stretch, recorded as observed; a
-   * page that fails validation or transport after others succeeded ends the
-   * walk with what was read; a first page that fails is retried with backoff,
-   * and after three such failures the READY health frame says the tape
-   * history is missing. The snapshot goes out once the seam to the stream is
-   * settled (closed by a fill, or left open), or at once with no stream.
+   * bounded page budget. The pages are staged, not seeded, until the stream's
+   * first trade is known (or no stream can deliver one that overlaps them):
+   * every row is then reconciled against the live tape by trade id before it
+   * is fed through the same retention and pool. The pages read are one
+   * id-contiguous stretch, recorded as observed; a page that fails validation
+   * or transport after others succeeded ends the walk with what was read; a
+   * first page that fails is retried with backoff, and after three such
+   * failures the READY health frame says the tape history is missing.
    */
   private async bootstrapTape(session: Session): Promise<void> {
     const tape = session.tape;
@@ -1407,9 +1576,6 @@ export class BrowserBinanceTransport implements TransportSocket {
     const oldestWanted = this.now() - MARKER_HISTORY_WINDOW_MS;
     let fromId: number | null = null;
     let pages = 0;
-    let rowsRead = 0;
-    let oldestTs: number | null = null;
-    let newestTs: number | null = null;
     try {
       while (pages < MAX_TAPE_BOOTSTRAP_PAGES) {
         let rows: AggTradeRow[];
@@ -1424,10 +1590,7 @@ export class BrowserBinanceTransport implements TransportSocket {
         if (!this.isCurrent(session)) return;
         pages += 1;
         if (rows.length === 0) break;
-        const seeded = this.seedTape(session, rows, session.firstLiveTradeTs);
-        rowsRead += seeded.kept;
-        if (seeded.oldestTs !== null && (oldestTs === null || seeded.oldestTs < oldestTs)) oldestTs = seeded.oldestTs;
-        if (seeded.newestTs !== null && (newestTs === null || seeded.newestTs > newestTs)) newestTs = seeded.newestTs;
+        tape.staged.push(rows);
         const oldest = rows[0];
         if (rows.length < TAPE_BOOTSTRAP_PAGE || oldest.a === 0 || oldest.T < oldestWanted) break;
         fromId = Math.max(0, oldest.a - TAPE_BOOTSTRAP_PAGE);
@@ -1446,11 +1609,57 @@ export class BrowserBinanceTransport implements TransportSocket {
     }
     tape.inFlight = false;
     tape.done = true;
-    if (oldestTs !== null && newestTs !== null) addInterval(session.observed, oldestTs, newestTs);
     const wasUnavailable = tape.unavailable;
     tape.unavailable = false;
     if (wasUnavailable && !session.degraded && !session.recovering) this.deliverHealth(session, "READY", HEALTH_REASON_READY);
-    if (rowsRead > 0) {
+    this.commitStagedWhenSafe(session);
+  }
+
+  /**
+   * The staged pages can be reconciled against the live tape only once its
+   * first trade is known. With a stream delivering, or none that could ever
+   * deliver a trade older than the pages (no stream connecting or open), they
+   * commit at once; with a stream connecting or open but silent, a short
+   * grace keeps a first trade that is still in flight from overlapping
+   * already committed rows.
+   */
+  private commitStagedWhenSafe(session: Session): void {
+    const tape = session.tape;
+    if (!tape.done || tape.staged.length === 0) return;
+    const streamPending = session.stream !== null && session.stream.readyState <= OPEN;
+    if (session.live === null && session.liveSpans.length === 0 && streamPending) {
+      if (tape.graceTimer !== null) return;
+      tape.graceTimer = this.setTimer(() => {
+        tape.graceTimer = null;
+        if (this.isCurrent(session)) this.commitStaged(session);
+      }, BOOTSTRAP_COMMIT_GRACE_MS);
+      return;
+    }
+    if (tape.graceTimer !== null) {
+      this.clearTimer(tape.graceTimer);
+      tape.graceTimer = null;
+    }
+    this.commitStaged(session);
+  }
+
+  private commitStaged(session: Session): void {
+    const tape = session.tape;
+    const staged = tape.staged;
+    tape.staged = [];
+    let kept = 0;
+    let from = Infinity;
+    let to = -Infinity;
+    let endAggId: number | undefined;
+    for (const page of staged) {
+      kept += this.seedTape(session, page);
+      for (const row of page) {
+        if (row.T < from) from = row.T;
+        if (row.T > to) to = row.T;
+        if (endAggId === undefined || row.a > endAggId) endAggId = row.a;
+      }
+    }
+    if (from <= to) addInterval(session.observed, { from, to, endAggId });
+    if (kept > 0 || from <= to) {
       session.seam.publishWhenSettled = true;
       this.fillNextSeam(session);
     }
@@ -1469,43 +1678,74 @@ export class BrowserBinanceTransport implements TransportSocket {
   }
 
   /**
+   * Whether a REST row is tape the stream already delivered. Inside a live
+   * span (open or closed) it is; at a span's first or last millisecond the
+   * aggregate's fill ids decide: wholly before the first live trade or wholly
+   * after the last one it is missing tape and is kept, wholly within it is
+   * dropped, and an aggregate straddling the boundary cannot be told apart,
+   * so it is dropped and that millisecond is marked unverified: no coverage
+   * claim includes it.
+   */
+  private admitRestRow(session: Session, row: AggTradeRow): boolean {
+    const spans: readonly LiveSpan[] = session.live === null
+      ? session.liveSpans
+      : [...session.liveSpans, { from: session.live.from, to: Infinity, firstId: session.live.firstId, lastId: Infinity }];
+    for (const span of spans) {
+      if (row.T > span.from && row.T < span.to) return false;
+      if (row.T === span.from) {
+        if (row.l < span.firstId) continue;
+        if (row.f >= span.firstId) return false;
+        this.markUnverified(session, row.T);
+        return false;
+      }
+      if (row.T === span.to) {
+        if (row.f > span.lastId) continue;
+        if (row.l <= span.lastId) return false;
+        this.markUnverified(session, row.T);
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private markUnverified(session: Session, ms: number): void {
+    if (!session.unverified.includes(ms)) session.unverified.push(ms);
+  }
+
+  /**
    * One validated page into the retention and the pool, as the runtime's
    * warm-up seeds a storage chunk: rows from the calibration window (the
    * newest fifteen minutes at the bootstrap's start) calibrate the floor
    * (`calibrate: true`, every size counted), older rows are admitted at the
-   * floor. Rows at or after `cutoff` (the first live trade, for the
-   * bootstrap) are skipped; when a page reached past that point the observed
-   * stretch runs up to it.
+   * floor; rows the stream already delivered are left out. Returns the rows kept.
    */
-  private seedTape(session: Session, rows: readonly AggTradeRow[], cutoff: number | null): { kept: number; oldestTs: number | null; newestTs: number | null } {
+  private seedTape(session: Session, rows: readonly AggTradeRow[]): number {
     const calibration: TradeFrame[] = [];
     const older: TradeFrame[] = [];
     let oldestTs = Infinity;
-    let newestTs = -Infinity;
-    let reachedLive = false;
     for (const row of rows) {
-      if (cutoff !== null && row.T >= cutoff) {
-        reachedLive = true;
-        continue;
-      }
+      if (!this.admitRestRow(session, row)) continue;
       const trade = aggTradeFrame(session.selection, row);
       if (row.T < oldestTs) oldestTs = row.T;
-      if (row.T > newestTs) newestTs = row.T;
       (row.T >= session.calibrationFrom ? calibration : older).push(trade);
       this.offerMarker(session, trade, false);
     }
-    if (oldestTs === Infinity) return { kept: 0, oldestTs: null, newestTs: null };
+    if (oldestTs === Infinity) return 0;
     if (calibration.length > 0) session.pool.seed(calibration, { fromMs: oldestTs, calibrate: true });
     if (older.length > 0) session.pool.seed(older, { fromMs: oldestTs });
-    return { kept: calibration.length + older.length, oldestTs, newestTs: reachedLive && cutoff !== null ? Math.max(newestTs, cutoff - 1) : newestTs };
+    return calibration.length + older.length;
   }
 
-  /** The newest hole between two observed stretches (the open stream span counts) that has not been given up on. */
+  /** The newest hole between two observed stretches (the open stream span counts) that is neither given up on nor made only of unverified milliseconds. */
   private nextSeamGap(session: Session): TapeInterval | null {
     const intervals = this.coverageIntervals(session);
     for (let i = intervals.length - 1; i >= 1; i -= 1) {
-      const gap = { from: intervals[i - 1].to, to: intervals[i].from };
-      if (!session.unfillable.some((open) => open.from === gap.from && open.to === gap.to)) return gap;
+      const gap: TapeInterval = { from: intervals[i - 1].to, to: intervals[i].from, endAggId: intervals[i - 1].endAggId, endTradeId: intervals[i - 1].endTradeId };
+      if (session.unfillable.some((open) => open.from === gap.from && open.to === gap.to)) continue;
+      const interior = gap.to - gap.from - 1;
+      const unverifiedInside = session.unverified.filter((ms) => ms > gap.from && ms < gap.to).length;
+      if (interior <= unverifiedInside) continue;
+      return gap;
     }
     return null;
   }
@@ -1514,11 +1754,12 @@ export class BrowserBinanceTransport implements TransportSocket {
    * Closes the holes the tape has: between the bootstrap's newest row and the
    * stream's first trade, or between one stream's last trade and the next
    * stream's first. Kline recovery repairs bars, not trades, so the prints of
-   * such a hole are read from REST (aggTrades from the hole's start, then by
-   * id) within a bounded budget; a hole that cannot be closed stays a hole and
-   * is never inside a completeness claim. One fill runs at a time; when
-   * nothing is left to fill and the bootstrap's snapshot is waiting, it goes
-   * out.
+   * such a hole are read from REST within a bounded budget: by id from the
+   * row after the last REST row when the hole follows one, else by time from
+   * the hole's first millisecond, every row reconciled against the live tape
+   * by fill id. A hole that cannot be closed stays a hole and is never inside
+   * a completeness claim. One fill runs at a time; when nothing is left to
+   * fill and a snapshot is waiting, it goes out.
    */
   private fillNextSeam(session: Session): void {
     if (!this.isCurrent(session) || session.seam.inFlight || session.seam.timer !== null) return;
@@ -1535,13 +1776,17 @@ export class BrowserBinanceTransport implements TransportSocket {
     seam.inFlight = true;
     seam.gap = gap;
     let closed = false;
+    let endAggId = gap.endAggId;
     try {
-      let fromId: number | null = null;
+      let fromId: number | null = gap.endAggId === undefined ? null : gap.endAggId + 1;
       for (let pages = 0; pages < MAX_SEAM_FILL_PAGES; pages += 1) {
-        const rows = await this.fetchAggTrades(session, fromId === null ? { startTime: gap.from + 1 } : { fromId }, seam);
+        const rows = await this.fetchAggTrades(session, fromId === null ? { startTime: gap.from } : { fromId }, seam);
         if (!this.isCurrent(session)) return;
-        const inside = rows.filter((row) => row.T < gap.to);
-        if (inside.length > 0) this.seedTape(session, inside, null);
+        const inside = rows.filter((row) => row.T <= gap.to);
+        if (inside.length > 0) {
+          this.seedTape(session, inside);
+          endAggId = inside[inside.length - 1].a;
+        }
         // The hole is closed when a row past its end was read, or the page
         // was short (nothing newer existed on the exchange at the read).
         if (inside.length < rows.length || rows.length < TAPE_BOOTSTRAP_PAGE) {
@@ -1567,7 +1812,7 @@ export class BrowserBinanceTransport implements TransportSocket {
       }
       seam.failures = 0;
       seam.backoffMs = STREAM_BACKOFF_INITIAL_MS;
-      session.unfillable.push(gap);
+      session.unfillable.push({ from: gap.from, to: gap.to });
       this.fillNextSeam(session);
       return;
     }
@@ -1576,12 +1821,12 @@ export class BrowserBinanceTransport implements TransportSocket {
     seam.failures = 0;
     seam.backoffMs = STREAM_BACKOFF_INITIAL_MS;
     if (closed) {
-      addInterval(session.observed, gap.from, gap.to);
+      addInterval(session.observed, { from: gap.from, to: gap.to, endAggId });
       // Coverage grew: the snapshot says so.
       session.seam.publishWhenSettled = true;
     } else {
       console.warn("browserBinanceTransport: a tape seam is wider than a fill may walk; it stays open");
-      session.unfillable.push(gap);
+      session.unfillable.push({ from: gap.from, to: gap.to });
     }
     this.fillNextSeam(session);
   }

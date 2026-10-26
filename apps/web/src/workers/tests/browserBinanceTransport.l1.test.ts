@@ -10,19 +10,23 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  BOOTSTRAP_COMMIT_GRACE_MS,
   BrowserBinanceTransport,
   DEFAULT_ENDPOINTS,
   HEALTH_REASON_NO_TAPE_HISTORY,
   HEALTH_REASON_READY,
   MAX_AGGRESSIVE_HISTORY_TRADES,
+  MAX_COVERAGE_ENTRIES,
   MAX_SNAPSHOT_MARKERS,
   SEAM_FILL_FAILURES_BEFORE_GIVING_UP,
   STREAM_BACKOFF_INITIAL_MS,
   TAPE_BOOTSTRAP_FAILURES_BEFORE_DEGRADED,
   TAPE_BOOTSTRAP_PAGE,
+  clearBrowserTapeStates,
   parseAggTradesPage,
   type UpstreamSocket,
 } from "../browserBinanceTransport";
+import { DEFAULT_WINDOW_MS as POOL_WINDOW_MS } from "../../lib/tape/aggressivePool";
 import { parseServerFrame, type MarkerFrame, type ServerFrame, type TradeFrame } from "../../types/frames";
 import { MARKER_BUCKET_MS, MARKERS_PER_BUCKET_SIDE } from "../../lib/tape/largeTradeDetection";
 import { loadRecordedTrades } from "./recordedTape";
@@ -116,7 +120,21 @@ type Harness = {
   parsed: () => ServerFrame[];
   aggTradesMock: ReturnType<typeof vi.fn>;
   stream: () => FakeUpstreamSocket;
+  now: () => number;
 };
+
+/** The instance the worker creates after a transport closed: the same mirror, the same clock, the pair's kept tape state. */
+function reconnected(previous: Harness): Harness {
+  const previousAggTrades = previous.aggTradesMock as unknown as (url: string) => Promise<Response>;
+  const next = harness((url) => previousAggTrades(url), previous.now);
+  next.aggTradesMock = previous.aggTradesMock;
+  return next;
+}
+
+/** A hand-built mirror row with explicit fill ids. */
+function aggRow(a: number, T: number, f: number, l: number, q = "5.00000"): Record<string, unknown> {
+  return { a, p: "79530.00", q, f, l, T, m: false, M: true };
+}
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
@@ -144,6 +162,7 @@ function harness(aggTrades: (url: string) => Promise<Response> = async (url) => 
     }),
     aggTradesMock,
     stream: () => FakeUpstreamSocket.instances.at(-1)!,
+    now,
   };
 }
 
@@ -161,6 +180,13 @@ async function settle(): Promise<void> {
   for (let i = 0; i < 200; i += 1) await vi.advanceTimersByTimeAsync(0);
 }
 
+/** Lets a bootstrap read its pages and, with a stream connecting or open but silent, wait out the grace before committing them. */
+async function settleBootstrap(): Promise<void> {
+  await settle();
+  await vi.advanceTimersByTimeAsync(BOOTSTRAP_COMMIT_GRACE_MS);
+  await settle();
+}
+
 function liveTrade(id: number, ts: number, size: string, sell: boolean, price = "79530.00") {
   return { stream: "btcusdt@trade", data: { e: "trade", E: ts + 5, s: "BTCUSDT", t: id, p: price, q: size, T: ts, m: sell, M: true } };
 }
@@ -173,6 +199,7 @@ function runtimeMarkers(trades: readonly TradeFrame[]): MarkerFrame[] {
 
 beforeEach(() => {
   vi.useFakeTimers();
+  clearBrowserTapeStates();
 });
 afterEach(() => {
   vi.useRealTimers();
@@ -182,7 +209,7 @@ describe("BrowserBinanceTransport tape bootstrap", () => {
   it("pages recent aggregate trades from the mirror and re-broadcasts a snapshot whose markers and pool pass the parser and equal the runtime's", async () => {
     const h = harness();
     await openAndSelect(h);
-    await settle();
+    await settleBootstrap();
     const frames = h.parsed();
     expect(frames.map((frame) => frame.type)).toEqual(["selection", "snapshot", "health", "book", "bar", "snapshot", "bar", "marker_history"]);
 
@@ -235,7 +262,7 @@ describe("BrowserBinanceTransport tape bootstrap", () => {
   it("sends no marker_history when the client did not opt in, and the full set when it opts in later", async () => {
     const h = harness();
     await openAndSelect(h, { markerHistory: false });
-    await settle();
+    await settleBootstrap();
     expect(h.frames.map((frame) => frame.type)).toEqual(["selection", "snapshot", "health", "book", "bar", "snapshot", "bar"]);
     h.frames.length = 0;
     h.transport.send(JSON.stringify({ type: "capabilities", marker_history: true }));
@@ -281,7 +308,7 @@ describe("BrowserBinanceTransport tape bootstrap", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     try {
       await openAndSelect(h);
-      await settle();
+      await settleBootstrap();
       expect(h.aggTradesMock).toHaveBeenCalledTimes(3);
       const frames = h.parsed();
       expect(frames.map((frame) => frame.type)).toEqual(["selection", "snapshot", "health", "book", "bar", "snapshot", "bar", "marker_history"]);
@@ -338,7 +365,7 @@ describe("BrowserBinanceTransport tape bootstrap", () => {
       const frames = h.parsed();
       expect(frames.map((frame) => frame.type)).toEqual(["health", "snapshot", "bar", "marker_history"]);
       expect(frames[0]).toMatchObject({ recoveryState: "READY", reason: HEALTH_REASON_READY });
-      expect(String(h.aggTradesMock.mock.calls.at(-1)![0])).toContain(`startTime=${NEWEST_TS + 1}`);
+      expect(String(h.aggTradesMock.mock.calls.at(-1)![0])).toContain(`fromId=${LAST_ID + 1}`);
       const snapshot = frames[1];
       if (snapshot.type !== "snapshot") throw new Error("expected a snapshot");
       expect(snapshot.trades).toHaveLength(1);
@@ -384,7 +411,7 @@ describe("BrowserBinanceTransport aggressive_history", () => {
   async function bootstrapped(): Promise<{ h: Harness; floor: number; from: number; prints: TradeFrame[] }> {
     const h = harness();
     await openAndSelect(h);
-    await settle();
+    await settleBootstrap();
     const snapshot = h.parsed()[5];
     if (snapshot.type !== "snapshot") throw new Error("expected a snapshot");
     h.frames.length = 0;
@@ -445,7 +472,7 @@ describe("BrowserBinanceTransport aggressive_history", () => {
     }
     const h = harness(async (url) => jsonResponse(recordedPage(url, synthetic)));
     await openAndSelect(h);
-    await settle();
+    await settleBootstrap();
     const snapshot = h.parsed()[5];
     if (snapshot.type !== "snapshot") throw new Error("expected a snapshot");
     expect(snapshot.aggressive_prints).toHaveLength(12_000);
@@ -491,13 +518,13 @@ describe("BrowserBinanceTransport tape seams", () => {
     const tape = [...recorded, ...seamRows(liveFrom)];
     let release: (() => void) | null = null;
     const h = harness((url) => {
-      if (!url.includes("startTime")) return Promise.resolve(jsonResponse(recordedPage(url, recorded)));
+      if (!url.includes(`fromId=${LAST_ID + 1}`)) return Promise.resolve(jsonResponse(recordedPage(url, recorded)));
       return new Promise<Response>((resolve) => {
         release = () => resolve(jsonResponse(recordedPage(url, tape)));
       });
     });
     await openAndSelect(h);
-    await settle();
+    await settleBootstrap();
     const first = h.parsed()[5];
     if (first.type !== "snapshot") throw new Error("expected a snapshot");
     const floor = first.aggressive_prints_floor!;
@@ -509,9 +536,11 @@ describe("BrowserBinanceTransport tape seams", () => {
     h.stream().open();
     await vi.advanceTimersByTimeAsync(0);
     h.frames.length = 0;
-    h.stream().message(liveTrade(9_000_000_001, liveFrom, SEAM_SIZE, false));
+    // Its trade id is below the mirror's fill ids at that millisecond, so those rows are the stream's.
+    h.stream().message(liveTrade(100, liveFrom, SEAM_SIZE, false));
     await vi.advanceTimersByTimeAsync(0);
-    expect(String(h.aggTradesMock.mock.calls.at(-1)![0])).toContain(`startTime=${NEWEST_TS + 1}`);
+    // The pages ended at an aggregate id: the seam is read from the next id, no millisecond ambiguity.
+    expect(String(h.aggTradesMock.mock.calls.at(-1)![0])).toContain(`fromId=${LAST_ID + 1}`);
     // Until the fill lands, the hole between the newest page and the first
     // live trade is inside no claim (the live print's size has moved the
     // floor, so these ask well above it).
@@ -532,43 +561,65 @@ describe("BrowserBinanceTransport tape seams", () => {
     expect(ids).toContain(`a${LAST_ID + 1}`);
     expect(ids).toContain(`a${LAST_ID + 2}`);
     expect(ids).not.toContain(`a${LAST_ID + 3}`);
-    expect(ids).toContain("9000000001");
+    expect(ids).toContain("100");
     const whole = await askHistory(h, historyRequest(5, OLDEST_TS, liveFrom + 1_000, aboveFloor));
     expect(whole).toMatchObject({ complete: true, reason: null });
-    expect(whole!.trades.map((trade) => trade.trade_id).slice(-3)).toEqual([`a${LAST_ID + 1}`, `a${LAST_ID + 2}`, "9000000001"]);
+    expect(whole!.trades.map((trade) => trade.trade_id).slice(-3)).toEqual([`a${LAST_ID + 1}`, `a${LAST_ID + 2}`, "100"]);
   });
 
-  it("keeps a reconnect hole outside every claim when the seam cannot be read, and closes it when it can", async () => {
-    let seamReads = 0;
+  it("closes itself when a stream that delivered trades is lost, as a lost runtime socket would, and the next instance keeps the tape and leaves the hole outside every claim until REST can fill it", async () => {
     let seamFails = true;
     const holeRows: TradeFrame[] = [];
-    const h = harness(async (url) => {
-      if (!url.includes("startTime")) return jsonResponse([]);
-      seamReads += 1;
+    const h1 = harness(async (url) => {
+      if (!url.includes("startTime")) return jsonResponse(recordedPage(url));
       if (seamFails) throw new Error("network");
       return jsonResponse(recordedPage(url, holeRows));
     });
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     try {
-      await openAndSelect(h);
+      await openAndSelect(h1);
+      await settleBootstrap();
+      h1.stream().open();
+      await vi.advanceTimersByTimeAsync(0);
+      const t1 = NEWEST_TS + 1_000;
+      const t2 = NEWEST_TS + 1_500;
+      h1.stream().message(liveTrade(1, t1, SEAM_SIZE, false));
+      h1.stream().message(liveTrade(2, t2, SEAM_SIZE, true));
       await settle();
-      h.stream().open();
-      await vi.advanceTimersByTimeAsync(0);
-      h.frames.length = 0;
-      const t1 = NOW_MS - 60_000;
-      const t2 = NOW_MS - 50_000;
-      h.stream().message(liveTrade(1, t1, SEAM_SIZE, false));
-      h.stream().message(liveTrade(2, t2, SEAM_SIZE, true));
-      expect(await askHistory(h, historyRequest(1, t1, t2 + 1, 0))).toMatchObject({ complete: true });
-      h.stream().drop();
-      await vi.advanceTimersByTimeAsync(STREAM_BACKOFF_INITIAL_MS);
-      h.stream().open();
-      await vi.advanceTimersByTimeAsync(0);
+      const bootstrapReads = h1.aggTradesMock.mock.calls.length;
+      expect(await askHistory(h1, historyRequest(1, t1, t2 + 1, 1))).toMatchObject({ complete: true });
+      h1.frames.length = 0;
+      const closed = vi.fn();
+      h1.transport.onclose = closed;
+      h1.stream().drop();
+      // Not RECOVERING with the pair still "live": the transport is gone, the worker reconnects.
+      expect(h1.transport.readyState).toBe(3);
+      expect(closed).toHaveBeenCalledTimes(1);
+      expect(h1.frames).toEqual([]);
+
+      const h2 = reconnected(h1);
+      await openAndSelect(h2);
+      await settle();
+      // No second bootstrap: the kept markers and pool ride on the connect snapshot, which claims nothing (no stream delivers).
+      expect(h2.aggTradesMock.mock.calls.length).toBe(bootstrapReads);
+      const connectFrames = h2.parsed();
+      expect(connectFrames.map((frame) => frame.type)).toEqual(["selection", "snapshot", "health", "book", "bar", "marker_history"]);
+      const connectSnapshot = connectFrames[1];
+      if (connectSnapshot.type !== "snapshot") throw new Error("expected a snapshot");
+      expect(connectSnapshot.markers.length).toBeGreaterThan(40);
+      expect(connectSnapshot.trades.map((trade) => trade.trade_id)).toEqual(["1", "2"]);
+      expect(connectSnapshot.aggressive_prints_from).toBe(NOW_MS);
       // The closed span is observed up to its last trade only.
-      expect(await askHistory(h, historyRequest(2, t1, t2 + 1, 0))).toMatchObject({ complete: true });
-      expect(await askHistory(h, historyRequest(3, t1, t2 + 2, 0))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE" });
-      const t3 = NOW_MS - 20_000;
-      h.stream().message(liveTrade(3, t3, SEAM_SIZE, false));
+      expect(await askHistory(h2, historyRequest(2, t1, t2 + 1, 1))).toMatchObject({ complete: true });
+      expect(await askHistory(h2, historyRequest(3, t1, t2 + 2, 1))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE" });
+
+      h2.stream().open();
+      await vi.advanceTimersByTimeAsync(0);
+      h2.frames.length = 0;
+      const t3 = NEWEST_TS + 2_500;
+      h2.stream().message(liveTrade(3, t3, SEAM_SIZE, false));
+      // The span before ended at a trade id: the seam is read from its last millisecond and reconciled by fill id.
+      expect(String(h2.aggTradesMock.mock.calls.at(-1)![0])).toContain(`startTime=${t2}`);
       // Three failed seam reads with backoff: the hole stays open, every claim stops at it.
       let delay = STREAM_BACKOFF_INITIAL_MS;
       for (let failure = 1; failure < SEAM_FILL_FAILURES_BEFORE_GIVING_UP; failure += 1) {
@@ -577,33 +628,205 @@ describe("BrowserBinanceTransport tape seams", () => {
         delay *= 2;
       }
       await settle();
-      expect(seamReads).toBe(SEAM_FILL_FAILURES_BEFORE_GIVING_UP);
-      expect(await askHistory(h, historyRequest(4, t1, t3 + 1, 0))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE", trades: [] });
-      expect(await askHistory(h, historyRequest(5, t3, t3 + 1, 0))).toMatchObject({ complete: true });
-      expect(await askHistory(h, historyRequest(6, t1, t2 + 1, 0))).toMatchObject({ complete: true });
-      expect(h.frames.filter((frame) => frame.type === "snapshot")).toHaveLength(0);
+      expect(h2.aggTradesMock.mock.calls.length).toBe(bootstrapReads + SEAM_FILL_FAILURES_BEFORE_GIVING_UP);
+      expect(await askHistory(h2, historyRequest(4, t1, t3 + 1, 1))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE", trades: [] });
+      expect(await askHistory(h2, historyRequest(5, t3, t3 + 1, 1))).toMatchObject({ complete: true });
+      expect(await askHistory(h2, historyRequest(6, OLDEST_TS, t2 + 1, 1))).toMatchObject({ complete: true });
+      expect(h2.frames.filter((frame) => frame.type === "snapshot")).toHaveLength(0);
+      h2.stream().drop();
+      expect(h2.transport.readyState).toBe(3);
 
-      // A second disconnect whose seam can be read: the mirror holds one print inside the hole.
-      h.stream().drop();
-      await vi.advanceTimersByTimeAsync(STREAM_BACKOFF_INITIAL_MS);
-      h.stream().open();
-      await vi.advanceTimersByTimeAsync(0);
-      const t4 = NOW_MS - 5_000;
-      holeRows.push({ type: "trade", provider: "BINANCE", symbol: "BTC-USDT", marketKind: "SPOT", ts_exchange: t3 + 7_000, price: 79_530, size: 5, side: "sell", trade_id: "a77" });
+      // The next outage's seam can be read: the mirror holds one print inside the hole and one past it.
+      holeRows.push({ type: "trade", provider: "BINANCE", symbol: "BTC-USDT", marketKind: "SPOT", ts_exchange: t3 + 700, price: 79_530, size: 5, side: "sell", trade_id: "a77" });
+      const t4 = NEWEST_TS + 4_000;
       holeRows.push({ type: "trade", provider: "BINANCE", symbol: "BTC-USDT", marketKind: "SPOT", ts_exchange: t4 + 100, price: 79_530, size: 5, side: "sell", trade_id: "a78" });
       seamFails = false;
-      h.frames.length = 0;
-      h.stream().message(liveTrade(4, t4, SEAM_SIZE, false));
+      const h3 = reconnected(h2);
+      await openAndSelect(h3);
       await settle();
-      expect(String(h.aggTradesMock.mock.calls.at(-1)![0])).toContain(`startTime=${t3 + 1}`);
+      h3.stream().open();
+      await vi.advanceTimersByTimeAsync(0);
+      h3.frames.length = 0;
+      h3.stream().message(liveTrade(4, t4, SEAM_SIZE, false));
+      await settle();
+      expect(String(h3.aggTradesMock.mock.calls.at(-1)![0])).toContain(`startTime=${t3}`);
       // The first hole was given up and is not re-read; the second is closed and the snapshot says so.
-      const snapshot = h.parsed().find((frame) => frame.type === "snapshot");
+      const snapshot = h3.parsed().find((frame) => frame.type === "snapshot");
       if (snapshot === undefined || snapshot.type !== "snapshot") throw new Error("expected a snapshot");
       expect(snapshot.aggressive_prints_from).toBe(t3);
       expect(snapshot.aggressive_prints!.map((print) => print.trade_id)).toContain("a77");
       expect(snapshot.aggressive_prints!.map((print) => print.trade_id)).not.toContain("a78");
-      expect(await askHistory(h, historyRequest(7, t3, t4 + 1, 0))).toMatchObject({ complete: true });
-      expect(await askHistory(h, historyRequest(8, t1, t4 + 1, 0))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE" });
+      expect(await askHistory(h3, historyRequest(7, t3, t4 + 1, 1))).toMatchObject({ complete: true });
+      expect(await askHistory(h3, historyRequest(8, t1, t4 + 1, 1))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE" });
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("reconciles trades sharing a millisecond at both seam boundaries by fill id, and keeps an unverifiable millisecond outside every claim", async () => {
+    const C = NEWEST_TS + 3_000;
+    const L = C + 1_000;
+    const M = C + 5_000;
+    const h1 = harness(async (url) => {
+      if (url.includes(`fromId=${LAST_ID + 1}`)) {
+        // The seam after the pages: one row before the live span; at its first
+        // millisecond one wholly before the first live trade (kept), one
+        // straddling it (unverifiable) and one wholly after (the stream's).
+        return jsonResponse([
+          aggRow(LAST_ID + 1, NEWEST_TS + 1_000, 400, 400),
+          aggRow(LAST_ID + 2, C, 490, 495),
+          aggRow(LAST_ID + 3, C, 498, 500),
+          aggRow(LAST_ID + 4, C, 505, 507),
+          aggRow(LAST_ID + 5, C + 10, 508, 508),
+        ]);
+      }
+      if (url.includes(`startTime=${L}`)) {
+        // The seam after a lost stream whose last trade was id 502 at L: one
+        // wholly delivered, one wholly after it (kept), one straddling it.
+        return jsonResponse([
+          aggRow(9_001, L, 501, 502),
+          aggRow(9_002, L, 503, 504),
+          aggRow(9_003, L, 502, 503),
+          aggRow(9_004, M + 5, 700, 700),
+        ]);
+      }
+      return jsonResponse(recordedPage(url));
+    });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      await openAndSelect(h1);
+      await settleBootstrap();
+      h1.stream().open();
+      await vi.advanceTimersByTimeAsync(0);
+      h1.frames.length = 0;
+      h1.stream().message(liveTrade(500, C, SEAM_SIZE, false));
+      h1.stream().message(liveTrade(501, C, SEAM_SIZE, true));
+      h1.stream().message(liveTrade(502, L, SEAM_SIZE, false));
+      await settle();
+      const snapshot = h1.parsed().find((frame) => frame.type === "snapshot");
+      if (snapshot === undefined || snapshot.type !== "snapshot") throw new Error("expected a snapshot");
+      const ids = snapshot.aggressive_prints!.map((print) => print.trade_id);
+      expect(ids).toContain(`a${LAST_ID + 1}`);
+      expect(ids).toContain(`a${LAST_ID + 2}`);
+      expect(ids).not.toContain(`a${LAST_ID + 3}`);
+      expect(ids).not.toContain(`a${LAST_ID + 4}`);
+      expect(ids).not.toContain(`a${LAST_ID + 5}`);
+      expect(ids).toEqual(expect.arrayContaining(["500", "501", "502"]));
+      // Millisecond C holds a fill nobody can place: coverage reaching now starts after it.
+      expect(snapshot.aggressive_prints_from).toBe(C + 1);
+      expect(h1.transport.tapeCoverage.unverified).toBe(1);
+      expect(await askHistory(h1, historyRequest(1, OLDEST_TS, C, 1))).toMatchObject({ complete: true });
+      expect(await askHistory(h1, historyRequest(2, OLDEST_TS, C + 1, 1))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE" });
+      expect(await askHistory(h1, historyRequest(3, C + 1, L + 1, 1))).toMatchObject({ complete: true });
+
+      h1.stream().drop();
+      const h2 = reconnected(h1);
+      await openAndSelect(h2);
+      await settle();
+      h2.stream().open();
+      await vi.advanceTimersByTimeAsync(0);
+      h2.frames.length = 0;
+      h2.stream().message(liveTrade(600, M, SEAM_SIZE, false));
+      await settle();
+      const after = h2.parsed().find((frame) => frame.type === "snapshot");
+      if (after === undefined || after.type !== "snapshot") throw new Error("expected a snapshot");
+      const afterIds = after.aggressive_prints!.map((print) => print.trade_id);
+      expect(afterIds).toContain("a9002");
+      expect(afterIds).not.toContain("a9001");
+      expect(afterIds).not.toContain("a9003");
+      expect(afterIds).not.toContain("a9004");
+      expect(h2.transport.tapeCoverage.unverified).toBe(2);
+      expect(after.aggressive_prints_from).toBe(L + 1);
+      expect(await askHistory(h2, historyRequest(4, C + 1, L, 1))).toMatchObject({ complete: true });
+      expect(await askHistory(h2, historyRequest(5, C + 1, L + 1, 1))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE" });
+      expect(await askHistory(h2, historyRequest(6, L + 1, M + 1_000, 1))).toMatchObject({ complete: true });
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("commits the bootstrap pages only once the stream's first trade can be reconciled, so a page that landed first is not counted twice", async () => {
+    const h = harness();
+    await openAndSelect(h);
+    h.stream().open();
+    await settle();
+    // Every page is read while the stream is open but silent: staged, not committed.
+    expect(h.aggTradesMock).toHaveBeenCalledTimes(11);
+    expect(h.transport.tapeCoverage.staged).toBe(10);
+    expect(h.frames.filter((frame) => frame.type === "snapshot")).toHaveLength(1);
+    expect(await askHistory(h, historyRequest(1, OLDEST_TS, NEWEST_TS + 1, 0))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE" });
+    // The first live trade lands inside the newest page (the stream connected before REST answered).
+    const overlap = recorded[recorded.length - 300];
+    const C = overlap.ts_exchange;
+    const t0 = Number(overlap.trade_id.slice(1));
+    h.frames.length = 0;
+    h.stream().message(liveTrade(t0, C, "0.00100", false));
+    await settle();
+    const snapshot = h.parsed().find((frame) => frame.type === "snapshot");
+    if (snapshot === undefined || snapshot.type !== "snapshot") throw new Error("expected a snapshot");
+    const kept = recorded.filter((trade) => trade.ts_exchange < C || (trade.ts_exchange === C && Number(trade.trade_id.slice(1)) < t0));
+    expect(snapshot.markers.filter((marker) => marker.trade_id.startsWith("a"))).toEqual(runtimeMarkers(kept).filter((marker) => marker.ts_exchange < C || Number(marker.trade_id.slice(1)) < t0));
+    const restIds = new Set(kept.map((trade) => trade.trade_id));
+    expect(snapshot.aggressive_prints!.every((print) => !print.trade_id.startsWith("a") || restIds.has(print.trade_id))).toBe(true);
+    expect(h.transport.tapeCoverage.staged).toBe(0);
+    // The pages reach into the live span: one stretch, claimed from the oldest row.
+    expect(snapshot.aggressive_prints_from).toBe(OLDEST_TS);
+  });
+
+  it("commits the staged pages after a short grace while the stream is connecting or open but silent", async () => {
+    const silent = harness();
+    await openAndSelect(silent);
+    await settle();
+    // Every page read while the socket was still connecting: staged.
+    expect(silent.transport.tapeCoverage.staged).toBe(10);
+    expect(silent.frames.filter((frame) => frame.type === "snapshot")).toHaveLength(1);
+    silent.stream().open();
+    await vi.advanceTimersByTimeAsync(BOOTSTRAP_COMMIT_GRACE_MS - 1);
+    expect(silent.frames.filter((frame) => frame.type === "snapshot")).toHaveLength(1);
+    await vi.advanceTimersByTimeAsync(1);
+    await settle();
+    expect(silent.frames.filter((frame) => frame.type === "snapshot")).toHaveLength(2);
+    expect(silent.transport.tapeCoverage.staged).toBe(0);
+  });
+
+  it("bounds the coverage bookkeeping across many reconnects and forgets what is past the pool's retention", async () => {
+    const clock = { now: NOW_MS };
+    const nowFn = () => clock.now;
+    let h = harness(async (url) => {
+      if (url.includes("startTime")) throw new Error("network");
+      return jsonResponse([]);
+    }, nowFn);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const rounds = 200;
+      const stepMs = 2 * 60_000;
+      for (let round = 0; round < rounds; round += 1) {
+        if (round > 0) h = reconnected(h);
+        await openAndSelect(h);
+        await vi.advanceTimersByTimeAsync(0);
+        h.stream().open();
+        await vi.advanceTimersByTimeAsync(0);
+        h.stream().message(liveTrade(round + 1, clock.now - 1_000, SEAM_SIZE, false));
+        // Let the seam fill fail its three reads, then move on.
+        await vi.advanceTimersByTimeAsync(STREAM_BACKOFF_INITIAL_MS * 4);
+        const coverage = h.transport.tapeCoverage;
+        expect(coverage.observed).toBeLessThanOrEqual(MAX_COVERAGE_ENTRIES);
+        expect(coverage.liveSpans).toBeLessThanOrEqual(MAX_COVERAGE_ENTRIES);
+        expect(coverage.unfillable).toBeLessThanOrEqual(MAX_COVERAGE_ENTRIES);
+        clock.now += stepMs;
+        h.stream().drop();
+      }
+      // Six and a half hours of two-minute rounds: only the last four hours remain.
+      const h2 = reconnected(h);
+      await openAndSelect(h2);
+      await vi.advanceTimersByTimeAsync(0);
+      const kept = h2.transport.tapeCoverage;
+      const withinRetention = Math.ceil(POOL_WINDOW_MS / stepMs) + 1;
+      expect(kept.liveSpans).toBeLessThanOrEqual(withinRetention);
+      expect(kept.liveSpans).toBeGreaterThan(withinRetention - 3);
+      expect(kept.observed).toBeLessThanOrEqual(withinRetention);
+      expect(kept.unfillable).toBeLessThanOrEqual(withinRetention);
+      expect(kept.observed).toBeGreaterThan(0);
     } finally {
       warn.mockRestore();
     }
@@ -639,7 +862,7 @@ describe("BrowserBinanceTransport page integrity", () => {
       expect(await askHistory(h, historyRequest(1, OLDEST_TS, NEWEST_TS + 1, 0))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE" });
       // The retry reads the same page whole.
       await vi.advanceTimersByTimeAsync(STREAM_BACKOFF_INITIAL_MS);
-      await settle();
+      await settleBootstrap();
       expect(h.aggTradesMock).toHaveBeenCalledTimes(12);
       const snapshot = h.parsed().find((frame) => frame.type === "snapshot" && frame.markers.length > 0);
       if (snapshot === undefined || snapshot.type !== "snapshot") throw new Error("expected a snapshot");
@@ -661,7 +884,7 @@ describe("BrowserBinanceTransport page integrity", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     try {
       await openAndSelect(h);
-      await settle();
+      await settleBootstrap();
       expect(h.aggTradesMock).toHaveBeenCalledTimes(2);
       const snapshot = h.parsed()[5];
       if (snapshot.type !== "snapshot") throw new Error("expected a snapshot");

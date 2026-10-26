@@ -23,6 +23,7 @@ import type {
   TradeFrame,
 } from "../types/frames";
 import type { WorkerToMainMessage } from "../workers/marketDataWorker";
+import { indicatorTicksOf } from "../lib/chart/indicatorTicks";
 
 declare global {
   // eslint-disable-next-line no-var
@@ -5497,6 +5498,79 @@ describe("range prints relay", () => {
     } finally {
       clock.mockRestore();
       await act(async () => root.unmount());
+    }
+  });
+});
+
+describe("tick coverage across a feed outage", () => {
+  // A socket close (the worker's status "closed") ends the tape's live stretch
+  // where its trades stopped; the reconnect's snapshot starts a new one. A
+  // window spanning the outage never reads as complete, before or after that
+  // snapshot, while the stretches on either side still do.
+  it("never reads a window across an unfilled reconnect hole as complete, before or after the post-reconnect snapshot", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    const base = 1_793_000_000_000;
+    vi.setSystemTime(base);
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    let latest!: UseMarketDataResult;
+    try {
+      await act(async () =>
+        root.render(<Harness onReady={(result) => (latest = result)} />),
+      );
+      await act(async () => {
+        confirmBaseSelection();
+        lastWorker.emit({ kind: "frame", frame: makeTrade({ trade_id: "1", ts_exchange: base, size: 3 }) });
+        flushRaf();
+      });
+      vi.setSystemTime(base + 2_000);
+      await act(async () => {
+        lastWorker.emit({ kind: "frame", frame: makeTrade({ trade_id: "2", ts_exchange: base + 2_000, size: 4 }) });
+        flushRaf();
+      });
+      const ticks = indicatorTicksOf(latest.aggressiveTape)!;
+      expect(ticks.coverageOf(base, base + 2_001)).toBe("all");
+
+      // The feed drops: the stretch ends at its last print, nothing is live.
+      vi.setSystemTime(base + 2_500);
+      await act(async () => {
+        lastWorker.emit({ kind: "status", status: "closed", reason: "server-close:1006:" });
+      });
+      expect(latest.aggressiveTape!.liveSince).toBeNull();
+      expect(latest.aggressiveTape!.liveSpans).toEqual([{ from: base, to: base + 2_000 }]);
+      // A closed stretch covers up to its last print.
+      expect(ticks.coverageOf(base, base + 2_000)).toBe("all");
+      expect(ticks.coverageOf(base, base + 6_001)).not.toBe("all");
+      expect(ticks.coverageOf(base + 2_000, base + 3_000)).not.toBe("all");
+
+      // Reconnect: the snapshot starts a new stretch at its own time; trades follow.
+      vi.setSystemTime(base + 5_000);
+      await act(async () => {
+        lastWorker.emit({ kind: "status", status: "open" });
+        lastWorker.emit({ kind: "frame", frame: selectionFrame() });
+        lastWorker.emit({
+          kind: "frame",
+          frame: { type: "snapshot", provider: "BINANCE", symbol: "BTC-USDT", marketKind: "SPOT", bars: [], trades: [], markers: [] } as never,
+        });
+        flushRaf();
+      });
+      vi.setSystemTime(base + 6_000);
+      await act(async () => {
+        lastWorker.emit({ kind: "frame", frame: makeTrade({ trade_id: "3", ts_exchange: base + 6_000, size: 5 }) });
+        flushRaf();
+      });
+      const after = indicatorTicksOf(latest.aggressiveTape)!;
+      expect(latest.aggressiveTape!.prints.map((print) => print.size)).toEqual([3, 4, 5]);
+      expect(after.coverageOf(base, base + 2_000)).toBe("all");
+      expect(after.coverageOf(base + 5_000, base + 6_001)).toBe("all");
+      expect(after.coverageOf(base, base + 6_001)).not.toBe("all");
+      expect(after.coverageOf(base + 2_000, base + 5_001)).not.toBe("all");
+      expect(after.coverageOf(base + 2_500, base + 4_000)).toBe("none");
+    } finally {
+      root.unmount();
+      container.remove();
+      vi.useRealTimers();
     }
   });
 });

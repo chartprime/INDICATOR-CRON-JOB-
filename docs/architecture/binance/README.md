@@ -103,12 +103,17 @@ asserts identical output on 10,000 recorded BTC-USDT aggregate trades
   `fromId`, at most 30 pages (weight 4 each) or seven days, one 10 s timeout
   per page. Rows are aggregate trades, ids `a<aggTradeId>` (a separate id
   space from the stream's trade ids; a bootstrap print is one taker order at
-  one price, so it can be larger than any single fill the runtime saw); rows
-  at or after the first live trade are dropped so nothing is counted twice. A
+  one price, so it can be larger than any single fill the runtime saw). A
   page is validated whole (every row well formed, ids consecutive, starting
   at `fromId`): a page with a malformed row is a failed read, retried or
   ending the walk with the pages before it, never a shorter page that would
-  leave a hole inside claimed coverage. Then the `snapshot` is re-broadcast
+  leave a hole inside claimed coverage. The pages are staged until the
+  stream's first trade is known (or, with a stream connecting or open but
+  silent, for a two-second grace), then every row is reconciled against the
+  live tape by fill id (`f`/`l` against the span's first and last trade id):
+  rows the stream delivered are dropped, an aggregate straddling a span
+  boundary is dropped and its millisecond marked unverified, outside every
+  claim. Then the `snapshot` is re-broadcast
   (every closed bar held, the last 100 live trades, the newest 5,000 markers,
   the pool), the forming bar is re-sent, and a client that opted in through
   `capabilities` gets the full marker set as `marker_history` (`reset` on the
@@ -117,15 +122,26 @@ asserts identical output on 10,000 recorded BTC-USDT aggregate trades
   days of storage.
 - Observed tape and seams: the transport keeps the stretches of tape it has
   seen in full (the bootstrap's id-contiguous pages, each stream span from its
-  first to its last live trade) and claims coverage only inside one of them.
-  Kline recovery repairs bars, not trades, so the hole between the newest
-  page and the stream's first trade, and the hole between one stream's last
-  trade and the next stream's first, are filled from REST (`aggTrades` from
-  the hole's start by `startTime`, then by id, at most 10 pages, three tries);
-  a closed hole merges the stretches, an unclosable one stays a hole outside
-  every claim. The bootstrap's snapshot waits for the seam to the stream to
-  settle; with no stream delivering, it goes out claiming nothing
-  (`aggressive_prints_from` = now) while still carrying the prints.
+  first to its last live trade, with the ids at their ends) and claims
+  coverage only inside one of them, minus unverified milliseconds. Kline
+  recovery repairs bars, not trades, so the hole between the newest page and
+  the stream's first trade, and the hole between one stream's last trade and
+  the next stream's first, are filled from REST (`aggTrades` by id from the
+  row after the last REST row, else by `startTime` from the hole's last
+  observed millisecond, every row reconciled by fill id; at most 10 pages,
+  three tries); a closed hole merges the stretches, an unclosable one stays a
+  hole outside every claim. The bootstrap's snapshot waits for the seam to
+  the stream to settle; with no stream delivering, it goes out claiming
+  nothing (`aggressive_prints_from` = now) while still carrying the prints.
+  The bookkeeping is pruned to the pool's four-hour retention and bounded.
+- A lost stream after trades: the transport closes itself, exactly as a lost
+  runtime socket reaches the worker, which reports `status: closed` (the
+  tick store ends its live stretch there: `AggressiveTape.endLive`) and
+  reconnects; the pair's markers, pool and coverage are kept across transport
+  instances (four pairs at most), so the connect snapshot carries them, no
+  second bootstrap runs, and the hole is filled from REST or left outside
+  every claim. A stream lost before any trade keeps the internal retry
+  (`RECOVERING`, then `UNAVAILABLE` after five failures), as before.
 - `aggressive_prints`, `aggressive_prints_floor`, `aggressive_prints_from`:
   the runtime's pool (floor from the 98th percentile of the last 4,096 sizes
   once 200 are seen, never falling; four hours; 20,000 prints). Live trades

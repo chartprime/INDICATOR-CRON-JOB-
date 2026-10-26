@@ -102,12 +102,28 @@ function sortedSnapshots(snapshots: readonly WallSnapshot[] | undefined): readon
   return snapshots === undefined ? undefined : [...snapshots].sort((a, b) => a.ts - b.ts);
 }
 
+/** The runtime's absorption rule (`large-level-tracker.js`): traded into within this window and still holding this share of its peak. */
+export const ABSORB_WINDOW_MS = 5_000;
+export const ABSORB_HOLD_SHARE = 0.5;
+
 /**
- * The wall as it stood at `cut`: the newest snapshot at or before the cut, or
- * else the wall reconstructed from its events through the cut (born size as
- * size and peak, `wall_trade` sizes as `eaten`), or else the scripted record
- * served as freshly born. A wall that ended at or before the cut is history
- * and is served as its final record.
+ * `absorbing` as the runtime decides it: the wall is resting (not ended), its
+ * last trade landed within `ABSORB_WINDOW_MS` of `nowTs`, and it still holds at
+ * least `ABSORB_HOLD_SHARE` of its peak. The trade's mode does not enter the
+ * runtime's rule; a swept trade that leaves the wall standing counts the same.
+ */
+export function absorbingAt(wall: Pick<L2Wall, "size" | "peak" | "endTs">, lastTradeTs: number | null, nowTs: number): boolean {
+  return wall.endTs === null && lastTradeTs !== null && nowTs - lastTradeTs <= ABSORB_WINDOW_MS && wall.size >= wall.peak * ABSORB_HOLD_SHARE;
+}
+
+/**
+ * The wall as it stood at `cut`. A wall that ended at or before the cut is
+ * history and is served as its final record. A live wall is the newest
+ * snapshot at or before the cut, or else is rebuilt from its events through
+ * the cut (born size as size and peak, `wall_trade` sizes as `eaten`,
+ * `absorbing` by the runtime's rule at the cut). With neither a snapshot nor a
+ * birth record there is nothing honest to serve, so the wall is omitted: the
+ * final record's `size` and `peak` are future knowledge under a cut.
  */
 function wallAt(wall: L2Wall, cut: number, snapshots: readonly WallSnapshot[], events: readonly L2Event[]): L2Wall | null {
   if (wall.startTs > cut) return null;
@@ -116,26 +132,39 @@ function wallAt(wall: L2Wall, cut: number, snapshots: readonly WallSnapshot[], e
   for (const candidate of snapshots) {
     if (candidate.wall.id === wall.id && candidate.ts <= cut && (snapshot === null || candidate.ts >= snapshot.ts)) snapshot = candidate;
   }
-  if (snapshot !== null) return { ...snapshot.wall, endTs: null, endedBy: null };
   let bornSize: number | null = null;
   let eaten = 0;
+  let lastTradeTs: number | null = null;
+  let anyTradeEvent = false;
   for (const event of events) {
     if (event.ts > cut) break;
     if (event.kind === "wall_born" && event.wall === wall.id) bornSize = event.size;
-    if (event.kind === "wall_trade" && event.wall === wall.id) eaten += event.size;
+    if (event.kind === "wall_trade" && event.wall === wall.id) {
+      eaten += event.size;
+      lastTradeTs = event.ts;
+      anyTradeEvent = true;
+    }
   }
-  const peak = bornSize ?? wall.size;
-  return {
+  if (snapshot !== null) {
+    const stood: L2Wall = { ...snapshot.wall, endTs: null, endedBy: null };
+    // `absorbing` decays with time, so a snapshot's flag holds only at its own
+    // instant; later, when the events say when the wall was last traded into,
+    // the runtime's rule is re-evaluated at the cut on the snapshot's size and peak.
+    if (cut === snapshot.ts || !anyTradeEvent) return stood;
+    return { ...stood, absorbing: absorbingAt(stood, lastTradeTs, cut) };
+  }
+  if (bornSize === null) return null;
+  const rebuilt = {
     ...wall,
-    size: Math.max(0, peak - eaten),
-    peak,
+    size: Math.max(0, bornSize - eaten),
+    peak: bornSize,
     eaten,
-    fill: peak > 0 ? eaten / peak : 0,
-    absorbing: false,
+    fill: bornSize > 0 ? eaten / bornSize : 0,
     endTs: null,
     endedBy: null,
     detail: null,
   };
+  return { ...rebuilt, absorbing: absorbingAt(rebuilt, lastTradeTs, cut) };
 }
 
 export function fakeL2(initial: FakeL2Script = {}): FakeL2 {
@@ -296,20 +325,24 @@ export interface WallLifecycleSpec extends WallSpec {
 /**
  * A wall's whole story: the final record, the event stream that tells it
  * (born, shrunk, traded, ended) and the snapshots a cut view serves, one per
- * event, with `size`, `eaten` and `fill` as they stood after that event.
+ * event, with `size`, `eaten`, `fill` and `absorbing` as they stood right
+ * after that event. `absorbing` follows the runtime's rule (`absorbingAt`), so
+ * a snapshot-backed view and an event-backed view of the same lifecycle agree;
+ * the final record is taken as of the last event (`spec.absorbing` overrides it).
  */
 export function wallLifecycle(spec: WallLifecycleSpec): { wall: L2Wall; events: L2Event[]; snapshots: WallSnapshot[] } {
   const traded = spec.tradeTs === undefined ? 0 : (spec.tradedSize ?? spec.size / 2);
   const ended = spec.endTs !== undefined && spec.endTs !== null;
+  const lastTs = Math.max(spec.startTs, spec.shrinkTs ?? -Infinity, spec.tradeTs ?? -Infinity, ended ? spec.endTs! : -Infinity);
+  const base: L2Wall = { ...wallOf(spec), peak: spec.peak ?? spec.size };
+  const afterTrade: L2Wall = { ...base, size: spec.size - traded, eaten: traded, fill: spec.size > 0 ? traded / spec.size : 0, endTs: null, endedBy: null };
   const wall: L2Wall = {
-    ...wallOf(spec),
-    peak: spec.peak ?? spec.size,
-    size: spec.size - traded,
-    eaten: traded,
-    fill: spec.size > 0 ? traded / spec.size : 0,
-    absorbing: spec.absorbing ?? traded > 0,
+    ...afterTrade,
+    endTs: base.endTs,
+    endedBy: base.endedBy,
+    absorbing: spec.absorbing ?? absorbingAt({ ...afterTrade, endTs: base.endTs }, spec.tradeTs ?? null, lastTs),
   };
-  const born: L2Wall = { ...wall, size: spec.size, eaten: 0, fill: 0, absorbing: false, endTs: null, endedBy: null };
+  const born: L2Wall = { ...base, size: spec.size, eaten: 0, fill: 0, absorbing: false, endTs: null, endedBy: null };
   const events: L2Event[] = [{ kind: "wall_born", ts: spec.startTs, wall: spec.id, side: spec.side, row: spec.row, span: wall.span, size: spec.size }];
   const snapshots: WallSnapshot[] = [{ ts: spec.startTs, wall: born }];
   if (spec.shrinkTs !== undefined) {
@@ -318,7 +351,7 @@ export function wallLifecycle(spec: WallLifecycleSpec): { wall: L2Wall; events: 
   }
   if (spec.tradeTs !== undefined) {
     events.push({ kind: "wall_trade", ts: spec.tradeTs, wall: spec.id, mode: "absorbed", price: spec.tradePrice ?? spec.row, size: traded });
-    snapshots.push({ ts: spec.tradeTs, wall: { ...wall, endTs: null, endedBy: null } });
+    snapshots.push({ ts: spec.tradeTs, wall: { ...afterTrade, absorbing: absorbingAt(afterTrade, spec.tradeTs, spec.tradeTs) } });
   }
   if (ended) {
     events.push({ kind: "wall_end", ts: spec.endTs!, wall: spec.id, endedBy: wall.endedBy ?? "pulled", distanceRows: 1 });

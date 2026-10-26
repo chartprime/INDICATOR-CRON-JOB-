@@ -162,3 +162,21 @@ Requirements Codex added, all accepted:
 explicit coverage reconciliation in the L2 engine (`coverageOf` on every
 snapshot, gap frames on every failed poll) and an honest statement that
 replenishment and cancellation between snapshots are unobservable.
+
+## PM amendments after Codex plan round 2 (2026-10-26)
+
+Stage B is reduced to REST candles only (OHLC, volume, taker-buy volume,
+trade count; forming and closed). Aggregate trades are deferred to Stage B2
+because the web app's completeness check compares received trade records with
+the candle's `trade_count` and the SDK trade contract promises individual
+prints; a capability contract for aggregated tape is needed first. In this
+build the tape and the book are both unavailable and the health reason reads
+`Polled spot candles · no tape · no order book`. Added: `serverTime` fetch,
+refresh and weight; catch-up page limits and continuation cursor with a
+`catching up` reason; a forming-bar change detector over every downstream
+field; verification that seeded L2 visuals turn unavailable; the semantic
+baseline defined on overlapping complete minutes with OHLC, volume and
+taker-buy volume equal within rounding; the weight guarantee stated as this
+runtime's reserved dispatch budget. Earlier wording on per-print parity, READY
+book and weight numbers is superseded. Three plan rounds used; the PM
+approves the brief at this scope.

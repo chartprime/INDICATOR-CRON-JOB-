@@ -216,6 +216,8 @@ type Session = {
   unfillable: TapeInterval[];
   /** Boundary milliseconds whose aggregate trades straddle a live span's first or last trade and cannot be split by id: outside every claim. */
   unverified: number[];
+  /** First trade ids of stream spans whose seam to the stretch before them a REST read has closed: that junction may join. */
+  bridgedStarts: number[];
   /** The bootstrap's calibration window start: rows from it calibrate the pool's floor, as the runtime's newest warm-up chunk does. */
   calibrationFrom: number;
   tape: TapeBootstrap;
@@ -237,6 +239,7 @@ type TapeState = {
   liveSpans: LiveSpan[];
   unfillable: TapeInterval[];
   unverified: number[];
+  bridgedStarts: number[];
   calibrationFrom: number;
   recentTrades: TradeFrame[];
   done: boolean;
@@ -455,8 +458,31 @@ export function parseAggTradesPage(body: unknown, fromId: number | null): AggTra
   return rows;
 }
 
-/** Merges a closed stretch into the list, joining stretches that overlap or touch (adjacent milliseconds); the ends keep the ids of whichever stretch reaches furthest. */
-function addInterval(intervals: TapeInterval[], added: TapeInterval): void {
+/**
+ * Whether two stretches that touch or overlap in time are one continuous
+ * stretch of tape. Where the earlier one ends with a live trade and the later
+ * one starts with a live trade, they were observed independently (two stream
+ * spans): fills between the two ids may be missing even inside the same
+ * millisecond, so they join only when the ids are consecutive. A REST stretch
+ * (the bootstrap's pages, a filled seam) was reconciled against the spans by
+ * fill id, so it joins either side.
+ */
+function continuous(earlier: TapeInterval, later: TapeInterval, bridged: ReadonlySet<number>): boolean {
+  if (earlier.endTradeId === undefined || later.startTradeId === undefined) return true;
+  return later.startTradeId === earlier.endTradeId + 1 || bridged.has(later.startTradeId);
+}
+
+const NO_BRIDGES: ReadonlySet<number> = new Set();
+
+/**
+ * Merges a stretch into the list, joining stretches that overlap or touch
+ * (adjacent milliseconds) and are continuous (`bridged`: the first trade ids
+ * of spans whose seam a REST read has closed). The ends keep the ids of
+ * whichever stretch reaches furthest; at a tie both kinds of id stay, the
+ * live trade id (for continuity) and the REST aggregate id (for where the
+ * next read starts).
+ */
+function addInterval(intervals: TapeInterval[], added: TapeInterval, bridged: ReadonlySet<number> = NO_BRIDGES): void {
   if (!(added.to >= added.from)) return;
   let merged: TapeInterval = { ...added };
   const apart: TapeInterval[] = [];
@@ -465,12 +491,26 @@ function addInterval(intervals: TapeInterval[], added: TapeInterval): void {
       apart.push(interval);
       continue;
     }
-    const start = interval.from < merged.from || (interval.from === merged.from && merged.startTradeId === undefined) ? interval : merged;
-    const end = interval.to > merged.to || (interval.to === merged.to && merged.endTradeId === undefined && merged.endAggId === undefined) ? interval : merged;
-    merged = { from: start.from, to: end.to, startTradeId: start.startTradeId, endTradeId: end.endTradeId, endAggId: end.endAggId };
+    const intervalFirst = interval.from < merged.from || (interval.from === merged.from && interval.to <= merged.to);
+    const [earlier, later] = intervalFirst ? [interval, merged] : [merged, interval];
+    if (!continuous(earlier, later, bridged)) {
+      apart.push(interval);
+      continue;
+    }
+    const from = Math.min(interval.from, merged.from);
+    const to = Math.max(interval.to, merged.to);
+    const starts = [interval, merged].filter((candidate) => candidate.from === from);
+    const ends = [interval, merged].filter((candidate) => candidate.to === to);
+    merged = {
+      from,
+      to,
+      startTradeId: starts.map((candidate) => candidate.startTradeId).find((id) => id !== undefined),
+      endTradeId: ends.map((candidate) => candidate.endTradeId).find((id) => id !== undefined),
+      endAggId: ends.map((candidate) => candidate.endAggId).find((id) => id !== undefined),
+    };
   }
   apart.push(merged);
-  apart.sort((a, b) => a.from - b.from);
+  apart.sort((a, b) => a.from - b.from || a.to - b.to);
   intervals.splice(0, intervals.length, ...apart);
 }
 
@@ -776,9 +816,12 @@ export class BrowserBinanceTransport implements TransportSocket {
       liveSpans: session.liveSpans,
       unfillable: session.unfillable,
       unverified: session.unverified,
+      bridgedStarts: session.bridgedStarts,
       calibrationFrom: session.calibrationFrom,
       recentTrades: session.recentTrades,
-      done: session.tape.done,
+      // Completion means committed: pages still staged (a switch during the
+      // grace) are discarded, and a return reads them again.
+      done: session.tape.done && session.tape.staged.length === 0,
     });
     while (tapeStates.size > MAX_TAPE_STATES) {
       const oldest = tapeStates.keys().next().value;
@@ -816,7 +859,7 @@ export class BrowserBinanceTransport implements TransportSocket {
     const live = session.live;
     if (live !== null) {
       session.liveSpans.push({ from: live.from, to: live.last, firstId: live.firstId, lastId: live.lastId });
-      addInterval(session.observed, { from: live.from, to: live.last, startTradeId: live.firstId, endTradeId: live.lastId });
+      addInterval(session.observed, { from: live.from, to: live.last, startTradeId: live.firstId, endTradeId: live.lastId }, new Set(session.bridgedStarts));
       session.live = null;
     }
     const stream = session.stream;
@@ -872,6 +915,7 @@ export class BrowserBinanceTransport implements TransportSocket {
       live: null,
       unfillable: [],
       unverified: [],
+      bridgedStarts: [],
       calibrationFrom: this.now() - DEFAULT_CALIBRATION_MS,
       tape: { started: false, inFlight: false, done: false, attempts: 0, unavailable: false, backoffMs: STREAM_BACKOFF_INITIAL_MS, abort: null, timer: null, staged: [], graceTimer: null, startVerified: false },
       seam: { inFlight: false, gap: null, failures: 0, backoffMs: STREAM_BACKOFF_INITIAL_MS, abort: null, timer: null, publishWhenSettled: false },
@@ -888,6 +932,7 @@ export class BrowserBinanceTransport implements TransportSocket {
       session.liveSpans = kept.liveSpans;
       session.unfillable = kept.unfillable;
       session.unverified = kept.unverified;
+      session.bridgedStarts = kept.bridgedStarts;
       session.recentTrades = kept.recentTrades;
       if (kept.done) {
         session.calibrationFrom = kept.calibrationFrom;
@@ -1406,6 +1451,7 @@ export class BrowserBinanceTransport implements TransportSocket {
     session.liveSpans = session.liveSpans.filter((span) => span.to >= cutoff);
     session.unfillable = session.unfillable.filter((gap) => gap.to >= cutoff || keepsActive(gap));
     session.unverified = session.unverified.filter((ms) => ms >= cutoff);
+    session.bridgedStarts = session.bridgedStarts.filter((id) => session.liveSpans.some((span) => span.firstId === id) || session.live?.firstId === id);
     if (session.observed.length > MAX_COVERAGE_ENTRIES) session.observed.splice(0, session.observed.length - MAX_COVERAGE_ENTRIES);
     if (session.liveSpans.length > MAX_COVERAGE_ENTRIES) session.liveSpans.splice(0, session.liveSpans.length - MAX_COVERAGE_ENTRIES);
     if (session.unfillable.length > MAX_COVERAGE_ENTRIES) session.unfillable.splice(0, session.unfillable.length - MAX_COVERAGE_ENTRIES);
@@ -1422,7 +1468,7 @@ export class BrowserBinanceTransport implements TransportSocket {
   private coverageIntervals(session: Session): TapeInterval[] {
     this.pruneCoverage(session);
     const intervals = session.observed.map((interval) => ({ ...interval }));
-    if (session.live !== null) addInterval(intervals, { from: session.live.from, to: session.live.last, startTradeId: session.live.firstId, endTradeId: session.live.lastId });
+    if (session.live !== null) addInterval(intervals, { from: session.live.from, to: session.live.last, startTradeId: session.live.firstId, endTradeId: session.live.lastId }, new Set(session.bridgedStarts));
     return subtractMilliseconds(intervals, session.unverified);
   }
 
@@ -1754,15 +1800,24 @@ export class BrowserBinanceTransport implements TransportSocket {
     return calibration.length + older.length;
   }
 
-  /** The newest hole between two observed stretches (the open stream span counts) that is neither given up on nor made only of unverified milliseconds. */
+  /**
+   * The newest hole between two observed stretches (the open stream span
+   * counts) that is neither given up on nor made only of unverified
+   * milliseconds. Two stream spans whose ids are not consecutive stay apart
+   * even when their milliseconds touch or coincide: their hole has no
+   * interior, and is still read from REST so the fills between the ids are
+   * seeded or the boundary is marked unverified.
+   */
   private nextSeamGap(session: Session): TapeInterval | null {
     const intervals = this.coverageIntervals(session);
     for (let i = intervals.length - 1; i >= 1; i -= 1) {
-      const gap: TapeInterval = { from: intervals[i - 1].to, to: intervals[i].from, endAggId: intervals[i - 1].endAggId, endTradeId: intervals[i - 1].endTradeId };
+      const earlier = intervals[i - 1];
+      const later = intervals[i];
+      const gap: TapeInterval = { from: Math.min(earlier.to, later.from), to: Math.max(earlier.to, later.from), startTradeId: later.startTradeId, endAggId: earlier.endAggId, endTradeId: earlier.endTradeId };
       if (session.unfillable.some((open) => open.from === gap.from && open.to === gap.to)) continue;
       const interior = gap.to - gap.from - 1;
       const unverifiedInside = session.unverified.filter((ms) => ms > gap.from && ms < gap.to).length;
-      if (interior <= unverifiedInside) continue;
+      if (interior > 0 && interior <= unverifiedInside) continue;
       return gap;
     }
     return null;
@@ -1803,7 +1858,14 @@ export class BrowserBinanceTransport implements TransportSocket {
         const inside = rows.filter((row) => row.T <= gap.to);
         if (inside.length > 0) {
           this.seedTape(session, inside);
-          endAggId = inside[inside.length - 1].a;
+          // The ids read end where the open stream's own fills begin: an
+          // aggregate at or after the stream's first trade is the stream's
+          // while it delivers, but if the stream is lost before delivering
+          // those fills, the next seam must read them again and judge them
+          // against the span as it ended.
+          const live = session.live;
+          const streams = live === null ? undefined : inside.find((row) => row.T > live.from || (row.T === live.from && row.l >= live.firstId));
+          endAggId = streams === undefined ? inside[inside.length - 1].a : streams.a - 1;
         }
         // The hole is closed when a row past its end was read, or the page
         // was short (nothing newer existed on the exchange at the read).
@@ -1839,7 +1901,10 @@ export class BrowserBinanceTransport implements TransportSocket {
     seam.failures = 0;
     seam.backoffMs = STREAM_BACKOFF_INITIAL_MS;
     if (closed) {
-      addInterval(session.observed, { from: gap.from, to: gap.to, endAggId });
+      // The fills between the stretch before and the span after were read and
+      // reconciled: that junction is continuous now, whatever its trade ids.
+      if (gap.startTradeId !== undefined && !session.bridgedStarts.includes(gap.startTradeId)) session.bridgedStarts.push(gap.startTradeId);
+      addInterval(session.observed, { from: gap.from, to: gap.to, endAggId }, new Set(session.bridgedStarts));
       // Coverage grew: the snapshot says so.
       session.seam.publishWhenSettled = true;
     } else {

@@ -137,6 +137,17 @@ function aggRow(a: number, T: number, f: number, l: number, q = "5.00000"): Reco
   return { a, p: "79530.00", q, f, l, T, m: false, M: true };
 }
 
+/** Serves hand-built mirror rows (sorted by id) as the mirror would: newest page, the page from `fromId`, or the page from `startTime` on. */
+function mirrorPage(url: string, raws: readonly Record<string, unknown>[]): Record<string, unknown>[] {
+  const params = new URL(url).searchParams;
+  const fromId = params.get("fromId");
+  const startTime = params.get("startTime");
+  const sorted = [...raws].sort((x, y) => (x.a as number) - (y.a as number));
+  if (startTime !== null) return sorted.filter((row) => (row.T as number) >= Number(startTime)).slice(0, TAPE_BOOTSTRAP_PAGE);
+  if (fromId !== null) return sorted.filter((row) => (row.a as number) >= Number(fromId)).slice(0, TAPE_BOOTSTRAP_PAGE);
+  return sorted.slice(-TAPE_BOOTSTRAP_PAGE);
+}
+
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 }
@@ -848,28 +859,46 @@ describe("BrowserBinanceTransport coverage edges", () => {
   it("reconciles a one-trade stream span against both of its id boundaries: aggregates before and after it are seeded, one within it is dropped, one straddling it leaves its millisecond unverified", async () => {
     const C = NEWEST_TS + 3_000;
     const M = C + 5_000;
-    const M2 = M + 5_000;
-    // The clock sits past the last trade of the scenario, as it would live.
+    // The mirror after the recording: at C (the one-trade span, id 500) one
+    // aggregate wholly before, one within, one after; at M (the next span,
+    // id 600) one straddling it; then one newer.
+    const extra = [
+      aggRow(LAST_ID + 1, C, 490, 495),
+      aggRow(LAST_ID + 2, C, 500, 500),
+      aggRow(LAST_ID + 3, C, 505, 507),
+      aggRow(LAST_ID + 4, M, 598, 601),
+      aggRow(LAST_ID + 5, M + 2_000, 800, 800),
+    ];
     const h1 = harness(async (url) => {
-      if (url.includes(`fromId=${LAST_ID + 1}`)) return jsonResponse([]);
-      if (url.includes(`startTime=${C}`)) {
-        // The span is the single trade 500 at C: before it, within it, after it.
-        return jsonResponse([aggRow(9_001, C, 490, 495), aggRow(9_002, C, 500, 500), aggRow(9_003, C, 505, 507), aggRow(9_004, M + 5, 700, 700)]);
-      }
-      if (url.includes(`startTime=${M}`)) {
-        // The span is the single trade 600 at M: one straddling it.
-        return jsonResponse([aggRow(9_101, M, 598, 601), aggRow(9_102, M2 + 5, 800, 800)]);
-      }
+      const params = new URL(url).searchParams;
+      const fromId = params.get("fromId");
+      if (fromId !== null && Number(fromId) > LAST_ID) return jsonResponse(mirrorPage(url, extra));
+      if (params.get("startTime") !== null) return jsonResponse(mirrorPage(url, extra));
       return jsonResponse(recordedPage(url));
-    }, () => M2 + 10_000);
+    }, () => M + 10_000);
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     try {
       await openAndSelect(h1);
       await settleBootstrap();
       h1.stream().open();
       await vi.advanceTimersByTimeAsync(0);
+      h1.frames.length = 0;
       h1.stream().message(liveTrade(500, C, SIZE, false));
       await settle();
+      // The seam after the pages is read by id and ends at the first row past C.
+      expect(String(h1.aggTradesMock.mock.calls.at(-1)![0])).toContain(`fromId=${LAST_ID + 1}`);
+      const first = h1.parsed().find((frame) => frame.type === "snapshot");
+      if (first === undefined || first.type !== "snapshot") throw new Error("expected a snapshot");
+      const ids = first.aggressive_prints!.map((print) => print.trade_id);
+      expect(ids).toContain(`a${LAST_ID + 1}`);
+      // While the stream delivers, every fill from its first trade on is the stream's.
+      expect(ids).not.toContain(`a${LAST_ID + 2}`);
+      expect(ids).not.toContain(`a${LAST_ID + 3}`);
+      expect(ids).toContain("500");
+      expect(h1.transport.tapeCoverage.unverified).toBe(0);
+      expect(first.aggressive_prints_from).toBe(OLDEST_TS);
+      expect(await askHistory(h1, historyRequest(1, OLDEST_TS, C + 1, 1))).toMatchObject({ complete: true });
+      // The stream is lost right after its first trade: fills 505..507 at C were never delivered.
       h1.stream().drop();
 
       const h2 = reconnected(h1);
@@ -879,38 +908,144 @@ describe("BrowserBinanceTransport coverage edges", () => {
       await vi.advanceTimersByTimeAsync(0);
       h2.frames.length = 0;
       h2.stream().message(liveTrade(600, M, SIZE, false));
+      h2.stream().message(liveTrade(601, M + 1_000, SIZE, false));
+      await settle();
+      // Read again from the first row the lost stream owned: against the span
+      // as it ended (one trade, id 500), the row within it is the stream's and
+      // the row after it is missing tape; the row at M straddles the new span's first trade.
+      expect(String(h2.aggTradesMock.mock.calls.at(-1)![0])).toContain(`fromId=${LAST_ID + 2}`);
+      const after = h2.parsed().find((frame) => frame.type === "snapshot");
+      if (after === undefined || after.type !== "snapshot") throw new Error("expected a snapshot");
+      const afterIds = after.aggressive_prints!.map((print) => print.trade_id);
+      expect(afterIds).not.toContain(`a${LAST_ID + 2}`);
+      expect(afterIds).toContain(`a${LAST_ID + 3}`);
+      expect(afterIds).not.toContain(`a${LAST_ID + 4}`);
+      expect(h2.transport.tapeCoverage.unverified).toBe(1);
+      expect(after.aggressive_prints_from).toBe(M + 1);
+      expect(await askHistory(h2, historyRequest(2, OLDEST_TS, M, 1))).toMatchObject({ complete: true });
+      expect(await askHistory(h2, historyRequest(3, OLDEST_TS, M + 1, 1))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE" });
+      expect(await askHistory(h2, historyRequest(4, M + 1, M + 1_001, 1))).toMatchObject({ complete: true });
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("never joins two stream spans whose trade ids are not consecutive, even when their milliseconds touch or coincide, until REST reconciles the fills between them", async () => {
+    const tA = NOW_MS - 10_000;
+    // Adjacent milliseconds: the first stream ends at tA with trade 100, the
+    // next starts at tA+1 with trade 200; the mirror holds the fills between.
+    const adjacent = [aggRow(1, tA, 101, 150), aggRow(2, tA + 1, 151, 199), aggRow(3, tA + 1, 200, 200), aggRow(4, tA + 500, 300, 300)];
+    let release: (() => void) | null = null;
+    const h1 = harness((url) => {
+      if (!url.includes("startTime")) return Promise.resolve(jsonResponse([]));
+      return new Promise<Response>((resolve) => {
+        release = () => resolve(jsonResponse(mirrorPage(url, adjacent)));
+      });
+    });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      await openAndSelect(h1);
+      await settle();
+      h1.stream().open();
+      await vi.advanceTimersByTimeAsync(0);
+      h1.stream().message(liveTrade(100, tA, SIZE, false));
+      h1.stream().drop();
+      const h2 = reconnected(h1);
+      await openAndSelect(h2);
+      await settle();
+      h2.stream().open();
+      await vi.advanceTimersByTimeAsync(0);
+      h2.frames.length = 0;
+      h2.stream().message(liveTrade(200, tA + 1, SIZE, false));
+      await vi.advanceTimersByTimeAsync(0);
+      expect(String(h2.aggTradesMock.mock.calls.at(-1)![0])).toContain(`startTime=${tA}`);
+      // Until REST answers, the two spans are two stretches: nothing is complete across them.
+      expect(await askHistory(h2, historyRequest(1, tA, tA + 2, 1))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE" });
+      expect(await askHistory(h2, historyRequest(2, tA, tA + 1, 1))).toMatchObject({ complete: true });
+      release!();
       await settle();
       const snapshot = h2.parsed().find((frame) => frame.type === "snapshot");
       if (snapshot === undefined || snapshot.type !== "snapshot") throw new Error("expected a snapshot");
       const ids = snapshot.aggressive_prints!.map((print) => print.trade_id);
-      expect(ids).toContain("a9001");
-      expect(ids).not.toContain("a9002");
-      expect(ids).toContain("a9003");
-      expect(ids).toContain("500");
-      expect(h2.transport.tapeCoverage.unverified).toBe(0);
-      expect(snapshot.aggressive_prints_from).toBe(OLDEST_TS);
-      expect(await askHistory(h2, historyRequest(1, OLDEST_TS, M + 1, 1))).toMatchObject({ complete: true });
+      expect(ids).toEqual(expect.arrayContaining(["a1", "a2", "100", "200"]));
+      expect(ids).not.toContain("a3");
+      expect(snapshot.aggressive_prints_from).toBe(tA);
+      expect(await askHistory(h2, historyRequest(3, tA, tA + 2, 1))).toMatchObject({ complete: true });
       h2.stream().drop();
 
-      const h3 = reconnected(h2);
+      // The same millisecond: the next stream starts at tA+1 again with trade
+      // 400 while this one ended there with 200. The ids read so far end just
+      // before the row the lost stream owned (its own trade 200), so the seam
+      // is read from that id: that row is the stream's, one aggregate between
+      // the spans is whole, one straddles the ended span, one is the new
+      // stream's.
+      const sameMs = [aggRow(3, tA + 1, 200, 200), aggRow(4, tA + 1, 201, 300), aggRow(5, tA + 1, 195, 205), aggRow(6, tA + 1, 400, 400), aggRow(7, tA + 900, 500, 500)];
+      release = null;
+      const h3 = harness((url) => {
+        if (!url.includes("fromId") && !url.includes("startTime")) return Promise.resolve(jsonResponse([]));
+        return Promise.resolve(jsonResponse(mirrorPage(url, sameMs)));
+      }, h2.now);
       await openAndSelect(h3);
       await settle();
       h3.stream().open();
       await vi.advanceTimersByTimeAsync(0);
       h3.frames.length = 0;
-      h3.stream().message(liveTrade(700, M2, SIZE, false));
+      h3.stream().message(liveTrade(400, tA + 1, SIZE, false));
+      h3.stream().message(liveTrade(401, tA + 800, SIZE, false));
       await settle();
+      expect(String(h3.aggTradesMock.mock.calls.at(-1)![0])).toContain("fromId=3");
       const after = h3.parsed().find((frame) => frame.type === "snapshot");
       if (after === undefined || after.type !== "snapshot") throw new Error("expected a snapshot");
-      expect(after.aggressive_prints!.map((print) => print.trade_id)).not.toContain("a9101");
+      const afterIds = after.aggressive_prints!.map((print) => print.trade_id);
+      expect(afterIds).not.toContain("a3");
+      expect(afterIds).toContain("a4");
+      expect(afterIds).not.toContain("a5");
+      expect(afterIds).not.toContain("a6");
       expect(h3.transport.tapeCoverage.unverified).toBe(1);
-      expect(after.aggressive_prints_from).toBe(M + 1);
-      expect(await askHistory(h3, historyRequest(2, OLDEST_TS, M, 1))).toMatchObject({ complete: true });
-      expect(await askHistory(h3, historyRequest(3, OLDEST_TS, M + 1, 1))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE" });
-      expect(await askHistory(h3, historyRequest(4, M + 1, M2 + 1, 1))).toMatchObject({ complete: true });
+      // tA+1 holds a fill nobody can place: complete up to it and after it, never across it.
+      expect(after.aggressive_prints_from).toBe(tA + 2);
+      expect(await askHistory(h3, historyRequest(4, tA, tA + 1, 1))).toMatchObject({ complete: true });
+      expect(await askHistory(h3, historyRequest(5, tA, tA + 2, 1))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE" });
+      expect(await askHistory(h3, historyRequest(6, tA + 2, tA + 801, 1))).toMatchObject({ complete: true });
+      h3.stream().drop();
+
+      // Consecutive ids: the next stream's first trade is the one after this stream's last; no REST read, one stretch.
+      const h4 = reconnected(h3);
+      await openAndSelect(h4);
+      await settle();
+      h4.stream().open();
+      await vi.advanceTimersByTimeAsync(0);
+      const reads = h4.aggTradesMock.mock.calls.length;
+      h4.stream().message(liveTrade(402, tA + 801, SIZE, false));
+      await settle();
+      expect(h4.aggTradesMock.mock.calls.length).toBe(reads);
+      expect(await askHistory(h4, historyRequest(7, tA + 2, tA + 802, 1))).toMatchObject({ complete: true });
     } finally {
       warn.mockRestore();
     }
+  });
+
+  it("reads the bootstrap again when the pair was left during the commit grace, instead of remembering staged pages as done", async () => {
+    const h = harness();
+    await openAndSelect(h);
+    await settle();
+    expect(h.aggTradesMock).toHaveBeenCalledTimes(11);
+    expect(h.transport.tapeCoverage.staged).toBe(10);
+    // Away to another pair during the grace, and back.
+    h.transport.send(JSON.stringify({ ...SPOT, symbol: "ETH-USDT" }));
+    await settleBootstrap();
+    const ethReads = h.aggTradesMock.mock.calls.length - 11;
+    expect(ethReads).toBeGreaterThan(0);
+    h.frames.length = 0;
+    h.transport.send(JSON.stringify(SPOT));
+    await settleBootstrap();
+    expect(h.aggTradesMock.mock.calls.length).toBe(11 + ethReads + 11);
+    const frames = h.parsed();
+    const snapshot = frames.filter((frame) => frame.type === "snapshot").at(-1);
+    if (snapshot === undefined || snapshot.type !== "snapshot") throw new Error("expected a snapshot");
+    expect(snapshot.symbol).toBe("BTC-USDT");
+    expect(snapshot.markers).toEqual(runtimeMarkers(recorded));
+    expect(h.transport.tapeCoverage.staged).toBe(0);
   });
 
   it("does not claim the oldest millisecond of a walk its page budget cut through aggregates sharing a timestamp", async () => {

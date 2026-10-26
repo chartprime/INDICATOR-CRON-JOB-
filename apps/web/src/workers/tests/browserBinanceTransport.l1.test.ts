@@ -20,6 +20,7 @@ import {
   MAX_SNAPSHOT_MARKERS,
   MAX_TAPE_BOOTSTRAP_PAGES,
   SEAM_FILL_FAILURES_BEFORE_GIVING_UP,
+  STREAM_BACKOFF_CAP_MS,
   STREAM_BACKOFF_INITIAL_MS,
   TAPE_BOOTSTRAP_FAILURES_BEFORE_DEGRADED,
   TAPE_BOOTSTRAP_PAGE,
@@ -562,7 +563,8 @@ describe("BrowserBinanceTransport tape seams", () => {
     // floor, so these ask well above it).
     const aboveFloor = 1;
     expect(await askHistory(h, historyRequest(3, OLDEST_TS, liveFrom + 1, aboveFloor))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE" });
-    expect(await askHistory(h, historyRequest(4, liveFrom, liveFrom + 1, aboveFloor))).toMatchObject({ complete: true });
+    // Not even the first live trade's own millisecond: fills before it in that millisecond are unread until the seam closes.
+    expect(await askHistory(h, historyRequest(4, liveFrom, liveFrom + 1, aboveFloor))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE" });
     // The observed tape ends at the last trade seen: a window reaching past it, let alone into the future, is not complete.
     expect(await askHistory(h, historyRequest(14, liveFrom, liveFrom + 2, aboveFloor))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE" });
     expect(await askHistory(h, historyRequest(15, liveFrom, NOW_MS + 30_000, aboveFloor))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE", trades: [] });
@@ -649,8 +651,11 @@ describe("BrowserBinanceTransport tape seams", () => {
       await settle();
       expect(h2.aggTradesMock.mock.calls.length).toBe(bootstrapReads + SEAM_FILL_FAILURES_BEFORE_GIVING_UP);
       expect(await askHistory(h2, historyRequest(4, t1, t3 + 1, 1))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE", trades: [] });
-      expect(await askHistory(h2, historyRequest(5, t3, t3 + 1, 1))).toMatchObject({ complete: true });
-      expect(await askHistory(h2, historyRequest(6, OLDEST_TS, t2 + 1, 1))).toMatchObject({ complete: true });
+      // The hole's two boundary milliseconds hold fills nobody read: unverified for good.
+      expect(await askHistory(h2, historyRequest(5, t3, t3 + 1, 1))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE" });
+      expect(await askHistory(h2, historyRequest(6, OLDEST_TS, t2 + 1, 1))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE" });
+      expect(await askHistory(h2, historyRequest(16, OLDEST_TS, t2, 1))).toMatchObject({ complete: true });
+      expect(h2.transport.tapeCoverage.unverified).toBe(2);
       expect(h2.frames.filter((frame) => frame.type === "snapshot")).toHaveLength(0);
       h2.stream().drop();
       expect(h2.transport.readyState).toBe(3);
@@ -669,13 +674,15 @@ describe("BrowserBinanceTransport tape seams", () => {
       h3.stream().message(liveTrade(4, t4, SEAM_SIZE, false));
       await settle();
       expect(String(h3.aggTradesMock.mock.calls.at(-1)![0])).toContain(`startTime=${t3}`);
-      // The first hole was given up and is not re-read; the second is closed and the snapshot says so.
+      // The first hole was given up and is not re-read (its boundary t3 stays
+      // unverified); the second is closed and the snapshot says so.
       const snapshot = h3.parsed().find((frame) => frame.type === "snapshot");
       if (snapshot === undefined || snapshot.type !== "snapshot") throw new Error("expected a snapshot");
-      expect(snapshot.aggressive_prints_from).toBe(t3);
+      expect(snapshot.aggressive_prints_from).toBe(t3 + 1);
       expect(snapshot.aggressive_prints!.map((print) => print.trade_id)).toContain("a77");
       expect(snapshot.aggressive_prints!.map((print) => print.trade_id)).not.toContain("a78");
-      expect(await askHistory(h3, historyRequest(7, t3, t4 + 1, 1))).toMatchObject({ complete: true });
+      expect(await askHistory(h3, historyRequest(7, t3 + 1, t4 + 1, 1))).toMatchObject({ complete: true });
+      expect(await askHistory(h3, historyRequest(9, t3, t4 + 1, 1))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE" });
       expect(await askHistory(h3, historyRequest(8, t1, t4 + 1, 1))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE" });
     } finally {
       warn.mockRestore();
@@ -959,9 +966,11 @@ describe("BrowserBinanceTransport coverage edges", () => {
       h2.stream().message(liveTrade(200, tA + 1, SIZE, false));
       await vi.advanceTimersByTimeAsync(0);
       expect(String(h2.aggTradesMock.mock.calls.at(-1)![0])).toContain(`startTime=${tA}`);
-      // Until REST answers, the two spans are two stretches: nothing is complete across them.
+      // Until REST answers, the two spans are two stretches: nothing is
+      // complete across them, nor at their boundary milliseconds, where the
+      // fills after trade 100 and before trade 200 are still unread.
       expect(await askHistory(h2, historyRequest(1, tA, tA + 2, 1))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE" });
-      expect(await askHistory(h2, historyRequest(2, tA, tA + 1, 1))).toMatchObject({ complete: true });
+      expect(await askHistory(h2, historyRequest(2, tA, tA + 1, 1))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE" });
       release!();
       await settle();
       const snapshot = h2.parsed().find((frame) => frame.type === "snapshot");
@@ -1020,6 +1029,109 @@ describe("BrowserBinanceTransport coverage edges", () => {
       await settle();
       expect(h4.aggTradesMock.mock.calls.length).toBe(reads);
       expect(await askHistory(h4, historyRequest(7, tA + 2, tA + 802, 1))).toMatchObject({ complete: true });
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("claims nothing at the millisecond two coincident spans share until the REST read between them lands, then everything", async () => {
+    const tA = NOW_MS - 10_000;
+    // Span A: trades 100 at tA-500 and 101 at tA; span B: 300 at tA and 301 at tA+500. The mirror holds fills 102..299 at tA.
+    const rows = [aggRow(1, tA, 102, 200), aggRow(2, tA, 201, 299), aggRow(3, tA, 300, 300), aggRow(4, tA + 900, 500, 500)];
+    let release: (() => void) | null = null;
+    const h1 = harness((url) => {
+      if (!url.includes("startTime")) return Promise.resolve(jsonResponse([]));
+      return new Promise<Response>((resolve) => {
+        release = () => resolve(jsonResponse(mirrorPage(url, rows)));
+      });
+    });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      await openAndSelect(h1);
+      await settle();
+      h1.stream().open();
+      await vi.advanceTimersByTimeAsync(0);
+      h1.stream().message(liveTrade(100, tA - 500, SIZE, false));
+      h1.stream().message(liveTrade(101, tA, SIZE, false));
+      h1.stream().drop();
+      const h2 = reconnected(h1);
+      await openAndSelect(h2);
+      await settle();
+      h2.stream().open();
+      await vi.advanceTimersByTimeAsync(0);
+      h2.frames.length = 0;
+      h2.stream().message(liveTrade(300, tA, SIZE, false));
+      h2.stream().message(liveTrade(301, tA + 500, SIZE, false));
+      await vi.advanceTimersByTimeAsync(0);
+      expect(String(h2.aggTradesMock.mock.calls.at(-1)![0])).toContain(`startTime=${tA}`);
+      // Pending: each span is complete away from the shared millisecond, nothing at or across it.
+      expect(await askHistory(h2, historyRequest(1, tA - 500, tA, 1))).toMatchObject({ complete: true });
+      expect(await askHistory(h2, historyRequest(2, tA + 1, tA + 501, 1))).toMatchObject({ complete: true });
+      expect(await askHistory(h2, historyRequest(3, tA, tA + 1, 1))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE" });
+      expect(await askHistory(h2, historyRequest(4, tA - 500, tA + 1, 1))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE" });
+      expect(await askHistory(h2, historyRequest(5, tA - 500, tA + 501, 1))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE" });
+      expect(h2.transport.tapeCoverage.unverified).toBe(0);
+      release!();
+      await settle();
+      const snapshot = h2.parsed().find((frame) => frame.type === "snapshot");
+      if (snapshot === undefined || snapshot.type !== "snapshot") throw new Error("expected a snapshot");
+      const ids = snapshot.aggressive_prints!.map((print) => print.trade_id);
+      expect(ids).toEqual(expect.arrayContaining(["a1", "a2", "100", "101", "300", "301"]));
+      expect(ids).not.toContain("a3");
+      expect(snapshot.aggressive_prints_from).toBe(tA - 500);
+      expect(await askHistory(h2, historyRequest(6, tA - 500, tA + 501, 1))).toMatchObject({ complete: true });
+      expect(await askHistory(h2, historyRequest(7, tA, tA + 1, 1))).toMatchObject({ complete: true });
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("keeps the shared millisecond of two coincident spans outside every claim for good when the REST read between them fails", async () => {
+    const tA = NOW_MS - 10_000;
+    let seamReads = 0;
+    const h1 = harness(async (url) => {
+      if (!url.includes("startTime")) return jsonResponse([]);
+      seamReads += 1;
+      throw new Error("network");
+    });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      await openAndSelect(h1);
+      await settle();
+      h1.stream().open();
+      await vi.advanceTimersByTimeAsync(0);
+      h1.stream().message(liveTrade(100, tA - 500, SIZE, false));
+      h1.stream().message(liveTrade(101, tA, SIZE, false));
+      h1.stream().drop();
+      const h2 = reconnected(h1);
+      await openAndSelect(h2);
+      await settle();
+      h2.stream().open();
+      await vi.advanceTimersByTimeAsync(0);
+      h2.stream().message(liveTrade(300, tA, SIZE, false));
+      h2.stream().message(liveTrade(301, tA + 500, SIZE, false));
+      // While the retries run, the millisecond stays pending.
+      await vi.advanceTimersByTimeAsync(0);
+      expect(await askHistory(h2, historyRequest(1, tA, tA + 1, 1))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE" });
+      expect(h2.transport.tapeCoverage.unverified).toBe(0);
+      let delay = STREAM_BACKOFF_INITIAL_MS;
+      for (let failure = 1; failure < SEAM_FILL_FAILURES_BEFORE_GIVING_UP; failure += 1) {
+        await settle();
+        await vi.advanceTimersByTimeAsync(delay);
+        delay *= 2;
+      }
+      await settle();
+      expect(seamReads).toBe(SEAM_FILL_FAILURES_BEFORE_GIVING_UP);
+      // Given up: the millisecond is unverified for good, each span complete away from it, nothing across.
+      expect(h2.transport.tapeCoverage.unverified).toBe(1);
+      expect(h2.transport.tapeCoverage.unfillable).toBe(1);
+      expect(await askHistory(h2, historyRequest(2, tA, tA + 1, 1))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE" });
+      expect(await askHistory(h2, historyRequest(3, tA - 500, tA, 1))).toMatchObject({ complete: true });
+      expect(await askHistory(h2, historyRequest(4, tA + 1, tA + 501, 1))).toMatchObject({ complete: true });
+      expect(await askHistory(h2, historyRequest(5, tA - 500, tA + 501, 1))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE" });
+      // Nothing re-reads it.
+      await vi.advanceTimersByTimeAsync(STREAM_BACKOFF_CAP_MS);
+      expect(seamReads).toBe(SEAM_FILL_FAILURES_BEFORE_GIVING_UP);
     } finally {
       warn.mockRestore();
     }

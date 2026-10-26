@@ -1465,11 +1465,33 @@ export class BrowserBinanceTransport implements TransportSocket {
    * merged where they touch, with every unverified boundary millisecond cut
    * out.
    */
-  private coverageIntervals(session: Session): TapeInterval[] {
+  /** The observed stretches merged where continuous, before any millisecond is cut out. */
+  private mergedIntervals(session: Session): TapeInterval[] {
     this.pruneCoverage(session);
     const intervals = session.observed.map((interval) => ({ ...interval }));
     if (session.live !== null) addInterval(intervals, { from: session.live.from, to: session.live.last, startTradeId: session.live.firstId, endTradeId: session.live.lastId }, new Set(session.bridgedStarts));
-    return subtractMilliseconds(intervals, session.unverified);
+    return intervals;
+  }
+
+  /**
+   * What may be claimed: the observed stretches less the unverified
+   * milliseconds and less the boundary milliseconds of every seam still
+   * unresolved between two stretches. Until the REST read between them
+   * succeeds, the fills after the earlier stretch's last trade and before the
+   * later one's first, inside those very milliseconds, are unknown; a closed
+   * seam merges the stretches and the exclusion lifts, a seam given up on has
+   * made them unverified for good.
+   */
+  private coverageIntervals(session: Session): TapeInterval[] {
+    const merged = this.mergedIntervals(session);
+    const excluded = [...session.unverified];
+    for (let i = 1; i < merged.length; i += 1) {
+      const from = Math.min(merged[i - 1].to, merged[i].from);
+      const to = Math.max(merged[i - 1].to, merged[i].from);
+      if (session.unfillable.some((open) => open.from === from && open.to === to)) continue;
+      excluded.push(from, to);
+    }
+    return subtractMilliseconds(merged, excluded);
   }
 
   /** Where the stretch of complete tape that reaches the stream's last trade begins, or null while no stream delivers. */
@@ -1809,7 +1831,9 @@ export class BrowserBinanceTransport implements TransportSocket {
    * seeded or the boundary is marked unverified.
    */
   private nextSeamGap(session: Session): TapeInterval | null {
-    const intervals = this.coverageIntervals(session);
+    // On the merged stretches, not the claimable ones: a given-up hole must
+    // keep matching its record, and an unverified millisecond is not a hole to read.
+    const intervals = this.mergedIntervals(session);
     for (let i = intervals.length - 1; i >= 1; i -= 1) {
       const earlier = intervals[i - 1];
       const later = intervals[i];
@@ -1892,7 +1916,7 @@ export class BrowserBinanceTransport implements TransportSocket {
       }
       seam.failures = 0;
       seam.backoffMs = STREAM_BACKOFF_INITIAL_MS;
-      session.unfillable.push({ from: gap.from, to: gap.to });
+      this.giveUpSeam(session, gap);
       this.fillNextSeam(session);
       return;
     }
@@ -1909,8 +1933,15 @@ export class BrowserBinanceTransport implements TransportSocket {
       session.seam.publishWhenSettled = true;
     } else {
       console.warn("browserBinanceTransport: a tape seam is wider than a fill may walk; it stays open");
-      session.unfillable.push({ from: gap.from, to: gap.to });
+      this.giveUpSeam(session, gap);
     }
     this.fillNextSeam(session);
+  }
+
+  /** A seam that will not be read: it stays a hole, and the milliseconds at its two ends, whose fills beyond the spans' trades were never read, stay unverified. */
+  private giveUpSeam(session: Session, gap: TapeInterval): void {
+    session.unfillable.push({ from: gap.from, to: gap.to });
+    this.markUnverified(session, gap.from);
+    this.markUnverified(session, gap.to);
   }
 }

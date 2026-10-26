@@ -194,8 +194,11 @@ missing minute keeps the feed recovering; a gap past 11,000 minutes re-reads
 the history as a fresh snapshot.
 
 Two stream spans whose first and last trade ids are not consecutive never
-join, even when their milliseconds touch or coincide: the fills between the
-ids are read from REST and reconciled, or the boundary is marked unverified.
+join, even when their milliseconds touch or coincide: until the REST read
+between them succeeds, the milliseconds at their two ends are outside every
+claim (the fills after the one span's last trade and before the other's
+first, inside those milliseconds, are unread); a closed seam lifts that, a
+seam given up on leaves them unverified for good.
 A pair's tape state counts as complete only once its staged pages have
 committed; a switch during the two-second grace discards them and a return
 reads them again.

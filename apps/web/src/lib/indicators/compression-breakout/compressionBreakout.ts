@@ -353,7 +353,7 @@ export const compressionBreakoutIndicator: RuntimeIndicatorDef<CompressionBreako
   readOutput: (state) => {
     const reading = state.reading;
     if (reading === null) {
-      return { rangeHigh: null, rangeLow: null, widthRatio: null, qualified: null, trend: null, rangeAge: null, pending: 0, breakDir: 0, breakGrade: 0, gradeBasis: 0, failed: 0, heldOutside: 0, expired: 0 };
+      return { rangeHigh: null, rangeLow: null, activeHigh: null, activeLow: null, heldCount: 0, widthRatio: null, qualified: null, trend: null, rangeAge: null, pending: 0, breakDir: 0, breakGrade: 0, gradeBasis: 0, failed: 0, heldOutside: 0, expired: 0 };
     }
     const d = reading.decision;
     const isBreak = d.kind === "break";
@@ -363,6 +363,10 @@ export const compressionBreakoutIndicator: RuntimeIndicatorDef<CompressionBreako
     return {
       rangeHigh: established ? reading.rangeHigh : null,
       rangeLow: established ? reading.rangeLow : null,
+      // The raw snapshot and the held count: the replay policy's "quiet bar" has neither an active nor a held range.
+      activeHigh: reading.rangeHigh,
+      activeLow: reading.rangeLow,
+      heldCount: reading.held.length,
       widthRatio: reading.widthRatio,
       qualified: reading.qualified === null ? null : reading.qualified ? 1 : 0,
       trend: reading.trend,

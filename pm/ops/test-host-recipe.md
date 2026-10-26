@@ -186,3 +186,14 @@ the same host see the same symbol.
 | 403 from the web app | `VITE_ALLOWED_HOST` does not match the DNS name; restart terminal-web |
 | WebSocket closes at once | `EXTRA_ALLOWED_ORIGIN` must be exactly `https://terminal.example.com` |
 | `requires Node 24.21.0` | the PATH in the unit does not point at the pinned Node |
+
+## 10. Recording depth for the team (`enable-capture.sh`)
+
+`pm/ops/enable-capture.sh` builds the SQLite binding, runs the repository's
+Binance collector as a third service, and serves the capture directory
+read-only at `https://<host>/captures/` behind a second login. The team
+downloads a slice over HTTPS and replays it through the real L2 engine with
+the runtime's replay source, which is how L2 indicators are validated without
+a live book in the cloud container. The collector records every governed
+Binance pair; its capacity guard stops it before the disk fills. Stop it with
+`systemctl stop terminal-collector` when a capture is not needed.

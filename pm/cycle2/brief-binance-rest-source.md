@@ -102,3 +102,63 @@ Fixture: `test/fixtures/binance-rest/fake-binance-server.js`, a `node:http` serv
 8. Weight ledger plus the exchange header, budget 4000/min by default, depth cadence stretched first, hard stop until the minute turns.
 9. Proxy and CA need only `NODE_USE_ENV_PROXY=1`; nothing changes on the owner's machine.
 10. Effort: step one half a day; REST source about five engineer-days (one specialist run plus two fix rounds), tests included, with the acceptance run in this container.
+
+## PM amendments after Codex plan round 1 (2026-10-26)
+
+This is a transport brief, not an indicator brief; the plan gate's first
+criterion (a trading question) does not apply and is noted as such. The
+scope is staged, and stage 3 is NOT part of this build:
+
+**Stage A, build first:** the endpoint overrides `TT_BINANCE_SPOT_WS_BASE_URL`
+and `TT_BINANCE_SPOT_REST_BASE_URL` exactly as section 0 specifies (config
+registry, documentation rows, one URL test). Perpetual constants untouched.
+
+**Stage B, this build:** `TT_BINANCE_TRANSPORT=rest` serving SPOT candles and
+trades only. The book is reported `status: "UNAVAILABLE"` with reason
+`REST_NO_DEPTH`, so every depth indicator shows its own unavailable state and
+the L2 engine is never fed sampled snapshots as if they were a stream.
+Requirements Codex added, all accepted:
+- Bars: a per-pair bar cursor by open time; after any outage longer than one
+  minute, catch up by fetching klines from the last confirmed close forward
+  (bounded pages) before resuming the two-row poll; classify EVERY row by its
+  open time and close time against the exchange `serverTime`, never by row
+  position or local clock; a revision replaces the same bar, finalisation
+  happens once, and a response from an older poll never overwrites a newer
+  revision.
+- Trades: aggregate trades are labelled as such everywhere (`trade_id` from
+  the aggregate id; health reason and documentation say "aggregate trades:
+  fills from one taker order at one price are combined"). Parity against the
+  WebSocket path is measured on summed sided volume over aligned complete
+  minutes, never per print. A detected id gap marks the affected window
+  incomplete (the tape must not read as LIVE_COMPLETE for it) until paging
+  has caught up, and the server's aggressive-prints pool is only extended
+  with complete ranges.
+- Per-pair serialisation: one in-flight request per family per pair,
+  cancellation on unsubscribe, responses from an obsolete subscription
+  rejected.
+- HTTP client: preserve status code and response headers for 429 and 418
+  (Retry-After, x-mbx-used-weight-1m) instead of collapsing both to
+  RATE_LIMITED; back off per Retry-After; 418 stops polling for the ban
+  window.
+- Weight: reserve the projected weight before dispatch (klines weight 2,
+  aggTrades weight 4 per page, exchangeInfo probes, catch-up pages); default
+  budget 4000 per minute, maximum setting 5000 so the 1000 margin always
+  holds; if mandatory trade polling alone would exceed the budget, lengthen
+  the trade cadence and say so in the health reason; never exceed the budget
+  to keep a cadence.
+- Health: the trader-facing reason is `Polled spot data · aggregate trades ·
+  no order book`, with the degraded variants `rate limited`, `poll failed`,
+  `catching up`; documentation names every unavailable analytic.
+- Tests add: a multi-minute outage with catch-up, clock skew (machine ahead
+  of exchange), a genuine multi-fill aggregate, a paging backlog, unsubscribe
+  during an in-flight request, 429 then 418, budget reservation under
+  concurrency.
+- Acceptance: a connected-WebSocket run on a machine that has one is the
+  semantic baseline (completed candles equal, aligned sided volume equal
+  within rounding); the blocked-WebSocket run in this container is the
+  availability test (chart, candles, trades, health reason visible).
+
+**Stage C, deferred to its own brief:** depth from REST snapshots, only with
+explicit coverage reconciliation in the L2 engine (`coverageOf` on every
+snapshot, gap frames on every failed poll) and an honest statement that
+replenishment and cancellation between snapshots are unobservable.

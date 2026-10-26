@@ -88,6 +88,13 @@ export const STREAM_BACKOFF_CAP_MS = 30_000;
 export const STREAM_FAILURES_BEFORE_UNAVAILABLE = 5;
 /** A browser WebSocket has no connect timeout of its own; a proxy that swallows the upgrade would otherwise leave the book "connecting" for good. */
 export const STREAM_CONNECT_TIMEOUT_MS = 15_000;
+/** Klines per REST page while filling a gap; Binance's maximum. */
+export const GAP_FILL_PAGE = 1_000;
+/** Pages a gap fill may walk before the history is simply re-read as a fresh snapshot (11,000 minutes covers the 10,080 bars the browser keeps and stays inside the parser's eight-day live window). */
+export const MAX_GAP_FILL_PAGES = 11;
+export const MAX_GAP_FILL_MS = MAX_GAP_FILL_PAGES * GAP_FILL_PAGE * BAR_INTERVAL_MS;
+/** Closed bars held back while a gap fill is pending; older ones are dropped and come back through the paginated REST read instead. */
+export const MAX_HELD_CLOSED_BARS = 120;
 
 export const HEALTH_REASON_READY = "BROWSER_DIRECT";
 export const HEALTH_REASON_STREAM_CLOSED = "BROWSER_DIRECT_STREAM_CLOSED";
@@ -118,6 +125,8 @@ type Session = {
   recovering: boolean;
   heldClosedBars: Map<number, KlineRow>;
   heldFormingBar: KlineRow | null;
+  /** A READY book went out since the stream last opened; it is withdrawn when the stream is lost. */
+  bookLive: boolean;
   streamFailures: number;
   backoffMs: number;
   lastClosedOpen: number;
@@ -307,6 +316,11 @@ export class BrowserBinanceTransport implements TransportSocket {
     }, 0);
   }
 
+  /** Closed bars held back while a gap fill is pending (diagnostics and tests). */
+  get heldClosedBarCount(): number {
+    return this.session?.heldClosedBars.size ?? 0;
+  }
+
   send(data: string): void {
     if (this.readyState !== OPEN) throw new DOMException("transport is not open", "InvalidStateError");
     let msg: unknown;
@@ -446,6 +460,7 @@ export class BrowserBinanceTransport implements TransportSocket {
       recovering: false,
       heldClosedBars: new Map(),
       heldFormingBar: null,
+      bookLive: false,
       streamFailures: 0,
       backoffMs: STREAM_BACKOFF_INITIAL_MS,
       lastClosedOpen: -1,
@@ -543,7 +558,12 @@ export class BrowserBinanceTransport implements TransportSocket {
       markers: [],
       vpin_status: "DISABLED",
     });
-    if (closedRows.length > 0) session.lastClosedOpen = closedRows[closedRows.length - 1].openTime;
+    session.lastClosedOpen = closedRows.length > 0 ? closedRows[closedRows.length - 1].openTime : -1;
+    session.heldClosedBars.clear();
+    session.heldFormingBar = null;
+    session.recovering = false;
+    session.degraded = false;
+    session.bookLive = false;
     this.deliverHealth(session, "READY", HEALTH_REASON_READY);
     this.deliver({ type: "book", ...identity, status: "UNAVAILABLE", reason: BOOK_REASON_STREAM_CONNECTING });
     if (forming !== undefined) this.deliver(barFrame(session.selection, forming, false, false));
@@ -584,10 +604,11 @@ export class BrowserBinanceTransport implements TransportSocket {
       }
       session.streamFailures = 0;
       session.backoffMs = STREAM_BACKOFF_INITIAL_MS;
-      if (session.degraded) {
-        session.recovering = true;
-        void this.recoverAfterGap(session, generation);
-      }
+      // Every open reconciles from the last confirmed close: the first one
+      // too, since the minute the snapshot left forming may have closed while
+      // the socket was connecting, and the stream only reports the minute now.
+      session.recovering = true;
+      void this.recoverAfterGap(session, generation);
     };
     stream.onmessage = (event: MessageEvent) => {
       if (!this.isCurrent(session) || session.stream !== stream) return;
@@ -620,6 +641,11 @@ export class BrowserBinanceTransport implements TransportSocket {
     }
     session.streamFailures += 1;
     session.degraded = true;
+    if (session.bookLive) {
+      // The last READY book is the dead stream's; consumers read the book's own status.
+      session.bookLive = false;
+      this.deliver({ type: "book", ...identityFields(session.selection), status: "UNAVAILABLE", reason: HEALTH_REASON_STREAM_CLOSED });
+    }
     if (session.selection.provider === "BINANCE" && session.selection.marketKind === "PERPETUAL") {
       // No mirror exists for the futures stream: say so at once, then keep trying.
       this.deliverHealth(session, "UNAVAILABLE", HEALTH_REASON_PERPETUAL_UNREACHABLE);
@@ -635,32 +661,59 @@ export class BrowserBinanceTransport implements TransportSocket {
     return this.isCurrent(session) && session.streamGeneration === generation && session.stream !== null && session.recovering;
   }
 
+  private earliestHeldClose(session: Session): number | undefined {
+    let earliest: number | undefined;
+    for (const openTime of session.heldClosedBars.keys()) {
+      if (earliest === undefined || openTime < earliest) earliest = openTime;
+    }
+    return earliest;
+  }
+
   /**
-   * After a stream reconnect: closed bars the stream missed come from REST,
-   * marked reconstructed as the runtime marks its backfill. The REST read
-   * starts at the boundary the live stream last confirmed before the gap;
-   * closes the new stream reports meanwhile wait in the buffer, so the main
-   * thread sees closed bars in order and never a hole. A failed read keeps the
-   * feed RECOVERING and is retried with backoff; READY follows only a read that
-   * succeeded for the stream that is still open.
+   * Whenever a stream opens: the closed bars between the last confirmed close
+   * and the live stream come from REST, marked reconstructed as the runtime
+   * marks its backfill. Pages of 1,000 minutes are walked from that boundary
+   * until the read is continuous with the first close the new stream reported
+   * (held back meanwhile, so the main thread sees closed bars in order and
+   * never a hole) or with the minute now forming; a gap longer than the pages
+   * allowed is re-read as a fresh snapshot instead. A failed or short read
+   * keeps the feed RECOVERING and is retried with backoff; READY follows only
+   * a continuous read for the stream that is still open.
    */
   private async recoverAfterGap(session: Session, generation: number): Promise<void> {
-    let rows: KlineRow[];
     try {
-      rows = await this.fetchKlines(session, session.lastClosedOpen >= 0 ? { startTime: session.lastClosedOpen + BAR_INTERVAL_MS, limit: 1000 } : { limit: SNAPSHOT_BARS + 1 });
+      for (let page = 1; ; page += 1) {
+        if (page > MAX_GAP_FILL_PAGES || (session.lastClosedOpen >= 0 && this.now() - session.lastClosedOpen > MAX_GAP_FILL_MS)) {
+          this.restartFromSnapshot(session);
+          return;
+        }
+        const paged = session.lastClosedOpen >= 0;
+        const rows = await this.fetchKlines(session, paged ? { startTime: session.lastClosedOpen + BAR_INTERVAL_MS, limit: GAP_FILL_PAGE } : { limit: SNAPSHOT_BARS + 1 });
+        if (!this.recoveryIsLive(session, generation)) return;
+        const now = this.now();
+        let reachedNow = false;
+        for (const row of rows) {
+          if (row.closeTime >= now) reachedNow = true;
+          else if (row.openTime > session.lastClosedOpen) {
+            // A minute the live stream also closed is delivered as the stream
+            // reported it; only minutes nobody saw live are reconstructed.
+            const held = session.heldClosedBars.get(row.openTime);
+            this.deliverClosedBar(session, held ?? row, held === undefined);
+          }
+        }
+        const earliestHeld = this.earliestHeldClose(session);
+        if (earliestHeld !== undefined ? earliestHeld <= session.lastClosedOpen + BAR_INTERVAL_MS : reachedNow || !paged) break;
+        if (rows.length < GAP_FILL_PAGE) throw new Error("gap fill: the exchange returned fewer rows than the gap spans");
+      }
     } catch (error) {
       if (!this.recoveryIsLive(session, generation)) return;
       console.warn("browserBinanceTransport: kline gap fill failed", error);
+      session.degraded = true;
       this.deliverHealth(session, "RECOVERING", HEALTH_REASON_REST_FAILED);
       this.scheduleRetry(session, () => {
         if (this.recoveryIsLive(session, generation)) void this.recoverAfterGap(session, generation);
       });
       return;
-    }
-    if (!this.recoveryIsLive(session, generation)) return;
-    const now = this.now();
-    for (const row of rows) {
-      if (row.closeTime < now && row.openTime > session.lastClosedOpen) this.deliverClosedBar(session, row, true);
     }
     for (const row of [...session.heldClosedBars.values()].sort((a, b) => a.openTime - b.openTime)) {
       if (row.openTime > session.lastClosedOpen) this.deliverClosedBar(session, row, false);
@@ -670,9 +723,21 @@ export class BrowserBinanceTransport implements TransportSocket {
     session.heldFormingBar = null;
     if (forming !== null && forming.openTime > session.lastClosedOpen) this.deliver(barFrame(session.selection, forming, false, false));
     session.recovering = false;
-    session.degraded = false;
     session.backoffMs = STREAM_BACKOFF_INITIAL_MS;
-    this.deliverHealth(session, "READY", HEALTH_REASON_READY);
+    if (session.degraded) {
+      session.degraded = false;
+      this.deliverHealth(session, "READY", HEALTH_REASON_READY);
+    }
+  }
+
+  /** A gap too long to page through: close the stream and read the history afresh, as a new selection would. */
+  private restartFromSnapshot(session: Session): void {
+    console.warn("browserBinanceTransport: the gap exceeds what a fill can page through; re-reading the history");
+    this.closeStream(session);
+    session.recovering = false;
+    session.heldClosedBars.clear();
+    session.heldFormingBar = null;
+    void this.bootstrap(session);
   }
 
   private deliverClosedBar(session: Session, bar: KlineRow, reconstructed: boolean): void {
@@ -688,8 +753,16 @@ export class BrowserBinanceTransport implements TransportSocket {
       if (bar === null) return;
       if (bar.closed && bar.openTime <= session.lastClosedOpen) return;
       if (session.recovering) {
-        if (bar.closed) session.heldClosedBars.set(bar.openTime, bar);
-        else session.heldFormingBar = bar;
+        if (bar.closed) {
+          session.heldClosedBars.set(bar.openTime, bar);
+          // Bounded: a dropped old close is still a closed minute on the
+          // exchange, and the paginated REST read walks up to the earliest
+          // retained one, so nothing is lost.
+          if (session.heldClosedBars.size > MAX_HELD_CLOSED_BARS) {
+            const earliest = this.earliestHeldClose(session);
+            if (earliest !== undefined) session.heldClosedBars.delete(earliest);
+          }
+        } else session.heldFormingBar = bar;
         return;
       }
       if (bar.closed) this.deliverClosedBar(session, bar, false);
@@ -719,6 +792,7 @@ export class BrowserBinanceTransport implements TransportSocket {
     const asks = bookLevels(isSpotPartial ? payload.asks : payload.a);
     if (bids === null || asks === null) return;
     if (bids.length > 0 && asks.length > 0 && bids[0].price >= asks[0].price) return;
+    session.bookLive = true;
     this.deliver({
       type: "book",
       ...identityFields(session.selection),

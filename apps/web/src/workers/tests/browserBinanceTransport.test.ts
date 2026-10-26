@@ -3,12 +3,15 @@ import {
   BOOK_REASON_STREAM_CONNECTING,
   BrowserBinanceTransport,
   DEFAULT_ENDPOINTS,
+  GAP_FILL_PAGE,
   HEALTH_REASON_NO_DXFEED,
   HEALTH_REASON_PERPETUAL_UNREACHABLE,
   HEALTH_REASON_READY,
   HEALTH_REASON_REST_FAILED,
   HEALTH_REASON_STREAM_CLOSED,
   HEALTH_REASON_STREAM_UNAVAILABLE,
+  MAX_GAP_FILL_MS,
+  MAX_HELD_CLOSED_BARS,
   STREAM_BACKOFF_CAP_MS,
   STREAM_BACKOFF_INITIAL_MS,
   STREAM_CONNECT_TIMEOUT_MS,
@@ -69,13 +72,14 @@ function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 }
 
-function harness(fetchImpl?: (url: string) => Promise<Response>, nowMs = NOW_MS): Harness {
+function harness(fetchImpl?: (url: string) => Promise<Response>, now: number | (() => number) = NOW_MS): Harness {
   FakeUpstreamSocket.instances = [];
   const fetchMock = vi.fn(fetchImpl ?? (async () => jsonResponse(klineRows)));
+  const nowFn = typeof now === "number" ? () => now : now;
   const transport = new BrowserBinanceTransport("ws://127.0.0.1:8000/ws", {
     fetch: fetchMock as unknown as typeof fetch,
     WebSocket: FakeUpstreamSocket,
-    now: () => nowMs,
+    now: nowFn,
   });
   const frames: Record<string, unknown>[] = [];
   transport.onmessage = (event) => {
@@ -86,7 +90,7 @@ function harness(fetchImpl?: (url: string) => Promise<Response>, nowMs = NOW_MS)
     transport,
     frames,
     parsed: () => frames.map((frame) => {
-      const parsed = parseServerFrame(frame, { nowMs: NOW_MS });
+      const parsed = parseServerFrame(frame, { nowMs: nowFn() });
       if (parsed === null) throw new Error(`frame rejected by parseServerFrame: ${JSON.stringify(frame)}`);
       return parsed;
     }),
@@ -106,6 +110,14 @@ async function openAndSelect(h: Harness, select: Record<string, unknown> = SPOT)
   await vi.advanceTimersByTimeAsync(0);
   expect(opened).toHaveBeenCalledTimes(1);
   expect(h.transport.readyState).toBe(1);
+}
+
+// Opens the upstream stream and lets its on-open reconcile (one REST read
+// from the last confirmed close) settle, as the live path does.
+async function openStream(h: Harness): Promise<void> {
+  h.stream().open();
+  await vi.advanceTimersByTimeAsync(0);
+  h.frames.length = 0;
 }
 
 beforeEach(() => {
@@ -144,8 +156,7 @@ describe("BrowserBinanceTransport", () => {
   it("forwards kline events as forming then closed bars, trades with the side from the maker flag, and depth20 as a READY book", async () => {
     const h = harness();
     await openAndSelect(h);
-    h.stream().open();
-    h.frames.length = 0;
+    await openStream(h);
     h.stream().message(klineEvents.forming);
     for (const trade of tradeEvents) h.stream().message(trade);
     h.stream().message(depthEvent);
@@ -171,8 +182,7 @@ describe("BrowserBinanceTransport", () => {
   it("does not repeat a closed bar the snapshot already carried", async () => {
     const h = harness();
     await openAndSelect(h);
-    h.stream().open();
-    h.frames.length = 0;
+    await openStream(h);
     const stale = JSON.parse(JSON.stringify(klineEvents.closed)) as typeof klineEvents.closed;
     stale.data.k.t = 1_761_400_080_000;
     stale.data.k.T = 1_761_400_139_999;
@@ -211,8 +221,7 @@ describe("BrowserBinanceTransport", () => {
   it("reports a dropped stream as RECOVERING, reconnects with backoff, turns UNAVAILABLE after repeated failures and READY again once the stream is back", async () => {
     const h = harness();
     await openAndSelect(h);
-    h.stream().open();
-    h.frames.length = 0;
+    await openStream(h);
     let delay = STREAM_BACKOFF_INITIAL_MS;
     for (let failure = 1; failure <= STREAM_FAILURES_BEFORE_UNAVAILABLE; failure += 1) {
       const sockets = FakeUpstreamSocket.instances.length;
@@ -235,8 +244,8 @@ describe("BrowserBinanceTransport", () => {
     await vi.advanceTimersByTimeAsync(0);
     const frames = h.parsed();
     // The gap fill re-reads from the last closed bar on; nothing newer closed, so only health follows.
-    expect(h.fetchMock).toHaveBeenCalledTimes(2);
-    expect(String(h.fetchMock.mock.calls[1]![0])).toContain("startTime=1761400140000");
+    expect(h.fetchMock).toHaveBeenCalledTimes(3);
+    expect(String(h.fetchMock.mock.calls[2]![0])).toContain("startTime=1761400140000");
     expect(frames.map((frame) => frame.type)).toEqual(["health"]);
     expect(frames[0]).toMatchObject({ recoveryState: "READY", stale: false, reason: HEALTH_REASON_READY });
   });
@@ -268,15 +277,17 @@ describe("BrowserBinanceTransport", () => {
 
   it("fills the closed bars a dropped stream missed from REST, marked reconstructed, before saying READY", async () => {
     const gapRow = [1_761_400_080_000, "65020.50", "65090.00", "65010.00", "65080.00", "8.500", 1_761_400_139_999, "0", 210, "4.250", "0", "0"];
-    const h = harness(async (url) => jsonResponse(url.includes("startTime") ? [gapRow] : [klineRows[0]]));
+    let gapKnown = false;
+    const h = harness(async (url) => jsonResponse(!url.includes("startTime") ? [klineRows[0]] : gapKnown ? [gapRow, klineRows[2]] : [klineRows[2]]));
     await openAndSelect(h);
-    h.stream().open();
+    await openStream(h);
     h.stream().drop();
+    gapKnown = true;
     await vi.advanceTimersByTimeAsync(STREAM_BACKOFF_INITIAL_MS);
     h.frames.length = 0;
     h.stream().open();
     await vi.advanceTimersByTimeAsync(0);
-    expect(String(h.fetchMock.mock.calls[1]![0])).toContain("startTime=1761400080000");
+    expect(String(h.fetchMock.mock.calls.at(-1)![0])).toContain("startTime=1761400080000");
     const filled = h.parsed();
     expect(filled.map((frame) => frame.type)).toEqual(["bar", "health"]);
     expect(filled[0]).toMatchObject({ ts_open: 1_761_400_080_000, closed: true, reconstructed: true, buy_volume: 4.25 });
@@ -286,7 +297,9 @@ describe("BrowserBinanceTransport", () => {
   // A later clock for the reconnect cases: minutes A (…020000) to D (…200000)
   // have closed, E (…260000) is forming.
   const LATER_NOW_MS = 1_761_400_270_000;
-  const klineRow = (openTime: number, close: string) => [openTime, "65000.00", "65100.00", "64900.00", close, "5.000", openTime + 59_999, "0", 50, "2.000", "0", "0"];
+  const klineRow = (openTime: number, close: string) => [openTime, "65000.00", "65500.00", "64900.00", close, "5.000", openTime + 59_999, "0", 50, "2.000", "0", "0"];
+  /** The REST row of the minute forming at `nowMs`: a read that reaches it has caught up with the exchange. */
+  const formingRow = (nowMs: number) => klineRow(Math.floor(nowMs / 60_000) * 60_000, "65005.00");
   const klineEvent = (openTime: number, closed: boolean, close: string) => ({
     stream: "btcusdt@kline_1m",
     data: { e: "kline", E: openTime + (closed ? 60_010 : 10_000), s: "BTCUSDT", k: { t: openTime, T: openTime + 59_999, s: "BTCUSDT", i: "1m", o: "65000.00", c: close, h: "65500.00", l: "64900.00", v: "5.000", n: 50, x: closed, q: "0", V: "2.000", Q: "0", B: "0" } },
@@ -294,10 +307,16 @@ describe("BrowserBinanceTransport", () => {
   const A = 1_761_400_020_000, B = 1_761_400_080_000, C = 1_761_400_140_000, D = 1_761_400_200_000, E = 1_761_400_260_000;
 
   type Deferred = { resolve: (response: Response) => void; reject: (error: Error) => void };
+  // Bootstrap answers [A]; the first stream's on-open reconcile answers at once
+  // with the forming minute (nothing closed in between); every later read is
+  // deferred so a test decides when and how REST answers.
   function reconnectHarness(): { h: Harness; pending: () => Deferred } {
     const deferred: Deferred[] = [];
+    let reads = 0;
     const h = harness((url) => {
       if (!url.includes("startTime")) return Promise.resolve(jsonResponse([klineRow(A, "65010.00")]));
+      reads += 1;
+      if (reads === 1) return Promise.resolve(jsonResponse([klineRow(E, "65050.00")]));
       return new Promise<Response>((resolve, reject) => deferred.push({ resolve, reject }));
     }, LATER_NOW_MS);
     return { h, pending: () => deferred.at(-1)! };
@@ -315,9 +334,9 @@ describe("BrowserBinanceTransport", () => {
     const { h, pending } = reconnectHarness();
     await openAndSelect(h);
     expect(h.frames.filter((frame) => frame.type === "bar")).toHaveLength(0);
-    h.stream().open();
+    await openStream(h);
     await dropAndReopen(h);
-    expect(String(h.fetchMock.mock.calls[1]![0])).toContain(`startTime=${B}`);
+    expect(String(h.fetchMock.mock.calls[2]![0])).toContain(`startTime=${B}`);
     // B and C are missing; the new stream reports D forming, then closed, before REST answers.
     h.stream().message(klineEvent(D, false, "65300.00"));
     h.stream().message(klineEvent(D, true, "65310.00"));
@@ -343,16 +362,17 @@ describe("BrowserBinanceTransport", () => {
   it("holds a forming bar back during a gap fill and releases the latest one after the missed closes", async () => {
     const { h, pending } = reconnectHarness();
     await openAndSelect(h);
-    h.stream().open();
+    await openStream(h);
     await dropAndReopen(h);
-    h.stream().message(klineEvent(D, false, "65300.00"));
-    h.stream().message(klineEvent(D, false, "65305.00"));
+    h.stream().message(klineEvent(E, false, "65300.00"));
+    h.stream().message(klineEvent(E, false, "65305.00"));
     expect(h.frames).toHaveLength(0);
-    pending().resolve(jsonResponse([klineRow(B, "65020.00"), klineRow(C, "65030.00")]));
+    pending().resolve(jsonResponse([klineRow(B, "65020.00"), klineRow(C, "65030.00"), klineRow(D, "65040.00"), formingRow(LATER_NOW_MS)]));
     await vi.advanceTimersByTimeAsync(0);
     const frames = h.parsed();
-    expect(frames.map((frame) => frame.type)).toEqual(["bar", "bar", "bar", "health"]);
-    expect(frames[2]).toMatchObject({ ts_open: D, closed: false, close: 65305 });
+    expect(frames.map((frame) => frame.type)).toEqual(["bar", "bar", "bar", "bar", "health"]);
+    expect(frames.slice(0, 3).map((frame) => (frame as { ts_open: number }).ts_open)).toEqual([B, C, D]);
+    expect(frames[3]).toMatchObject({ ts_open: E, closed: false, close: 65305 });
   });
 
   it("stays RECOVERING when the gap fill is rejected, retries it with backoff, and turns READY only once a fill succeeds", async () => {
@@ -360,19 +380,19 @@ describe("BrowserBinanceTransport", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     try {
       await openAndSelect(h);
-      h.stream().open();
+      await openStream(h);
       await dropAndReopen(h);
       h.stream().message(klineEvent(D, true, "65310.00"));
       pending().reject(new TypeError("Failed to fetch"));
       await vi.advanceTimersByTimeAsync(0);
       expect(h.parsed().map((frame) => frame.type)).toEqual(["health"]);
       expect(h.frames[0]).toMatchObject({ recoveryState: "RECOVERING", stale: true, reason: HEALTH_REASON_REST_FAILED });
-      expect(h.fetchMock).toHaveBeenCalledTimes(2);
-      await vi.advanceTimersByTimeAsync(STREAM_BACKOFF_INITIAL_MS - 1);
-      expect(h.fetchMock).toHaveBeenCalledTimes(2);
-      await vi.advanceTimersByTimeAsync(1);
       expect(h.fetchMock).toHaveBeenCalledTimes(3);
-      expect(String(h.fetchMock.mock.calls[2]![0])).toContain(`startTime=${B}`);
+      await vi.advanceTimersByTimeAsync(STREAM_BACKOFF_INITIAL_MS - 1);
+      expect(h.fetchMock).toHaveBeenCalledTimes(3);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(h.fetchMock).toHaveBeenCalledTimes(4);
+      expect(String(h.fetchMock.mock.calls[3]![0])).toContain(`startTime=${B}`);
       h.frames.length = 0;
       pending().resolve(jsonResponse([klineRow(B, "65020.00"), klineRow(C, "65030.00")]));
       await vi.advanceTimersByTimeAsync(0);
@@ -389,7 +409,7 @@ describe("BrowserBinanceTransport", () => {
   it("a stream that closes while its gap fill is pending cannot turn the feed READY; the next stream fills from the same boundary", async () => {
     const { h, pending } = reconnectHarness();
     await openAndSelect(h);
-    h.stream().open();
+    await openStream(h);
     await dropAndReopen(h);
     const firstFill = pending();
     h.stream().drop();
@@ -403,7 +423,7 @@ describe("BrowserBinanceTransport", () => {
     h.stream().open();
     await vi.advanceTimersByTimeAsync(0);
     expect(String(h.fetchMock.mock.calls.at(-1)![0])).toContain(`startTime=${B}`);
-    pending().resolve(jsonResponse([klineRow(B, "65020.00"), klineRow(C, "65030.00"), klineRow(D, "65040.00")]));
+    pending().resolve(jsonResponse([klineRow(B, "65020.00"), klineRow(C, "65030.00"), klineRow(D, "65040.00"), formingRow(LATER_NOW_MS)]));
     await vi.advanceTimersByTimeAsync(0);
     const frames = h.parsed();
     expect(frames.map((frame) => frame.type)).toEqual(["bar", "bar", "bar", "health"]);
@@ -418,8 +438,7 @@ describe("BrowserBinanceTransport", () => {
       await openAndSelect(dropped, { ...SPOT, marketKind: "PERPETUAL" });
       expect(dropped.parsed().map((frame) => frame.type)).toEqual(["selection", "snapshot", "health", "book", "bar"]);
       expect(dropped.stream().url).toBe(`${DEFAULT_ENDPOINTS.perpetualStreamBase}/stream?streams=btcusdt@kline_1m/btcusdt@trade/btcusdt@depth20@100ms`);
-      dropped.stream().open();
-      dropped.frames.length = 0;
+      await openStream(dropped);
       dropped.stream().drop();
       expect(dropped.parsed().map((frame) => frame.type)).toEqual(["health"]);
       expect(dropped.frames[0]).toMatchObject({ marketKind: "PERPETUAL", recoveryState: "UNAVAILABLE", stale: true, reason: HEALTH_REASON_PERPETUAL_UNREACHABLE });
@@ -432,6 +451,207 @@ describe("BrowserBinanceTransport", () => {
       await vi.advanceTimersByTimeAsync(STREAM_CONNECT_TIMEOUT_MS);
       expect(silent.parsed().map((frame) => frame.type)).toEqual(["health"]);
       expect(silent.frames[0]).toMatchObject({ recoveryState: "UNAVAILABLE", reason: HEALTH_REASON_PERPETUAL_UNREACHABLE });
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("reconciles on the first stream open too: a minute that closed while the socket connected is fetched before the stream's bars flow", async () => {
+    // The snapshot leaves C forming; by the time the stream opens C has closed and D is forming.
+    let nowMs = NOW_MS;
+    const h = harness(async (url) => jsonResponse(url.includes("startTime") ? [klineRow(C, "65095.00"), klineRow(D, "65120.00")] : klineRows), () => nowMs);
+    await openAndSelect(h);
+    expect(h.frames.at(-1)).toMatchObject({ type: "bar", ts_open: C, closed: false });
+    nowMs = D + 10_000;
+    h.frames.length = 0;
+    h.stream().open();
+    h.stream().message(klineEvent(D, false, "65125.00"));
+    expect(h.frames).toHaveLength(0);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(String(h.fetchMock.mock.calls[1]![0])).toContain(`startTime=${C}`);
+    const frames = h.parsed();
+    expect(frames.map((frame) => frame.type)).toEqual(["bar", "bar"]);
+    expect(frames[0]).toMatchObject({ ts_open: C, closed: true, reconstructed: true, close: 65095 });
+    expect(frames[1]).toMatchObject({ ts_open: D, closed: false, close: 65125 });
+    h.frames.length = 0;
+    h.stream().message(klineEvent(D, true, "65130.00"));
+    expect(h.parsed().map((frame) => frame.type)).toEqual(["bar"]);
+    expect(h.frames[0]).toMatchObject({ ts_open: D, closed: true });
+  });
+
+  it("pages the gap fill until it is continuous with the first live close, so an outage longer than one page loses no minute", async () => {
+    const minutes = 1_500;
+    const nowMs = A + (minutes + 2) * 60_000 + 10_000;
+    const pageFrom = (startTime: number) => {
+      const rows: unknown[] = [];
+      for (let openTime = startTime; rows.length < GAP_FILL_PAGE && openTime <= nowMs; openTime += 60_000) rows.push(klineRow(openTime, "65010.00"));
+      return rows;
+    };
+    let reads = 0;
+    const h = harness(async (url) => {
+      if (!url.includes("startTime")) return jsonResponse([klineRow(A, "65010.00")]);
+      reads += 1;
+      if (reads === 1) return jsonResponse([formingRow(nowMs)]);
+      return jsonResponse(pageFrom(Number(new URL(url).searchParams.get("startTime"))));
+    }, () => nowMs);
+    await openAndSelect(h);
+    await openStream(h);
+    h.stream().drop();
+    await vi.advanceTimersByTimeAsync(STREAM_BACKOFF_INITIAL_MS);
+    h.frames.length = 0;
+    h.stream().open();
+    // The stream closes a minute before the first page lands.
+    const liveClose = A + (minutes + 1) * 60_000;
+    h.stream().message(klineEvent(liveClose, true, "65200.00"));
+    await vi.advanceTimersByTimeAsync(0);
+    const startTimes = h.fetchMock.mock.calls.slice(2).map((call) => Number(new URL(String(call[0])).searchParams.get("startTime")));
+    expect(startTimes).toEqual([A + 60_000, A + 1_001 * 60_000]);
+    const frames = h.parsed();
+    const bars = frames.filter((frame) => frame.type === "bar") as Array<{ ts_open: number; reconstructed?: boolean }>;
+    expect(bars).toHaveLength(minutes + 1);
+    expect(bars.every((bar, index) => bar.ts_open === A + (index + 1) * 60_000)).toBe(true);
+    expect(bars.slice(0, -1).every((bar) => bar.reconstructed === true)).toBe(true);
+    // The minute the stream closed is delivered as the stream saw it, not as REST's copy.
+    expect(bars.at(-1)).toMatchObject({ ts_open: liveClose, close: 65200 });
+    expect(bars.at(-1)).not.toHaveProperty("reconstructed");
+    expect(frames.at(-1)).toMatchObject({ type: "health", recoveryState: "READY" });
+    expect(h.transport.heldClosedBarCount).toBe(0);
+  });
+
+  it("keeps RECOVERING when the exchange's pages end before the live close is reached, and retries", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const { h, pending } = reconnectHarness();
+      await openAndSelect(h);
+      await openStream(h);
+      await dropAndReopen(h);
+      h.stream().message(klineEvent(D, true, "65310.00"));
+      pending().resolve(jsonResponse([klineRow(B, "65020.00")]));
+      await vi.advanceTimersByTimeAsync(0);
+      const frames = h.parsed();
+      expect(frames.map((frame) => frame.type)).toEqual(["bar", "health"]);
+      expect(frames[0]).toMatchObject({ ts_open: B, reconstructed: true });
+      expect(frames[1]).toMatchObject({ recoveryState: "RECOVERING", reason: HEALTH_REASON_REST_FAILED });
+      await vi.advanceTimersByTimeAsync(STREAM_BACKOFF_INITIAL_MS);
+      expect(String(h.fetchMock.mock.calls.at(-1)![0])).toContain(`startTime=${C}`);
+      h.frames.length = 0;
+      pending().resolve(jsonResponse([klineRow(C, "65030.00")]));
+      await vi.advanceTimersByTimeAsync(0);
+      expect(h.parsed().map((frame) => frame.type)).toEqual(["bar", "bar", "health"]);
+      expect(h.frames.map((frame) => frame.ts_open)).toEqual([C, D, undefined]);
+      expect(h.frames[2]).toMatchObject({ recoveryState: "READY" });
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("re-reads the history as a fresh snapshot when a gap exceeds what the fill may page through", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      let nowMs = LATER_NOW_MS;
+      const h = harness(async (url) => {
+        if (!url.includes("startTime")) {
+          const minute = Math.floor(nowMs / 60_000) * 60_000;
+          return jsonResponse([klineRow(minute - 60_000, "65010.00"), formingRow(nowMs)]);
+        }
+        return jsonResponse([formingRow(nowMs)]);
+      }, () => nowMs);
+      await openAndSelect(h);
+      await openStream(h);
+      h.stream().drop();
+      // The page stays open through an outage longer than the fill may page.
+      nowMs += MAX_GAP_FILL_MS + 60_000;
+      await vi.advanceTimersByTimeAsync(STREAM_BACKOFF_INITIAL_MS);
+      h.frames.length = 0;
+      h.stream().open();
+      h.stream().message(klineEvent(Math.floor(nowMs / 60_000) * 60_000 - 60_000, true, "65200.00"));
+      await vi.advanceTimersByTimeAsync(0);
+      const frames = h.parsed();
+      expect(frames.map((frame) => frame.type)).toEqual(["snapshot", "health", "book", "bar"]);
+      expect((frames[0] as { bars: Array<{ ts_open: number }> }).bars.map((bar) => bar.ts_open)).toEqual([Math.floor(nowMs / 60_000) * 60_000 - 60_000]);
+      expect(frames[1]).toMatchObject({ recoveryState: "READY", reason: HEALTH_REASON_READY });
+      expect(h.fetchMock.mock.calls.slice(2).map((call) => String(call[0]).includes("startTime="))).toEqual([false]);
+      expect(h.transport.heldClosedBarCount).toBe(0);
+      expect(FakeUpstreamSocket.instances).toHaveLength(3);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("withdraws the book when the stream is lost and shows depth again only after a new depth message", async () => {
+    const h = harness();
+    await openAndSelect(h);
+    await openStream(h);
+    h.stream().message(depthEvent);
+    expect(h.parsed().map((frame) => frame.type)).toEqual(["book"]);
+    expect(h.frames[0]).toMatchObject({ status: "READY", stale: false });
+    h.frames.length = 0;
+    h.stream().drop();
+    const frames = h.parsed();
+    expect(frames.map((frame) => frame.type)).toEqual(["book", "health"]);
+    expect(frames[0]).toEqual({ type: "book", provider: "BINANCE", symbol: "BTC-USDT", marketKind: "SPOT", status: "UNAVAILABLE", reason: HEALTH_REASON_STREAM_CLOSED });
+    await vi.advanceTimersByTimeAsync(STREAM_BACKOFF_INITIAL_MS);
+    h.frames.length = 0;
+    h.stream().open();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(h.parsed().map((frame) => frame.type)).toEqual(["health"]);
+    h.frames.length = 0;
+    h.stream().drop();
+    expect(h.parsed().map((frame) => frame.type)).toEqual(["health"]);
+    await vi.advanceTimersByTimeAsync(STREAM_BACKOFF_INITIAL_MS * 2);
+    h.frames.length = 0;
+    h.stream().open();
+    await vi.advanceTimersByTimeAsync(0);
+    h.frames.length = 0;
+    h.stream().message(depthEvent);
+    expect(h.parsed().map((frame) => frame.type)).toEqual(["book"]);
+    expect(h.frames[0]).toMatchObject({ status: "READY", stale: false });
+  });
+
+  it("bounds the closes held during a long REST outage and recovers the dropped ones through the paginated read, in order", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const total = MAX_HELD_CLOSED_BARS + 30;
+      let nowMs = LATER_NOW_MS;
+      let restDown = false;
+      const h = harness(async (url) => {
+        if (!url.includes("startTime")) return jsonResponse([klineRow(A, "65010.00")]);
+        if (restDown) throw new TypeError("Failed to fetch");
+        const start = Number(new URL(url).searchParams.get("startTime"));
+        const rows: unknown[] = [];
+        for (let openTime = start; rows.length < GAP_FILL_PAGE && openTime <= nowMs; openTime += 60_000) rows.push(klineRow(openTime, "65010.00"));
+        return jsonResponse(rows);
+      }, () => nowMs);
+      await openAndSelect(h);
+      await openStream(h);
+      restDown = true;
+      h.stream().drop();
+      await vi.advanceTimersByTimeAsync(STREAM_BACKOFF_INITIAL_MS);
+      h.stream().open();
+      await vi.advanceTimersByTimeAsync(0);
+      // The stream is live but REST keeps failing: every closed minute arrives and waits.
+      // (The first open's reconcile already confirmed B..D; the outage starts at E.)
+      for (let index = 0; index < total; index += 1) {
+        const openTime = E + index * 60_000;
+        nowMs = openTime + 70_000;
+        h.stream().message(klineEvent(openTime, true, "65300.00"));
+        await vi.advanceTimersByTimeAsync(STREAM_BACKOFF_CAP_MS);
+      }
+      expect(h.transport.heldClosedBarCount).toBe(MAX_HELD_CLOSED_BARS);
+      expect(h.frames.filter((frame) => frame.type === "bar")).toHaveLength(0);
+      expect(h.frames.every((frame) => frame.type === "health" && frame.recoveryState === "RECOVERING")).toBe(true);
+      h.frames.length = 0;
+      restDown = false;
+      await vi.advanceTimersByTimeAsync(STREAM_BACKOFF_CAP_MS);
+      const frames = h.parsed();
+      const bars = frames.filter((frame) => frame.type === "bar") as Array<{ ts_open: number; reconstructed?: boolean }>;
+      expect(bars).toHaveLength(total);
+      expect(bars.every((bar, index) => bar.ts_open === E + index * 60_000)).toBe(true);
+      // The 30 oldest closes fell out of the bound and come back from REST; the retained 120 are the stream's own.
+      expect(bars.slice(0, 30).every((bar) => bar.reconstructed === true)).toBe(true);
+      expect(bars.slice(30).every((bar) => bar.reconstructed === undefined)).toBe(true);
+      expect(frames.at(-1)).toMatchObject({ type: "health", recoveryState: "READY" });
+      expect(h.transport.heldClosedBarCount).toBe(0);
     } finally {
       warn.mockRestore();
     }
@@ -506,7 +726,7 @@ describe("BrowserBinanceTransport", () => {
   it("close() stops everything: no frame, no reconnect, no new stream", async () => {
     const h = harness();
     await openAndSelect(h);
-    h.stream().open();
+    await openStream(h);
     h.transport.close();
     expect(h.transport.readyState).toBe(3);
     expect(h.stream().closed).toBe(true);

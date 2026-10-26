@@ -28,6 +28,7 @@ a second supposedly exhaustive indicator list in documentation.
 | Drawing infrastructure | [Trendline](P4.04-drawing-tools-trendline-evidence.md), [Fibonacci](P4.05-fibonacci-retracement-evidence.md) |
 | Named setting presets in every settings dialog | [Setting presets](setting-presets.md) |
 | Volume against the same minute of day on recent sessions | [Relative Volume (Time of Day)](relative-volume.md) |
+| A compression range, its frozen edges, the graded break and whether it held | [Compression Breakout](compression-breakout.md) |
 
 These pages are dated implementation evidence. Current registration,
 capability gating, settings schemas, and Historical Mode availability come from

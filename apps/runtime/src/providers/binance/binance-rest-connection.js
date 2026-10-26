@@ -53,6 +53,10 @@ const HEALTH_REASON_VARIANTS = Object.freeze({
   CATCHING_UP: "catching up",
   SLOW_POLLING: "slow polling (weight budget)",
 });
+/** Minutes the exchange never supplied stay on the reason for the rest of the session. */
+function historyIncompleteVariant(missingBars) {
+  return `history incomplete (${missingBars} min missing)`;
+}
 const SERVED_EVENT_TYPES = new Set([EVENT_TYPES.KLINE]);
 const TRANSPORT_FAILURE_REASONS = new Set([
   "NETWORK_ERROR", "TIMEOUT", "HTTP_ERROR", "INVALID_RESPONSE", "MALFORMED_RESPONSE_BODY", "RESPONSE_TOO_LARGE", "FETCH_UNAVAILABLE",
@@ -435,6 +439,7 @@ function createBinanceRestConnection(options = {}) {
       attempt: 0,
       catchUpPages: 0,
       catchingUp: false,
+      repairing: false,
       lastFailureReason: null,
       lastLatencyMs: null,
       lastSuccessAtMs: null,
@@ -448,6 +453,7 @@ function createBinanceRestConnection(options = {}) {
     poller.bars.reset();
     poller.catchUpPages = 0;
     poller.catchingUp = false;
+    poller.repairing = false;
     poller.attempt = 0;
   }
 
@@ -497,7 +503,11 @@ function createBinanceRestConnection(options = {}) {
     poller.inflight = controller;
     poller.lastSentAtMs = now();
     counters.polls += 1;
-    const request = poller.bars.nextRequest(exchangeNow());
+    // Finality is judged by the exchange clock as it stood when the request
+    // left: the exchange may build a row before the candle closes, so a row
+    // received after the close is final only if it was asked for after it.
+    const dispatchedAtExchangeMs = exchangeNow();
+    const request = poller.bars.nextRequest(dispatchedAtExchangeMs);
     let result;
     try {
       result = await fetchKlines(MARKET_KINDS.SPOT, poller.descriptor.symbol, {
@@ -520,7 +530,10 @@ function createBinanceRestConnection(options = {}) {
       onPollFailure(poller, result);
       return;
     }
-    const outcome = applyKlinePage(poller, result.value.body, receivedAt, seq);
+    // The conservative estimate: the pre-dispatch reading, or lower if the
+    // clock was re-synchronised meanwhile and the exchange turned out behind.
+    const finalityNowMs = Math.min(dispatchedAtExchangeMs, poller.lastSentAtMs + exchangeOffsetMs);
+    const outcome = applyKlinePage(poller, result.value.body, receivedAt, seq, finalityNowMs);
     if (outcome.malformed) {
       onPollFailure(poller, Object.freeze({ ok: false, reason: "MALFORMED_RESPONSE_BODY" }));
       return;
@@ -556,19 +569,32 @@ function createBinanceRestConnection(options = {}) {
     notifyMessageListeners(Object.freeze({ ...envelope, stale: health.stale, recoveryState: health.recoveryState }));
   }
 
-  function applyKlinePage(poller, body, receivedAt, seq) {
+  function applyKlinePage(poller, body, receivedAt, seq, finalityNowMs) {
     const { marketKind, symbol, eventType, interval } = poller.descriptor;
     const rows = parseKlineRows(body, candleIntervalMsFor(interval));
     if (rows === null) return { malformed: true };
     // A successful poll is an observation of the pair; only a failed poll
     // leaves the feed to go stale, as a dead stream would.
     feedHealth.recordEvent(marketKind, symbol, eventType, interval, receivedAt);
-    const outcome = poller.bars.apply({ rows, exchangeNowMs: exchangeNow(), seq });
+    const outcome = poller.bars.apply({ rows, exchangeNowMs: finalityNowMs, seq });
     if (outcome.stale) {
       telemetryEvent("kline_poll_superseded", { symbol: safeTelemetrySymbol(symbol) });
-      return { malformed: false, complete: !poller.catchingUp, immediate: false };
+      return { malformed: false, complete: !poller.catchingUp && !poller.repairing, immediate: false };
     }
-    if (outcome.hole) telemetryEvent("kline_hole", { symbol: safeTelemetrySymbol(symbol), confirmedOpenTime: poller.bars.confirmedOpenTime });
+    if (outcome.abandoned !== null) {
+      // Bounded retries did not bring the minutes: they are reported missing
+      // from here on, and the candles the exchange does have are delivered.
+      poller.repairing = false;
+      telemetryEvent("kline_hole_abandoned", { symbol: safeTelemetrySymbol(symbol), ...outcome.abandoned, missingBars: poller.bars.missingBars() });
+    } else if (outcome.hole !== null) {
+      // The page started past the next expected minute: stay degraded, keep
+      // the cursor on the first missing minute and ask again at the cadence.
+      if (!poller.repairing) telemetryEvent("kline_hole_detected", { symbol: safeTelemetrySymbol(symbol), ...outcome.hole });
+      poller.repairing = true;
+      beginRecovery(poller);
+      return { malformed: false, complete: false, immediate: false };
+    }
+    poller.repairing = false;
     for (const { row, closed } of outcome.emit) {
       emitEnvelope(poller, {
         e: "kline",
@@ -774,8 +800,10 @@ function createBinanceRestConnection(options = {}) {
     const pollFailed = poller !== null && poller.lastFailureReason !== null &&
       poller.lastFailureReason !== "RATE_LIMITED" && poller.lastFailureReason !== "IP_BANNED";
     if (routeState !== "CONNECTED" || pollFailed) variants.push(HEALTH_REASON_VARIANTS.POLL_FAILED);
-    if (poller !== null && poller.catchingUp) variants.push(HEALTH_REASON_VARIANTS.CATCHING_UP);
+    if (poller !== null && (poller.catchingUp || poller.repairing)) variants.push(HEALTH_REASON_VARIANTS.CATCHING_UP);
     if (plan.stretched || poller?.budgetDeferred) variants.push(HEALTH_REASON_VARIANTS.SLOW_POLLING);
+    const missingBars = poller?.bars.missingBars() ?? 0;
+    if (missingBars > 0) variants.push(historyIncompleteVariant(missingBars));
     return variants;
   }
 
@@ -841,6 +869,8 @@ function createBinanceRestConnection(options = {}) {
         lastSuccessAtMs: poller.lastSuccessAtMs,
         lastFailureReason: poller.lastFailureReason,
         catchingUp: poller.catchingUp,
+        repairing: poller.repairing,
+        missingBars: poller.bars.missingBars(),
         confirmedOpenTime: poller.bars.confirmedOpenTime,
       }));
     }
@@ -926,6 +956,7 @@ module.exports = {
   BOOK_UNAVAILABLE_REASON,
   HEALTH_REASON_BASE,
   HEALTH_REASON_VARIANTS,
+  historyIncompleteVariant,
   DEFAULT_MAX_CATCH_UP_PAGES,
   DEFAULT_CLOCK_REFRESH_MS,
   CONSECUTIVE_FAILURES_BEFORE_DISCONNECT,

@@ -3,6 +3,7 @@ const {
   binanceTransportFromEnv,
   HEALTH_REASON_BASE,
   BOOK_UNAVAILABLE_REASON,
+  historyIncompleteVariant,
   DEFAULT_MAX_CATCH_UP_PAGES,
   DEFAULT_CLOCK_REFRESH_MS,
 } = require("../../../src/providers/binance/binance-rest-connection");
@@ -32,6 +33,7 @@ function fakeBinance() {
     usedWeight: 10,
     klineStart: OPEN - 10 * MINUTE,
     rowFor: () => ({}),
+    omit: new Set(),
     failures: [],
     hang: null,
     pending: [],
@@ -75,6 +77,7 @@ function fakeBinance() {
         const limit = Number(u.searchParams.get("limit"));
         const rows = [];
         for (let openTime = Math.max(startTime, state.klineStart); openTime <= currentOpen() && rows.length < limit; openTime += MINUTE) {
+          if (state.omit.has(openTime)) continue;
           rows.push(klineRow(openTime, state.rowFor(openTime)));
         }
         return respond(rows);
@@ -612,5 +615,86 @@ describe("binance-rest-connection: one dispatch gate for every request", () => {
     expect(await lookup).toBe(0.01);
     expect(fake.pathsRequested().slice(sent).filter((path) => path === "/api/v3/exchangeInfo").length).toBe(2); // the probe and the lookup
     await expect(created.fetchExchangeInfo("SPOT", "BTCUSDT", { signal: {} })).rejects.toThrow(/AbortSignal/);
+  });
+});
+
+describe("binance-rest-connection: finality at dispatch and holes", () => {
+  test("a delayed response spanning the minute boundary never finalises the candle; the later poll's final values are the ones delivered", async () => {
+    const fake = fakeBinance();
+    const created = await connected(fake);
+    const envelopes = collector(created);
+    created.subscribe(SPOT_KLINE, "c1");
+    await tick(0);
+    // Half a second before OPEN closes, the poll goes out and hangs on the way back.
+    jest.setSystemTime(OPEN + MINUTE - 500);
+    fake.state.hang = (u) => u.pathname === "/api/v3/klines";
+    await tick(1000);
+    expect(fake.state.pending).toHaveLength(1);
+    fake.state.hang = null;
+    // Meanwhile the exchange has the final candle; the delayed response still carries the row it built before the close.
+    fake.state.rowFor = (openTime) => (openTime === OPEN ? { close: "64281.00", volume: "11.4" } : {});
+    jest.setSystemTime(OPEN + MINUTE + 1500);
+    const emittedBeforeLanding = envelopes.length;
+    fake.state.pending[0]([klineRow(OPEN - MINUTE), klineRow(OPEN, { close: "64270.00", volume: "11.0" })]);
+    await tick(0);
+    // The delayed row was dispatched before the close: a forming revision, never a close.
+    expect(envelopes[emittedBeforeLanding].payload).toMatchObject({ openTime: OPEN, isClosed: false, close: "64270.00", baseVolume: "11.0" });
+    await tick(1000);
+    const closed = envelopes.filter((e) => e.payload.openTime === OPEN && e.payload.isClosed);
+    expect(closed).toHaveLength(1);
+    expect(closed[0].payload).toMatchObject({ close: "64281.00", baseVolume: "11.4" });
+    expect(envelopes.some((e) => e.payload.openTime === OPEN && e.payload.isClosed && e.payload.close === "64270.00")).toBe(false);
+    // The close came from a poll dispatched after the close plus the grace.
+    const closeIndex = envelopes.indexOf(closed[0]);
+    expect(closeIndex).toBeGreaterThan(emittedBeforeLanding);
+  });
+
+  test("a recoverable hole: the poller stays degraded with the cursor on the first missing minute, and delivers the minutes in order once the exchange supplies them", async () => {
+    const fake = fakeBinance();
+    const telemetry = jest.fn();
+    const created = await connected(fake, { telemetry });
+    const envelopes = collector(created);
+    created.subscribe(SPOT_KLINE, "c1");
+    await tick(0);
+    fake.state.omit.add(OPEN); // the exchange has no candle for OPEN yet
+    jest.setSystemTime(T0 + 3 * MINUTE);
+    await tick(1000);
+    expect(created.getFeedHealth("SPOT", "BTCUSDT", "KLINE", "1m")).toMatchObject({ stale: true, recoveryState: "RECOVERING", reason: `${HEALTH_REASON_BASE} · catching up` });
+    expect(created.getOperationalStats().pollers[0]).toMatchObject({ repairing: true, confirmedOpenTime: OPEN - MINUTE, missingBars: 0 });
+    expect(envelopes.filter((e) => e.payload.isClosed && e.payload.openTime >= OPEN)).toEqual([]);
+    expect(telemetry.mock.calls.some(([entry]) => entry.event === "market_data.binance_rest.kline_hole_detected" && entry.fromOpenTime === OPEN && entry.toOpenTime === OPEN)).toBe(true);
+    fake.state.omit.delete(OPEN);
+    await tick(1000);
+    const closes = envelopes.filter((e) => e.payload.isClosed).map((e) => (e.payload.openTime - OPEN) / MINUTE);
+    expect(closes).toEqual([-1, 0, 1, 2]);
+    expect(created.getFeedHealth("SPOT", "BTCUSDT", "KLINE", "1m")).toMatchObject({ stale: false, recoveryState: "READY", reason: HEALTH_REASON_BASE });
+    expect(created.getOperationalStats().pollers[0]).toMatchObject({ repairing: false, missingBars: 0, confirmedOpenTime: OPEN + 2 * MINUTE });
+    expect(fake.klineRequests().filter((u) => Number(u.searchParams.get("startTime")) === OPEN && u.searchParams.get("limit") === "1000")).toHaveLength(2);
+  });
+
+  test("an irrecoverable hole: after bounded retries the missing minutes are reported on the health reason for the rest of the session, never as caught up", async () => {
+    const fake = fakeBinance();
+    const telemetry = jest.fn();
+    const created = await connected(fake, { telemetry });
+    const envelopes = collector(created);
+    created.subscribe(SPOT_KLINE, "c1");
+    await tick(0);
+    fake.state.omit.add(OPEN);
+    jest.setSystemTime(T0 + 3 * MINUTE);
+    await tick(1000); // attempt 1: hole, stay degraded
+    await tick(1000); // attempt 2
+    expect(created.getFeedHealth("SPOT", "BTCUSDT", "KLINE", "1m").recoveryState).toBe("RECOVERING");
+    await tick(1000); // attempt 3: given up
+    const closes = envelopes.filter((e) => e.payload.isClosed).map((e) => (e.payload.openTime - OPEN) / MINUTE);
+    expect(closes).toEqual([-1, 1, 2]);
+    expect(created.getFeedHealth("SPOT", "BTCUSDT", "KLINE", "1m")).toMatchObject({
+      stale: false, recoveryState: "READY", reason: `${HEALTH_REASON_BASE} · ${historyIncompleteVariant(1)}`,
+    });
+    expect(historyIncompleteVariant(1)).toBe("history incomplete (1 min missing)");
+    expect(created.getOperationalStats().pollers[0]).toMatchObject({ repairing: false, missingBars: 1, confirmedOpenTime: OPEN + 2 * MINUTE });
+    expect(telemetry.mock.calls.some(([entry]) => entry.event === "market_data.binance_rest.kline_hole_abandoned" && entry.missingBars === 1)).toBe(true);
+    await tick(5000);
+    expect(created.getFeedHealth("SPOT", "BTCUSDT", "KLINE", "1m").reason).toContain("history incomplete (1 min missing)");
+    expect(fake.klineRequests().at(-1).searchParams.get("limit")).toBe("2");
   });
 });

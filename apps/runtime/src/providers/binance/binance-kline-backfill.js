@@ -82,8 +82,12 @@ function createBinanceKlineBackfill({
     let retryAfterMs;
     const startedAtMs = now();
     // The first open time that is not final: a candle is final once its close
-    // time plus the grace has passed on the clock given to this backfill.
+    // time plus the grace has passed on the clock given to this backfill, as
+    // that clock stood when the page was requested.
     const closedBoundaryAt = (atMs) => Math.floor((atMs + 1 - finalizeGraceMs) / intervalMs) * intervalMs;
+    // The exchange's current (forming) candle at the same moment: a page may
+    // end with it and with the not-yet-final candle before it, never beyond.
+    const currentOpenAt = (atMs) => Math.floor(atMs / intervalMs) * intervalMs;
     const lookbackMs = days * 24 * 60 * 60 * 1000;
     if (!Number.isSafeInteger(lookbackMs) || lookbackMs > startedAtMs) {
       throw new Error("fetchRecentBars: days resolves outside the supported epoch range");
@@ -98,7 +102,9 @@ function createBinanceKlineBackfill({
         failureReason = "ABORTED";
         break;
       }
-      const closedBoundary = closedBoundaryAt(now());
+      const dispatchedAtMs = now();
+      const closedBoundary = closedBoundaryAt(dispatchedAtMs);
+      const currentOpen = currentOpenAt(dispatchedAtMs);
       if (cursor >= closedBoundary) {
         caughtUp = true;
         break;
@@ -151,14 +157,15 @@ function createBinanceKlineBackfill({
         failureReason = "PAGE_START_MISMATCH";
         break;
       }
-      if (page[page.length - 1].openTime > closedBoundary) {
+      if (page[page.length - 1].openTime > currentOpen) {
         failureReason = "PAGE_TIME_RANGE_INVALID";
         break;
       }
 
-      const closedPage = page[page.length - 1].openTime === closedBoundary
-        ? page.slice(0, -1)
-        : page;
+      // Keep the candles that were final when the page was requested; the
+      // trailing ones (the forming candle, and the previous one inside its
+      // grace) are left to the live feed.
+      const closedPage = page.filter((row) => row.openTime < closedBoundary);
       if (closedPage.length === 0) {
         failureReason = "INCOMPLETE_PAGE";
         break;

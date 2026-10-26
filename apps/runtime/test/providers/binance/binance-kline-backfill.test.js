@@ -135,6 +135,55 @@ describe("binance-kline-backfill", () => {
     expect(() => createBinanceKlineBackfill({ finalizeGraceMs: -1 })).toThrow(/finalizeGraceMs/);
   });
 
+  test("during the grace window after a rollover a normal page (previous candle inside its grace plus the forming one) is valid history, trimmed to the final candles", async () => {
+    const minuteOpen = Math.floor(NOW_MS / ONE_MINUTE_MS) * ONE_MINUTE_MS;
+    let clock = minuteOpen + 500;
+    // The exchange answers with every candle up to its current (forming) one.
+    const fetchImpl = jest.fn(async (url) => {
+      const startTime = Number(new URL(url).searchParams.get("startTime"));
+      const currentOpen = Math.floor(clock / ONE_MINUTE_MS) * ONE_MINUTE_MS;
+      return jsonResponse(fullPage(startTime, (currentOpen - startTime) / ONE_MINUTE_MS + 1));
+    });
+    const backfill = createBinanceKlineBackfill({ fetchImpl, telemetry: () => {}, now: () => clock, finalizeGraceMs: 1000 });
+    const inGrace = await backfill.fetchRecentBars("SPOT", "BTCUSDT", { interval: "1m", intervalMs: ONE_MINUTE_MS, days: 1 / 24 });
+    expect(inGrace.ok).toBe(true);
+    expect(inGrace.reason).toBeUndefined();
+    expect(inGrace.rows.at(-1).openTime).toBe(minuteOpen - 2 * ONE_MINUTE_MS); // the previous candle is still inside its grace
+    expect(inGrace.rows).toHaveLength(60); // from the cursor one hour and one bar back, up to the last final candle
+    clock = minuteOpen + 1500;
+    const afterGrace = await backfill.fetchRecentBars("SPOT", "BTCUSDT", { interval: "1m", intervalMs: ONE_MINUTE_MS, days: 1 / 24 });
+    expect(afterGrace.ok).toBe(true);
+    expect(afterGrace.rows.at(-1).openTime).toBe(minuteOpen - ONE_MINUTE_MS);
+    // A page reaching past the exchange's current candle is still refused.
+    const beyond = await createBinanceKlineBackfill({
+      fetchImpl: async (url) => jsonResponse(fullPage(Number(new URL(url).searchParams.get("startTime")), 70)),
+      telemetry: () => {}, now: () => clock, finalizeGraceMs: 1000,
+    }).fetchRecentBars("SPOT", "BTCUSDT", { interval: "1m", intervalMs: ONE_MINUTE_MS, days: 1 / 24 });
+    expect(beyond).toMatchObject({ ok: false, reason: "PAGE_TIME_RANGE_INVALID" });
+  });
+
+  test("across a rollover between pages, the finality of each page follows the clock at its own dispatch and the backfill completes", async () => {
+    const minuteOpen = Math.floor(NOW_MS / ONE_MINUTE_MS) * ONE_MINUTE_MS;
+    let clock = minuteOpen - 500; // half a second before the rollover
+    const fetchImpl = jest.fn(async (url) => {
+      const startTime = Number(new URL(url).searchParams.get("startTime"));
+      const limit = Number(new URL(url).searchParams.get("limit"));
+      const currentOpen = Math.floor(clock / ONE_MINUTE_MS) * ONE_MINUTE_MS;
+      const rows = fullPage(startTime, Math.min(limit, (currentOpen - startTime) / ONE_MINUTE_MS + 1));
+      clock = minuteOpen + 500; // the minute rolls over while the first page is in flight
+      return jsonResponse(rows);
+    });
+    const backfill = createBinanceKlineBackfill({ fetchImpl, telemetry: () => {}, now: () => clock, finalizeGraceMs: 1000 });
+    const result = await backfill.fetchRecentBars("SPOT", "BTCUSDT", { interval: "1m", intervalMs: ONE_MINUTE_MS, days: 1, pageDelayMs: 0 });
+    expect(result.ok).toBe(true);
+    expect(result.reason).toBeUndefined();
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    // The second page, dispatched 500 ms after the rollover, keeps only candles final by then.
+    expect(result.rows.at(-1).openTime).toBe(minuteOpen - 2 * ONE_MINUTE_MS);
+    expect(result.rows.length).toBe(1440);
+    expect(new Set(result.rows.map((row) => row.openTime)).size).toBe(result.rows.length);
+  });
+
   test("a fetchKlinesImpl hook receives every page request with its signal, and an abort ends the backfill as ABORTED without a further request", async () => {
     const seen = [];
     const controller = new AbortController();

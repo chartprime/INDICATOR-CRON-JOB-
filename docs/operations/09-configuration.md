@@ -140,16 +140,24 @@ upgrades, a region Binance's primary API blocks). Spot only; set
 low, close, volume, taker-buy volume (the sided candle flow) and trade count,
 forming and closed. Every `TT_BINANCE_REST_POLL_MS` the previous and the
 forming bar are read. Every row is classified by its own open and close time
-against the exchange clock, never by its position or by the machine clock: a
-bar is final one second after its close time has passed on the exchange and is
-emitted closed exactly once; the forming bar is re-sent only when one of its
-seven fields changed; a response from an older poll never overwrites a newer
-one. The exchange clock comes from the `exchangeInfo` probe that brings the
-route up (`serverTime`) and is re-read from `/api/v3/time` once a minute; a
-failed refresh keeps the last offset. After an outage of more than one bar the
-poller catches up from the last confirmed close, in pages of up to 1000 candles,
-at most 10 pages back to back before it yields for one cadence and continues;
-the health reason reads `catching up` until it is current.
+against the exchange clock as it stood when the request was sent, never by
+its position, by the machine clock or by the time of receipt: a bar is final
+only when the request left one second or more after its close time on the
+exchange (the exchange may build a row before the candle closes, so a row
+received after the close is kept forming until a later poll confirms it), and
+it is emitted closed exactly once; the forming bar is re-sent only when one of
+its seven fields changed; a response from an older poll never overwrites a
+newer one. The candle backfill applies the same rule to its pages. The
+exchange clock comes from the `exchangeInfo` probe that brings the route up
+(`serverTime`) and is re-read from `/api/v3/time` once a minute; a failed
+refresh keeps the last offset. After an outage of more than one bar the poller
+catches up from the last confirmed close, in pages of up to 1000 candles, at
+most 10 pages back to back before it yields for one cadence and continues; the
+health reason reads `catching up` until it is current. A page that starts past
+the next expected minute does not move the cursor: the exchange is asked again
+from the first missing minute, three times, with the reason still `catching
+up`; if it never supplies the interval, the cursor moves past it and the reason
+reads `history incomplete (N min missing)` for the rest of the session.
 
 **What it does not serve.** There is no tape and no order book. No trade frame
 is sent; the book is `UNAVAILABLE` with reason `REST_NO_DEPTH`. Unavailable:
@@ -166,7 +174,8 @@ relative volume, structure, volatility, candle flow).
 **Health.** The feed's reason reads `Polled spot candles · no tape · no order
 book`, with `· rate limited` (a 429 or an IP ban: polling paused for
 `Retry-After`), `· poll failed` (the last poll failed or the route is down),
-`· catching up` or `· slow polling (weight budget)` appended while they apply.
+`· catching up`, `· slow polling (weight budget)` or `· history incomplete (N
+min missing)` appended while they apply.
 The health frame's state follows the candle feed; the tape and depth feeds
 are reported unavailable and do not change that state. `/health` reports
 `delivery.transport: "rest"`, the cadence, the weight used and the exchange

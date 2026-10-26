@@ -456,7 +456,7 @@ export function createSizeSplitEngine(settings: SizeSplitMathSettings): SizeSpli
     record.close = bar.close;
     record.volume = bar.volume;
     record.coverage = scan.coverage;
-    record.tapeStarting = scan.coverage === "none" && ticks !== undefined && ticks.liveSince !== null && ticks.liveSince < record.windowEnd;
+    record.tapeStarting = scan.coverage === "none" && ticks !== undefined && ticks.prints.length > 0 && ticks.liveSince !== null && ticks.liveSince < record.windowEnd;
     record.largeBar = scan.largeBar;
     record.smallBar = scan.smallBar;
     record.tapeVolume = scan.tapeVolume;

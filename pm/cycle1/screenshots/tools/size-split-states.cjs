@@ -92,6 +92,13 @@ async function closeSettings(page) {
   const box = await chart.boundingBox();
   const cx = box.x + box.width * 0.6;
   const cy = box.y + box.height * 0.4;
+  // Double-clicking the time axis resets the time scale (axisDoubleClickReset), so every
+  // state is shot from the same default view instead of the previous state's residual zoom.
+  const resetZoom = async () => {
+    await page.mouse.dblclick(box.x + box.width * 0.5, box.y + box.height - 12);
+    await page.mouse.move(box.x + 5, box.y + 5);
+    await page.waitForTimeout(500);
+  };
   const zoom = async (direction, steps) => {
     await page.mouse.move(cx, cy);
     for (let i = 0; i < steps; i += 1) await page.mouse.wheel(0, direction * 400);
@@ -129,6 +136,7 @@ async function closeSettings(page) {
     for (const name of [state, divergence].filter(Boolean)) {
       if (seen.has(name)) continue;
       seen.add(name);
+      await resetZoom();
       await zoom(1, 10);
       await page.screenshot({ path: path.join(outDir, `${prefix}-${name}-zoomed-out.png`) });
       await zoom(-1, 22);

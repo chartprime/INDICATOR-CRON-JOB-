@@ -448,4 +448,17 @@ describe("sizeSplitDeltaMath -- the tape starting inside the window (UX finding 
     expect(silent.status).toBe("noFeed");
     expect(createSizeSplitEngine(FIXED).onBar(barAt(A, 100, 1, false), undefined).status).toBe("noFeed");
   });
+
+  it("a REST-only snapshot (absorb of no trades) sets liveSince but has never held a print: noFeed until the first print arrives", () => {
+    const tape = new AggressiveTape(() => A + 20_000);
+    tape.reset();
+    tape.absorb([]);
+    const ticks = indicatorTicksOf(tape)!;
+    expect(ticks.liveSince).toBe(A + 20_000);
+    expect(ticks.prints.length).toBe(0);
+    const engine = createSizeSplitEngine(FIXED);
+    expect(engine.onBar(barAt(A, 100, 1, false), ticks).status).toBe("noFeed");
+    tape.add(tradeFrame(A + 30_000, 100, 1, "buy", BINANCE_PERP, "first-live"));
+    expect(engine.onBar(barAt(A, 100, 1, false), ticks).status).toBe("tapeStarting");
+  });
 });

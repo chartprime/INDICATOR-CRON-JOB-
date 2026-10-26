@@ -130,9 +130,13 @@ at the later of the anchor and the covered start; the line's own start shows
 it. The first forming bar after connect (or after a reconnect) is not covered
 either, because its window began before the live recording: that is its own
 state, `tapeStarting`, shown as `Tape live · next bar` (coverage `"none"`
-while the store exists and `liveSince` falls inside the window); `Needs live
-tape · no feed` is kept for no store at all or a store that has never
-recorded (UX pass, finding 2).
+while the store exists, has held at least one print and `liveSince` falls
+inside the window); `Needs live tape · no feed` is kept for no store at all or
+a store that has never held a print (UX pass, finding 2). The "never held a
+print" clause is the build's addition: the REST-only path absorbs an empty
+trade list on every snapshot, which sets `liveSince` without any feed, and
+without the clause a REST-only chart would read `Tape live · next bar` for
+ever.
 
 Aggregates: the 10,000-row BTC-USDT fixture holds Binance aggregate trades
 (one taker order at one price), so a tier estimated on it is higher than one
@@ -283,11 +287,12 @@ removes few of them. The number is reported, not hidden; the PM decides.
 
 Frozen method (`probeReplayPooled`, three warm-ups, five timed runs, `onBar`
 plus `readOutput`) on 10,080 trend bars with 20 prints each in one store of
-201,600 prints: pooled p99 0.032 ms (p50 0.011); real activation p99 0.037 ms,
-wall 178 ms; forming bar in fixed mode, 3,000 revisions over 1,000 prints, p99
-0.091 ms; rollover of 1,000 extra bars: every output key 10,080 long, no stale
-marker, 407 bytes per extra bar with gc exposed (the harness floor is about
-370). State: a ring of 10,080 committed bars of seven fields (under 1 MB), two
+201,600 prints: pooled p99 0.038 ms (p50 0.011); real activation p99 0.035 ms,
+wall 150 ms; forming bar in fixed mode, 3,000 revisions over 1,000 prints, p99
+0.047 ms; rollover of 1,000 extra bars: every output key 10,080 long, no stale
+marker, 412 bytes per extra bar with gc exposed (the harness floor is about
+370). Measured on the final build with the machine otherwise idle; the test
+asserts pooled p99 under 0.5 ms and forming p99 at or under 0.1 ms. State: a ring of 10,080 committed bars of seven fields (under 1 MB), two
 32 KB typed arrays, the `K`-ring, two totals, and on the forming bar only its
 last revision's sizes (at most 4,096).
 

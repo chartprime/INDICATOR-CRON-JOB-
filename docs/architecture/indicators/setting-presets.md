@@ -30,6 +30,9 @@ name (in full as its tooltip) instead of "Defaults". Applying a preset is an
 ordinary settings edit: the dialogs apply edits live, so there is nothing to
 confirm. Escape closes the popup and leaves the dialog open. A preset holds the
 indicator's inputs only, never its "Show on chart" state.
+A field declared with `tab: "advanced"` is an ordinary input shown under a
+collapsed Advanced group at the end of the Inputs tab; presets save and apply
+it like any other input.
 
 Presets belong to one indicator, and they follow the way its settings are kept:
 

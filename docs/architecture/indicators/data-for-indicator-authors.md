@@ -140,6 +140,9 @@ and goes through the owner.
    Its settings dialog gets [setting presets](setting-presets.md): a
    `settingsSchema` is enough for the generic dialog, and a hand-built one
    declares a preset schema for every setting it stores.
+   Keep at most three primary controls on the Inputs tab and give every other
+   input `tab: "advanced"`, which the generic dialog renders as a collapsed
+   Advanced group.
 2. Register it in `INDICATOR_REGISTRY` and give it a
    `HISTORICAL_INDICATOR_POLICIES` entry that names what it needs.
 3. Read sides through `barSides`. For example, a cumulative delta that leaves

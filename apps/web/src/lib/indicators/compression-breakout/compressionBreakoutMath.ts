@@ -122,6 +122,8 @@ export interface CommittedState {
   lastCommittedTsOpen: number | null;
   /** Committed dispatched bars so far; the next bar's index. */
   committedIndex: number;
+  /** Committed valid-price bars so far: readiness counts these, the rings being capped. */
+  validCount: number;
   active: ActiveRange | null;
   held: HeldRange[];
   lastEvent: LastEvent | null;
@@ -215,6 +217,7 @@ export function createCommittedState(): CommittedState {
     prevClose: null,
     lastCommittedTsOpen: null,
     committedIndex: 0,
+    validCount: 0,
     active: null,
     held: [],
     lastEvent: null,
@@ -232,6 +235,7 @@ function cloneState(state: CommittedState): CommittedState {
     prevClose: state.prevClose,
     lastCommittedTsOpen: state.lastCommittedTsOpen,
     committedIndex: state.committedIndex,
+    validCount: state.validCount,
     active: state.active === null ? null : { ...state.active, broken: state.active.broken === null ? null : { ...state.active.broken } },
     held: state.held.map((range) => ({ ...range })),
     lastEvent: state.lastEvent === null ? null : { ...state.lastEvent },
@@ -390,7 +394,7 @@ export function createCompressionBreakoutEngine(input: CompressionBreakoutMathSe
     let trend: -1 | 0 | 1 | null = null;
     if (settings.trendFast >= settings.trendSlow) {
       trendStatus = "fastGeSlow";
-    } else if (P.closes.length >= settings.trendSlow + 5 && P.fastHistory.length >= SLOPE_HISTORY) {
+    } else if (P.validCount >= settings.trendSlow + 5 && P.closes.length >= settings.trendSlow && P.fastHistory.length >= SLOPE_HISTORY) {
       trendStatus = "ready";
       if (priceValid) {
         const slowMa = tailMean(P.closes, settings.trendSlow) as number;
@@ -427,8 +431,8 @@ export function createCompressionBreakoutEngine(input: CompressionBreakoutMathSe
       }
     }
 
-    // Readiness counts valid committed true ranges (the deepest ring) plus this bar when its price is valid.
-    const validThroughThisBar = P.trs.length + (priceValid ? 1 : 0);
+    // Readiness counts committed valid-price bars plus this bar when its price is valid; the rings themselves are capped.
+    const validThroughThisBar = P.validCount + (priceValid ? 1 : 0);
     return {
       tsOpen: bar.ts_open,
       intervalMs: bar.interval_ms,
@@ -450,7 +454,7 @@ export function createCompressionBreakoutEngine(input: CompressionBreakoutMathSe
       widthRatio,
       trend,
       trendStatus,
-      closesCount: P.closes.length,
+      closesCount: Math.min(P.validCount, settings.trendSlow + 5),
       avgRange,
       avgVolume,
       gradeBasis,
@@ -529,6 +533,7 @@ export function createCompressionBreakoutEngine(input: CompressionBreakoutMathSe
         }
       }
       C.prevClose = bar.close;
+      C.validCount += 1;
     }
     // (e) every committed dispatched bar advances the clock, valid or not.
     C.lastCommittedTsOpen = bar.ts_open;

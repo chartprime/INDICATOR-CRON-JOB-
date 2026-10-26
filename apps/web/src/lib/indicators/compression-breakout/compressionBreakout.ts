@@ -61,6 +61,8 @@ export const CB_FILL_FORMING_ALPHA = 0.06;
 export const CB_FILL_HELD_ALPHA = 0.06;
 export const CB_BOX_POOL = 1 + MAX_HELD_RANGES;
 export const CB_TABLE_MAX_CHARS = 30;
+/** The invisible colour of a range's last edge point; distinct from the hidden-box colour so the two are told apart. */
+export const CB_EDGE_JOIN_COLOR = "rgba(1,1,1,0)";
 const TRANSPARENT = "rgba(0,0,0,0)";
 
 export interface CompressionBreakoutState {
@@ -279,9 +281,23 @@ function plotMarkers(ctx: IndicatorBarCtx<CompressionBreakoutState, CompressionB
   }
 }
 
+/**
+ * The edge lines' per-bar colour. The chart paints each segment with the
+ * colour of the point it starts from, so the last point of a range (the bar
+ * whose decision retires it) is painted transparent: the segment that would
+ * otherwise join this range's edge to the next range's edge never appears.
+ */
+export function edgeLineColor(state: CompressionBreakoutState): string {
+  const reading = state.reading;
+  if (reading === null) return CB_RANGE_COLOR;
+  const kind = reading.decision.kind;
+  if (kind === "failed" || kind === "heldOutside" || kind === "expired") return CB_EDGE_JOIN_COLOR;
+  return reading.confirmed ? CB_RANGE_COLOR : withAlpha(CB_RANGE_COLOR, CB_PROVISIONAL_ALPHA);
+}
+
 const LINES: readonly LineOutputSpec<CompressionBreakoutState>[] = [
-  { key: "rangeHigh", lineWidth: 1, color: () => CB_RANGE_COLOR },
-  { key: "rangeLow", lineWidth: 1, color: () => CB_RANGE_COLOR },
+  { key: "rangeHigh", lineWidth: 1, color: edgeLineColor, recolor: (current) => current ?? CB_RANGE_COLOR },
+  { key: "rangeLow", lineWidth: 1, color: edgeLineColor, recolor: (current) => current ?? CB_RANGE_COLOR },
 ];
 
 const SCHEMA: readonly SettingsFieldSchema<CompressionBreakoutSettings>[] = [
@@ -339,9 +355,12 @@ export const compressionBreakoutIndicator: RuntimeIndicatorDef<CompressionBreako
     }
     const d = reading.decision;
     const isBreak = d.kind === "break";
+    // The edge lines show an established range only: a forming range is the faint box, and a line
+    // joining successive short-lived ranges would read as a slope that never existed.
+    const established = reading.active !== null && reading.active.age >= state.engine.settings.minCompressionBars;
     return {
-      rangeHigh: reading.rangeHigh,
-      rangeLow: reading.rangeLow,
+      rangeHigh: established ? reading.rangeHigh : null,
+      rangeLow: established ? reading.rangeLow : null,
       widthRatio: reading.widthRatio,
       qualified: reading.qualified === null ? null : reading.qualified ? 1 : 0,
       trend: reading.trend,

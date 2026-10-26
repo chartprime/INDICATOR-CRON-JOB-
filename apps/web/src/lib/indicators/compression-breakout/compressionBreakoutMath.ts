@@ -363,8 +363,9 @@ export function createCompressionBreakoutEngine(input: CompressionBreakoutMathSe
       bar.interval_ms > 0 &&
       bar.interval_ms < DAY_MS &&
       bar.ts_open - P.lastCommittedTsOpen > bar.interval_ms;
-    // W: P with the gap rule applied, never written.
-    const active = gap ? null : P.active;
+    // W: P with the gap rule applied, never written. An invalid-price tail skips every commit step,
+    // so it cannot reset the range either (amendment 5): the reset waits for a valid-price bar.
+    const active = gap && priceValid ? null : P.active;
     const trueRange = priceValid ? trueRangeOf(bar, P.prevClose, gap) : null;
     const avgRange = denominatorOf(P.trs);
     const avgVolume = denominatorOf(P.volumes);
@@ -470,8 +471,8 @@ export function createCompressionBreakoutEngine(input: CompressionBreakoutMathSe
     const index = P.committedIndex;
     // (a) held countdown: free the ones that reached zero at the previous commit, then count the rest down.
     C.held = C.held.filter((range) => range.remaining > 0).map((range) => ({ ...range, remaining: range.remaining - 1 }));
-    if (reading.gap) C.active = null;
     if (reading.priceValid) {
+      if (reading.gap) C.active = null;
       // (b) rings
       pushCapped(C.highs, bar.high, settings.rangeLength);
       pushCapped(C.lows, bar.low, settings.rangeLength);

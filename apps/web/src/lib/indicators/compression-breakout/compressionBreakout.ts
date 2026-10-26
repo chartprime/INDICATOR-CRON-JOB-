@@ -56,9 +56,11 @@ export const CB_WARN_COLOR = "#b07a1e";
 export const CB_TABLE_TEXT_COLOR = "#d1d4dc";
 export const CB_UNAVAILABLE = "—";
 export const CB_PROVISIONAL_ALPHA = 0.5;
-export const CB_FILL_ESTABLISHED_ALPHA = 0.12;
-export const CB_FILL_FORMING_ALPHA = 0.06;
+export const CB_FILL_ESTABLISHED_ALPHA = 0.14;
+export const CB_FILL_FORMING_ALPHA = 0.08;
 export const CB_FILL_HELD_ALPHA = 0.06;
+export const CB_FORMING_BORDER_ALPHA = 0.35;
+export const CB_HELD_BORDER_ALPHA = 0.5;
 export const CB_BOX_POOL = 1 + MAX_HELD_RANGES;
 export const CB_TABLE_MAX_CHARS = 30;
 /** The invisible colour of a range's last edge point; distinct from the hidden-box colour so the two are told apart. */
@@ -112,15 +114,15 @@ function formatSignificant(value: number): string {
 }
 
 /**
- * `Range hi–lo` at the instrument's precision with no thousands separators; if
+ * `Range lo–hi` at the instrument's precision with no thousands separators; if
  * the row would exceed 30 characters, both edges round to six significant
  * digits (brief ruling 8).
  */
 export function rangeRowText(hi: number, lo: number): string {
   const decimals = Math.max(decimalsOf(hi), decimalsOf(lo));
-  const exact = `Range ${formatAt(hi, decimals)}–${formatAt(lo, decimals)}`;
+  const exact = `Range ${formatAt(lo, decimals)}–${formatAt(hi, decimals)}`;
   if (exact.length <= CB_TABLE_MAX_CHARS) return exact;
-  return `Range ${formatSignificant(hi)}–${formatSignificant(lo)}`;
+  return `Range ${formatSignificant(lo)}–${formatSignificant(hi)}`;
 }
 
 function arrow(dir: number): string {
@@ -139,8 +141,8 @@ export function breakBasisText(grade: number, basis: number): string {
     if (volumePassed) return "vol only";
     return "unconfirmed";
   }
-  if (rangeTestable) return rangePassed ? "range · vol n/a" : "vol n/a";
-  if (volumeTestable) return volumePassed ? "vol · range n/a" : "range n/a";
+  if (rangeTestable) return rangePassed ? "range, vol n/a" : "vol n/a";
+  if (volumeTestable) return volumePassed ? "vol, range n/a" : "range n/a";
   return "no baseline";
 }
 
@@ -165,65 +167,63 @@ export function stateText(reading: Reading, settings: CompressionBreakoutSetting
   if (d.kind === "expired") return `Range expired · ${RANGE_LIFETIME} bars`;
   if (d.kind === "break") return `Break ${arrow(d.dir)} · ${breakBasisText(d.grade, d.basis)}`;
   const active = reading.active;
-  if (d.kind === "pending") return `Pending · ${Math.min(settings.failBars, reading.pendingBars)} of ${settings.failBars} bars`;
+  if (d.kind === "pending") return `Holding · ${Math.min(settings.failBars, reading.pendingBars)} of ${settings.failBars} bars`;
   if (active !== null) {
     if (active.age >= settings.minCompressionBars) {
-      const ratio = active.widthRatio === null ? "" : ` · ${active.widthRatio.toFixed(1)}×`;
+      const ratio = active.widthRatio === null ? "" : ` · width ${active.widthRatio.toFixed(1)}×`;
       return `Range · ${active.age} bars${ratio}`;
     }
     return `Range forming · ${active.age} of ${settings.minCompressionBars}`;
   }
-  return "No range";
+  // No range: how far the rolling window is from the width limit, so the row carries a reason.
+  return reading.widthRatio === null ? "Watching" : `Watching · width ${reading.widthRatio.toFixed(1)}×`;
 }
 
 export function trendText(reading: Reading, settings: CompressionBreakoutSettings): string {
   const pair = `MA ${settings.trendFast}/${settings.trendSlow}`;
-  if (reading.trendStatus === "fastGeSlow") return "Trend · fast ≥ slow";
-  if (reading.trendStatus === "warming") return `Trend · warming ${reading.closesCount}/${settings.trendSlow + 5}`;
+  if (reading.trendStatus === "fastGeSlow") return "Trend off · fast ≥ slow";
+  if (reading.trendStatus === "warming") return `Trend warming · ${reading.closesCount} of ${settings.trendSlow + 5}`;
   if (reading.trend === 1) return `Trend ↑ · ${pair}`;
   if (reading.trend === -1) return `Trend ↓ · ${pair}`;
   return `Trend flat · ${pair}`;
 }
 
-export function lastEventText(reading: Reading): string {
+export function lastEventText(reading: Reading, settings: CompressionBreakoutSettings): string {
   const event = reading.lastEvent;
   if (event === null) return CB_UNAVAILABLE;
   const when = timeText(event.tsOpen, reading.intervalMs);
   switch (event.kind) {
     case "break":
-      return `Last · ${arrow(event.dir)} ${when} · ${breakBasisText(event.grade, event.basis)}`;
+      return `Last ${arrow(event.dir)} ${when} · ${breakBasisText(event.grade, event.basis)}`;
     case "failed":
-      return `Last · failed ${arrow(event.dir)} ${when}`;
+      return `Last failed ${arrow(event.dir)} ${when}`;
     case "heldOutside":
-      return `Last · held ${arrow(event.dir)} ${when}`;
+      return `Last held ${arrow(event.dir)} ${when} · ${settings.failBars} bars`;
     default:
-      return `Last · expired ${when}`;
+      return `Last expired ${when}`;
   }
 }
 
-/** The four rows; during warm-up only the first row carries text (UX standard 2.6, amendment 7). */
+/**
+ * The table rows: during warm-up only `[{ text }]` (one row is written, so one
+ * row shows); afterwards the four rows at full colour. Provisional styling
+ * stays on markers and on the edge lines' last point only: the table is
+ * flushed after every forming revision, so a dimmed forming row would read
+ * as a permanently dimmed table (UX finding 1).
+ */
 export function tableRows(reading: Reading | null, settings: CompressionBreakoutSettings): TableRow[] {
   const neutral = CB_TABLE_TEXT_COLOR;
-  if (reading === null) return [{ text: `Warming up · 0 of ${2 * settings.rangeLength} bars`, color: neutral }, { text: "", color: neutral }, { text: "", color: neutral }, { text: "", color: neutral }];
-  if (!reading.rangeReady) {
-    return [
-      { text: `Warming up · ${reading.warmupCount} of ${reading.warmupNeeded} bars`, color: neutral },
-      { text: "", color: neutral },
-      { text: "", color: neutral },
-      { text: "", color: neutral },
-    ];
-  }
-  const provisional = !reading.confirmed;
-  const colorOf = (base: string): string => (provisional ? withAlpha(base, CB_PROVISIONAL_ALPHA) : base);
+  if (reading === null) return [{ text: `Warming up · 0 of ${2 * settings.rangeLength} bars`, color: neutral }];
+  if (!reading.rangeReady) return [{ text: `Warming up · ${reading.warmupCount} of ${reading.warmupNeeded} bars`, color: neutral }];
   const row1 = reading.active !== null ? rangeRowText(reading.active.hi, reading.active.lo) : "No range";
   const d = reading.decision;
   const stateColor =
     d.kind === "break" ? (d.dir > 0 ? CB_BULL_COLOR : CB_BEAR_COLOR) : d.kind === "failed" ? CB_WARN_COLOR : neutral;
   return [
-    { text: row1, color: colorOf(neutral) },
-    { text: trendText(reading, settings), color: colorOf(trendColor(reading.trend)) },
-    { text: stateText(reading, settings), color: colorOf(stateColor) },
-    { text: lastEventText(reading), color: colorOf(neutral) },
+    { text: row1, color: neutral },
+    { text: trendText(reading, settings), color: trendColor(reading.trend) },
+    { text: stateText(reading, settings), color: stateColor },
+    { text: lastEventText(reading, settings), color: neutral },
   ];
 }
 
@@ -239,11 +239,10 @@ function drawActive(box: BoxHandle, reading: Reading, settings: CompressionBreak
     return;
   }
   const established = active.age >= settings.minCompressionBars;
-  const alpha = (established ? CB_FILL_ESTABLISHED_ALPHA : CB_FILL_FORMING_ALPHA) * (reading.confirmed ? 1 : CB_PROVISIONAL_ALPHA);
   box.setLeftTop(active.openedTs, active.hi);
   box.setRightBottom(reading.tsOpen, active.lo);
-  box.setBackgroundColor(withAlpha(CB_RANGE_COLOR, alpha));
-  box.setBorderColor(established ? trendColor(reading.trend) : TRANSPARENT);
+  box.setBackgroundColor(withAlpha(CB_RANGE_COLOR, established ? CB_FILL_ESTABLISHED_ALPHA : CB_FILL_FORMING_ALPHA));
+  box.setBorderColor(established ? trendColor(reading.trend) : withAlpha(CB_RANGE_COLOR, CB_FORMING_BORDER_ALPHA));
   box.setBorderWidth(1);
 }
 
@@ -256,7 +255,7 @@ function drawHeld(box: BoxHandle, held: HeldRange | undefined, tsOpen: number): 
   box.setLeftTop(held.openedTs, held.hi);
   box.setRightBottom(held.closedTs, held.lo);
   box.setBackgroundColor(withAlpha(CB_RANGE_COLOR, CB_FILL_HELD_ALPHA));
-  box.setBorderColor(held.outcome === "failed" ? CB_WARN_COLOR : CB_RANGE_COLOR);
+  box.setBorderColor(withAlpha(held.outcome === "failed" ? CB_WARN_COLOR : CB_RANGE_COLOR, CB_HELD_BORDER_ALPHA));
   box.setBorderWidth(1);
 }
 
@@ -292,7 +291,7 @@ export function edgeLineColor(state: CompressionBreakoutState): string {
   if (reading === null) return CB_RANGE_COLOR;
   const kind = reading.decision.kind;
   if (kind === "failed" || kind === "heldOutside" || kind === "expired") return CB_EDGE_JOIN_COLOR;
-  return reading.confirmed ? CB_RANGE_COLOR : withAlpha(CB_RANGE_COLOR, CB_PROVISIONAL_ALPHA);
+  return CB_RANGE_COLOR;
 }
 
 const LINES: readonly LineOutputSpec<CompressionBreakoutState>[] = [
@@ -303,12 +302,15 @@ const LINES: readonly LineOutputSpec<CompressionBreakoutState>[] = [
 const SCHEMA: readonly SettingsFieldSchema<CompressionBreakoutSettings>[] = [
   { kind: "numeric", key: "rangeLength", label: "Range length (bars)", min: 10, max: 50, step: 1, affects: "recompute" },
   { kind: "staticHint", text: "The range needs twice this many bars before it can qualify. Replays every bar." },
-  { kind: "numeric", key: "minCompressionBars", label: "Minimum compression (bars)", min: 2, max: 30, step: 1, affects: "recompute" },
+  { kind: "numeric", key: "minCompressionBars", label: "Minimum bars inside", min: 2, max: 30, step: 1, affects: "recompute" },
+  { kind: "staticHint", text: "Closed bars inside the range before a close outside counts as a break. Replays every bar." },
   { kind: "numeric", key: "confirmMultiple", label: "Activity threshold (×)", min: 1, max: 3, step: 0.1, affects: "recompute" },
-  { kind: "staticHint", text: "Break-bar range and volume against the last 20 bars: one passing draws a faded arrow, both a solid one." },
+  { kind: "staticHint", text: "The break bar's range and volume versus the prior 20 bars: one passing gives a faded arrow, both a solid one. Replays every bar." },
   { kind: "numeric", key: "widthMultiple", label: "Width limit (× bar range)", min: 1, max: 4, step: 0.5, affects: "recompute", tab: "advanced" },
+  { kind: "staticHint", text: "A range qualifies when narrower than this many times the mean bar range before it. Replays every bar.", tab: "advanced" },
   { kind: "numeric", key: "failBars", label: "Failure window (bars)", min: 1, max: 20, step: 1, affects: "recompute", tab: "advanced" },
   { kind: "numeric", key: "holdBars", label: "Keep retired range (bars)", min: 0, max: 200, step: 1, affects: "recompute", tab: "advanced" },
+  { kind: "staticHint", text: "Bars a failed or held range stays drawn. Replays every bar.", tab: "advanced" },
   { kind: "numeric", key: "trendFast", label: "Trend fast MA (bars)", min: 10, max: 199, step: 1, affects: "recompute", tab: "advanced" },
   { kind: "numeric", key: "trendSlow", label: "Trend slow MA (bars)", min: 20, max: 400, step: 1, affects: "recompute", tab: "advanced" },
   { kind: "boolean", key: "showMarkers", label: "Show break markers", affects: "recompute", tab: "visibility" },

@@ -18,6 +18,7 @@ import {
   MAX_AGGRESSIVE_HISTORY_TRADES,
   MAX_COVERAGE_ENTRIES,
   MAX_SNAPSHOT_MARKERS,
+  MAX_TAPE_BOOTSTRAP_PAGES,
   SEAM_FILL_FAILURES_BEFORE_GIVING_UP,
   STREAM_BACKOFF_INITIAL_MS,
   TAPE_BOOTSTRAP_FAILURES_BEFORE_DEGRADED,
@@ -317,9 +318,13 @@ describe("BrowserBinanceTransport tape bootstrap", () => {
       const read = recorded.slice(-2_000);
       expect(snapshot.markers).toEqual(runtimeMarkers(read));
       expect(frames.filter((frame) => frame.type === "health")).toHaveLength(1);
-      // Coverage is the two pages read, not the page that failed.
+      // Coverage is the two pages read, not the page that failed; the oldest
+      // millisecond read is not claimed either, since the walk did not reach
+      // the exchange's first trade and that millisecond may continue in the
+      // page never read.
       const floor = snapshot.aggressive_prints_floor!;
-      expect(await askHistory(h, historyRequest(1, read[0].ts_exchange, NEWEST_TS + 1, floor))).toMatchObject({ complete: true, reason: null });
+      expect(await askHistory(h, historyRequest(1, read[0].ts_exchange + 1, NEWEST_TS + 1, floor))).toMatchObject({ complete: true, reason: null });
+      expect(await askHistory(h, historyRequest(3, read[0].ts_exchange, NEWEST_TS + 1, floor))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE", trades: [] });
       expect(await askHistory(h, historyRequest(2, recorded[7_000].ts_exchange, NEWEST_TS + 1, floor))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE", trades: [] });
     } finally {
       warn.mockRestore();
@@ -545,8 +550,11 @@ describe("BrowserBinanceTransport tape seams", () => {
     // live trade is inside no claim (the live print's size has moved the
     // floor, so these ask well above it).
     const aboveFloor = 1;
-    expect(await askHistory(h, historyRequest(3, OLDEST_TS, liveFrom + 1_000, aboveFloor))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE" });
-    expect(await askHistory(h, historyRequest(4, liveFrom, liveFrom + 1_000, aboveFloor))).toMatchObject({ complete: true });
+    expect(await askHistory(h, historyRequest(3, OLDEST_TS, liveFrom + 1, aboveFloor))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE" });
+    expect(await askHistory(h, historyRequest(4, liveFrom, liveFrom + 1, aboveFloor))).toMatchObject({ complete: true });
+    // The observed tape ends at the last trade seen: a window reaching past it, let alone into the future, is not complete.
+    expect(await askHistory(h, historyRequest(14, liveFrom, liveFrom + 2, aboveFloor))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE" });
+    expect(await askHistory(h, historyRequest(15, liveFrom, NOW_MS + 30_000, aboveFloor))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE", trades: [] });
     expect(h.frames.filter((frame) => frame.type === "snapshot")).toHaveLength(0);
 
     release!();
@@ -562,7 +570,7 @@ describe("BrowserBinanceTransport tape seams", () => {
     expect(ids).toContain(`a${LAST_ID + 2}`);
     expect(ids).not.toContain(`a${LAST_ID + 3}`);
     expect(ids).toContain("100");
-    const whole = await askHistory(h, historyRequest(5, OLDEST_TS, liveFrom + 1_000, aboveFloor));
+    const whole = await askHistory(h, historyRequest(5, OLDEST_TS, liveFrom + 1, aboveFloor));
     expect(whole).toMatchObject({ complete: true, reason: null });
     expect(whole!.trades.map((trade) => trade.trade_id).slice(-3)).toEqual([`a${LAST_ID + 1}`, `a${LAST_ID + 2}`, "100"]);
   });
@@ -739,7 +747,8 @@ describe("BrowserBinanceTransport tape seams", () => {
       expect(after.aggressive_prints_from).toBe(L + 1);
       expect(await askHistory(h2, historyRequest(4, C + 1, L, 1))).toMatchObject({ complete: true });
       expect(await askHistory(h2, historyRequest(5, C + 1, L + 1, 1))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE" });
-      expect(await askHistory(h2, historyRequest(6, L + 1, M + 1_000, 1))).toMatchObject({ complete: true });
+      expect(await askHistory(h2, historyRequest(6, L + 1, M + 1, 1))).toMatchObject({ complete: true });
+      expect(await askHistory(h2, historyRequest(7, L + 1, M + 2, 1))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE" });
     } finally {
       warn.mockRestore();
     }
@@ -833,6 +842,131 @@ describe("BrowserBinanceTransport tape seams", () => {
   });
 });
 
+describe("BrowserBinanceTransport coverage edges", () => {
+  const SIZE = "5.00000";
+
+  it("reconciles a one-trade stream span against both of its id boundaries: aggregates before and after it are seeded, one within it is dropped, one straddling it leaves its millisecond unverified", async () => {
+    const C = NEWEST_TS + 3_000;
+    const M = C + 5_000;
+    const M2 = M + 5_000;
+    // The clock sits past the last trade of the scenario, as it would live.
+    const h1 = harness(async (url) => {
+      if (url.includes(`fromId=${LAST_ID + 1}`)) return jsonResponse([]);
+      if (url.includes(`startTime=${C}`)) {
+        // The span is the single trade 500 at C: before it, within it, after it.
+        return jsonResponse([aggRow(9_001, C, 490, 495), aggRow(9_002, C, 500, 500), aggRow(9_003, C, 505, 507), aggRow(9_004, M + 5, 700, 700)]);
+      }
+      if (url.includes(`startTime=${M}`)) {
+        // The span is the single trade 600 at M: one straddling it.
+        return jsonResponse([aggRow(9_101, M, 598, 601), aggRow(9_102, M2 + 5, 800, 800)]);
+      }
+      return jsonResponse(recordedPage(url));
+    }, () => M2 + 10_000);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      await openAndSelect(h1);
+      await settleBootstrap();
+      h1.stream().open();
+      await vi.advanceTimersByTimeAsync(0);
+      h1.stream().message(liveTrade(500, C, SIZE, false));
+      await settle();
+      h1.stream().drop();
+
+      const h2 = reconnected(h1);
+      await openAndSelect(h2);
+      await settle();
+      h2.stream().open();
+      await vi.advanceTimersByTimeAsync(0);
+      h2.frames.length = 0;
+      h2.stream().message(liveTrade(600, M, SIZE, false));
+      await settle();
+      const snapshot = h2.parsed().find((frame) => frame.type === "snapshot");
+      if (snapshot === undefined || snapshot.type !== "snapshot") throw new Error("expected a snapshot");
+      const ids = snapshot.aggressive_prints!.map((print) => print.trade_id);
+      expect(ids).toContain("a9001");
+      expect(ids).not.toContain("a9002");
+      expect(ids).toContain("a9003");
+      expect(ids).toContain("500");
+      expect(h2.transport.tapeCoverage.unverified).toBe(0);
+      expect(snapshot.aggressive_prints_from).toBe(OLDEST_TS);
+      expect(await askHistory(h2, historyRequest(1, OLDEST_TS, M + 1, 1))).toMatchObject({ complete: true });
+      h2.stream().drop();
+
+      const h3 = reconnected(h2);
+      await openAndSelect(h3);
+      await settle();
+      h3.stream().open();
+      await vi.advanceTimersByTimeAsync(0);
+      h3.frames.length = 0;
+      h3.stream().message(liveTrade(700, M2, SIZE, false));
+      await settle();
+      const after = h3.parsed().find((frame) => frame.type === "snapshot");
+      if (after === undefined || after.type !== "snapshot") throw new Error("expected a snapshot");
+      expect(after.aggressive_prints!.map((print) => print.trade_id)).not.toContain("a9101");
+      expect(h3.transport.tapeCoverage.unverified).toBe(1);
+      expect(after.aggressive_prints_from).toBe(M + 1);
+      expect(await askHistory(h3, historyRequest(2, OLDEST_TS, M, 1))).toMatchObject({ complete: true });
+      expect(await askHistory(h3, historyRequest(3, OLDEST_TS, M + 1, 1))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE" });
+      expect(await askHistory(h3, historyRequest(4, M + 1, M2 + 1, 1))).toMatchObject({ complete: true });
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("does not claim the oldest millisecond of a walk its page budget cut through aggregates sharing a timestamp", async () => {
+    // 31,000 aggregates; the budget reads the newest 30,000, whose oldest
+    // row shares its millisecond with the two rows just outside the budget.
+    const total = 31_000;
+    const first = 7_000_000;
+    const cut = total - MAX_TAPE_BOOTSTRAP_PAGES * TAPE_BOOTSTRAP_PAGE;
+    const sharedTs = NOW_MS - 20_000 - (total - cut) * 10;
+    const rows: TradeFrame[] = [];
+    for (let i = 0; i < total; i += 1) {
+      const ts = i >= cut - 2 && i <= cut + 1 ? sharedTs : NOW_MS - 20_000 - (total - i) * 10;
+      rows.push({ type: "trade", provider: "BINANCE", symbol: "BTC-USDT", marketKind: "SPOT", ts_exchange: ts, price: 79_500, size: 0.25 + (i % 100) * 0.01, side: "buy", trade_id: `a${first + i}` });
+    }
+    const h = harness(async (url) => jsonResponse(recordedPage(url, rows)));
+    await openAndSelect(h);
+    await settleBootstrap();
+    expect(h.aggTradesMock).toHaveBeenCalledTimes(MAX_TAPE_BOOTSTRAP_PAGES);
+    const snapshot = h.parsed()[5];
+    if (snapshot.type !== "snapshot") throw new Error("expected a snapshot");
+    const floor = snapshot.aggressive_prints_floor!;
+    const newest = rows[total - 1].ts_exchange;
+    expect(await askHistory(h, historyRequest(1, sharedTs + 1, newest + 1, floor))).toMatchObject({ complete: true });
+    expect(await askHistory(h, historyRequest(2, sharedTs, newest + 1, floor))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE", trades: [] });
+  });
+
+  it("claims the oldest millisecond when the walk reached the exchange's first aggregate trade", async () => {
+    const h = harness();
+    await openAndSelect(h);
+    await settleBootstrap();
+    // The page below the recording is empty: nothing older exists.
+    expect(h.aggTradesMock).toHaveBeenCalledTimes(11);
+    const snapshot = h.parsed()[5];
+    if (snapshot.type !== "snapshot") throw new Error("expected a snapshot");
+    expect(await askHistory(h, historyRequest(1, OLDEST_TS, NEWEST_TS + 1, snapshot.aggressive_prints_floor!))).toMatchObject({ complete: true });
+  });
+
+  it("answers a window reaching into the future, or past the last trade seen, as unavailable", async () => {
+    const h = harness(async () => jsonResponse([]));
+    await openAndSelect(h);
+    await settle();
+    h.stream().open();
+    await vi.advanceTimersByTimeAsync(0);
+    const t1 = NOW_MS - 10_000;
+    const t2 = NOW_MS - 2_000;
+    h.stream().message(liveTrade(1, t1, SIZE, false));
+    h.stream().message(liveTrade(2, t2, SIZE, true));
+    expect(await askHistory(h, historyRequest(1, t1, t2 + 1, 0))).toMatchObject({ complete: true });
+    expect(await askHistory(h, historyRequest(2, t1, t2 + 2, 0))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE", trades: [] });
+    expect(await askHistory(h, historyRequest(3, t1, NOW_MS, 0))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE", trades: [] });
+    expect(await askHistory(h, historyRequest(4, t1, NOW_MS + 30_000, 0))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE", trades: [] });
+    // Beyond the request skew the runtime drops the request; so does this.
+    expect(await askHistory(h, historyRequest(5, t1, NOW_MS + 90_000, 0))).toBeNull();
+  });
+});
+
 describe("BrowserBinanceTransport page integrity", () => {
   it("refuses a page with a malformed row, a gap in its ids, more rows than asked or a wrong start", () => {
     const good = recorded.slice(0, 5).map(aggTradeRow);
@@ -891,7 +1025,7 @@ describe("BrowserBinanceTransport page integrity", () => {
       const read = recorded.slice(-1_000);
       expect(snapshot.markers).toEqual(runtimeMarkers(read));
       const floor = snapshot.aggressive_prints_floor!;
-      expect(await askHistory(h, historyRequest(1, read[0].ts_exchange, NEWEST_TS + 1, floor))).toMatchObject({ complete: true });
+      expect(await askHistory(h, historyRequest(1, read[0].ts_exchange + 1, NEWEST_TS + 1, floor))).toMatchObject({ complete: true });
       // The page with the missing row is not coverage: a window reaching into it is unavailable.
       expect(await askHistory(h, historyRequest(2, recorded[8_500].ts_exchange, NEWEST_TS + 1, floor))).toMatchObject({ complete: false, reason: "STORAGE_UNAVAILABLE", trades: [] });
     } finally {

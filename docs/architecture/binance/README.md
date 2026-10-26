@@ -112,8 +112,12 @@ asserts identical output on 10,000 recorded BTC-USDT aggregate trades
   silent, for a two-second grace), then every row is reconciled against the
   live tape by fill id (`f`/`l` against the span's first and last trade id):
   rows the stream delivered are dropped, an aggregate straddling a span
-  boundary is dropped and its millisecond marked unverified, outside every
-  claim. Then the `snapshot` is re-broadcast
+  boundary (a one-trade span is both boundaries at once) is dropped and its
+  millisecond marked unverified, outside every claim. The oldest millisecond
+  of the walk is claimed only when the walk reached the exchange's first
+  aggregate trade (a short or empty page); a walk stopped by its budget, a
+  failed page or the seven-day bound may have cut through aggregates sharing
+  that millisecond. Then the `snapshot` is re-broadcast
   (every closed bar held, the last 100 live trades, the newest 5,000 markers,
   the pool), the forming bar is re-sent, and a client that opted in through
   `capabilities` gets the full marker set as `marker_history` (`reset` on the
@@ -151,9 +155,10 @@ asserts identical output on 10,000 recorded BTC-USDT aggregate trades
   pool's window), so `coverageOf` is "thin" over the bootstrap and "all" from
   connect, and nothing is claimed across an open seam.
 - `aggressive_history`: answered from the pool, `complete: true` only for a
-  window inside one observed stretch, within the pool's window, at or above
-  its floor, 10,000 trades a page with `CAP_REACHED` and a cursor bound to
-  the request;
+  window inside one observed stretch (the open stream span counts up to its
+  last trade seen, never into the future), within the pool's window, at or
+  above its floor, 10,000 trades a page with `CAP_REACHED` and a cursor bound
+  to the request;
   otherwise `complete: false`, `reason: "STORAGE_UNAVAILABLE"`, which the
   client retries three times and then rests.
 - Degraded: when the first page fails three times, the READY health frame

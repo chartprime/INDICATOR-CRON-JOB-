@@ -279,6 +279,8 @@ type TapeBootstrap = {
   /** Validated pages read and not yet reconciled against the live tape, newest page first. */
   staged: AggTradeRow[][];
   graceTimer: unknown;
+  /** The walk reached the exchange's first aggregate trade, so the oldest row's millisecond holds no unread aggregate. */
+  startVerified: boolean;
 };
 
 type ClosedBar = KlineRow & { reconstructed: boolean };
@@ -871,7 +873,7 @@ export class BrowserBinanceTransport implements TransportSocket {
       unfillable: [],
       unverified: [],
       calibrationFrom: this.now() - DEFAULT_CALIBRATION_MS,
-      tape: { started: false, inFlight: false, done: false, attempts: 0, unavailable: false, backoffMs: STREAM_BACKOFF_INITIAL_MS, abort: null, timer: null, staged: [], graceTimer: null },
+      tape: { started: false, inFlight: false, done: false, attempts: 0, unavailable: false, backoffMs: STREAM_BACKOFF_INITIAL_MS, abort: null, timer: null, staged: [], graceTimer: null, startVerified: false },
       seam: { inFlight: false, gap: null, failures: 0, backoffMs: STREAM_BACKOFF_INITIAL_MS, abort: null, timer: null, publishWhenSettled: false },
       markerHistorySeq: 0,
     };
@@ -1412,19 +1414,23 @@ export class BrowserBinanceTransport implements TransportSocket {
 
   /**
    * Every stretch of tape observed in full: the closed ones, plus the open
-   * stream span reaching into the future while a stream delivers, merged
-   * where they touch, with every unverified boundary millisecond cut out.
+   * stream span up to its last trade (a trade in flight may still arrive, so
+   * the observed tape ends at the last print seen, never in the future),
+   * merged where they touch, with every unverified boundary millisecond cut
+   * out.
    */
   private coverageIntervals(session: Session): TapeInterval[] {
     this.pruneCoverage(session);
     const intervals = session.observed.map((interval) => ({ ...interval }));
-    if (session.live !== null) addInterval(intervals, { from: session.live.from, to: Infinity, startTradeId: session.live.firstId });
+    if (session.live !== null) addInterval(intervals, { from: session.live.from, to: session.live.last, startTradeId: session.live.firstId, endTradeId: session.live.lastId });
     return subtractMilliseconds(intervals, session.unverified);
   }
 
-  /** Where the stretch of complete tape that reaches now begins, or null while no stream delivers. */
+  /** Where the stretch of complete tape that reaches the stream's last trade begins, or null while no stream delivers. */
   private coverageNowFrom(session: Session): number | null {
-    const open = this.coverageIntervals(session).find((interval) => interval.to === Infinity);
+    const live = session.live;
+    if (live === null) return null;
+    const open = this.coverageIntervals(session).find((interval) => interval.from <= live.last && interval.to >= live.last);
     return open === undefined ? null : open.from;
   }
 
@@ -1589,10 +1595,16 @@ export class BrowserBinanceTransport implements TransportSocket {
         }
         if (!this.isCurrent(session)) return;
         pages += 1;
+        if (rows.length < TAPE_BOOTSTRAP_PAGE || (rows.length > 0 && rows[0].a === 0)) {
+          // A short or empty page: nothing older exists on the exchange (ids
+          // are consecutive), so the oldest row's millisecond is whole.
+          tape.startVerified = true;
+        }
         if (rows.length === 0) break;
         tape.staged.push(rows);
         const oldest = rows[0];
-        if (rows.length < TAPE_BOOTSTRAP_PAGE || oldest.a === 0 || oldest.T < oldestWanted) break;
+        if (tape.startVerified) break;
+        if (oldest.T < oldestWanted) break;
         fromId = Math.max(0, oldest.a - TAPE_BOOTSTRAP_PAGE);
       }
     } catch (error) {
@@ -1658,7 +1670,12 @@ export class BrowserBinanceTransport implements TransportSocket {
         if (endAggId === undefined || row.a > endAggId) endAggId = row.a;
       }
     }
-    if (from <= to) addInterval(session.observed, { from, to, endAggId });
+    // A walk stopped by its budget, a failed page or the seven-day bound may
+    // have cut through aggregates sharing the oldest millisecond, whose rest
+    // sits in the page never read: that millisecond is claimed only when the
+    // walk reached the exchange's first aggregate trade.
+    const claimFrom = tape.startVerified ? from : from + 1;
+    if (claimFrom <= to) addInterval(session.observed, { from: claimFrom, to, endAggId });
     if (kept > 0 || from <= to) {
       session.seam.publishWhenSettled = true;
       this.fillNextSeam(session);
@@ -1692,18 +1709,19 @@ export class BrowserBinanceTransport implements TransportSocket {
       : [...session.liveSpans, { from: session.live.from, to: Infinity, firstId: session.live.firstId, lastId: Infinity }];
     for (const span of spans) {
       if (row.T > span.from && row.T < span.to) return false;
-      if (row.T === span.from) {
-        if (row.l < span.firstId) continue;
-        if (row.f >= span.firstId) return false;
-        this.markUnverified(session, row.T);
-        return false;
-      }
-      if (row.T === span.to) {
-        if (row.f > span.lastId) continue;
-        if (row.l <= span.lastId) return false;
-        this.markUnverified(session, row.T);
-        return false;
-      }
+      if (row.T !== span.from && row.T !== span.to) continue;
+      // At a boundary millisecond, the fill ids place the aggregate: wholly
+      // before the span's first trade (only at its first millisecond) or
+      // wholly after its last (only at its last) is missing tape; wholly
+      // between the two is the stream's; anything else straddles. A span of
+      // one millisecond is both boundaries at once.
+      const before = row.T === span.from && row.l < span.firstId;
+      const after = row.T === span.to && row.f > span.lastId;
+      if (before || after) continue;
+      const within = row.f >= span.firstId && row.l <= span.lastId;
+      if (within) return false;
+      this.markUnverified(session, row.T);
+      return false;
     }
     return true;
   }

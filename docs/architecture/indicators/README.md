@@ -27,6 +27,7 @@ a second supposedly exhaustive indicator list in documentation.
 | Big resting orders from the stored book history (Binance BTC and ETH) | [Whale Limit Order Heatmap](P5-whale-limit-order-heatmap-evidence.md) |
 | Drawing infrastructure | [Trendline](P4.04-drawing-tools-trendline-evidence.md), [Fibonacci](P4.05-fibonacci-retracement-evidence.md) |
 | Named setting presets in every settings dialog | [Setting presets](setting-presets.md) |
+| Volume against the same minute of day on recent sessions | [Relative Volume (Time of Day)](relative-volume.md) |
 
 These pages are dated implementation evidence. Current registration,
 capability gating, settings schemas, and Historical Mode availability come from

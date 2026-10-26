@@ -121,3 +121,18 @@ heatmap or wall; Large Trade Bubbles and other print-based tools stay empty.
 
 - The rendered chart (no browser in the container).
 - Equality against the stream transport (no WebSocket egress): the procedure above is for the owner's machine.
+
+## Fix round 1 (Codex code review), 30 s re-run at 04:41 UTC
+
+Same command. After 25 s `/health`: `ready true`, `SPOT.public CONNECTED`, `delivery.transport rest`, 48 polls / 0
+failures (108 / 0 after the recording), exchange offset +399 ms, `candles READY` with 10,080 bars, `gatedRequests 0`,
+tick-size `exchangeInfo` failures 0, weight this minute reserved 158 / header 181 / accounted 186, deferrals 0.
+Recording (30 s, every L2 capability declared): snapshot 10,080 bars; 23 bar frames (1 close, 21 revisions, 2 open
+times); 0 trade frames; health `READY`, reason `Polled spot candles · no tape · no order book`; book
+`UNAVAILABLE:REST_NO_DEPTH`; no `l2_*`, liquidity, iceberg, exhaustion or initiative frames.
+
+The exchange header stays about 50 per minute above this runtime's reservations although no module in the runtime
+calls spot REST outside the gate (checked: only the connection, the backfill and the tick-size lookup do, all gated).
+The limit is per IP and this container's egress is shared, so the difference is other traffic on the same IP, or a
+weight table that differs from the documented 2 per klines page; either way the accounted total adopts the header
+and reservations add on top of it, so the budget holds.

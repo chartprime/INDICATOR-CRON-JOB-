@@ -26,6 +26,11 @@ function createBinanceRestBarCursor({ intervalMs, finalizeGraceMs = DEFAULT_FINA
   if (!Number.isSafeInteger(maxHoleRetries) || maxHoleRetries <= 0) throw new Error("maxHoleRetries must be a positive safe integer");
 
   let confirmedOpenTime = null;
+  // The first minute this cursor is responsible for: the earlier bar of its
+  // first request. Until a close is confirmed, catch-up and hole detection
+  // continue from here, so minutes missed before the first confirmed close
+  // (a start inside the grace, then a pause) are fetched, never skipped.
+  let anchorOpenTime = null;
   let lastSeq = 0;
   let holes = 0;
   let holeRetries = 0;
@@ -37,14 +42,21 @@ function createBinanceRestBarCursor({ intervalMs, finalizeGraceMs = DEFAULT_FINA
     return Math.floor(exchangeNowMs / intervalMs) * intervalMs;
   }
 
-  /** After an outage the previous closed bar lies more than one bar past the last confirmed close. */
+  /** The earliest minute still expected: the bar after the last confirmed close, or the anchor before any close. */
+  function continuationOpenTime() {
+    return confirmedOpenTime !== null ? confirmedOpenTime + intervalMs : anchorOpenTime;
+  }
+
+  /** The two-row poll covers the previous and the current bar; anything expected before that needs catch-up pages. */
   function needsCatchUp(exchangeNowMs) {
-    return confirmedOpenTime !== null && currentOpen(exchangeNowMs) - intervalMs > confirmedOpenTime + intervalMs;
+    const continuation = continuationOpenTime();
+    return continuation !== null && continuation < currentOpen(exchangeNowMs) - intervalMs;
   }
 
   function nextRequest(exchangeNowMs) {
+    if (anchorOpenTime === null) anchorOpenTime = currentOpen(exchangeNowMs) - intervalMs;
     if (needsCatchUp(exchangeNowMs) || repairing !== null) {
-      return Object.freeze({ startTime: confirmedOpenTime + intervalMs, limit: MAX_KLINES_PER_REQUEST, catchUp: true });
+      return Object.freeze({ startTime: continuationOpenTime(), limit: MAX_KLINES_PER_REQUEST, catchUp: true });
     }
     return Object.freeze({ startTime: currentOpen(exchangeNowMs) - intervalMs, limit: TWO_ROW_POLL_LIMIT, catchUp: false });
   }
@@ -59,6 +71,10 @@ function createBinanceRestBarCursor({ intervalMs, finalizeGraceMs = DEFAULT_FINA
       emit: Object.freeze([]),
       hole: null,
       abandoned: null,
+      // A response carried at least one expected candle (the continuation or
+      // later, the forming bar included); an empty response or one holding
+      // only candles already confirmed is not an observation of the pair.
+      covered: false,
       repairing: repairing !== null,
       catchingUp: needsCatchUp(exchangeNowMs) || repairing !== null,
       ...fields,
@@ -75,11 +91,13 @@ function createBinanceRestBarCursor({ intervalMs, finalizeGraceMs = DEFAULT_FINA
       return outcome({ stale: true }, exchangeNowMs);
     }
     lastSeq = seq;
-    const pending = rows.filter((row) => confirmedOpenTime === null || row.openTime > confirmedOpenTime);
+    const continuation = continuationOpenTime();
+    const pending = rows.filter((row) => (continuation === null ? true : row.openTime >= continuation));
+    if (pending.length === 0) return outcome({ covered: false }, exchangeNowMs);
     let hole = null;
     let abandoned = null;
-    if (pending.length > 0 && confirmedOpenTime !== null && pending[0].openTime > confirmedOpenTime + intervalMs) {
-      hole = Object.freeze({ fromOpenTime: confirmedOpenTime + intervalMs, toOpenTime: pending[0].openTime - intervalMs });
+    if (continuation !== null && pending[0].openTime > continuation) {
+      hole = Object.freeze({ fromOpenTime: continuation, toOpenTime: pending[0].openTime - intervalMs });
       if (repairing === null || repairing.fromOpenTime !== hole.fromOpenTime) {
         holes += 1;
         holeRetries = 0;
@@ -88,7 +106,7 @@ function createBinanceRestBarCursor({ intervalMs, finalizeGraceMs = DEFAULT_FINA
       holeRetries += 1;
       if (holeRetries < maxHoleRetries) {
         // Ask again from the first missing minute before believing the gap.
-        return outcome({ hole }, exchangeNowMs);
+        return outcome({ hole, covered: true }, exchangeNowMs);
       }
       // The exchange did not supply the interval: record it as missing and
       // move the cursor past it so the candles it does have are delivered.
@@ -97,7 +115,7 @@ function createBinanceRestBarCursor({ intervalMs, finalizeGraceMs = DEFAULT_FINA
       repairing = null;
       holeRetries = 0;
       confirmedOpenTime = hole.toOpenTime;
-    } else if (pending.length > 0) {
+    } else {
       repairing = null;
       holeRetries = 0;
     }
@@ -118,11 +136,12 @@ function createBinanceRestBarCursor({ intervalMs, finalizeGraceMs = DEFAULT_FINA
     for (const openTime of forming.keys()) {
       if (confirmedOpenTime !== null && openTime <= confirmedOpenTime) forming.delete(openTime);
     }
-    return outcome({ emit: Object.freeze(emit), hole, abandoned }, exchangeNowMs);
+    return outcome({ emit: Object.freeze(emit), hole, abandoned, covered: true }, exchangeNowMs);
   }
 
   function reset() {
     confirmedOpenTime = null;
+    anchorOpenTime = null;
     repairing = null;
     holeRetries = 0;
     forming.clear();
@@ -139,10 +158,12 @@ function createBinanceRestBarCursor({ intervalMs, finalizeGraceMs = DEFAULT_FINA
     apply,
     reset,
     get confirmedOpenTime() { return confirmedOpenTime; },
+    get anchorOpenTime() { return anchorOpenTime; },
+    get continuationOpenTime() { return continuationOpenTime(); },
     get repairing() { return repairing; },
     get missing() { return Object.freeze([...missing]); },
     missingBars,
-    get stats() { return Object.freeze({ confirmedOpenTime, holes, holeRetries, lastSeq, missingBars: missingBars() }); },
+    get stats() { return Object.freeze({ confirmedOpenTime, anchorOpenTime, continuationOpenTime: continuationOpenTime(), holes, holeRetries, lastSeq, missingBars: missingBars() }); },
   });
 }
 

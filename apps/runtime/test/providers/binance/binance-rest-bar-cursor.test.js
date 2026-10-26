@@ -123,6 +123,40 @@ describe("binance-rest-bar-cursor", () => {
     expect(cursor.confirmedOpenTime).toBe(P);
   });
 
+  test("an outage before the first confirmed close: the first request anchors the earliest expected minute and catch-up continues from it", () => {
+    const cursor = createBinanceRestBarCursor({ intervalMs: MINUTE, finalizeGraceMs: 1000 });
+    const P = T0 + MINUTE;
+    const C = T0 + 2 * MINUTE;
+    // Subscribed half a second into C: P is inside its grace, nothing can be confirmed yet.
+    expect(cursor.nextRequest(C + 500)).toEqual({ startTime: P, limit: 2, catchUp: false });
+    expect(cursor.anchorOpenTime).toBe(P);
+    const first = cursor.apply({ rows: rows(rawRow(P), rawRow(C)), exchangeNowMs: C + 500, seq: 1 });
+    expect(first.covered).toBe(true);
+    expect(first.emit.map(({ row, closed }) => [(row.openTime - T0) / MINUTE, closed])).toEqual([[1, false], [2, false]]);
+    expect(cursor.confirmedOpenTime).toBeNull();
+    expect(cursor.continuationOpenTime).toBe(P);
+    // Polling pauses for five minutes; the next request must go back to P, not to the current two bars.
+    const later = C + 5 * MINUTE + 30_000;
+    expect(cursor.needsCatchUp(later)).toBe(true);
+    expect(cursor.nextRequest(later)).toEqual({ startTime: P, limit: 1000, catchUp: true });
+    const page = cursor.apply({ rows: rows(...Array.from({ length: 7 }, (_, i) => rawRow(P + i * MINUTE))), exchangeNowMs: later, seq: 2 });
+    expect(page.emit.map(({ row, closed }) => [(row.openTime - T0) / MINUTE, closed])).toEqual([[1, true], [2, true], [3, true], [4, true], [5, true], [6, true], [7, false]]);
+    expect(cursor.confirmedOpenTime).toBe(C + 4 * MINUTE);
+    expect(page.catchingUp).toBe(false);
+    // A page that starts past the anchor is a hole from the anchor, not a skip.
+    const other = createBinanceRestBarCursor({ intervalMs: MINUTE });
+    other.nextRequest(C + 500);
+    const hole = other.apply({ rows: rows(rawRow(C + 2 * MINUTE)), exchangeNowMs: C + 3 * MINUTE, seq: 1 });
+    expect(hole.hole).toEqual({ fromOpenTime: P, toOpenTime: C + MINUTE });
+    expect(other.continuationOpenTime).toBe(P);
+    // An empty page or one with only confirmed candles is not coverage.
+    expect(cursor.apply({ rows: [], exchangeNowMs: later, seq: 3 }).covered).toBe(false);
+    expect(cursor.apply({ rows: rows(rawRow(P), rawRow(C)), exchangeNowMs: later, seq: 4 }).covered).toBe(false);
+    expect(cursor.confirmedOpenTime).toBe(C + 4 * MINUTE);
+    cursor.reset();
+    expect(cursor.anchorOpenTime).toBeNull();
+  });
+
   test("a recoverable hole: a page starting past the continuation keeps the cursor on the first missing minute and asks again until the exchange supplies it", () => {
     const cursor = createBinanceRestBarCursor({ intervalMs: MINUTE, maxHoleRetries: 3 });
     cursor.apply({ rows: rows(rawRow(T0)), exchangeNowMs: T0 + 10 * MINUTE, seq: 1 });

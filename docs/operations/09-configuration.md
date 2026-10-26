@@ -56,7 +56,7 @@ generated from `apps/runtime/src/platform/config-registry.js`, and
 | `TT_BINANCE_SPOT_WS_BASE_URL` | terminal-c | a ws(s) origin without path, query or credentials |  | .env | Binance spot stream origin (default wss://stream.binance.com); the market-data mirror wss://data-stream.binance.vision:9443 is not geo-blocked. USD-M perpetuals keep their fixed origin |
 | `TT_BINANCE_SPOT_REST_BASE_URL` | terminal-c | an http(s) origin without path, query or credentials |  | .env | Binance spot REST origin for depth snapshots and candle backfill (default https://api.binance.com); the market-data mirror https://data-api.binance.vision is not geo-blocked. USD-M perpetuals keep their fixed origin |
 | `TT_BINANCE_TRANSPORT` | terminal-c | ws or rest |  | .env | Binance transport: ws streams every trade and depth diff (default); rest polls the spot REST API for 1m candles only, with no tape and no order book, for a host that cannot open a WebSocket |
-| `TT_BINANCE_REST_POLL_MS` | terminal-c | a whole number, at least 250 |  | .env | REST transport: milliseconds between polls of a pair's candles (default 1000); the weight budget may lengthen it |
+| `TT_BINANCE_REST_POLL_MS` | terminal-c | a whole number, at least 250, at most 20000 |  | .env | REST transport: milliseconds between polls of a pair's candles (default 1000; at most 20000, so at least two polls a minute fall outside the one-second finalisation grace); the weight budget may lengthen it up to that cap |
 | `TT_BINANCE_REST_WEIGHT_BUDGET` | terminal-c | a whole number, at least 100, at most 5000 |  | .env | REST transport: Binance REQUEST_WEIGHT reserved per minute before each request (default 4000); the exchange limit is 6000, so at most 5000 |
 | `L2_MEMORY_DEBUG` | terminal-c | 0 or 1 |  | .env | 1 logs L2 memory debugging |
 | `L2_ICEBERG` | terminal-c | 0 or 1 |  | .env | 0 turns the Iceberg Detector off (default on): no trackers, no history restore or save, no host fill; the channel still answers with empty pages |
@@ -157,7 +157,15 @@ health reason reads `catching up` until it is current. A page that starts past
 the next expected minute does not move the cursor: the exchange is asked again
 from the first missing minute, three times, with the reason still `catching
 up`; if it never supplies the interval, the cursor moves past it and the reason
-reads `history incomplete (N min missing)` for the rest of the session.
+reads `history incomplete (N min missing)` for the rest of the session. The
+cursor's first request fixes the earliest minute it is responsible for, so a
+pause before the first confirmed close is caught up too, never skipped. A
+response is an observation of the pair only when it carries an expected
+candle (the next one or later, the forming one included); an empty page, or
+one holding only candles already confirmed, leaves the cursor where it is,
+does not refresh the feed, and keeps it degraded with the reason `awaiting
+candles` until the exchange supplies what is expected. The poll interval is
+capped at 20 s so that at least two polls a minute fall outside the grace.
 
 **What it does not serve.** There is no tape and no order book. No trade frame
 is sent; the book is `UNAVAILABLE` with reason `REST_NO_DEPTH`. Unavailable:
@@ -174,8 +182,8 @@ relative volume, structure, volatility, candle flow).
 **Health.** The feed's reason reads `Polled spot candles · no tape · no order
 book`, with `· rate limited` (a 429 or an IP ban: polling paused for
 `Retry-After`), `· poll failed` (the last poll failed or the route is down),
-`· catching up`, `· slow polling (weight budget)` or `· history incomplete (N
-min missing)` appended while they apply.
+`· catching up`, `· awaiting candles`, `· slow polling (weight budget)` or
+`· history incomplete (N min missing)` appended while they apply.
 The health frame's state follows the candle feed; the tape and depth feeds
 are reported unavailable and do not change that state. `/health` reports
 `delivery.transport: "rest"`, the cadence, the weight used and the exchange

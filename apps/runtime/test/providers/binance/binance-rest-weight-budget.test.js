@@ -2,6 +2,7 @@ const {
   createBinanceRestWeightBudget,
   planCadence,
   usedWeightFromHeaders,
+  MAX_POLL_MS,
   REQUEST_WEIGHTS,
   DEFAULT_WEIGHT_BUDGET_PER_MINUTE,
   MAX_WEIGHT_BUDGET_PER_MINUTE,
@@ -93,6 +94,12 @@ describe("binance-rest-weight-budget", () => {
     expect(tight.stretched).toBe(true);
     expect(tight.projectedPerMinute).toBe(81);
     expect(tight.fits).toBe(true);
+    // The stretch never passes the 20 s cap: beyond it the plan does not fit and the gate defers instead.
+    expect(MAX_POLL_MS).toBe(20_000);
+    const crowded = planCadence({ klinePollers: 40, pollMs: 1000, budgetPerMinute: 100 });
+    expect(crowded.klineCadenceMs).toBe(20_000);
+    expect(crowded.stretched).toBe(true);
+    expect(crowded.fits).toBe(false);
     const idle = planCadence({ klinePollers: 0, pollMs: 1000, budgetPerMinute: 4000 });
     expect(idle).toEqual({ klineCadenceMs: 1000, stretched: false, projectedPerMinute: REQUEST_WEIGHTS.SERVER_TIME, fits: true });
     expect(() => planCadence({ klinePollers: 1, pollMs: 0, budgetPerMinute: 4000 })).toThrow(/pollMs/);

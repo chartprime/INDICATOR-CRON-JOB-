@@ -151,6 +151,15 @@ describe("validator agrees with the parsers it guards", () => {
     expect(valueIsValid(rest, "https://data-api.binance.vision/api")).toBe(false);
   });
 
+  test("the REST poll interval is capped at 20000 ms so two polls a minute fall outside the finalisation grace", () => {
+    const item = byName.get("TT_BINANCE_REST_POLL_MS");
+    expect(valueIsValid(item, "250")).toBe(true);
+    expect(valueIsValid(item, "20000")).toBe(true);
+    expect(valueIsValid(item, "20001")).toBe(false);
+    expect(valueIsValid(item, "60000")).toBe(false);
+    expect(valueIsValid(item, "249")).toBe(false);
+  });
+
   test("flags are 0 or 1 only, so TT_VPIN_ENABLED=false can no longer silently mean enabled", () => {
     const item = byName.get("TT_VPIN_ENABLED");
     expect(valueIsValid(item, "0")).toBe(true);

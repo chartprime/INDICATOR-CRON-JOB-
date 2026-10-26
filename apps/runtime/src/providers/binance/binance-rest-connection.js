@@ -25,6 +25,7 @@ const {
   planCadence,
   REQUEST_WEIGHTS,
   DEFAULT_WEIGHT_BUDGET_PER_MINUTE,
+  MAX_POLL_MS,
 } = require("./binance-rest-weight-budget");
 const { createBinanceRestBarCursor, DEFAULT_FINALIZE_GRACE_MS } = require("./binance-rest-bar-cursor");
 
@@ -51,6 +52,7 @@ const HEALTH_REASON_VARIANTS = Object.freeze({
   RATE_LIMITED: "rate limited",
   POLL_FAILED: "poll failed",
   CATCHING_UP: "catching up",
+  AWAITING_CANDLES: "awaiting candles",
   SLOW_POLLING: "slow polling (weight budget)",
 });
 /** Minutes the exchange never supplied stay on the reason for the rest of the session. */
@@ -100,8 +102,8 @@ function createBinanceRestConnection(options = {}) {
     defaultBanMs = DEFAULT_BAN_MS,
   } = options;
 
-  if (!Number.isSafeInteger(pollMs) || pollMs < MIN_POLL_MS) {
-    throw new Error(`pollMs must be a safe integer of at least ${MIN_POLL_MS}.`);
+  if (!Number.isSafeInteger(pollMs) || pollMs < MIN_POLL_MS || pollMs > MAX_POLL_MS) {
+    throw new Error(`pollMs must be a safe integer between ${MIN_POLL_MS} and ${MAX_POLL_MS}.`);
   }
   for (const [name, value] of [
     ["requestTimeoutMs", requestTimeoutMs],
@@ -440,6 +442,7 @@ function createBinanceRestConnection(options = {}) {
       catchUpPages: 0,
       catchingUp: false,
       repairing: false,
+      uncovered: false,
       lastFailureReason: null,
       lastLatencyMs: null,
       lastSuccessAtMs: null,
@@ -454,6 +457,7 @@ function createBinanceRestConnection(options = {}) {
     poller.catchUpPages = 0;
     poller.catchingUp = false;
     poller.repairing = false;
+    poller.uncovered = false;
     poller.attempt = 0;
   }
 
@@ -470,8 +474,12 @@ function createBinanceRestConnection(options = {}) {
     schedulePoll(poller, Math.max(0, plan.klineCadenceMs - elapsed));
   }
 
+  // Idempotent: the recovery clock starts at the first problem and keeps
+  // running through repeated failures, empty pages or hole retries, so the
+  // feed ages from RECOVERING to UNAVAILABLE instead of being reset each poll.
   function beginRecovery(poller) {
     const { marketKind, symbol, eventType, interval } = poller.descriptor;
+    if (feedHealth.isRecovering(marketKind, symbol, eventType, interval)) return;
     feedHealth.beginRecovery(marketKind, symbol, eventType, interval);
   }
 
@@ -573,14 +581,26 @@ function createBinanceRestConnection(options = {}) {
     const { marketKind, symbol, eventType, interval } = poller.descriptor;
     const rows = parseKlineRows(body, candleIntervalMsFor(interval));
     if (rows === null) return { malformed: true };
-    // A successful poll is an observation of the pair; only a failed poll
-    // leaves the feed to go stale, as a dead stream would.
-    feedHealth.recordEvent(marketKind, symbol, eventType, interval, receivedAt);
     const outcome = poller.bars.apply({ rows, exchangeNowMs: finalityNowMs, seq });
     if (outcome.stale) {
       telemetryEvent("kline_poll_superseded", { symbol: safeTelemetrySymbol(symbol) });
-      return { malformed: false, complete: !poller.catchingUp && !poller.repairing, immediate: false };
+      return { malformed: false, complete: !poller.catchingUp && !poller.repairing && !poller.uncovered, immediate: false };
     }
+    if (!outcome.covered) {
+      // HTTP success is not candle coverage: nothing at or after the expected
+      // minute came back (an empty page, or only candles already confirmed).
+      // The cursor holds, the feed is not refreshed, and it stays degraded
+      // until the exchange supplies what is expected.
+      if (!poller.uncovered) telemetryEvent("kline_no_coverage", { symbol: safeTelemetrySymbol(symbol), continuationOpenTime: poller.bars.continuationOpenTime, rows: rows.length });
+      poller.uncovered = true;
+      poller.catchingUp = outcome.catchingUp;
+      beginRecovery(poller);
+      return { malformed: false, complete: false, immediate: false };
+    }
+    poller.uncovered = false;
+    // A response carrying an expected candle is an observation of the pair,
+    // trades or not; only its absence, or a failed poll, lets the feed go stale.
+    feedHealth.recordEvent(marketKind, symbol, eventType, interval, receivedAt);
     if (outcome.abandoned !== null) {
       // Bounded retries did not bring the minutes: they are reported missing
       // from here on, and the candles the exchange does have are delivered.
@@ -801,6 +821,7 @@ function createBinanceRestConnection(options = {}) {
       poller.lastFailureReason !== "RATE_LIMITED" && poller.lastFailureReason !== "IP_BANNED";
     if (routeState !== "CONNECTED" || pollFailed) variants.push(HEALTH_REASON_VARIANTS.POLL_FAILED);
     if (poller !== null && (poller.catchingUp || poller.repairing)) variants.push(HEALTH_REASON_VARIANTS.CATCHING_UP);
+    if (poller !== null && poller.uncovered) variants.push(HEALTH_REASON_VARIANTS.AWAITING_CANDLES);
     if (plan.stretched || poller?.budgetDeferred) variants.push(HEALTH_REASON_VARIANTS.SLOW_POLLING);
     const missingBars = poller?.bars.missingBars() ?? 0;
     if (missingBars > 0) variants.push(historyIncompleteVariant(missingBars));
@@ -870,8 +891,10 @@ function createBinanceRestConnection(options = {}) {
         lastFailureReason: poller.lastFailureReason,
         catchingUp: poller.catchingUp,
         repairing: poller.repairing,
+        uncovered: poller.uncovered,
         missingBars: poller.bars.missingBars(),
         confirmedOpenTime: poller.bars.confirmedOpenTime,
+        continuationOpenTime: poller.bars.continuationOpenTime,
       }));
     }
     return Object.freeze({
@@ -953,6 +976,7 @@ module.exports = {
   TRANSPORTS,
   DEFAULT_POLL_MS,
   MIN_POLL_MS,
+  MAX_POLL_MS,
   BOOK_UNAVAILABLE_REASON,
   HEALTH_REASON_BASE,
   HEALTH_REASON_VARIANTS,

@@ -18,7 +18,10 @@ const USED_WEIGHT_HEADER = "x-mbx-used-weight-1m";
 // for the connect probe, the clock refresh, catch-up pages and the candle
 // backfill.
 const PLANNED_SHARE = 0.9;
-const MAX_CADENCE_STRETCH = 60;
+// The longest poll interval: at least two polls a minute fall outside the
+// one-second finalisation grace, so every candle is confirmed within the
+// minute after its close. Neither the setting nor the planner goes past it.
+const MAX_POLL_MS = 20_000;
 
 function assertBudget(budgetPerMinute) {
   if (
@@ -129,7 +132,7 @@ function planCadence({ klinePollers, pollMs, budgetPerMinute }) {
   const cost = (cadenceMs) => klinePollers * Math.ceil(MINUTE_MS / cadenceMs) * REQUEST_WEIGHTS.KLINES + REQUEST_WEIGHTS.SERVER_TIME;
   let klineCadenceMs = pollMs;
   let stretched = false;
-  for (let multiple = 2; cost(klineCadenceMs) > target && multiple <= MAX_CADENCE_STRETCH; multiple += 1) {
+  for (let multiple = 2; cost(klineCadenceMs) > target && pollMs * multiple <= MAX_POLL_MS; multiple += 1) {
     klineCadenceMs = pollMs * multiple;
     stretched = true;
   }
@@ -151,4 +154,5 @@ module.exports = {
   MAX_WEIGHT_BUDGET_PER_MINUTE,
   MIN_WEIGHT_BUDGET_PER_MINUTE,
   USED_WEIGHT_HEADER,
+  MAX_POLL_MS,
 };

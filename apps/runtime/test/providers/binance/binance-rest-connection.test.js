@@ -6,6 +6,7 @@ const {
   historyIncompleteVariant,
   DEFAULT_MAX_CATCH_UP_PAGES,
   DEFAULT_CLOCK_REFRESH_MS,
+  MAX_POLL_MS,
 } = require("../../../src/providers/binance/binance-rest-connection");
 const { normalizeBinanceEvent } = require("../../../src/providers/binance/binance-event-normalizer");
 const { createInstrumentTickSizeResolver } = require("../../../src/providers/shared/instrument-tick-size");
@@ -34,6 +35,8 @@ function fakeBinance() {
     klineStart: OPEN - 10 * MINUTE,
     rowFor: () => ({}),
     omit: new Set(),
+    empty: false,
+    maxOpen: null,
     failures: [],
     hang: null,
     pending: [],
@@ -76,11 +79,12 @@ function fakeBinance() {
         const startTime = Number(u.searchParams.get("startTime"));
         const limit = Number(u.searchParams.get("limit"));
         const rows = [];
-        for (let openTime = Math.max(startTime, state.klineStart); openTime <= currentOpen() && rows.length < limit; openTime += MINUTE) {
+        const last = state.maxOpen === null ? currentOpen() : Math.min(currentOpen(), state.maxOpen);
+        for (let openTime = Math.max(startTime, state.klineStart); openTime <= last && rows.length < limit; openTime += MINUTE) {
           if (state.omit.has(openTime)) continue;
           rows.push(klineRow(openTime, state.rowFor(openTime)));
         }
-        return respond(rows);
+        return respond(state.empty ? [] : rows);
       }
       default:
         return respond({}, 404);
@@ -696,5 +700,110 @@ describe("binance-rest-connection: finality at dispatch and holes", () => {
     await tick(5000);
     expect(created.getFeedHealth("SPOT", "BTCUSDT", "KLINE", "1m").reason).toContain("history incomplete (1 min missing)");
     expect(fake.klineRequests().at(-1).searchParams.get("limit")).toBe("2");
+  });
+});
+
+describe("binance-rest-connection: the earliest expected minute, the poll cap and candle coverage", () => {
+  test("an outage before the first confirmed close: a start inside the grace followed by a pause still delivers every missed close", async () => {
+    const fake = fakeBinance();
+    const created = await connected(fake);
+    const envelopes = collector(created);
+    jest.setSystemTime(OPEN + 500); // half a second into OPEN: the previous candle is inside its grace
+    created.subscribe(SPOT_KLINE, "c1");
+    await tick(0);
+    expect(envelopes.map((e) => [(e.payload.openTime - OPEN) / MINUTE, e.payload.isClosed])).toEqual([[-1, false], [0, false]]);
+    expect(created.getOperationalStats().pollers[0]).toMatchObject({ confirmedOpenTime: null, continuationOpenTime: OPEN - MINUTE });
+    fake.state.failures.push({ match: () => true, times: Number.MAX_SAFE_INTEGER, network: true });
+    await tick(5 * MINUTE);
+    fake.state.failures.length = 0;
+    await tick(31_000);
+    await tick(2000);
+    const currentBar = Math.floor(Date.now() / MINUTE) - OPEN / MINUTE;
+    const closes = envelopes.filter((e) => e.payload.isClosed).map((e) => (e.payload.openTime - OPEN) / MINUTE);
+    expect(closes).toEqual(Array.from({ length: currentBar + 1 }, (_, i) => i - 1)); // from the anchor, OPEN - 1m, with nothing skipped
+    expect(created.getFeedHealth("SPOT", "BTCUSDT", "KLINE", "1m")).toMatchObject({ recoveryState: "READY", reason: HEALTH_REASON_BASE });
+  });
+
+  test("minute-long polling inside the grace window: 60 s is refused by the cap, and 20 s polling starting in the grace finalises every candle", async () => {
+    expect(MAX_POLL_MS).toBe(20_000);
+    expect(() => createBinanceRestConnection({ fetchImpl: fakeBinance().fetchImpl, pollMs: 60_000 })).toThrow(/between 250 and 20000/);
+    const fake = fakeBinance();
+    const created = await connected(fake, { pollMs: 20_000 });
+    const envelopes = collector(created);
+    jest.setSystemTime(OPEN + 500);
+    created.subscribe(SPOT_KLINE, "c1");
+    await tick(0);
+    for (let poll = 0; poll < 10; poll += 1) await tick(20_000);
+    const closes = envelopes.filter((e) => e.payload.isClosed).map((e) => (e.payload.openTime - OPEN) / MINUTE);
+    expect(closes).toEqual([-1, 0, 1, 2]); // ten polls over 200 s: every candle closed so far, each once
+    expect(created.getOperationalStats().pollers[0].confirmedOpenTime).toBe(OPEN + 2 * MINUTE);
+  });
+
+  test("empty startup responses: no candle is an observation, so the feed stays degraded and never reads READY, and the first real page is served from the anchor", async () => {
+    const fake = fakeBinance();
+    fake.state.empty = true;
+    const telemetry = jest.fn();
+    const created = await connected(fake, { telemetry });
+    const envelopes = collector(created);
+    created.subscribe(SPOT_KLINE, "c1");
+    await tick(0);
+    await tick(3000);
+    expect(envelopes).toEqual([]);
+    expect(created.getFeedHealth("SPOT", "BTCUSDT", "KLINE", "1m")).toMatchObject({ stale: true, recoveryState: "RECOVERING", reason: `${HEALTH_REASON_BASE} · awaiting candles` });
+    await tick(10_000);
+    expect(created.getFeedHealth("SPOT", "BTCUSDT", "KLINE", "1m")).toMatchObject({ stale: true, recoveryState: "UNAVAILABLE", reason: `${HEALTH_REASON_BASE} · awaiting candles` });
+    expect(created.getOperationalStats().pollers[0]).toMatchObject({ uncovered: true, confirmedOpenTime: null, continuationOpenTime: OPEN - MINUTE });
+    expect(fake.klineRequests().length).toBeGreaterThan(10); // it keeps asking at the cadence
+    expect(telemetry.mock.calls.filter(([entry]) => entry.event === "market_data.binance_rest.kline_no_coverage")).toHaveLength(1);
+    fake.state.empty = false;
+    await tick(1000);
+    expect(envelopes.map((e) => [(e.payload.openTime - OPEN) / MINUTE, e.payload.isClosed])).toEqual([[-1, true], [0, false]]);
+    expect(created.getFeedHealth("SPOT", "BTCUSDT", "KLINE", "1m")).toMatchObject({ stale: false, recoveryState: "READY", reason: HEALTH_REASON_BASE });
+  });
+
+  test("repeated empty polls after a healthy start: the cursor holds, the feed degrades, and the missed minutes are caught up when candles return", async () => {
+    const fake = fakeBinance();
+    const created = await connected(fake);
+    const envelopes = collector(created);
+    created.subscribe(SPOT_KLINE, "c1");
+    await tick(0);
+    expect(created.getFeedHealth("SPOT", "BTCUSDT", "KLINE", "1m").recoveryState).toBe("READY");
+    fake.state.empty = true;
+    const emittedAtStall = envelopes.length;
+    for (let minute = 1; minute <= 3; minute += 1) {
+      jest.setSystemTime(T0 + minute * MINUTE);
+      await tick(1000);
+      expect(created.getFeedHealth("SPOT", "BTCUSDT", "KLINE", "1m").recoveryState).not.toBe("READY");
+    }
+    await tick(12_000);
+    expect(created.getFeedHealth("SPOT", "BTCUSDT", "KLINE", "1m")).toMatchObject({ stale: true, recoveryState: "UNAVAILABLE", reason: `${HEALTH_REASON_BASE} · catching up · awaiting candles` });
+    expect(envelopes.length).toBe(emittedAtStall);
+    expect(created.getOperationalStats().pollers[0]).toMatchObject({ uncovered: true, confirmedOpenTime: OPEN - MINUTE });
+    fake.state.empty = false;
+    await tick(1000);
+    const closes = envelopes.slice(emittedAtStall).filter((e) => e.payload.isClosed).map((e) => (e.payload.openTime - OPEN) / MINUTE);
+    expect(closes).toEqual([0, 1, 2]);
+    expect(created.getFeedHealth("SPOT", "BTCUSDT", "KLINE", "1m")).toMatchObject({ stale: false, recoveryState: "READY", reason: HEALTH_REASON_BASE });
+  });
+
+  test("responses holding only candles already confirmed hide nothing: they are not coverage and the feed degrades until an expected candle arrives", async () => {
+    const fake = fakeBinance();
+    const created = await connected(fake);
+    const envelopes = collector(created);
+    created.subscribe(SPOT_KLINE, "c1");
+    await tick(0);
+    fake.state.maxOpen = OPEN - MINUTE; // the exchange answers with the previous candle only, which is already confirmed
+    const emittedAtStall = envelopes.length;
+    await tick(3000);
+    expect(envelopes.length).toBe(emittedAtStall);
+    expect(created.getFeedHealth("SPOT", "BTCUSDT", "KLINE", "1m")).toMatchObject({ stale: true, recoveryState: "RECOVERING", reason: `${HEALTH_REASON_BASE} · awaiting candles` });
+    await tick(10_000);
+    expect(created.getFeedHealth("SPOT", "BTCUSDT", "KLINE", "1m").recoveryState).toBe("UNAVAILABLE");
+    expect(created.getOperationalStats().pollers[0]).toMatchObject({ uncovered: true, confirmedOpenTime: OPEN - MINUTE });
+    fake.state.maxOpen = null;
+    fake.state.rowFor = (openTime) => (openTime === OPEN ? { close: "64290.00" } : {});
+    await tick(1000);
+    expect(envelopes.at(-1).payload).toMatchObject({ openTime: OPEN, isClosed: false, close: "64290.00" });
+    expect(created.getFeedHealth("SPOT", "BTCUSDT", "KLINE", "1m")).toMatchObject({ stale: false, recoveryState: "READY", reason: HEALTH_REASON_BASE });
   });
 });

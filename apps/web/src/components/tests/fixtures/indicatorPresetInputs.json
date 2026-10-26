@@ -1682,6 +1682,58 @@
       ]
     }
   ],
+  "relativeVolume": [
+    {
+      "key": "sessions",
+      "kind": "numeric",
+      "min": 2,
+      "max": 60,
+      "step": 1
+    },
+    {
+      "key": "hotThreshold",
+      "kind": "numeric",
+      "min": 1,
+      "max": 10,
+      "step": 0.5
+    },
+    {
+      "key": "minSessions",
+      "kind": "numeric",
+      "min": 1,
+      "max": 20,
+      "step": 1
+    },
+    {
+      "key": "clock",
+      "kind": "select",
+      "options": [
+        "auto",
+        "newYork",
+        "utc"
+      ]
+    },
+    {
+      "key": "showRolling",
+      "kind": "boolean"
+    },
+    {
+      "key": "showMarkers",
+      "kind": "boolean"
+    },
+    {
+      "key": "lineColor",
+      "kind": "color"
+    },
+    {
+      "key": "hotColor",
+      "kind": "color"
+    },
+    {
+      "key": "rollingColor",
+      "kind": "color"
+    }
+  ],
   "sessionDeltaProfile": [
     {
       "key": "sessionPeriodMs",

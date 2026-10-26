@@ -92,9 +92,12 @@ attempted on `fapi`/`fstream` and report
 dxFeed instruments report `BROWSER_DIRECT_NO_DXFEED`. A dropped spot stream
 shows `RECOVERING`, withdraws the book, and reconnects with backoff
 (`UNAVAILABLE` after five failures); whenever a stream opens, the closed bars
-between the last confirmed close and the live stream are paged from REST, in
-order and marked `reconstructed`, before the feed is `READY` again (a gap past
-11,000 minutes re-reads the history as a fresh snapshot).
+between the last confirmed close and the live stream are paged from REST,
+minute by consecutive minute and marked `reconstructed`, before the feed is
+`READY` again. A REST row counts as final only when its minute closed before
+the request went out; the minute at the edge takes the stream's own close. A
+missing minute keeps the feed recovering; a gap past 11,000 minutes re-reads
+the history as a fresh snapshot.
 
 To build a static bundle with the mode baked in and relative asset paths:
 

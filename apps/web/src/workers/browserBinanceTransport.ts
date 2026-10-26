@@ -95,6 +95,14 @@ export const MAX_GAP_FILL_PAGES = 11;
 export const MAX_GAP_FILL_MS = MAX_GAP_FILL_PAGES * GAP_FILL_PAGE * BAR_INTERVAL_MS;
 /** Closed bars held back while a gap fill is pending; older ones are dropped and come back through the paginated REST read instead. */
 export const MAX_HELD_CLOSED_BARS = 120;
+/**
+ * A REST row is taken as final only when its minute closed this long before
+ * the request went out: a row served while its minute was still open is
+ * partial, and the browser's clock may lead the exchange's by a little.
+ */
+export const CLOSE_CONFIRMATION_MARGIN_MS = 5_000;
+/** Consecutive fills that found the same minute missing before the history is re-read as a snapshot that carries the gap as a gap. */
+export const MAX_HOLE_RETRIES = 3;
 
 export const HEALTH_REASON_READY = "BROWSER_DIRECT";
 export const HEALTH_REASON_STREAM_CLOSED = "BROWSER_DIRECT_STREAM_CLOSED";
@@ -127,6 +135,11 @@ type Session = {
   heldFormingBar: KlineRow | null;
   /** A READY book went out since the stream last opened; it is withdrawn when the stream is lost. */
   bookLive: boolean;
+  /** A REST read is in flight for the recovery. */
+  fillInFlight: boolean;
+  /** The minute after the boundary closed on the clock but is not yet confirmable from REST; the stream's own close for it ends the recovery. */
+  awaitingBoundary: number | null;
+  holeRetries: number;
   streamFailures: number;
   backoffMs: number;
   lastClosedOpen: number;
@@ -461,6 +474,9 @@ export class BrowserBinanceTransport implements TransportSocket {
       heldClosedBars: new Map(),
       heldFormingBar: null,
       bookLive: false,
+      fillInFlight: false,
+      awaitingBoundary: null,
+      holeRetries: 0,
       streamFailures: 0,
       backoffMs: STREAM_BACKOFF_INITIAL_MS,
       lastClosedOpen: -1,
@@ -528,6 +544,15 @@ export class BrowserBinanceTransport implements TransportSocket {
     }, delay);
   }
 
+  private scheduleRetryAt(session: Session, delayMs: number, action: () => void): void {
+    if (!this.isCurrent(session)) return;
+    if (session.timer !== null) this.clearTimer(session.timer);
+    session.timer = this.setTimer(() => {
+      session.timer = null;
+      if (this.isCurrent(session)) action();
+    }, delayMs);
+  }
+
   private restFailureReason(session: Session): string {
     return session.selection.provider === "BINANCE" && session.selection.marketKind === "PERPETUAL"
       ? HEALTH_REASON_PERPETUAL_UNREACHABLE
@@ -536,6 +561,7 @@ export class BrowserBinanceTransport implements TransportSocket {
 
   private async bootstrap(session: Session): Promise<void> {
     let rows: KlineRow[];
+    const confirmedBefore = this.now() - CLOSE_CONFIRMATION_MARGIN_MS;
     try {
       rows = await this.fetchKlines(session, { limit: SNAPSHOT_BARS + 1 });
     } catch (error) {
@@ -547,8 +573,11 @@ export class BrowserBinanceTransport implements TransportSocket {
     }
     if (!this.isCurrent(session)) return;
     const now = this.now();
-    const closedRows = rows.filter((row) => row.closeTime < now).slice(-SNAPSHOT_BARS);
-    const forming = rows.find((row) => row.closeTime >= now && row.openTime <= now);
+    // Only minutes that had closed before the request went out are final; the
+    // minute at the edge may have been served partial and is shown forming
+    // until the stream's reconcile confirms it.
+    const closedRows = rows.filter((row) => row.closeTime < confirmedBefore).slice(-SNAPSHOT_BARS);
+    const forming = rows.find((row) => row.closeTime >= confirmedBefore && row.openTime <= now);
     const identity = identityFields(session.selection);
     this.deliver({
       type: "snapshot",
@@ -562,6 +591,9 @@ export class BrowserBinanceTransport implements TransportSocket {
     session.heldClosedBars.clear();
     session.heldFormingBar = null;
     session.recovering = false;
+    session.fillInFlight = false;
+    session.awaitingBoundary = null;
+    session.holeRetries = 0;
     session.degraded = false;
     session.bookLive = false;
     this.deliverHealth(session, "READY", HEALTH_REASON_READY);
@@ -626,6 +658,7 @@ export class BrowserBinanceTransport implements TransportSocket {
       this.closeStream(session);
       // A gap fill in flight belongs to the stream that just died: abandon it.
       session.abort?.abort();
+      session.awaitingBoundary = null;
       this.streamLost(session);
     };
     stream.onerror = () => {
@@ -672,15 +705,22 @@ export class BrowserBinanceTransport implements TransportSocket {
   /**
    * Whenever a stream opens: the closed bars between the last confirmed close
    * and the live stream come from REST, marked reconstructed as the runtime
-   * marks its backfill. Pages of 1,000 minutes are walked from that boundary
-   * until the read is continuous with the first close the new stream reported
-   * (held back meanwhile, so the main thread sees closed bars in order and
-   * never a hole) or with the minute now forming; a gap longer than the pages
-   * allowed is re-read as a fresh snapshot instead. A failed or short read
-   * keeps the feed RECOVERING and is retried with backoff; READY follows only
-   * a continuous read for the stream that is still open.
+   * marks its backfill. Pages of 1,000 minutes are walked from that boundary;
+   * every row must be the next consecutive minute, and a row counts as final
+   * only when its minute closed before the request went out (a margin covers
+   * clock skew), or when the stream itself closed that minute meanwhile (its
+   * close wins). Closes the new stream reports during the fill wait in the
+   * buffer so the main thread sees closed bars in order and never a hole. The
+   * fill ends at the minute now forming, or at a minute that closed on the
+   * clock but is not yet confirmable, which the stream's own close or a later
+   * re-read settles. A missing, short or failed page keeps the feed RECOVERING
+   * and is retried from the first missing minute; a gap longer than the pages
+   * allowed, or a minute the exchange keeps omitting, is re-read as a fresh
+   * snapshot instead. READY follows only a continuous fill for the stream
+   * that is still open.
    */
   private async recoverAfterGap(session: Session, generation: number): Promise<void> {
+    session.awaitingBoundary = null;
     try {
       for (let page = 1; ; page += 1) {
         if (page > MAX_GAP_FILL_PAGES || (session.lastClosedOpen >= 0 && this.now() - session.lastClosedOpen > MAX_GAP_FILL_MS)) {
@@ -688,22 +728,62 @@ export class BrowserBinanceTransport implements TransportSocket {
           return;
         }
         const paged = session.lastClosedOpen >= 0;
-        const rows = await this.fetchKlines(session, paged ? { startTime: session.lastClosedOpen + BAR_INTERVAL_MS, limit: GAP_FILL_PAGE } : { limit: SNAPSHOT_BARS + 1 });
+        const confirmedBefore = this.now() - CLOSE_CONFIRMATION_MARGIN_MS;
+        session.fillInFlight = true;
+        let rows: KlineRow[];
+        try {
+          rows = await this.fetchKlines(session, paged ? { startTime: session.lastClosedOpen + BAR_INTERVAL_MS, limit: GAP_FILL_PAGE } : { limit: SNAPSHOT_BARS + 1 });
+        } finally {
+          session.fillInFlight = false;
+        }
         if (!this.recoveryIsLive(session, generation)) return;
         const now = this.now();
-        let reachedNow = false;
+        let expected = paged ? session.lastClosedOpen + BAR_INTERVAL_MS : rows.length > 0 ? rows[0].openTime : -1;
+        let outcome: "continuous" | "hole" | "forming" | "boundary" = "continuous";
         for (const row of rows) {
-          if (row.closeTime >= now) reachedNow = true;
-          else if (row.openTime > session.lastClosedOpen) {
-            // A minute the live stream also closed is delivered as the stream
-            // reported it; only minutes nobody saw live are reconstructed.
-            const held = session.heldClosedBars.get(row.openTime);
-            this.deliverClosedBar(session, held ?? row, held === undefined);
+          if (row.openTime < expected) continue;
+          if (row.openTime > expected) {
+            outcome = "hole";
+            break;
           }
+          const held = session.heldClosedBars.get(row.openTime);
+          if (held !== undefined) {
+            // The stream closed this minute itself: its close is authoritative.
+            this.deliverClosedBar(session, held, false);
+          } else if (row.closeTime < confirmedBefore) {
+            this.deliverClosedBar(session, row, true);
+          } else {
+            outcome = row.closeTime < now ? "boundary" : "forming";
+            break;
+          }
+          expected = row.openTime + BAR_INTERVAL_MS;
         }
+        if (outcome === "hole") {
+          session.holeRetries += 1;
+          if (session.holeRetries > MAX_HOLE_RETRIES) {
+            // The exchange keeps omitting this minute: a real gap, carried as a gap.
+            this.restartFromSnapshot(session);
+            return;
+          }
+          throw new Error(`gap fill: the exchange skipped the minute at ${expected}`);
+        }
+        session.holeRetries = 0;
+        if (outcome === "boundary") {
+          // The minute just closed on the clock but the row may be partial.
+          // The stream's own close for it ends the recovery as soon as it
+          // arrives; failing that, it is re-read once it is confirmable.
+          session.awaitingBoundary = expected;
+          const retryAt = expected + BAR_INTERVAL_MS + CLOSE_CONFIRMATION_MARGIN_MS;
+          this.scheduleRetryAt(session, Math.max(retryAt - now, STREAM_BACKOFF_INITIAL_MS), () => {
+            if (this.recoveryIsLive(session, generation)) void this.recoverAfterGap(session, generation);
+          });
+          return;
+        }
+        if (outcome === "forming") break;
+        if (paged && rows.length >= GAP_FILL_PAGE) continue;
         const earliestHeld = this.earliestHeldClose(session);
-        if (earliestHeld !== undefined ? earliestHeld <= session.lastClosedOpen + BAR_INTERVAL_MS : reachedNow || !paged) break;
-        if (rows.length < GAP_FILL_PAGE) throw new Error("gap fill: the exchange returned fewer rows than the gap spans");
+        if (!paged || earliestHeld === expected) break;
+        throw new Error("gap fill: the exchange returned fewer rows than the gap spans");
       }
     } catch (error) {
       if (!this.recoveryIsLive(session, generation)) return;
@@ -715,19 +795,39 @@ export class BrowserBinanceTransport implements TransportSocket {
       });
       return;
     }
-    for (const row of [...session.heldClosedBars.values()].sort((a, b) => a.openTime - b.openTime)) {
-      if (row.openTime > session.lastClosedOpen) this.deliverClosedBar(session, row, false);
+    if (!this.finishRecovery(session)) {
+      // Held closes are not consecutive with the boundary: the minutes between
+      // are read next, from the first missing one.
+      session.degraded = true;
+      this.deliverHealth(session, "RECOVERING", HEALTH_REASON_REST_FAILED);
+      this.scheduleRetry(session, () => {
+        if (this.recoveryIsLive(session, generation)) void this.recoverAfterGap(session, generation);
+      });
     }
-    session.heldClosedBars.clear();
+  }
+
+  /** Releases held closes while each is the next minute, then the latest held forming bar; true when the recovery is complete. */
+  private finishRecovery(session: Session): boolean {
+    for (const row of [...session.heldClosedBars.values()].sort((a, b) => a.openTime - b.openTime)) {
+      if (row.openTime <= session.lastClosedOpen) {
+        session.heldClosedBars.delete(row.openTime);
+        continue;
+      }
+      if (row.openTime !== session.lastClosedOpen + BAR_INTERVAL_MS) return false;
+      this.deliverClosedBar(session, row, false);
+      session.heldClosedBars.delete(row.openTime);
+    }
     const forming = session.heldFormingBar;
     session.heldFormingBar = null;
     if (forming !== null && forming.openTime > session.lastClosedOpen) this.deliver(barFrame(session.selection, forming, false, false));
     session.recovering = false;
+    session.awaitingBoundary = null;
     session.backoffMs = STREAM_BACKOFF_INITIAL_MS;
     if (session.degraded) {
       session.degraded = false;
       this.deliverHealth(session, "READY", HEALTH_REASON_READY);
     }
+    return true;
   }
 
   /** A gap too long to page through: close the stream and read the history afresh, as a new selection would. */
@@ -735,6 +835,8 @@ export class BrowserBinanceTransport implements TransportSocket {
     console.warn("browserBinanceTransport: the gap exceeds what a fill can page through; re-reading the history");
     this.closeStream(session);
     session.recovering = false;
+    session.awaitingBoundary = null;
+    session.holeRetries = 0;
     session.heldClosedBars.clear();
     session.heldFormingBar = null;
     void this.bootstrap(session);
@@ -753,6 +855,22 @@ export class BrowserBinanceTransport implements TransportSocket {
       if (bar === null) return;
       if (bar.closed && bar.openTime <= session.lastClosedOpen) return;
       if (session.recovering) {
+        if (bar.closed && !session.fillInFlight && session.awaitingBoundary === bar.openTime && bar.openTime === session.lastClosedOpen + BAR_INTERVAL_MS) {
+          // The minute the fill could not yet confirm: the stream's close is final.
+          if (session.timer !== null) {
+            this.clearTimer(session.timer);
+            session.timer = null;
+          }
+          this.deliverClosedBar(session, bar, false);
+          if (!this.finishRecovery(session)) {
+            session.degraded = true;
+            this.deliverHealth(session, "RECOVERING", HEALTH_REASON_REST_FAILED);
+            this.scheduleRetry(session, () => {
+              if (this.recoveryIsLive(session, session.streamGeneration)) void this.recoverAfterGap(session, session.streamGeneration);
+            });
+          }
+          return;
+        }
         if (bar.closed) {
           session.heldClosedBars.set(bar.openTime, bar);
           // Bounded: a dropped old close is still a closed minute on the

@@ -89,9 +89,10 @@ runtime" state); history past 900 bars; trades from before the page opened;
 the marker pool; a book deeper than 20 levels. Spot only: perpetual pairs are
 attempted on `fapi`/`fstream` and report
 `BROWSER_DIRECT_PERPETUAL_UNREACHABLE` when the browser cannot reach them;
-dxFeed instruments report `BROWSER_DIRECT_NO_DXFEED`. A dropped stream shows
-`RECOVERING` and reconnects with backoff (`UNAVAILABLE` after five failures),
-filling missed closed bars from REST.
+dxFeed instruments report `BROWSER_DIRECT_NO_DXFEED`. A dropped spot stream
+shows `RECOVERING` and reconnects with backoff (`UNAVAILABLE` after five
+failures); once it is back, the closed bars it missed come from REST, in order,
+before the feed is `READY` again.
 
 To build a static bundle with the mode baked in and relative asset paths:
 

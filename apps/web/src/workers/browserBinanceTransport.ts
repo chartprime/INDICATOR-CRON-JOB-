@@ -110,8 +110,14 @@ type Session = {
   readonly streamBase: string;
   stream: UpstreamSocket | null;
   connectTimer: unknown;
-  /** A degraded health frame went out; the next open stream owes a READY (after a REST gap fill). */
+  /** Counts stream sockets; a recovery belongs to the generation whose open started it. */
+  streamGeneration: number;
+  /** A degraded health frame went out; the next open stream owes a READY, after a successful REST gap fill. */
   degraded: boolean;
+  /** A gap fill is pending: live kline events wait in the buffer so closed bars reach the main thread in order, without gaps. */
+  recovering: boolean;
+  heldClosedBars: Map<number, KlineRow>;
+  heldFormingBar: KlineRow | null;
   streamFailures: number;
   backoffMs: number;
   lastClosedOpen: number;
@@ -435,7 +441,11 @@ export class BrowserBinanceTransport implements TransportSocket {
       streamBase: perpetual ? this.endpoints.perpetualStreamBase : this.endpoints.spotStreamBase,
       stream: null,
       connectTimer: null,
+      streamGeneration: 0,
       degraded: false,
+      recovering: false,
+      heldClosedBars: new Map(),
+      heldFormingBar: null,
       streamFailures: 0,
       backoffMs: STREAM_BACKOFF_INITIAL_MS,
       lastClosedOpen: -1,
@@ -557,6 +567,8 @@ export class BrowserBinanceTransport implements TransportSocket {
       return;
     }
     session.stream = stream;
+    session.streamGeneration += 1;
+    const generation = session.streamGeneration;
     session.connectTimer = this.setTimer(() => {
       session.connectTimer = null;
       if (!this.isCurrent(session) || session.stream !== stream) return;
@@ -573,8 +585,8 @@ export class BrowserBinanceTransport implements TransportSocket {
       session.streamFailures = 0;
       session.backoffMs = STREAM_BACKOFF_INITIAL_MS;
       if (session.degraded) {
-        session.degraded = false;
-        void this.recoverAfterGap(session);
+        session.recovering = true;
+        void this.recoverAfterGap(session, generation);
       }
     };
     stream.onmessage = (event: MessageEvent) => {
@@ -591,6 +603,8 @@ export class BrowserBinanceTransport implements TransportSocket {
     stream.onclose = () => {
       if (!this.isCurrent(session) || session.stream !== stream) return;
       this.closeStream(session);
+      // A gap fill in flight belongs to the stream that just died: abandon it.
+      session.abort?.abort();
       this.streamLost(session);
     };
     stream.onerror = () => {
@@ -600,9 +614,16 @@ export class BrowserBinanceTransport implements TransportSocket {
 
   private streamLost(session: Session): void {
     if (!this.isCurrent(session)) return;
+    if (session.timer !== null) {
+      this.clearTimer(session.timer);
+      session.timer = null;
+    }
     session.streamFailures += 1;
     session.degraded = true;
-    if (session.streamFailures >= STREAM_FAILURES_BEFORE_UNAVAILABLE) {
+    if (session.selection.provider === "BINANCE" && session.selection.marketKind === "PERPETUAL") {
+      // No mirror exists for the futures stream: say so at once, then keep trying.
+      this.deliverHealth(session, "UNAVAILABLE", HEALTH_REASON_PERPETUAL_UNREACHABLE);
+    } else if (session.streamFailures >= STREAM_FAILURES_BEFORE_UNAVAILABLE) {
       this.deliverHealth(session, "UNAVAILABLE", HEALTH_REASON_STREAM_UNAVAILABLE);
     } else {
       this.deliverHealth(session, "RECOVERING", HEALTH_REASON_STREAM_CLOSED);
@@ -610,23 +631,53 @@ export class BrowserBinanceTransport implements TransportSocket {
     this.scheduleRetry(session, () => this.openStream(session));
   }
 
-  /** After a stream reconnect: closed bars the stream missed come from REST, marked reconstructed as the runtime marks its backfill. */
-  private async recoverAfterGap(session: Session): Promise<void> {
-    let rows: KlineRow[] = [];
+  private recoveryIsLive(session: Session, generation: number): boolean {
+    return this.isCurrent(session) && session.streamGeneration === generation && session.stream !== null && session.recovering;
+  }
+
+  /**
+   * After a stream reconnect: closed bars the stream missed come from REST,
+   * marked reconstructed as the runtime marks its backfill. The REST read
+   * starts at the boundary the live stream last confirmed before the gap;
+   * closes the new stream reports meanwhile wait in the buffer, so the main
+   * thread sees closed bars in order and never a hole. A failed read keeps the
+   * feed RECOVERING and is retried with backoff; READY follows only a read that
+   * succeeded for the stream that is still open.
+   */
+  private async recoverAfterGap(session: Session, generation: number): Promise<void> {
+    let rows: KlineRow[];
     try {
       rows = await this.fetchKlines(session, session.lastClosedOpen >= 0 ? { startTime: session.lastClosedOpen + BAR_INTERVAL_MS, limit: 1000 } : { limit: SNAPSHOT_BARS + 1 });
     } catch (error) {
+      if (!this.recoveryIsLive(session, generation)) return;
       console.warn("browserBinanceTransport: kline gap fill failed", error);
+      this.deliverHealth(session, "RECOVERING", HEALTH_REASON_REST_FAILED);
+      this.scheduleRetry(session, () => {
+        if (this.recoveryIsLive(session, generation)) void this.recoverAfterGap(session, generation);
+      });
+      return;
     }
-    if (!this.isCurrent(session)) return;
+    if (!this.recoveryIsLive(session, generation)) return;
     const now = this.now();
     for (const row of rows) {
-      if (row.closeTime < now && row.openTime > session.lastClosedOpen) {
-        this.deliver(barFrame(session.selection, row, true, true));
-        session.lastClosedOpen = row.openTime;
-      }
+      if (row.closeTime < now && row.openTime > session.lastClosedOpen) this.deliverClosedBar(session, row, true);
     }
+    for (const row of [...session.heldClosedBars.values()].sort((a, b) => a.openTime - b.openTime)) {
+      if (row.openTime > session.lastClosedOpen) this.deliverClosedBar(session, row, false);
+    }
+    session.heldClosedBars.clear();
+    const forming = session.heldFormingBar;
+    session.heldFormingBar = null;
+    if (forming !== null && forming.openTime > session.lastClosedOpen) this.deliver(barFrame(session.selection, forming, false, false));
+    session.recovering = false;
+    session.degraded = false;
+    session.backoffMs = STREAM_BACKOFF_INITIAL_MS;
     this.deliverHealth(session, "READY", HEALTH_REASON_READY);
+  }
+
+  private deliverClosedBar(session: Session, bar: KlineRow, reconstructed: boolean): void {
+    this.deliver(barFrame(session.selection, bar, true, reconstructed));
+    session.lastClosedOpen = bar.openTime;
   }
 
   private routeStreamMessage(session: Session, parsed: unknown): void {
@@ -636,8 +687,13 @@ export class BrowserBinanceTransport implements TransportSocket {
       const bar = parseKlineEvent(payload.k);
       if (bar === null) return;
       if (bar.closed && bar.openTime <= session.lastClosedOpen) return;
-      this.deliver(barFrame(session.selection, bar, bar.closed, false));
-      if (bar.closed) session.lastClosedOpen = bar.openTime;
+      if (session.recovering) {
+        if (bar.closed) session.heldClosedBars.set(bar.openTime, bar);
+        else session.heldFormingBar = bar;
+        return;
+      }
+      if (bar.closed) this.deliverClosedBar(session, bar, false);
+      else this.deliver(barFrame(session.selection, bar, false, false));
       return;
     }
     if (payload.e === "trade") {

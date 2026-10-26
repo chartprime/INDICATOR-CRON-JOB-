@@ -7,7 +7,7 @@ Repository: `/home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk`
 branch `main`, import commit 6ec87d3, 44 indicators registered, baseline web
 suite green (351 files, 5170 tests).
 
-## Cycle 1 (in progress)
+## Cycle 1 (complete)
 
 | Step | Owner | State |
 |---|---|---|
@@ -18,7 +18,7 @@ suite green (351 files, 5170 tests).
 | UX standard: default view, primary vs advanced controls, colors, copy | UX | done (`cycle1/ux-standard.md`, Advanced group merged to main, 7 screenshots) |
 | Validation protocol and fixture harness | Validator | v1 merged (`cycle1/validation-protocol.md`, `apps/web/src/lib/chart/validation/`); Codex fix round in progress |
 | Shortlist 3, brief 1, G1 Codex plan review | PM + Codex | done (`cycle1/scoring.md`, `cycle1/brief-rvol-clock.md`; 5 Codex rounds, PM-approved) |
-| Build, UX pass, G2, validation, G3, fixes, merge, package | team | build running on branch `build/relative-volume` (worktree `/home/user/Terminal-L1-L2/worktrees/relative-volume`); build landed (61 tests, suite green); Codex G2 REVISE (1 real finding), G3 FAIL (7 challenges, ruled); UX pass approved pending one retake (`cycle1/ux-pass-relative-volume.md`); validator loop 1: FIX AND RERUN (6 fixes, `pm/log/validation/relativeVolume/loop-1.md`); fix round 1 done (97 tests, suite green); Codex G2 round 2 APPROVED; validator loop 2 running; harness v1.1 merged (fixtures shared); harness v1.2 merged; one L2 fake item parked as harness debt |
+| Build, UX pass, G2, validation, G3, fixes, merge, package | team | DONE: Relative Volume (Time of Day) merged to main; package `cycle1/package-relative-volume.md`; cycle report `log/cycle-1-report.md` |
 
 ## Seed concepts the PM already holds (feed into scoring, not pre-approved)
 
@@ -34,6 +34,11 @@ replenishment rate after a wall is eaten.
 ## Rejected
 
 (none yet)
+
+## Cycle 2 (proposed)
+
+- Squeeze Breakout Context (OHLCV, cross-layer anchor) and Size-Split Delta (L1) in parallel; then Break Defense Monitor (L2).
+- Deferred from cycle 1: weekend slot family for crypto RVOL; sustained-run marker; `clear` on draw.table; Pine version once the editor source arrives.
 
 ## Harness debt
 

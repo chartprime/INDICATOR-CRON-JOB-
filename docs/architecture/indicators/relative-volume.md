@@ -155,7 +155,7 @@ There is no cosmetic setting and the colours are fixed in this version. The
 reason is a rule, not a shortcut: a cosmetic setting must never change a
 number, and a replay over the retained bars can (section "Replay and
 Historical Mode"), so no setting is allowed to trigger one unless it changes
-the mathematics. Every key is in the schema, so [presets](setting-presets.md)
+the numbers, or which bars are classified or drawn. Every key is in the schema, so [presets](setting-presets.md)
 work without any extra code.
 
 ## Alert conditions
@@ -187,7 +187,9 @@ Fixture rates, both quoted because they differ by design:
   bars.
 
 The tool is classified as a descriptive annotation under the protocol's 200
-per 1,000 ceiling on typical data; the frozen fixture sits at 2.2 per 1,000.
+per 1,000 ceiling on typical data; the frozen fixture sits at 2.8 per 1,000
+evaluated bars (13 markers over 4,680; 2.2 per 1,000 over all 5,850 fixture
+bars).
 
 ## Warm-up
 
@@ -198,7 +200,8 @@ retains 10,080 bars: about seven UTC days of one-minute crypto, about 25
 regular sessions of one-minute equities. After a reload, one-minute crypto
 therefore has **at most six prior observations per minute** until the chart
 has run for ten days; the default lookback of ten fills only as the live
-session keeps running, and a 60-bar lookback never fills on one-minute bars.
+session keeps running, and a 60-bar lookback cannot fill from retained history
+alone; only uninterrupted live operation accumulates that many matching bars.
 Hourly bars warm up after three sessions as well, since the key is the start
 minute, not the bar count.
 
@@ -221,7 +224,11 @@ a snapshot, any `REBUILT` replay) **can change the latest ratio**: after
 eleven live days a bar at 450 against ten prior observations of 100 and 300
 reads 2.25× live and 1.5× after a replay that holds only the six retained
 prior observations at 300. The test `rollover and reconnect` pins exactly
-this. A bar that never closed before the next bar arrived is never filed; it
+this. The same applies to the settings that replay (`sessions`, `minSessions`,
+`clock`, `hotThreshold`, `showMarkers`, `showRolling`): changing one after a
+long one-minute crypto session recomputes from the retained bars and can move
+a ratio the way a reload does. A bar that never closed before the next bar
+arrived is never filed; it
 keeps its provisional styling live and a replay of the retained bars does not
 contain it as an observation either, so the two agree.
 

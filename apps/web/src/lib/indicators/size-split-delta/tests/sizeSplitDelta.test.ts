@@ -73,6 +73,7 @@ const reading = (overrides: Partial<SizeSplitReading>): SizeSplitReading => ({
   ringLength: 20,
   state: "confirms",
   divergence: null,
+  divergenceHeld: null,
   depth: null,
   conflictHeld: false,
   conflictOnset: false,

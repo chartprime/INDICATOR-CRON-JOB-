@@ -134,7 +134,9 @@ describe("sizeSplitDelta -- mechanism fixture (frozen, seed 20261102)", () => {
     expect(engine.committed[2].tierAtOpen).toBeLessThan(0.05);
   });
 
-  it("pins the arrows: auto and fixed hit all 8 planted bars exactly with no off-label arrow; every arrow equals the reference rule's", () => {
+  it("pins the arrows: auto and fixed hit all 8 planted bars exactly with no off-label arrow; every arrow equals the reference rule's; the planted bars are the condition's onsets", () => {
+    expect(auto.reference.bearishHeld).toEqual(auto.reference.bearish);
+    expect(auto.reference.bullishHeld).toEqual(auto.reference.bullish);
     expect(auto.bearish).toEqual([75, 135, 195, 255]);
     expect(auto.bullish).toEqual([45, 105, 165, 225]);
     expect(auto.reference.bearish).toEqual(auto.bearish);
@@ -235,12 +237,13 @@ describe("sizeSplitDelta -- regime fixtures, 10 seeds each (Acceptance, round 3 
     expect(large.auto).toEqual({ hits: 100, offLabel: 0, eligible: 5_780, planted: 100 });
     expect(large.fixed).toEqual({ hits: 100, offLabel: 0, eligible: 5_780, planted: 100 });
     expect(large.cvd).toEqual({ hits: 80, offLabel: 171, eligible: 5_780, planted: 100 });
-    expect(small.auto).toEqual({ hits: 0, offLabel: 703, eligible: 5_780, planted: 0 });
-    expect(small.fixed).toEqual({ hits: 0, offLabel: 709, eligible: 5_780, planted: 0 });
+    // Onset-only arrows (PM amendment to rule 11): the held condition would count 703/709/37 on small and 290/293/186 on none.
+    expect(small.auto).toEqual({ hits: 0, offLabel: 488, eligible: 5_780, planted: 0 });
+    expect(small.fixed).toEqual({ hits: 0, offLabel: 490, eligible: 5_780, planted: 0 });
     expect(small.cvd).toEqual({ hits: 0, offLabel: 37, eligible: 5_780, planted: 0 });
-    expect(none.auto).toEqual({ hits: 0, offLabel: 290, eligible: 5_780, planted: 0 });
-    expect(none.fixed).toEqual({ hits: 0, offLabel: 293, eligible: 5_780, planted: 0 });
-    expect(none.cvd).toEqual({ hits: 0, offLabel: 186, eligible: 5_780, planted: 0 });
+    expect(none.auto).toEqual({ hits: 0, offLabel: 256, eligible: 5_780, planted: 0 });
+    expect(none.fixed).toEqual({ hits: 0, offLabel: 256, eligible: 5_780, planted: 0 });
+    expect(none.cvd).toEqual({ hits: 0, offLabel: 180, eligible: 5_780, planted: 0 });
   });
 
   it("acceptance: auto beats or matches fixed (no more false markers on small and none at equal or better recall on large); the split beats the candle delta on its own regime", () => {
@@ -323,7 +326,7 @@ describe("sizeSplitDelta -- 10,000 real BTC-USDT aggregate trades (recorded 2026
 });
 
 describe("sizeSplitDelta -- marker budget on the protocol's busy instrument (check 5)", () => {
-  it("reports the budget on trendBars with busyTapeFor at default settings; the rate exceeds the 40 per 1,000 signal ceiling because a monotone trend makes a strict new high on most bars (PM decision)", () => {
+  it("reports the budget on trendBars with busyTapeFor at default settings with onset-only arrows: 59 per 1,000, still above the 40 signal ceiling, because on a monotone trend the ring high is the previous bar and the condition rarely persists (PM decision)", () => {
     const { bars: raw } = trendBars({ count: 1000 });
     const printsByBar = busyTapeFor(raw, { printsPerBar: 60 });
     const bars = withTapeVolume(raw, printsByBar);
@@ -332,8 +335,13 @@ describe("sizeSplitDelta -- marker budget on the protocol's busy instrument (che
     const verdict = judgeBudget(budget, 40, 2);
     console.log(summarizeBudget("sizeSplitDelta trendBars(1000) + busyTapeFor(60), defaults", budget, verdict));
     expect(budget.faulted).toBe(false);
-    expect(budget.total).toBe(66);
+    expect(budget.total).toBe(59);
     expect(budget.maxPerBar).toBe(1);
+    // How often the condition persists from one bar to the next on this fixture: the onset rule can only remove those bars.
+    const capture = replayCapture(sizeSplitDeltaIndicator, bars, { ...SIZE_SPLIT_DEFAULT_SETTINGS, showBarLines: true }, { ticks });
+    const reference = referenceMarkers(bars.map((bar, index) => ({ close: bar.close, largeBar: capture.outputs.largeBar[index], smallBar: capture.outputs.smallBar[index] })), RULE);
+    console.log(`sizeSplitDelta trendBars: condition held on ${reference.bearishHeld.length + reference.bullishHeld.length} bars, onsets ${reference.bearish.length + reference.bullish.length}`);
+    expect(reference.bearish.length + reference.bullish.length).toBe(59);
     const deeper = countMarkers(sizeSplitDeltaIndicator, bars, { ...SIZE_SPLIT_DEFAULT_SETTINGS, m: 3 }, { extras: { ticks } });
     console.log(summarizeBudget("sizeSplitDelta same instrument, m = 3", deeper, judgeBudget(deeper, 40, 2)));
     const newHighs = bars.filter((bar, index) => index >= 20 && bar.close > Math.max(...bars.slice(index - 20, index).map((earlier) => earlier.close))).length;

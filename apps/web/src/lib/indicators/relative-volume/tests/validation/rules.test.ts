@@ -178,7 +178,9 @@ describe("equity unsided volume (check 9) and Historical Mode policy (check 10)"
   });
 
   it("OHLCV_POLICY row, appended last in the registry, and a candle-only replay with no extras yields real ratios on every archived instrument", () => {
-    expect(INDICATOR_REGISTRY[INDICATOR_REGISTRY.length - 1].id).toBe("relativeVolume");
+    // Appended in its own build; later builds append after it (the registry is append-only).
+    expect(INDICATOR_REGISTRY.map((def) => def.id)).toContain("relativeVolume");
+    expect(INDICATOR_REGISTRY.findIndex((def) => def.id === "relativeVolume")).toBeGreaterThan(INDICATOR_REGISTRY.findIndex((def) => def.id === "liveRangeControl"));
     expect(HISTORICAL_INDICATOR_POLICIES.relativeVolume).toEqual({ requiredCapabilities: ["ohlcv"] });
     for (const provider of ["BINANCE", "DXFEED", "DATABENTO"] as const) {
       expect(historicalIndicatorAvailability("relativeVolume", new Set(["ohlcv"]), provider)).toEqual({ available: true, reason: null });

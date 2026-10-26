@@ -80,7 +80,9 @@ const reading = (overrides: Partial<RvolReading>): RvolReading => ({
 
 describe("relativeVolume -- identity, registry and Historical Mode policy", () => {
   it("is registered last with the brief's identity and an honest candle-only policy", () => {
-    expect(INDICATOR_REGISTRY[INDICATOR_REGISTRY.length - 1].id).toBe("relativeVolume");
+    // Appended in its own build; later builds append after it (the registry is append-only).
+    expect(INDICATOR_REGISTRY.map((def) => def.id)).toContain("relativeVolume");
+    expect(INDICATOR_REGISTRY.findIndex((def) => def.id === "relativeVolume")).toBeGreaterThan(INDICATOR_REGISTRY.findIndex((def) => def.id === "liveRangeControl"));
     expect(relativeVolumeIndicator.label).toBe("Relative Volume (Time of Day)");
     expect(relativeVolumeIndicator.category).toBe("technical");
     expect(relativeVolumeIndicator.placement).toEqual({ kind: "ownPane", priceLines: [1, 2, 3], autoscaleRange: { min: 0, max: 4 } });

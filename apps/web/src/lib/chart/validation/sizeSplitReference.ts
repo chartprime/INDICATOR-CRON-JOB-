@@ -70,10 +70,13 @@ export interface ReferenceMarkerResult {
   /** Cumulative large-tier delta over valid bars with no anchor reset (`anchor: tape`); null on an invalid bar. */
   large: (number | null)[];
   small: (number | null)[];
-  /** Bars where the bearish arrow (`arrowDown`) fires. */
+  /** Bars where the bearish arrow (`arrowDown`) fires: the condition's onset. */
   bearish: number[];
-  /** Bars where the bullish arrow (`arrowUp`) fires. */
+  /** Bars where the bullish arrow (`arrowUp`) fires: the condition's onset. */
   bullish: number[];
+  /** Bars where the bearish divergence condition holds, onset or continuing. */
+  bearishHeld: number[];
+  bullishHeld: number[];
   /** Bars where the tier-conflict condition turns on. */
   conflictOnsets: number[];
   /** Bars where the conflict condition holds (onset or continuing). */
@@ -97,8 +100,9 @@ export interface ReferenceMarkerOptions {
  * amendment 2) applied to a finished series: the ring is the `K` consecutive
  * valid bars immediately before `t`, means exclude `t`, an invalid bar breaks
  * the run, `h` is the ring bar with the highest close (latest if tied) and
- * `l` the one with the lowest; extremes are strict; the conflict onset needs
- * the previous bar in the same run to have held no conflict.
+ * `l` the one with the lowest; extremes are strict. Both markers fire on the
+ * onset only: the condition holds at `t` and did not hold in that direction at
+ * the previous bar of the same run (PM amendment to rule 11).
  */
 export function referenceMarkers(bars: readonly ReferenceBar[], options: ReferenceMarkerOptions): ReferenceMarkerResult {
   const { K, m, q } = options;
@@ -106,6 +110,8 @@ export function referenceMarkers(bars: readonly ReferenceBar[], options: Referen
   const small: (number | null)[] = [];
   const bearish: number[] = [];
   const bullish: number[] = [];
+  const bearishHeld: number[] = [];
+  const bullishHeld: number[] = [];
   const conflictOnsets: number[] = [];
   const conflictHolds: number[] = [];
   const state: (ReferenceState | null)[] = [];
@@ -115,6 +121,7 @@ export function referenceMarkers(bars: readonly ReferenceBar[], options: Referen
   let cumulativeSmall = 0;
   let run = 0;
   let previousConflict = false;
+  let previousDivergence: "bearish" | "bullish" | null = null;
   for (let t = 0; t < bars.length; t += 1) {
     const bar = bars[t];
     if (bar.largeBar === null || bar.smallBar === null) {
@@ -124,6 +131,7 @@ export function referenceMarkers(bars: readonly ReferenceBar[], options: Referen
       depth.push(null);
       run = 0;
       previousConflict = false;
+      previousDivergence = null;
       continue;
     }
     cumulativeLarge += bar.largeBar;
@@ -135,6 +143,7 @@ export function referenceMarkers(bars: readonly ReferenceBar[], options: Referen
       depth.push(null);
       run += 1;
       previousConflict = false;
+      previousDivergence = null;
       continue;
     }
     evaluated.push(t);
@@ -160,19 +169,29 @@ export function referenceMarkers(bars: readonly ReferenceBar[], options: Referen
     const largeL = large[l] as number;
     let barState: ReferenceState = "noExtreme";
     let barDepth: number | null = null;
+    let held: "bearish" | "bullish" | null = null;
     if (bar.close > bars[h].close) {
       barState = largeT > largeH ? "confirms" : "lags";
       if (largeT <= largeH - m * mabsL) {
-        bearish.push(t);
-        barDepth = largeT - largeH;
+        held = "bearish";
+        bearishHeld.push(t);
+        if (previousDivergence !== "bearish") {
+          bearish.push(t);
+          barDepth = largeT - largeH;
+        }
       }
     } else if (bar.close < bars[l].close) {
       barState = largeT < largeL ? "confirms" : "lags";
       if (largeT >= largeL + m * mabsL) {
-        bullish.push(t);
-        barDepth = largeT - largeL;
+        held = "bullish";
+        bullishHeld.push(t);
+        if (previousDivergence !== "bullish") {
+          bullish.push(t);
+          barDepth = largeT - largeL;
+        }
       }
     }
+    previousDivergence = held;
     state.push(barState);
     depth.push(barDepth);
     const strength = q * Math.sqrt(K + 1);
@@ -184,7 +203,7 @@ export function referenceMarkers(bars: readonly ReferenceBar[], options: Referen
     previousConflict = conflict;
     run += 1;
   }
-  return { large, small, bearish, bullish, conflictOnsets, conflictHolds, state, depth, evaluated };
+  return { large, small, bearish, bullish, bearishHeld, bullishHeld, conflictOnsets, conflictHolds, state, depth, evaluated };
 }
 
 /** Planted-event recall and off-label arrows: hits are arrows on a planted bar exactly, in the planted direction. */

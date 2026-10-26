@@ -48,6 +48,9 @@ interface CvdBaselineState {
   tail: { tsOpen: number; committed: boolean; delta: number | null; close: number } | null;
   value: number | null;
   divergence: "bearish" | "bullish" | null;
+  /** The divergence condition at the last committed bar, for the onset rule. */
+  previousDivergence: "bearish" | "bullish" | null;
+  heldNow: "bearish" | "bullish" | null;
 }
 
 function commitCvdTail(state: CvdBaselineState, K: number): void {
@@ -56,8 +59,10 @@ function commitCvdTail(state: CvdBaselineState, K: number): void {
   tail.committed = true;
   if (tail.delta === null) {
     state.ring.length = 0;
+    state.previousDivergence = null;
     return;
   }
+  state.previousDivergence = state.heldNow;
   state.base += tail.delta;
   state.ring.push({ close: tail.close, largeBar: tail.delta, smallBar: 0, large: state.base });
   if (state.ring.length > K) state.ring.splice(0, state.ring.length - K);
@@ -77,7 +82,7 @@ export const cvdDivergenceBaseline: RuntimeIndicatorDef<CvdBaselineState, CvdBas
   defaultSettings: { K: 20, m: 2 },
   lines: [{ key: "cvd" }],
   placement: { kind: "ownPane" },
-  createState: () => ({ ring: [], base: 0, tail: null, value: null, divergence: null }),
+  createState: () => ({ ring: [], base: 0, tail: null, value: null, divergence: null, previousDivergence: null, heldNow: null }),
   onBar: (ctx) => {
     const { bar, state, settings } = ctx;
     if (state.tail !== null && bar.ts_open < state.tail.tsOpen) return;
@@ -94,11 +99,13 @@ export const cvdDivergenceBaseline: RuntimeIndicatorDef<CvdBaselineState, CvdBas
     if (delta === null) {
       state.value = null;
       state.divergence = null;
+      state.heldNow = null;
     } else {
       const large = state.base + delta;
-      const evaluation = evaluateMarkers(state.ring, { close: bar.close, largeBar: delta, smallBar: 0, large }, false, { K: settings.K, m: settings.m, q: 2 });
+      const evaluation = evaluateMarkers(state.ring, { close: bar.close, largeBar: delta, smallBar: 0, large }, { conflict: false, divergence: state.previousDivergence }, { K: settings.K, m: settings.m, q: 2 });
       state.value = large;
       state.divergence = evaluation.divergence;
+      state.heldNow = evaluation.divergenceHeld;
       if (evaluation.divergence !== null) {
         ctx.markers.plotshape({
           shape: evaluation.divergence === "bearish" ? "arrowDown" : "arrowUp",

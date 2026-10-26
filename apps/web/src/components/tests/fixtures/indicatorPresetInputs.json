@@ -2071,6 +2071,76 @@
       "kind": "color"
     }
   ],
+  "sizeSplitDelta": [
+    {
+      "key": "tierMode",
+      "kind": "select",
+      "options": [
+        "auto",
+        "fixed"
+      ]
+    },
+    {
+      "key": "tierSize",
+      "kind": "numeric",
+      "min": 0.001,
+      "max": 1000000,
+      "step": 0.001
+    },
+    {
+      "key": "anchor",
+      "kind": "select",
+      "options": [
+        "day",
+        "week",
+        "tape"
+      ]
+    },
+    {
+      "key": "K",
+      "kind": "numeric",
+      "min": 10,
+      "max": 60,
+      "step": 5
+    },
+    {
+      "key": "m",
+      "kind": "numeric",
+      "min": 1,
+      "max": 4,
+      "step": 0.5
+    },
+    {
+      "key": "q",
+      "kind": "numeric",
+      "min": 1,
+      "max": 4,
+      "step": 0.5
+    },
+    {
+      "key": "minTapeShare",
+      "kind": "numeric",
+      "min": 0.2,
+      "max": 1,
+      "step": 0.05
+    },
+    {
+      "key": "showSmall",
+      "kind": "boolean"
+    },
+    {
+      "key": "showDivergence",
+      "kind": "boolean"
+    },
+    {
+      "key": "showConflict",
+      "kind": "boolean"
+    },
+    {
+      "key": "showBarLines",
+      "kind": "boolean"
+    }
+  ],
   "sma": [
     {
       "key": "length",

@@ -355,42 +355,50 @@ describe("sizeSplitDeltaMath -- anchor and gaps (rules 8 and 9, round 3 ruling 3
   });
 });
 
-describe("sizeSplitDeltaMath -- marker rule (rule 11, amendment 2)", () => {
+describe("sizeSplitDeltaMath -- marker rule (rule 11, amendment 2, PM onset amendment)", () => {
   const settings = { K: 2, m: 2, q: 2 };
+  const NONE = { conflict: false, divergence: null };
   const ring = [
     { close: 100, largeBar: 2, smallBar: -1, large: 2 },
     { close: 101, largeBar: 1, smallBar: -1, large: 3 },
   ];
 
   it("a strict new high confirms when large_t exceeds large_h, lags on equality, and arrows at depth m times the mean absolute contribution", () => {
-    expect(evaluateMarkers(ring, { close: 102, largeBar: 0.5, smallBar: 0, large: 3.5 }, false, settings).state).toBe("confirms");
-    expect(evaluateMarkers(ring, { close: 102, largeBar: 0, smallBar: 0, large: 3 }, false, settings).state).toBe("lags");
-    expect(evaluateMarkers(ring, { close: 101, largeBar: 0, smallBar: 0, large: 3 }, false, settings).state).toBe("noExtreme");
+    expect(evaluateMarkers(ring, { close: 102, largeBar: 0.5, smallBar: 0, large: 3.5 }, NONE, settings).state).toBe("confirms");
+    expect(evaluateMarkers(ring, { close: 102, largeBar: 0, smallBar: 0, large: 3 }, NONE, settings).state).toBe("lags");
+    expect(evaluateMarkers(ring, { close: 101, largeBar: 0, smallBar: 0, large: 3 }, NONE, settings).state).toBe("noExtreme");
     // mabsL = 1.5, depth needed 3: large_t <= 0
-    const shallow = evaluateMarkers(ring, { close: 102, largeBar: -2.5, smallBar: 0, large: 0.5 }, false, settings);
+    const shallow = evaluateMarkers(ring, { close: 102, largeBar: -2.5, smallBar: 0, large: 0.5 }, NONE, settings);
     expect(shallow.state).toBe("lags");
     expect(shallow.divergence).toBeNull();
-    const bearish = evaluateMarkers(ring, { close: 102, largeBar: -3, smallBar: 0, large: 0 }, false, settings);
+    const bearish = evaluateMarkers(ring, { close: 102, largeBar: -3, smallBar: 0, large: 0 }, NONE, settings);
     expect(bearish.divergence).toBe("bearish");
     expect(bearish.depth).toBe(-3);
-    const bullish = evaluateMarkers(ring, { close: 99, largeBar: 3, smallBar: 0, large: 6 }, false, settings);
+    const bullish = evaluateMarkers(ring, { close: 99, largeBar: 3, smallBar: 0, large: 6 }, NONE, settings);
     // l is the bar with close 100 (large 2); 6 >= 2 + 3
     expect(bullish.divergence).toBe("bullish");
     expect(bullish.state).toBe("lags");
     expect(bullish.depth).toBe(4);
-    expect(evaluateMarkers(ring.slice(0, 1), { close: 102, largeBar: -3, smallBar: 0, large: 0 }, false, settings).state).toBeNull();
+    expect(evaluateMarkers(ring.slice(0, 1), { close: 102, largeBar: -3, smallBar: 0, large: 0 }, NONE, settings).state).toBeNull();
+    // Onset only: the same condition held at the previous valid bar draws nothing but still reads as held.
+    const continuing = evaluateMarkers(ring, { close: 102, largeBar: -3, smallBar: 0, large: 0 }, { conflict: false, divergence: "bearish" }, settings);
+    expect(continuing.divergenceHeld).toBe("bearish");
+    expect(continuing.divergence).toBeNull();
+    expect(continuing.depth).toBeNull();
+    const flipped = evaluateMarkers(ring, { close: 102, largeBar: -3, smallBar: 0, large: 0 }, { conflict: false, divergence: "bullish" }, settings);
+    expect(flipped.divergence).toBe("bearish");
   });
 
   it("the conflict holds when the two tier sums oppose at strength q·sqrt(K+1) and fires only at its onset", () => {
     // ring sums: large 3, small -2; mabsL 1.5, mabsS 1; strength 2*sqrt(3) = 3.464 -> need |sumL| >= 5.2, |sumS| >= 3.46
-    const held = evaluateMarkers(ring, { close: 101, largeBar: 3, smallBar: -2, large: 6 }, false, settings);
+    const held = evaluateMarkers(ring, { close: 101, largeBar: 3, smallBar: -2, large: 6 }, NONE, settings);
     expect(held.conflictHeld).toBe(true);
     expect(held.conflictOnset).toBe(true);
     expect(held.conflictSums).toEqual([6, -4]);
-    const continuing = evaluateMarkers(ring, { close: 101, largeBar: 3, smallBar: -2, large: 6 }, true, settings);
+    const continuing = evaluateMarkers(ring, { close: 101, largeBar: 3, smallBar: -2, large: 6 }, { conflict: true, divergence: null }, settings);
     expect(continuing.conflictHeld).toBe(true);
     expect(continuing.conflictOnset).toBe(false);
-    const sameSign = evaluateMarkers(ring, { close: 101, largeBar: 3, smallBar: 5, large: 6 }, false, settings);
+    const sameSign = evaluateMarkers(ring, { close: 101, largeBar: 3, smallBar: 5, large: 6 }, NONE, settings);
     expect(sameSign.conflictHeld).toBe(false);
   });
 });

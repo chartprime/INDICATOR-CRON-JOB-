@@ -124,6 +124,8 @@ export interface SizeSplitReading {
   state: ConfirmationState | null;
   divergence: DivergenceDirection | null;
   depth: number | null;
+  /** The divergence condition at this bar, drawn or not. */
+  divergenceHeld: DivergenceDirection | null;
   conflictHeld: boolean;
   conflictOnset: boolean;
   conflictSums: readonly [number, number] | null;
@@ -276,6 +278,9 @@ export function anchorStartFor(tsOpen: number, anchor: SizeSplitAnchor): number 
 
 export interface MarkerEvaluation {
   state: ConfirmationState | null;
+  /** The divergence condition at this bar. */
+  divergenceHeld: DivergenceDirection | null;
+  /** The drawn arrow: the condition's onset, held at this bar and not held in the same direction at the previous valid bar (PM amendment to rule 11). */
   divergence: DivergenceDirection | null;
   depth: number | null;
   conflictHeld: boolean;
@@ -283,7 +288,7 @@ export interface MarkerEvaluation {
   conflictSums: readonly [number, number] | null;
 }
 
-const NO_EVALUATION: MarkerEvaluation = Object.freeze({ state: null, divergence: null, depth: null, conflictHeld: false, conflictOnset: false, conflictSums: null });
+const NO_EVALUATION: MarkerEvaluation = Object.freeze({ state: null, divergenceHeld: null, divergence: null, depth: null, conflictHeld: false, conflictOnset: false, conflictSums: null });
 
 /**
  * Rule 11 and amendment 2 for bar `t` against a full ring of `K` valid committed
@@ -292,13 +297,16 @@ const NO_EVALUATION: MarkerEvaluation = Object.freeze({ state: null, divergence:
  * large_h`, lags otherwise, and draws the bearish arrow when `large_t <=
  * large_h - m · mabsL`; the mirror for a strict new low. The conflict holds
  * when the ring-plus-`t` sums of the two tiers oppose each other and each
- * clears `q · sqrt(K + 1)` times its tier's mean absolute contribution; the
- * onset is the first bar it holds after it did not.
+ * clears `q · sqrt(K + 1)` times its tier's mean absolute contribution. Both
+ * markers fire on the onset only: the condition holds at `t` and did not hold
+ * (in that direction) at the previous valid bar, so a trend where every bar is
+ * a new extreme with a lagging large tier marks once and again only after the
+ * condition has cleared (PM amendment to rule 11).
  */
 export function evaluateMarkers(
   ring: readonly MarkerRingEntry[],
   bar: { close: number; largeBar: number; smallBar: number; large: number },
-  previousConflict: boolean,
+  previous: { conflict: boolean; divergence: DivergenceDirection | null },
   settings: Pick<SizeSplitMathSettings, "K" | "m" | "q">,
 ): MarkerEvaluation {
   const K = settings.K;
@@ -321,24 +329,25 @@ export function evaluateMarkers(
   const mabsL = sumAbsLarge / ring.length;
   const mabsS = sumAbsSmall / ring.length;
   let state: ConfirmationState = "noExtreme";
-  let divergence: DivergenceDirection | null = null;
+  let divergenceHeld: DivergenceDirection | null = null;
   let depth: number | null = null;
   if (bar.close > ring[h].close) {
     state = bar.large > ring[h].large ? "confirms" : "lags";
     if (bar.large <= ring[h].large - settings.m * mabsL) {
-      divergence = "bearish";
+      divergenceHeld = "bearish";
       depth = bar.large - ring[h].large;
     }
   } else if (bar.close < ring[l].close) {
     state = bar.large < ring[l].large ? "confirms" : "lags";
     if (bar.large >= ring[l].large + settings.m * mabsL) {
-      divergence = "bullish";
+      divergenceHeld = "bullish";
       depth = bar.large - ring[l].large;
     }
   }
+  const divergence = divergenceHeld !== null && divergenceHeld !== previous.divergence ? divergenceHeld : null;
   const strength = settings.q * Math.sqrt(K + 1);
   const conflictHeld = Math.sign(sumLarge) * Math.sign(sumSmall) < 0 && Math.abs(sumLarge) >= strength * mabsL && Math.abs(sumSmall) >= strength * mabsS;
-  return { state, divergence, depth, conflictHeld, conflictOnset: conflictHeld && !previousConflict, conflictSums: [sumLarge, sumSmall] };
+  return { state, divergenceHeld, divergence, depth: divergence === null ? null : depth, conflictHeld, conflictOnset: conflictHeld && !previous.conflict, conflictSums: [sumLarge, sumSmall] };
 }
 
 /** Status precedence, first match wins (rule 12, amendment 5). */
@@ -376,6 +385,7 @@ export function createSizeSplitEngine(settings: SizeSplitMathSettings): SizeSpli
   let anchorStart: number | null = null;
   let anchorSeen = false;
   let previousConflict = false;
+  let previousDivergence: DivergenceDirection | null = null;
   let lastCondition: SizeSplitCondition | null = null;
   /** Whether a valid bar has committed in this anchor window (a gap needs a valid bar before it). */
   let validEver = false;
@@ -399,7 +409,7 @@ export function createSizeSplitEngine(settings: SizeSplitMathSettings): SizeSpli
     const large = record.valid ? base.large + (record.largeBar as number) : null;
     const small = record.valid ? base.small + (record.smallBar as number) : null;
     const evaluation = record.valid
-      ? evaluateMarkers(markerRing, { close: record.close, largeBar: record.largeBar as number, smallBar: record.smallBar as number, large: large as number }, previousConflict, settings)
+      ? evaluateMarkers(markerRing, { close: record.close, largeBar: record.largeBar as number, smallBar: record.smallBar as number, large: large as number }, { conflict: previousConflict, divergence: previousDivergence }, settings)
       : NO_EVALUATION;
     const own = record.valid ? conditionOf(record.tsOpen, evaluation) : null;
     return {
@@ -418,6 +428,7 @@ export function createSizeSplitEngine(settings: SizeSplitMathSettings): SizeSpli
       ringLength: markerRing.length,
       state: evaluation.state,
       divergence: evaluation.divergence,
+      divergenceHeld: evaluation.divergenceHeld,
       depth: evaluation.depth,
       conflictHeld: evaluation.conflictHeld,
       conflictOnset: evaluation.conflictOnset,
@@ -454,6 +465,7 @@ export function createSizeSplitEngine(settings: SizeSplitMathSettings): SizeSpli
       markerRing.push({ close: record.close, largeBar: record.largeBar as number, smallBar: record.smallBar as number, large: base.large });
       if (markerRing.length > settings.K) markerRing.splice(0, markerRing.length - settings.K);
       previousConflict = reading.conflictHeld;
+      previousDivergence = reading.divergenceHeld;
       const own = conditionOf(record.tsOpen, reading);
       if (own !== null) lastCondition = own;
       validEver = true;
@@ -461,6 +473,7 @@ export function createSizeSplitEngine(settings: SizeSplitMathSettings): SizeSpli
     } else {
       markerRing.length = 0;
       previousConflict = false;
+      previousDivergence = null;
       if (validEver) {
         gapBars = validSinceGap > 0 ? 1 : gapBars + 1;
         validSinceGap = 0;
@@ -480,6 +493,7 @@ export function createSizeSplitEngine(settings: SizeSplitMathSettings): SizeSpli
         base.small = 0;
         markerRing.length = 0;
         previousConflict = false;
+        previousDivergence = null;
         lastCondition = null;
         validEver = false;
         gapBars = 0;

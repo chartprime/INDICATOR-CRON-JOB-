@@ -204,21 +204,24 @@ export interface CompressionBreakoutLabels {
   direction: 1 | -1;
 }
 
+export interface CompressionSeriesOptions extends FixtureOptions {
+  leadBars?: number;
+  compressionBars?: number;
+  direction?: 1 | -1;
+  initialHalfWidth?: number;
+  finalHalfWidth?: number;
+}
+
+type CompressionAftermath = "trend" | "fail" | "hold";
+
 /**
- * A wide range that contracts bar by bar over `compressionBars`, then a bar
- * that closes well outside the compressed range and a trend that follows.
- * `breakoutIndex` is the bar to detect; anything earlier is a false positive
- * and anything later is late.
+ * The one generator behind the three compression fixtures: a wide range over
+ * `leadBars`, a range contracting bar by bar over `compressionBars`, the bar
+ * that closes well outside the compressed range, then the aftermath. The
+ * random stream is identical for every aftermath through `breakoutIndex`, so
+ * the three fixtures share their lead, their compression and their break bar.
  */
-export function compressionBreakoutBars(
-  options: FixtureOptions & {
-    leadBars?: number;
-    compressionBars?: number;
-    direction?: 1 | -1;
-    initialHalfWidth?: number;
-    finalHalfWidth?: number;
-  } = {},
-): LabelledBars<CompressionBreakoutLabels> {
+function compressionSeries(options: CompressionSeriesOptions, aftermath: CompressionAftermath): LabelledBars<CompressionBreakoutLabels> {
   const { seed, count, startTs, intervalMs, startPrice, identity, baseVolume } = defaults({ count: 400, ...options });
   const leadBars = options.leadBars ?? 100;
   const compressionBars = options.compressionBars ?? 120;
@@ -232,6 +235,15 @@ export function compressionBreakoutBars(
   let price = startPrice;
   let compressionHigh = -Infinity;
   let compressionLow = Infinity;
+  const compressionBar = (progress: number, volumeScale: (random: () => number) => number): BarSpec => {
+    const halfWidth = initialHalfWidth + (finalHalfWidth - initialHalfWidth) * progress;
+    const open = Math.min(startPrice + halfWidth * 0.8, Math.max(startPrice - halfWidth * 0.8, price));
+    const target = startPrice + (random() - 0.5) * 2 * halfWidth * 0.8;
+    const close = open + (target - open) * 0.6;
+    const room = halfWidth - Math.max(Math.abs(close - startPrice), Math.abs(open - startPrice));
+    const wick = Math.max(0, Math.min(random() * halfWidth * 0.2, room));
+    return candle(open, close, wick, baseVolume * volumeScale(random), 0.5 + (random() - 0.5) * 0.06);
+  };
   for (let index = 0; index < count; index += 1) {
     let spec: BarSpec;
     if (index < leadBars) {
@@ -241,13 +253,7 @@ export function compressionBreakoutBars(
       spec = candle(open, close, random() * initialHalfWidth * 0.1, baseVolume * (0.8 + random() * 0.4), 0.5 + (random() - 0.5) * 0.1);
     } else if (index < breakoutIndex) {
       const progress = (index - leadBars) / Math.max(1, compressionBars - 1);
-      const halfWidth = initialHalfWidth + (finalHalfWidth - initialHalfWidth) * progress;
-      const open = Math.min(startPrice + halfWidth * 0.8, Math.max(startPrice - halfWidth * 0.8, price));
-      const target = startPrice + (random() - 0.5) * 2 * halfWidth * 0.8;
-      const close = open + (target - open) * 0.6;
-      const room = halfWidth - Math.max(Math.abs(close - startPrice), Math.abs(open - startPrice));
-      const wick = Math.max(0, Math.min(random() * halfWidth * 0.2, room));
-      spec = candle(open, close, wick, baseVolume * (0.9 - progress * 0.4 + random() * 0.2), 0.5 + (random() - 0.5) * 0.06);
+      spec = compressionBar(progress, (r) => 0.9 - progress * 0.4 + r() * 0.2);
       compressionHigh = Math.max(compressionHigh, spec.high);
       compressionLow = Math.min(compressionLow, spec.low);
     } else if (index === breakoutIndex) {
@@ -262,6 +268,21 @@ export function compressionBreakoutBars(
         volume: baseVolume * 3,
         buyShare: direction > 0 ? 0.75 : 0.25,
       };
+    } else if (aftermath === "fail" && index === breakoutIndex + 1) {
+      // Straight back to the middle of the range on ordinary volume: the failure bar.
+      const open = price;
+      const close = startPrice;
+      spec = { open, close, high: Math.max(open, close) + 5, low: Math.min(open, close) - 5, volume: baseVolume * 1.5, buyShare: 0.5 };
+    } else if (aftermath === "fail") {
+      // The compression generator at progress 1, on reduced volume.
+      spec = compressionBar(1, (r) => 0.5 + 0.2 * r());
+    } else if (aftermath === "hold") {
+      // Drift with no trend, never closer to the range than a fifth of the initial half width beyond its edge.
+      const edge = direction > 0 ? compressionHigh : compressionLow;
+      const open = price;
+      const raw = open + (random() - 0.5) * 16;
+      const close = direction > 0 ? Math.max(edge + 0.2 * initialHalfWidth, raw) : Math.min(edge - 0.2 * initialHalfWidth, raw);
+      spec = candle(open, close, random() * 8, baseVolume * (1 + random() * 0.6), 0.5 + direction * 0.12 + (random() - 0.5) * 0.08);
     } else {
       const open = price;
       const close = Math.max(1, open + direction * 10 + (random() - 0.5) * 16);
@@ -279,6 +300,102 @@ export function compressionBreakoutBars(
       compressionHigh: round(compressionHigh),
       compressionLow: round(compressionLow),
       direction,
+    },
+  };
+}
+
+/**
+ * A wide range that contracts bar by bar over `compressionBars`, then a bar
+ * that closes well outside the compressed range and a trend that follows.
+ * `breakoutIndex` is the bar to detect; anything earlier is a false positive
+ * and anything later is late.
+ */
+export function compressionBreakoutBars(options: CompressionSeriesOptions = {}): LabelledBars<CompressionBreakoutLabels> {
+  return compressionSeries(options, "trend");
+}
+
+export interface CompressionFailedBreakLabels extends CompressionBreakoutLabels {
+  /** The bar after the break that closes back at the middle of the range. */
+  failIndex: number;
+}
+
+/**
+ * `compressionBreakoutBars` through the break bar (identical random stream), then
+ * a bar closing back at `startPrice` on 1.5× base volume, then compression bars
+ * at progress 1 on half volume: the labelled failed break.
+ */
+export function compressionFailedBreakBars(options: CompressionSeriesOptions = {}): LabelledBars<CompressionFailedBreakLabels> {
+  const { bars, labels } = compressionSeries(options, "fail");
+  return { bars, labels: { ...labels, failIndex: labels.breakoutIndex + 1 } };
+}
+
+export interface CompressionContinuationLabels extends CompressionBreakoutLabels {
+  /** Five bars after the break, every close still beyond the edge: the labelled "held outside". */
+  heldIndex: number;
+  heldBars: number;
+}
+
+/**
+ * `compressionBreakoutBars` through the break bar (identical random stream), then
+ * closes held at least a fifth of the initial half width beyond the broken edge
+ * with no trend: the labelled continuation.
+ */
+export function compressionContinuationBars(options: CompressionSeriesOptions & { heldBars?: number } = {}): LabelledBars<CompressionContinuationLabels> {
+  const heldBars = options.heldBars ?? 5;
+  const { bars, labels } = compressionSeries(options, "hold");
+  return { bars, labels: { ...labels, heldIndex: labels.breakoutIndex + heldBars, heldBars } };
+}
+
+export interface LongCompressionLabels extends CompressionBreakoutLabels {
+  /** Where the adversarial replay test rebuilds from, as if the earlier bars had left retention. */
+  rebuildFromIndex: number;
+}
+
+/** A coil that outlives a 500-bar range lifetime: 40 lead bars, 700 compression bars, the break at 740, 1,400 bars in all. */
+export function longCompressionBars(options: CompressionSeriesOptions & { rebuildFromIndex?: number } = {}): LabelledBars<LongCompressionLabels> {
+  const { bars, labels } = compressionSeries({ leadBars: 40, compressionBars: 700, count: 1_400, ...options }, "trend");
+  return { bars, labels: { ...labels, rebuildFromIndex: options.rebuildFromIndex ?? 300 } };
+}
+
+export interface ConstantWidthLabels {
+  regime: "constantWidth";
+  /** Every 20-bar window spans exactly this. */
+  width: number;
+  /** Every bar's true range, so width over the preceding mean true range is `width / trueRange`. */
+  trueRange: number;
+  /** Rebuild offsets the replay-policy test uses to pin the phase difference. */
+  rebuildOffsets: readonly number[];
+}
+
+/**
+ * The replay-policy fixture of brief amendment 1: a constant-width band with a
+ * non-zero true range on every bar and no close ever beyond the band's
+ * extremes, so a frozen range qualifies at every window, never breaks and
+ * expires at the lifetime; a live instance and one rebuilt from an offset then
+ * open their ranges at different phases for as long as the series lasts.
+ * Bars alternate between a down bar closing at `center − amplitude` and an up
+ * bar closing at `center + amplitude`, wicks of 5 beyond the body.
+ */
+export function constantWidthBars(
+  options: FixtureOptions & { amplitude?: number; rebuildOffsets?: readonly number[] } = {},
+): LabelledBars<ConstantWidthLabels> {
+  const { count, startTs, intervalMs, startPrice, identity, baseVolume } = defaults({ count: 3_000, ...options });
+  const amplitude = options.amplitude ?? 50;
+  const wick = 5;
+  const bars: BarFrame[] = [];
+  for (let index = 0; index < count; index += 1) {
+    const up = index % 2 === 1;
+    const open = up ? startPrice - amplitude : startPrice + amplitude;
+    const close = up ? startPrice + amplitude : startPrice - amplitude;
+    bars.push(barFrame(startTs + index * intervalMs, candle(open, close, wick, baseVolume, 0.5), identity, intervalMs));
+  }
+  return {
+    bars,
+    labels: {
+      regime: "constantWidth",
+      width: 2 * amplitude + 2 * wick,
+      trueRange: 2 * amplitude + 2 * wick,
+      rebuildOffsets: options.rebuildOffsets ?? [0, 137, 500],
     },
   };
 }

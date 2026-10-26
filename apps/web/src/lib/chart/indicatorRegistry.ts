@@ -44,6 +44,7 @@ import { exhaustionIndicator } from "../indicators/exhaustion/exhaustionIndicato
 import { initiativeIndicator } from "../indicators/initiative/initiativeIndicator";
 import { liveRangeControlIndicator } from "../indicators/live-range-control/liveRangeControlIndicator";
 import { relativeVolumeIndicator } from "../indicators/relative-volume/relativeVolume";
+import { compressionBreakoutIndicator } from "../indicators/compression-breakout/compressionBreakout";
 import type { HistoricalIndicatorCapability } from "../archive/historicalIndicatorSeries";
 import type { BarFrame } from "../../types/frames";
 
@@ -93,6 +94,7 @@ export const INDICATOR_REGISTRY = [
   initiativeIndicator,
   liveRangeControlIndicator,
   relativeVolumeIndicator,
+  compressionBreakoutIndicator,
 ] as const satisfies readonly IndicatorDef[];
 
 if (
@@ -217,6 +219,7 @@ export const HISTORICAL_INDICATOR_POLICIES: Readonly<
     unavailableReason: "Requires the live heatmap's columns, which candle archives do not contain.",
   },
   relativeVolume: OHLCV_POLICY,
+  compressionBreakout: OHLCV_POLICY,
 });
 
 export const CANDLE_FLOW_INDICATOR_IDS: readonly IndicatorId[] = Object.freeze(

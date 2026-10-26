@@ -447,3 +447,69 @@ harmful (16/20 hits). File renamed from `brief-squeeze-breakout.md`; the
 plan-gate history above refers to the earlier name. Round 3 is the last plan
 round; the PM then approves by authority with remaining objections written in
 as amendments.
+
+## PM approval after Codex round 3 (the last plan round)
+
+APPROVED by PM authority. Codex round 3 (pm/log/codex/20261026T154840Z-plan-brief-compression-breakout.last.md)
+returned REVISE; Codex is right that authority does not resolve technical
+contradictions, so each point below is accepted as a binding amendment that
+replaces the conflicting sentence in the body. The builder writes the final
+rules into the doc page and the tests.
+
+1. **Replay policy, truthful.** A 500-bar lifetime does not synchronise the
+   range phase of a live and a rebuilt instance on a continuously qualifying
+   market. Policy: outputs, events, markers and drawn ranges are required
+   equal from the first retained bar at which the live instance holds no
+   active and no held range (a "quiet bar") and the 20 valid denominators
+   plus trendSlow + 5 closes lie inside retention; a non-zero compared count
+   is asserted on the breakout and control fixtures. Before the quiet bar the
+   difference is documented and pinned on a constant-width, non-zero true
+   range fixture of 3,000 bars rebuilt at offsets 0, 137 and 500. Lifetime,
+   failBars and holdBars count committed dispatched bars (invalid-price bars
+   included in the count; they skip every other commit step); denominators
+   count valid observations and carry no bar bound.
+2. **Establishment timeline.** The range opens on the qualifying committed
+   bar with age 0; age increments on each later committed bar whose close
+   stays inside; eligible for a break when age ≥ minCompressionBars, so the
+   earliest break at defaults is index 46 (open at 39). Fixtures, readiness
+   and the doc use this timeline.
+3. **Per-bar output snapshot.** readOutput reads a snapshot taken after the
+   decision and before retirement, so rangeHigh/rangeLow stay non-null on the
+   outcome bar; `pending` is 1 from the bar after the break through the
+   outcome bar inclusive and 0 after. The pinned seed-7 example is corrected
+   to this timeline.
+4. **State names.** `P` = pre-tail committed state kept for corrections of
+   the tail; `W` = working copy for every evaluation; `C` = committed state
+   after the tail, which seeds the next ts_open. Corrections restore from `P`
+   and recompute `C`.
+5. **Failure window.** A close beyond the opposite frozen edge during the
+   failure window is a failure (it passed back through the range); a close
+   outside on the break side stays pending.
+6. **Gaps and equities.** The gap rule applies only when interval_ms is below
+   one day; daily and weekly bars never reset on calendar gaps. Intraday
+   equity ranges reset at the overnight gap, stated as a limitation (the
+   session-open rule is deferred). Test on the harness equity fixtures at
+   1-minute and daily intervals. Price validity adds low ≤ open ≤ high.
+7. **UX.** Control label "Activity threshold (×)" with a hint that one
+   component passing gives a faded arrow and both a solid one; lastEvent is
+   the latest event of any kind (break, failed, held outside); warm-up shows
+   the single row required by the UX standard.
+8. **Validation.** Design seeds 7..16 are regression evidence. Evaluation
+   seeds 17..21, both directions, frozen criteria before any run: hits ≥ 9 of
+   10 with level valid on every hit, filtered early ≤ 2 in total, no
+   wrong-direction event in any matched window, failure and hold fixtures on
+   those seeds ≥ 4 of 5 each. TTM release and Bollinger crossing are timing
+   and density comparators only. Add a plain frozen-range baseline with no
+   width qualifier and identical establishment, grading and outcome rules; if
+   it matches the product on every metric including range-control density,
+   the PM decides at validation whether the width qualifier ships.
+   Wrong-direction is defined as a break event opposing the label inside the
+   matched window; opposite-direction events elsewhere are reported as early
+   or off-label. Expiry and trend readiness are tested with reduced settings
+   on separate fixtures. The live run's equality requirement follows the
+   policy in amendment 1.
+
+Build run authorised: worktree `/home/user/Terminal-L1-L2/worktrees/compression-breakout`,
+branch `build/compression-breakout` from main. UX pass mid-build; Codex code
+review before merge; validation on frozen fixtures plus the BTC/ETH live run
+through the REST transport.

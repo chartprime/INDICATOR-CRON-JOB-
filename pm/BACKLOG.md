@@ -49,7 +49,7 @@ replenishment rate after a wall is eaten.
 | VPS test host recipe | PM | done (`ops/test-host-recipe.md`) |
 | Browser-direct L1 parity (markers, big-print pool, tape coverage) | L1 specialist | DONE: merged to main after 4 Codex rounds (10 findings fixed); two WARNING left as documented limitations |
 | L1 parity follow-up: fill-id continuity before merging adjacent stream spans; keep staged bootstrap pages across a pair switch during the grace period | L1 specialist | TODO: own small branch from main, one Codex round |
-| Compression Range Breakout (pivoted from Squeeze Breakout Context) | OHLCV specialist | brief being rewritten for the range qualifier; Codex plan round 3 (last) follows |
+| Compression Range Breakout (pivoted from Squeeze Breakout Context) | OHLCV specialist | brief APPROVED after 3 Codex plan rounds (amendments bind); BUILD in progress on build/compression-breakout |
 | Size-Split Delta | L1 specialist | brief APPROVED after 3 Codex plan rounds (amendments bind); BUILD in progress on build/size-split-delta |
 | Depth capture on the owner's test host (`ops/enable-capture.sh`) | Owner | waiting for the host address and team credentials |
 

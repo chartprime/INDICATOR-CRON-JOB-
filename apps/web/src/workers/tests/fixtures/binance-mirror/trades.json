@@ -1,0 +1,5 @@
+[
+  { "stream": "btcusdt@trade", "data": { "e": "trade", "E": 1761400150010, "s": "BTCUSDT", "t": 5100000001, "p": "65090.00", "q": "0.01500", "T": 1761400150005, "m": false, "M": true } },
+  { "stream": "btcusdt@trade", "data": { "e": "trade", "E": 1761400151020, "s": "BTCUSDT", "t": 5100000002, "p": "65089.50", "q": "0.25000", "T": 1761400151012, "m": true, "M": true } },
+  { "stream": "btcusdt@trade", "data": { "e": "trade", "E": 1761400152030, "s": "BTCUSDT", "t": 5100000003, "p": "65091.00", "q": "0.00400", "T": 1761400152025, "m": false, "M": true } }
+]

@@ -14,6 +14,7 @@ import { LiquidityDecoder, type DecodedLiquidity, type LiquidityColumn } from ".
 import { LaneDecoder, type DecodedLane } from "../lib/l2/laneGrids";
 import { HISTORY_LEVELS_MS, HISTORY_ROW_FACTORS, decodeHistoryPage, historyTransferables, type DecodedHistoryPage } from "../lib/indicators/passive-liquidity/heatmapHistoryDecode";
 import { decodeHostWallPage, isWallFilter, type HostWallPage } from "../lib/l2/hostWalls";
+import { BROWSER_BINANCE_SOURCE, BrowserBinanceTransport, type DataSource, type TransportSocket } from "./browserBinanceTransport";
 
 export type WorkerToMainMessage =
   | {
@@ -144,7 +145,7 @@ export type BandHistoryRequest = {
 export type MainToWorkerMessage =
   | { kind: "flow_control" }
   | { kind: "ack" }
-  | { kind: "start"; url: string }
+  | { kind: "start"; url: string; source?: DataSource }
   | { kind: "stop" }
   | ({
       kind: "select";
@@ -177,8 +178,9 @@ const CONNECT_TIMEOUT_MS = 10_000;
 const STABLE_CONNECTION_MS = 12_000;
 const MAX_SERVER_MESSAGE_BYTES = 32 * 1024 * 1024;
 
-let ws: WebSocket | null = null;
+let ws: TransportSocket | null = null;
 let url = "";
+let source: DataSource | undefined;
 let backoffMs = BACKOFF_INITIAL_MS;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let stopped = true;
@@ -201,13 +203,24 @@ const pendingDeliveryBytes: number[] = [];
 let pendingBytes = 0;
 const MAX_PENDING_DELIVERIES = 4_000;
 const MAX_PENDING_DELIVERY_BYTES = 32 * 1024 * 1024;
-const socketCleanup = new WeakMap<WebSocket, () => void>();
+const socketCleanup = new WeakMap<TransportSocket, () => void>();
+
+/**
+ * The transport seam. With no data source set, the worker speaks to the
+ * runtime over a real WebSocket exactly as before; with "browser-binance" it
+ * reads Binance directly from the browser through an object that offers the
+ * same subset of the WebSocket interface and emits the same canonical frames.
+ */
+export function createTransport(socketUrl: string, dataSource: DataSource | undefined): TransportSocket {
+  if (dataSource === BROWSER_BINANCE_SOURCE) return new BrowserBinanceTransport(socketUrl);
+  return new WebSocket(socketUrl);
+}
 
 function traceNowMs(): number {
   return performance.timeOrigin + performance.now();
 }
 
-function releaseSocket(socket: WebSocket | null): void {
+function releaseSocket(socket: TransportSocket | null): void {
   if (!socket) return;
   socketCleanup.get(socket)?.();
   socketCleanup.delete(socket);
@@ -657,7 +670,7 @@ function isWebSocketUrl(value: unknown): value is string {
   }
 }
 
-function isCurrentSocket(socket: WebSocket): boolean {
+function isCurrentSocket(socket: TransportSocket): boolean {
   return !stopped && ws === socket;
 }
 
@@ -675,7 +688,7 @@ function clearConnectTimer(timer: ReturnType<typeof setTimeout> | null): void {
   if (timer !== null) clearTimeout(timer);
 }
 
-function failCurrentSocket(socket: WebSocket, reason: string): void {
+function failCurrentSocket(socket: TransportSocket, reason: string): void {
   if (!isCurrentSocket(socket)) return;
   releaseSocket(socket);
   ws = null;
@@ -688,7 +701,7 @@ function failCurrentSocket(socket: WebSocket, reason: string): void {
   scheduleReconnect();
 }
 
-function sendDesiredSelection(socket: WebSocket): void {
+function sendDesiredSelection(socket: TransportSocket): void {
   if (
     !isCurrentSocket(socket) ||
     desiredSelection === null ||
@@ -722,9 +735,9 @@ function connect(): void {
   if (stopped || flowPaused) return;
   if (!post({ kind: "status", status: "connecting" })) return;
 
-  let socket: WebSocket;
+  let socket: TransportSocket;
   try {
-    socket = new WebSocket(url);
+    socket = createTransport(url, source);
   } catch (error) {
     console.warn("marketDataWorker: failed to construct WebSocket", error);
     post({ kind: "status", status: "closed", reason: "construct-failed" });
@@ -957,7 +970,12 @@ self.onmessage = (event: MessageEvent<MainToWorkerMessage>) => {
     return;
   }
   if (msg.kind === "start") {
-    if (!hasExactKeys(msg, ["kind", "url"]) || !isWebSocketUrl(msg.url)) {
+    const hasSource = Object.hasOwn(msg, "source");
+    if (
+      !hasExactKeys(msg, hasSource ? ["kind", "source", "url"] : ["kind", "url"]) ||
+      !isWebSocketUrl(msg.url) ||
+      (hasSource && msg.source !== BROWSER_BINANCE_SOURCE)
+    ) {
       console.warn(
         "marketDataWorker: dropped start request with an invalid URL",
       );
@@ -978,6 +996,7 @@ self.onmessage = (event: MessageEvent<MainToWorkerMessage>) => {
       return;
     }
     url = msg.url;
+    source = hasSource ? BROWSER_BINANCE_SOURCE : undefined;
     stopped = false;
     backoffMs = BACKOFF_INITIAL_MS;
     desiredSelection = null;

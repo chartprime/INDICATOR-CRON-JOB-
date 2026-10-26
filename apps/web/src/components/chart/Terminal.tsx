@@ -410,7 +410,7 @@ export function Terminal() {
         )}
         <div className="status-chip">
           <span className={`dot ${status === "open" ? (feedInitializing ? "connecting" : feedUnavailable ? (historyOnly ? "quiet" : "unavailable") : feedQuiet ? "quiet" : backendDegraded ? (feedStale ? "stale" : feedHealth!.recoveryState.toLowerCase()) : "pulse") : status}`} />
-          {status === "open" ? (feedInitializing ? "SYNCING" : feedUnavailable ? (historyOnly ? "HISTORY ONLY" : feedHealth!.recoveryState) : feedQuiet ? "QUIET" : backendDegraded ? (feedStale ? "STALE" : feedHealth!.recoveryState) : "LIVE") : status.toUpperCase()}
+          {status === "open" ? (feedInitializing ? "SYNCING" : feedUnavailable ? (historyOnly ? "HISTORY ONLY" : feedHealth!.recoveryState) : feedQuiet ? "QUIET" : backendDegraded ? (feedStale ? "STALE" : feedHealth!.recoveryState) : feedHealth?.reason ? `LIVE (${feedHealth.reason})` : "LIVE") : status.toUpperCase()}
         </div>
           </>
         )}

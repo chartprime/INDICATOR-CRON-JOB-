@@ -4813,3 +4813,1748 @@ index 9c0df5f..6a2f2b6 100644
   }
 }
 
+codex
+I found two likely gaps: weight reservations stop advancing when the exchange header exceeds the local count, and backfill requests bypass the shared rate-limit pause. I’m checking the tests and server integration to confirm the impact.
+exec
+/bin/bash -lc "git show build/binance-rest-transport:apps/runtime/test/providers/binance/binance-rest-connection.test.js | rg -n 'test\\(|serverTime|backfill|quiesce|clock|seed|unavailable'; git show build/binance-rest-transport:apps/runtime/test/providers/binance/binance-rest-bar-cursor.test.js; sed -n '25,145p' apps/runtime/src/providers/binance/binance-kline-backfill.js; rg -n 'tradeAvailability|LIVE_COMPLETE|binanceDepthFrame|l2Binding|recordingStale|feedHealth' apps/runtime/src/server/market-data-server.js" in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+24: * A scripted Binance: candles are derived from the fake clock, so the same
+26: * answer with the fake clock plus a configurable skew.
+30:    serverTimeOffsetMs: 0,
+43:    return Math.floor((Date.now() + state.serverTimeOffsetMs) / MINUTE) * MINUTE;
+66:        return respond({ serverTime: Date.now() + state.serverTimeOffsetMs, symbols: [] });
+68:        return respond({ serverTime: Date.now() + state.serverTimeOffsetMs });
+107:// Advance the fake clock, then let the fetch and body-reading promise chains
+137:describe("binance-rest-connection: route, clock and subscriptions", () => {
+138:  test("binanceTransportFromEnv defaults to ws, accepts rest, refuses anything else", () => {
+145:  test("connect() probes exchangeInfo (weight 20) for the route and the exchange clock; PERPETUAL routes stay DISCONNECTED and cannot be subscribed", async () => {
+147:    fake.state.serverTimeOffsetMs = 1500;
+160:    expect(stats).toMatchObject({ transport: "rest", routeState: "CONNECTED", probes: 1, clockSyncs: 1, exchangeOffsetMs: 1500 });
+164:  test("the exchange clock is refreshed from /api/v3/time once a minute, charged 1 to the budget, and a failed refresh keeps the last offset", async () => {
+169:    expect(created.getOperationalStats()).toMatchObject({ clockSyncs: 2, exchangeOffsetMs: 0 });
+170:    fake.state.serverTimeOffsetMs = -2000;
+172:    expect(created.getOperationalStats()).toMatchObject({ clockSyncs: 3, exchangeOffsetMs: -2000 });
+175:    expect(created.getOperationalStats()).toMatchObject({ clockSyncs: 3, clockRefreshFailures: 1, exchangeOffsetMs: -2000, routeState: "CONNECTED" });
+180:  test("the tape and the book are accepted but unavailable: no trade frames, book UNAVAILABLE with reason REST_NO_DEPTH, health flagged unserved", async () => {
+203:  test("unsubscribing the last holder cancels the in-flight request and a response that lands afterwards is thrown away", async () => {
+223:  test("removeConsumer releases every subscription of a consumer and quiesce resolves once nothing is in flight", async () => {
+230:    const settled = created.quiesce({ timeoutMs: 1000 });
+237:  test("polls the previous and forming bar: a revision only when a field changed, the close emitted once after the grace, with the WebSocket kline envelope shape", async () => {
+251:    await tick(400); // 700 ms after the close: the grace has not passed on the exchange clock
+269:  test("clock skew: with the machine 30 s ahead of the exchange, a bar the exchange still has open is never finalised early", async () => {
+271:    fake.state.serverTimeOffsetMs = -45_000; // the machine is :30 into a minute, the exchange :45 into the previous one
+287:  test("a multi-minute outage: polls fail, the feed goes stale then UNAVAILABLE, and after it catch-up emits every missed close in order before the two-row poll resumes", async () => {
+317:  test("catch-up pages hold 1000 candles, continue from the confirmed close, run at most maxCatchUpPages back to back, and read catching up while they run", async () => {
+347:  test("429 pauses every poll for Retry-After and says rate limited; a 418 stops polling for its ban window and takes the route down until a probe succeeds", async () => {
+373:    await tick(8500); // inside the 10 s ban window (the fake clock drifts a few ms per tick)
+382:  test("three transport failures in a row take the route down until a probe succeeds; a failed poll emits nothing and reads poll failed, never a quiet market", async () => {
+408:  test("weight is reserved before dispatch: a budget too small for the pairs lengthens the cadence and the reason says slow polling", async () => {
+419:  test("a 429 whose header says the whole limit is spent stops every poll until the minute turns, even after Retry-After", async () => {
+434:  test("when the exchange reports the budget already spent, concurrent polls are deferred to the next minute instead of sent", async () => {
+451:  test("the candle backfill goes through the same budget and reads the exchange's count back", async () => {
+const { createBinanceRestBarCursor } = require("../../../src/providers/binance/binance-rest-bar-cursor");
+const { parseKlineRows } = require("../../../src/providers/binance/binance-event-normalizer");
+
+const MINUTE = 60_000;
+const T0 = 1_800_000_000_000 - (1_800_000_000_000 % MINUTE);
+
+function rawRow(openTime, { open = "64200.00", high = "64300.50", low = "64150.25", close = "64275.99", volume = "12.3", trades = 418, takerBuy = "6.0" } = {}) {
+  return [openTime, open, high, low, close, volume, openTime + MINUTE - 1, "792345.11", trades, takerBuy, "385000.0", "0"];
+}
+
+function rows(...raws) {
+  const parsed = parseKlineRows(raws, MINUTE);
+  if (parsed === null) throw new Error("test rows must parse");
+  return parsed;
+}
+
+describe("binance-rest-bar-cursor", () => {
+  test("classifies every row by its own close time against the exchange clock, not by position: the previous bar is final, the current forms", () => {
+    const cursor = createBinanceRestBarCursor({ intervalMs: MINUTE, finalizeGraceMs: 1000 });
+    const exchangeNow = T0 + 2 * MINUTE + 30_000;
+    expect(cursor.nextRequest(exchangeNow)).toEqual({ startTime: T0 + MINUTE, limit: 2, catchUp: false });
+    const outcome = cursor.apply({ rows: rows(rawRow(T0 + MINUTE), rawRow(T0 + 2 * MINUTE)), exchangeNowMs: exchangeNow, seq: 1 });
+    expect(outcome.stale).toBe(false);
+    expect(outcome.emit.map(({ row, closed }) => [row.openTime - T0, closed])).toEqual([[MINUTE, true], [2 * MINUTE, false]]);
+    expect(cursor.confirmedOpenTime).toBe(T0 + MINUTE);
+  });
+
+  test("a revision replaces the same forming bar only when it changed; finalisation happens once, with the grace after the close", () => {
+    const cursor = createBinanceRestBarCursor({ intervalMs: MINUTE, finalizeGraceMs: 1000 });
+    cursor.apply({ rows: rows(rawRow(T0), rawRow(T0 + MINUTE)), exchangeNowMs: T0 + MINUTE + 10_000, seq: 1 });
+    const unchanged = cursor.apply({ rows: rows(rawRow(T0), rawRow(T0 + MINUTE)), exchangeNowMs: T0 + MINUTE + 11_000, seq: 2 });
+    expect(unchanged.emit).toEqual([]);
+    const revised = cursor.apply({ rows: rows(rawRow(T0), rawRow(T0 + MINUTE, { close: "64280.00" })), exchangeNowMs: T0 + MINUTE + 12_000, seq: 3 });
+    expect(revised.emit.map(({ row, closed }) => [row.openTime - T0, closed, row.close])).toEqual([[MINUTE, false, "64280.00"]]);
+    // Exactly at the close the bar is still forming (the grace has not passed); one second later it is final, once.
+    const atClose = cursor.apply({ rows: rows(rawRow(T0 + MINUTE, { close: "64281.00" }), rawRow(T0 + 2 * MINUTE)), exchangeNowMs: T0 + 2 * MINUTE + 500, seq: 4 });
+    expect(atClose.emit.map(({ row, closed }) => [row.openTime - T0, closed])).toEqual([[MINUTE, false], [2 * MINUTE, false]]);
+    const afterGrace = cursor.apply({ rows: rows(rawRow(T0 + MINUTE, { close: "64281.00" }), rawRow(T0 + 2 * MINUTE)), exchangeNowMs: T0 + 2 * MINUTE + 1000, seq: 5 });
+    expect(afterGrace.emit.map(({ row, closed }) => [row.openTime - T0, closed])).toEqual([[MINUTE, true]]);
+    const again = cursor.apply({ rows: rows(rawRow(T0 + MINUTE, { close: "64281.00" }), rawRow(T0 + 2 * MINUTE)), exchangeNowMs: T0 + 2 * MINUTE + 2000, seq: 6 });
+    expect(again.emit).toEqual([]);
+    expect(cursor.confirmedOpenTime).toBe(T0 + MINUTE);
+  });
+
+  test("the forming-bar change detector compares every downstream field: open, high, low, close, volume, taker-buy volume and trade count", () => {
+    const cursor = createBinanceRestBarCursor({ intervalMs: MINUTE });
+    const at = T0 + MINUTE + 10_000;
+    let seq = 1;
+    const emitForming = (overrides) => cursor.apply({ rows: rows(rawRow(T0), rawRow(T0 + MINUTE, overrides)), exchangeNowMs: at, seq: seq++ }).emit
+      .filter(({ closed }) => !closed).length;
+    expect(emitForming({})).toBe(1);
+    expect(emitForming({})).toBe(0);
+    for (const change of [
+      { open: "64201.00" },
+      { high: "64301.00", open: "64201.00" },
+      { low: "64100.00", high: "64301.00", open: "64201.00" },
+      { close: "64280.00", low: "64100.00", high: "64301.00", open: "64201.00" },
+      { volume: "12.4", close: "64280.00", low: "64100.00", high: "64301.00", open: "64201.00" },
+      { takerBuy: "6.1", volume: "12.4", close: "64280.00", low: "64100.00", high: "64301.00", open: "64201.00" },
+      { trades: 419, takerBuy: "6.1", volume: "12.4", close: "64280.00", low: "64100.00", high: "64301.00", open: "64201.00" },
+    ]) {
+      expect(emitForming(change)).toBe(1);
+      expect(emitForming(change)).toBe(0);
+    }
+  });
+
+  test("a response from an older poll never overwrites a newer revision", () => {
+    const cursor = createBinanceRestBarCursor({ intervalMs: MINUTE });
+    cursor.apply({ rows: rows(rawRow(T0), rawRow(T0 + MINUTE, { close: "64280.00" })), exchangeNowMs: T0 + MINUTE + 5000, seq: 2 });
+    const late = cursor.apply({ rows: rows(rawRow(T0), rawRow(T0 + MINUTE, { close: "64270.00" })), exchangeNowMs: T0 + MINUTE + 6000, seq: 1 });
+    expect(late.stale).toBe(true);
+    expect(late.emit).toEqual([]);
+    const next = cursor.apply({ rows: rows(rawRow(T0), rawRow(T0 + MINUTE, { close: "64280.00" })), exchangeNowMs: T0 + MINUTE + 7000, seq: 3 });
+    expect(next.emit).toEqual([]);
+  });
+
+  test("clock skew: a machine clock ahead of the exchange cannot finalise a bar the exchange still has open", () => {
+    const cursor = createBinanceRestBarCursor({ intervalMs: MINUTE, finalizeGraceMs: 1000 });
+    const machineNow = T0 + 2 * MINUTE + 20_000;
+    const exchangeNow = machineNow - 30_000; // the machine runs 30 s ahead
+    expect(cursor.nextRequest(exchangeNow)).toEqual({ startTime: T0, limit: 2, catchUp: false });
+    const outcome = cursor.apply({ rows: rows(rawRow(T0), rawRow(T0 + MINUTE)), exchangeNowMs: exchangeNow, seq: 1 });
+    // By the machine clock the T0+1m bar closed 20 s ago; by the exchange it has 10 s to run.
+    expect(outcome.emit.map(({ row, closed }) => [row.openTime - T0, closed])).toEqual([[0, true], [MINUTE, false]]);
+  });
+
+  test("after a multi-minute outage it catches up from the last confirmed close in bounded pages before the two-row poll resumes", () => {
+    const cursor = createBinanceRestBarCursor({ intervalMs: MINUTE });
+    cursor.apply({ rows: rows(rawRow(T0), rawRow(T0 + MINUTE)), exchangeNowMs: T0 + MINUTE + 5000, seq: 1 });
+    expect(cursor.confirmedOpenTime).toBe(T0);
+    const afterOutage = T0 + 6 * MINUTE + 5000;
+    expect(cursor.needsCatchUp(afterOutage)).toBe(true);
+    expect(cursor.nextRequest(afterOutage)).toEqual({ startTime: T0 + MINUTE, limit: 1000, catchUp: true });
+    const page = cursor.apply({
+      rows: rows(rawRow(T0 + MINUTE), rawRow(T0 + 2 * MINUTE), rawRow(T0 + 3 * MINUTE), rawRow(T0 + 4 * MINUTE), rawRow(T0 + 5 * MINUTE), rawRow(T0 + 6 * MINUTE)),
+      exchangeNowMs: afterOutage,
+      seq: 2,
+    });
+    expect(page.emit.map(({ row, closed }) => [row.openTime / MINUTE - T0 / MINUTE, closed])).toEqual([[1, true], [2, true], [3, true], [4, true], [5, true], [6, false]]);
+    expect(page.hole).toBe(false);
+    expect(page.catchingUp).toBe(false);
+    expect(cursor.confirmedOpenTime).toBe(T0 + 5 * MINUTE);
+    expect(cursor.nextRequest(afterOutage)).toEqual({ startTime: T0 + 5 * MINUTE, limit: 2, catchUp: false });
+    // A page that stops short keeps the catch-up going.
+    const stillBehind = createBinanceRestBarCursor({ intervalMs: MINUTE });
+    stillBehind.apply({ rows: rows(rawRow(T0)), exchangeNowMs: T0 + MINUTE + 5000, seq: 1 });
+    const partial = stillBehind.apply({ rows: rows(rawRow(T0 + MINUTE), rawRow(T0 + 2 * MINUTE)), exchangeNowMs: T0 + 10 * MINUTE, seq: 2 });
+    expect(partial.catchingUp).toBe(true);
+    expect(stillBehind.nextRequest(T0 + 10 * MINUTE)).toEqual({ startTime: T0 + 3 * MINUTE, limit: 1000, catchUp: true });
+  });
+
+  test("a hole the exchange left is reported, never filled, and the cursor moves past it", () => {
+    const cursor = createBinanceRestBarCursor({ intervalMs: MINUTE });
+    cursor.apply({ rows: rows(rawRow(T0)), exchangeNowMs: T0 + 10 * MINUTE, seq: 1 });
+    const outcome = cursor.apply({ rows: rows(rawRow(T0 + 3 * MINUTE), rawRow(T0 + 4 * MINUTE)), exchangeNowMs: T0 + 10 * MINUTE, seq: 2 });
+    expect(outcome.hole).toBe(true);
+    expect(outcome.emit).toHaveLength(2);
+    expect(cursor.stats).toMatchObject({ confirmedOpenTime: T0 + 4 * MINUTE, holes: 1 });
+    cursor.reset();
+    expect(cursor.confirmedOpenTime).toBeNull();
+    expect(() => createBinanceRestBarCursor({ intervalMs: 0 })).toThrow(/intervalMs/);
+  });
+});
+      throw new Error(`fetchRecentBars: unrecognized interval "${interval}"`);
+    }
+    if (!Number.isInteger(intervalMs) || intervalMs <= 0) {
+      throw new Error("fetchRecentBars: intervalMs must be a positive integer");
+    }
+    if (intervalMs !== candleIntervalMsFor(interval)) {
+      throw new Error("fetchRecentBars: intervalMs must match the requested interval");
+    }
+    if (!Number.isFinite(days) || days <= 0) {
+      throw new Error("fetchRecentBars: days must be a positive number");
+    }
+    if (!Number.isInteger(pageDelayMs) || pageDelayMs < 0) {
+      throw new Error("fetchRecentBars: pageDelayMs must be a non-negative integer");
+    }
+    if (!Number.isInteger(maxPages) || maxPages <= 0 || maxPages > MAX_BACKFILL_PAGES) {
+      throw new Error(`fetchRecentBars: maxPages must be a positive integer <= ${MAX_BACKFILL_PAGES}`);
+    }
+
+    const rows = [];
+    let retryAfterMs;
+    const startedAtMs = Date.now();
+    const closedBoundaryAt = (atMs) => Math.floor(atMs / intervalMs) * intervalMs;
+    const lookbackMs = days * 24 * 60 * 60 * 1000;
+    if (!Number.isSafeInteger(lookbackMs) || lookbackMs > startedAtMs) {
+      throw new Error("fetchRecentBars: days resolves outside the supported epoch range");
+    }
+    let cursor = closedBoundaryAt(startedAtMs - lookbackMs);
+    let pagesFetched = 0;
+    let failureReason = null;
+    let caughtUp = false;
+
+    while (pagesFetched < maxPages) {
+      const closedBoundary = closedBoundaryAt(Date.now());
+      if (cursor >= closedBoundary) {
+        caughtUp = true;
+        break;
+      }
+
+      const result = await fetchKlines(marketKind, symbol, {
+        interval,
+        startTime: cursor,
+        limit: MAX_KLINES_PER_REQUEST,
+        fetchImpl,
+      });
+      pagesFetched += 1;
+
+      if (!result.ok) {
+        failureReason = result.reason;
+        if (Number.isSafeInteger(result.retryAfterMs) && result.retryAfterMs >= 0) {
+          retryAfterMs = result.retryAfterMs;
+        }
+        emitTelemetry(telemetry, "market_data.binance_kline_backfill.page_failed", {
+          symbol: safeTelemetrySymbol(symbol),
+          marketKind: safeTelemetryMarketKind(marketKind),
+          reason: result.reason,
+          pagesFetched,
+          barsSoFar: rows.length,
+        });
+        break;
+      }
+
+      const page = parseKlineRows(result.value.body, intervalMs);
+      if (!page) {
+        failureReason = "MALFORMED_KLINE_PAGE";
+        emitTelemetry(telemetry, "market_data.binance_kline_backfill.page_failed", {
+          symbol: safeTelemetrySymbol(symbol),
+          marketKind: safeTelemetryMarketKind(marketKind),
+          reason: failureReason,
+          pagesFetched,
+          barsSoFar: rows.length,
+        });
+        break;
+      }
+
+      if (page.length === 0) {
+        failureReason = "INCOMPLETE_PAGE";
+        break;
+      }
+
+      if (page[0].openTime !== cursor) {
+        failureReason = "PAGE_START_MISMATCH";
+        break;
+      }
+      if (page[page.length - 1].openTime > closedBoundary) {
+        failureReason = "PAGE_TIME_RANGE_INVALID";
+        break;
+      }
+
+      const closedPage = page[page.length - 1].openTime === closedBoundary
+        ? page.slice(0, -1)
+        : page;
+      if (closedPage.length === 0) {
+        failureReason = "INCOMPLETE_PAGE";
+        break;
+      }
+
+      for (const row of closedPage) {
+        rows.push(row);
+      }
+
+      const lastRow = closedPage[closedPage.length - 1];
+      const nextCursor = lastRow.openTime + intervalMs;
+      if (nextCursor <= cursor) {
+        failureReason = "NON_ADVANCING_PAGE";
+        break;
+      }
+      cursor = nextCursor;
+
+      if (cursor >= closedBoundary) {
+        caughtUp = true;
+        break;
+      }
+      if (page.length < MAX_KLINES_PER_REQUEST) {
+        failureReason = "INCOMPLETE_PAGE";
+        break;
+      }
+      if (cursor < closedBoundary) {
+        await delay(pageDelayMs);
+      }
+    }
+
+933:      recordingStale: recording.stale,
+944:    const fingerprint = `${context.recoveryState}:${context.stale}:${context.reason ?? ""}:${health.recordingStale}`;
+
+exec
+/bin/bash -lc "rg -n 'getOrderBook|liveBinding|live-binding|binanceDepth|tickSizeResolver|tradeAvailability|LIVE_COMPLETE' apps/runtime/src/server/market-data-server.js; sed -n '985,1060p' apps/runtime/src/server/market-data-server.js; rg -n 'klineEnvelopeToFrame|restKlineRowToBarFrame' apps/runtime/src/server/frames.js; sed -n '168,265p' apps/runtime/src/server/frames.js; git show build/binance-rest-transport:apps/runtime/test/providers/binance/binance-rest-connection.test.js | sed -n '445,480p'; git diff --stat main...build/binance-rest-transport" in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+74:} = require("../indicators/l2-memory/live-binding");
+219:  tickSizeResolver = createInstrumentTickSizeResolver(),
+222:    tickSizeResolver,
+1018:    const state = connection.getOrderBook(activeMarketKind, activeSymbol);
+1130:        connection.getOrderBook(envelope.marketKind, envelope.providerSymbol);
+1132:        isActivePair || typeof connection.getOrderBookStatus !== "function"
+1134:          : connection.getOrderBookStatus(
+1176:    const state = connection.getOrderBook(activeMarketKind, activeSymbol);
+2044:      const tickSize = await tickSizeResolver.getBinanceTickSize(pairMarketKind, pairSymbol);
+2209:    const tickSize = await tickSizeResolver.getBinanceTickSize(
+3235:    const tickSize = await tickSizeResolver.getBinanceTickSize(
+      );
+      console.error("market data server: order book rejected", {
+        reason: bookFailureReason(error),
+        detail: error?.message ?? error,
+      });
+    }
+  }
+
+  function sendBookToClient(client, state) {
+    const stale = state.status === "READY" && isDepthStale();
+    try {
+      safelySend(
+        client,
+        bookFrame(activeSymbol, activeMarketKind, state, BOOK_DEPTH_LEVELS, {
+          stale,
+        }),
+      );
+    } catch (error) {
+      safelySend(
+        client,
+        bookFrame(activeSymbol, activeMarketKind, {
+          status: "UNAVAILABLE",
+          reason: bookFailureReason(error),
+        }),
+      );
+      console.error("market data server: order book rejected", {
+        reason: bookFailureReason(error),
+        detail: error?.message ?? error,
+      });
+    }
+  }
+
+  function checkBookAndMaybeBroadcast() {
+    const state = connection.getOrderBook(activeMarketKind, activeSymbol);
+    if (!state) {
+      return;
+    }
+    const stale = state.status === "READY" && isDepthStale();
+    const fingerprint = bookFingerprint(state, stale);
+    if (fingerprint !== lastBookFingerprint) {
+      emitBook(state);
+    }
+  }
+
+  function handleEnvelope(envelope) {
+    const isActivePair =
+      envelope.marketKind === activeMarketKind &&
+      envelope.providerSymbol === activeSymbol;
+    const isTrackedPair =
+      isActivePair ||
+      trackedPairs.has(pairKey(envelope.providerSymbol, envelope.marketKind));
+
+    if (
+      envelope.eventType === EVENT_TYPES.TRADE &&
+      envelope.state !== "UNAVAILABLE"
+    ) {
+      const failureKey = `${pairKey(envelope.providerSymbol, envelope.marketKind)}:${EVENT_TYPES.TRADE}`;
+      let frame;
+      try {
+        frame = tradeEnvelopeToFrame(envelope);
+        wireFailures.delete(failureKey);
+      } catch (error) {
+        wireFailures.add(failureKey);
+        console.error(
+          "market data server: trade value cannot be represented on the numeric wire",
+          error?.message ?? error,
+        );
+        if (isActivePair) checkHealthAndMaybeBroadcast();
+        return;
+      }
+      const buffer = historyBufferFor(
+        envelope.providerSymbol,
+        envelope.marketKind,
+      );
+      const isNewTrade = buffer.recordTrade(frame);
+      if (isNewTrade)
+168:function klineEnvelopeToFrame(envelope) {
+173:    throw new Error(`klineEnvelopeToFrame: unrecognized interval "${interval}"`);
+175:  assertMarketKind(envelope.marketKind, "klineEnvelopeToFrame.marketKind");
+176:  const wireOpen = decimalToFiniteNumber(open, "klineEnvelopeToFrame.open");
+177:  const wireHigh = decimalToFiniteNumber(high, "klineEnvelopeToFrame.high");
+178:  const wireLow = decimalToFiniteNumber(low, "klineEnvelopeToFrame.low");
+179:  const wireClose = decimalToFiniteNumber(close, "klineEnvelopeToFrame.close");
+180:  const wireVolume = decimalToFiniteNumber(baseVolume, "klineEnvelopeToFrame.baseVolume", { allowZero: true });
+181:  const buyVolume = decimalToFiniteNumberOrUndefined(takerBuyBaseVolume, "klineEnvelopeToFrame.takerBuyBaseVolume");
+193:  }, "klineEnvelopeToFrame");
+212:function restKlineRowToBarFrame(row, symbol, marketKind, interval) {
+215:    throw new Error(`restKlineRowToBarFrame: unrecognized interval "${interval}"`);
+217:  assertMarketKind(marketKind, "restKlineRowToBarFrame.marketKind");
+219:    throw new Error("restKlineRowToBarFrame: openTime must align to the requested interval");
+221:  timestampToWireNumber(row.openTime, "restKlineRowToBarFrame.openTime");
+223:    throw new Error("restKlineRowToBarFrame: closeTime must match the requested interval");
+228:  const wireOpen = decimalToFiniteNumber(row.open, "restKlineRowToBarFrame.open");
+229:  const wireHigh = decimalToFiniteNumber(row.high, "restKlineRowToBarFrame.high");
+230:  const wireLow = decimalToFiniteNumber(row.low, "restKlineRowToBarFrame.low");
+231:  const wireClose = decimalToFiniteNumber(row.close, "restKlineRowToBarFrame.close");
+232:  const wireVolume = decimalToFiniteNumber(row.volume, "restKlineRowToBarFrame.volume", { allowZero: true });
+233:  const buyVolume = decimalToFiniteNumberOrUndefined(row.takerBuyBaseVolume, "restKlineRowToBarFrame.takerBuyBaseVolume");
+245:  }, "restKlineRowToBarFrame");
+1427:  klineEnvelopeToFrame,
+1428:  restKlineRowToBarFrame,
+function klineEnvelopeToFrame(envelope) {
+  const { interval, openTime, open, high, low, close, baseVolume, takerBuyBaseVolume, numberOfTrades, isClosed } =
+    envelope.payload;
+  const intervalMs = INTERVAL_MS[interval];
+  if (!Number.isInteger(intervalMs)) {
+    throw new Error(`klineEnvelopeToFrame: unrecognized interval "${interval}"`);
+  }
+  assertMarketKind(envelope.marketKind, "klineEnvelopeToFrame.marketKind");
+  const wireOpen = decimalToFiniteNumber(open, "klineEnvelopeToFrame.open");
+  const wireHigh = decimalToFiniteNumber(high, "klineEnvelopeToFrame.high");
+  const wireLow = decimalToFiniteNumber(low, "klineEnvelopeToFrame.low");
+  const wireClose = decimalToFiniteNumber(close, "klineEnvelopeToFrame.close");
+  const wireVolume = decimalToFiniteNumber(baseVolume, "klineEnvelopeToFrame.baseVolume", { allowZero: true });
+  const buyVolume = decimalToFiniteNumberOrUndefined(takerBuyBaseVolume, "klineEnvelopeToFrame.takerBuyBaseVolume");
+  assertBarShape({
+    intervalMs,
+    tsOpen: openTime,
+    open: wireOpen,
+    high: wireHigh,
+    low: wireLow,
+    close: wireClose,
+    volume: wireVolume,
+    buyVolume,
+    tradeCount: numberOfTrades,
+    closed: isClosed,
+  }, "klineEnvelopeToFrame");
+  return Object.freeze({
+    type: "bar",
+    provider: "BINANCE",
+    symbol: toWireSymbol(envelope.providerSymbol),
+    marketKind: envelope.marketKind,
+    interval_ms: intervalMs,
+    ts_open: openTime,
+    open: wireOpen,
+    high: wireHigh,
+    low: wireLow,
+    close: wireClose,
+    volume: wireVolume,
+    trade_count: numberOfTrades,
+    closed: isClosed,
+    ...(buyVolume !== undefined ? { buy_volume: buyVolume } : {}),
+  });
+}
+
+function restKlineRowToBarFrame(row, symbol, marketKind, interval) {
+  const intervalMs = INTERVAL_MS[interval];
+  if (!Number.isInteger(intervalMs)) {
+    throw new Error(`restKlineRowToBarFrame: unrecognized interval "${interval}"`);
+  }
+  assertMarketKind(marketKind, "restKlineRowToBarFrame.marketKind");
+  if (!Number.isSafeInteger(row?.openTime) || row.openTime % intervalMs !== 0) {
+    throw new Error("restKlineRowToBarFrame: openTime must align to the requested interval");
+  }
+  timestampToWireNumber(row.openTime, "restKlineRowToBarFrame.openTime");
+  if (!Number.isSafeInteger(row.closeTime) || row.closeTime !== row.openTime + intervalMs - 1) {
+    throw new Error("restKlineRowToBarFrame: closeTime must match the requested interval");
+  }
+  if (row.closeTime > Date.now()) {
+    return null;
+  }
+  const wireOpen = decimalToFiniteNumber(row.open, "restKlineRowToBarFrame.open");
+  const wireHigh = decimalToFiniteNumber(row.high, "restKlineRowToBarFrame.high");
+  const wireLow = decimalToFiniteNumber(row.low, "restKlineRowToBarFrame.low");
+  const wireClose = decimalToFiniteNumber(row.close, "restKlineRowToBarFrame.close");
+  const wireVolume = decimalToFiniteNumber(row.volume, "restKlineRowToBarFrame.volume", { allowZero: true });
+  const buyVolume = decimalToFiniteNumberOrUndefined(row.takerBuyBaseVolume, "restKlineRowToBarFrame.takerBuyBaseVolume");
+  assertBarShape({
+    intervalMs,
+    tsOpen: row.openTime,
+    open: wireOpen,
+    high: wireHigh,
+    low: wireLow,
+    close: wireClose,
+    volume: wireVolume,
+    buyVolume,
+    tradeCount: row.numberOfTrades,
+    closed: true,
+  }, "restKlineRowToBarFrame");
+  return Object.freeze({
+    type: "bar",
+    provider: "BINANCE",
+    symbol: toWireSymbol(symbol),
+    marketKind,
+    interval_ms: intervalMs,
+    ts_open: row.openTime,
+    open: wireOpen,
+    high: wireHigh,
+    low: wireLow,
+    close: wireClose,
+    volume: wireVolume,
+    trade_count: row.numberOfTrades,
+    closed: true,
+    reconstructed: true,
+    ...(buyVolume !== undefined ? { buy_volume: buyVolume } : {}),
+  });
+}
+
+function storageCandleRowToBarFrame(row, symbol, marketKind, interval) {
+    expect(created.getOperationalStats().weight.used).toBeLessThanOrEqual(100);
+    fake.state.usedWeight = 10;
+    await tick(MINUTE);
+    expect(fake.requests.length).toBeGreaterThan(sent);
+  });
+
+  test("the candle backfill goes through the same budget and reads the exchange's count back", async () => {
+    const fake = fakeBinance();
+    fake.state.klineStart = OPEN - 3 * MINUTE;
+    const created = await connected(fake);
+    const result = await created.fetchRecentKlines("SPOT", "BTCUSDT", { interval: "1m", intervalMs: MINUTE, days: 1 / 24 / 20 });
+    expect(result.rows.length).toBeGreaterThan(0);
+    expect(created.getOperationalStats().weight.reserved).toBe(22);
+  });
+});
+ apps/runtime/src/platform/config-registry.js       |  19 +
+ .../src/providers/binance/binance-config.js        |  76 +-
+ .../src/providers/binance/binance-connection.js    |  27 +-
+ .../src/providers/binance/binance-http-client.js   |  79 +-
+ .../providers/binance/binance-kline-backfill.js    |   5 +-
+ .../providers/binance/binance-rest-bar-cursor.js   |  91 +++
+ .../providers/binance/binance-rest-connection.js   | 849 +++++++++++++++++++++
+ .../binance/binance-rest-weight-budget.js          | 147 ++++
+ .../src/providers/shared/instrument-tick-size.js   |   3 +
+ apps/runtime/src/server/app.js                     |  33 +-
+ apps/runtime/src/server/market-data-server.js      |  19 +-
+ apps/runtime/test/platform/config-registry.test.js |  14 +
+ .../test/providers/binance/binance-config.test.js  |  47 ++
+ .../providers/binance/binance-connection.test.js   |  38 +-
+ .../providers/binance/binance-http-client.test.js  |  90 ++-
+ .../binance/binance-kline-backfill.test.js         |  15 +
+ .../binance/binance-rest-bar-cursor.test.js        | 123 +++
+ .../binance/binance-rest-connection.test.js        | 459 +++++++++++
+ .../binance/binance-rest-weight-budget.test.js     |  85 +++
+ .../providers/shared/instrument-tick-size.test.js  |  12 +
+ apps/runtime/test/server/app.test.js               |  81 ++
+ .../runtime/test/server/market-data-server.test.js |  43 ++
+ docs/operations/09-configuration.md                |  63 ++
+ 23 files changed, 2375 insertions(+), 43 deletions(-)
+
+exec
+/bin/bash -lc "sed -n '1120,1200p' apps/runtime/src/server/market-data-server.js; sed -n '1,180p' apps/runtime/src/indicators/l2-memory/live-binding.js; sed -n '1785,1855p' apps/runtime/src/server/market-data-server.js; rg -n 'binanceDepth|l2Memory|liveL2|onGap|\\.gap|setInterval' apps/runtime/src/server/market-data-server.js" in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+      if (isActivePair) {
+        broadcast(frame);
+      }
+    } else if (envelope.eventType === EVENT_TYPES.DEPTH && isTrackedPair) {
+      // The pair on screen needs the whole sorted book for its frame. A pair
+      // kept live off screen only needs the status and best prices; the L2
+      // memory fetches the whole book itself in the rare case it has to seed
+      // or resync. Sorting the full book for every pair on every event is
+      // what pinned the process at 100% of a core.
+      const fullBook = () =>
+        connection.getOrderBook(envelope.marketKind, envelope.providerSymbol);
+      const state =
+        isActivePair || typeof connection.getOrderBookStatus !== "function"
+          ? fullBook()
+          : connection.getOrderBookStatus(
+              envelope.marketKind,
+              envelope.providerSymbol,
+            );
+      l2Memory.onDepth(envelope, state, fullBook);
+      if (icebergEnabled) {
+        if (state?.status !== "READY") endIcebergDepth(envelope);
+        else if (envelope.state !== "UNAVAILABLE") feedIcebergDepth(envelope);
+      }
+      if (isActivePair && state) {
+        emitBook(state);
+      }
+    }
+
+    if (isActivePair) {
+      checkHealthAndMaybeBroadcast();
+    }
+  }
+
+  function handleClientConnected(client) {
+    clients.add(client);
+    if (!safelySend(client, selectionFrame(activeSymbol, activeMarketKind))) {
+      return;
+    }
+    const buffer = activeHistoryBuffer();
+    if (
+      !safelySend(
+        client,
+        snapshotFrame(
+          buffer.snapshotBars(),
+          buffer.snapshotTrades(),
+          activeSymbol,
+          activeMarketKind,
+          inlineMarkers(buffer),
+          vpinHistoryFor(activeSymbol, activeMarketKind),
+          vpinWarmupStatusFor(activeSymbol, activeMarketKind),
+          aggressivePoolSnapshot(activeSymbol, activeMarketKind),
+        ),
+      )
+    ) {
+      return;
+    }
+    const state = connection.getOrderBook(activeMarketKind, activeSymbol);
+    if (state) {
+      sendBookToClient(client, state);
+    }
+    liquidityReplayer.start(
+      client,
+      liquidity.snapshotFrames(activeMarketKind, activeSymbol),
+    );
+    const health = currentAggregateHealth();
+    if (health) {
+      safelySend(
+        client,
+        healthFrame(
+          activeSymbol,
+          activeMarketKind,
+          healthWithRecording(health),
+          health.reason,
+        ),
+      );
+    }
+  }
+
+  function releaseClient(client) {
+    releaseProfileHistorySubscription(client);
+    clients.delete(client);
+"use strict";
+
+const { createMemoryEngine } = require("./memory-engine");
+const { createL2InputBinding, pairKey } = require("./l2-input-binding");
+const { bookFrame, tradeFrame, gapFrame } = require("./input-frames");
+const { l2GeometryFor } = require("../../providers/binance/binance-config");
+
+const DEFAULT_CLUSTER_TICKS = 50;
+const DEFAULT_PRUNE_INTERVAL_MS = 30_000;
+const DEFAULT_DEBUG_INTERVAL_MS = 5_000;
+const SNAPSHOT_DEPTH_BY_MARKET_KIND = Object.freeze({ SPOT: 5000, PERPETUAL: 1000 });
+const DEFAULT_BAND_BP = 0.0625;
+const DEFAULT_MIN_SLICE_USD = 800;
+const DEFAULT_MIN_SLICE_SIZE = 0.01;
+const TICK_RETRY_AFTER_MS = 10_000;
+
+function positiveNumber(raw) {
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? n : undefined;
+}
+
+function ledgerOptionsFromEnv(env = process.env) {
+  const minSliceSize = Number(env.L2_MIN_SLICE_SIZE);
+  return Number.isFinite(minSliceSize) && minSliceSize >= 0 ? { minSliceSize } : {};
+}
+
+function scalesFromEnv(env = process.env) {
+  return {
+    bandBp: positiveNumber(env.L2_BAND_BP) ?? DEFAULT_BAND_BP,
+    minSliceUsd: positiveNumber(env.L2_MIN_SLICE_USD) ?? DEFAULT_MIN_SLICE_USD,
+  };
+}
+
+function clusterTicksFor(price, tickSize, bandBp) {
+  if (!(price > 0) || !(tickSize > 0)) return DEFAULT_CLUSTER_TICKS;
+  return Math.max(1, Math.round((price * bandBp) / 10_000 / tickSize));
+}
+
+function bestBidOf(bookState) {
+  const price = Number(bookState?.bestBid ?? bookState?.book?.bestBid ?? bookState?.book?.bids?.[0]?.[0]);
+  return Number.isFinite(price) && price > 0 ? price : null;
+}
+
+function binanceDepthFrame(envelope, bookState) {
+  if (!envelope || envelope.state === "UNAVAILABLE" || !bookState) return gapFrame();
+  return bookFrame(envelope.eventTime, bookState.status, bookState.book, { bids: envelope.payload.bids, asks: envelope.payload.asks });
+}
+
+function binanceTradeFrame(envelope) {
+  if (!envelope || envelope.state === "UNAVAILABLE") return null;
+  const { price, quantity, isBuyerMaker, tradeId } = envelope.payload;
+  return tradeFrame(envelope.eventTime, price, quantity, isBuyerMaker ? "sell" : "buy", tradeId);
+}
+
+function formatLevel(level) {
+  const flags = [
+    level.seeded ? "seeded" : `age ${level.ageSec}s`,
+    level.refills > 0 ? `refills ${level.refills}` : null,
+    level.tests > 0 ? `tests ${level.tests}` : null,
+    level.hidden > 0 ? `hidden ${level.hidden.toFixed(3)}` : null,
+  ].filter(Boolean);
+  return `${level.price.toFixed(1).padStart(10)}  size ${level.size.toFixed(3).padStart(8)}  traded ${level.traded.toFixed(3).padStart(8)}  cancelled ${level.cancelled.toFixed(3).padStart(8)}  ${flags.join(", ")}`;
+}
+
+function createLiveMemoryBinding({
+  tickSizeResolver,
+  clusterTicks = undefined,
+  scales = scalesFromEnv(),
+  debug = false,
+  debugIntervalMs = DEFAULT_DEBUG_INTERVAL_MS,
+  pruneIntervalMs = DEFAULT_PRUNE_INTERVAL_MS,
+  log = (line) => console.log(line),
+  ledgerOptions = ledgerOptionsFromEnv(),
+  geometryFor = l2GeometryFor,
+} = {}) {
+  if (!tickSizeResolver || typeof tickSizeResolver.getBinanceTickSize !== "function") {
+    throw new Error("live-binding: tickSizeResolver.getBinanceTickSize is required");
+  }
+
+  const quotes = new Map();
+  const tickSizes = new Map();
+  const readySeen = new Set();
+  const resolving = new Map();
+  const failed = new Map();
+  let debugTimer = null;
+  let started = false;
+
+  function buildEngine(key, marketKind, symbol, tickSize) {
+    const configured = typeof geometryFor === "function" ? geometryFor(marketKind, symbol) : null;
+    const knownTicks = clusterTicks ?? configured?.clusterTicks;
+    const knownSlice = ledgerOptions.minSliceSize ?? configured?.minSliceSize;
+    const explicit = knownTicks !== undefined && knownSlice !== undefined;
+    if (!explicit && !readySeen.has(key)) return null;
+    const price = quotes.get(key) ?? null;
+    const ticks = knownTicks ?? clusterTicksFor(price, tickSize, scales.bandBp);
+    const minSliceSize = knownSlice ?? (price !== null ? scales.minSliceUsd / price : DEFAULT_MIN_SLICE_SIZE);
+    const engine = createMemoryEngine({
+      tickSize,
+      clusterTicks: ticks,
+      snapshotDepth: SNAPSHOT_DEPTH_BY_MARKET_KIND[marketKind] ?? Infinity,
+      ledgerOptions: { ...ledgerOptions, minSliceSize },
+    });
+    if (debug) {
+      log(`l2-memory: engine ready for ${key} (tick ${tickSize}, band ${tickSize * ticks}, dust floor ${minSliceSize.toPrecision(3)} base units${price !== null ? ` at ${price}` : ", no quote"})`);
+    }
+    return engine;
+  }
+
+  function createEngine(marketKind, symbol) {
+    const key = pairKey(marketKind, symbol);
+    const knownTick = tickSizes.get(key);
+    if (knownTick !== undefined) return buildEngine(key, marketKind, symbol, knownTick);
+    if (resolving.has(key)) return null;
+    const lastFailure = failed.get(key);
+    if (lastFailure !== undefined && Date.now() - lastFailure < TICK_RETRY_AFTER_MS) return null;
+    const request = {};
+    resolving.set(key, request);
+    let lookup;
+    try {
+      lookup = tickSizeResolver.getBinanceTickSize(marketKind, symbol);
+      if (!lookup || typeof lookup.then !== "function") throw new Error("live-binding: tick size resolver must return a Promise");
+    } catch (error) {
+      resolving.delete(key);
+      throw error;
+    }
+    lookup
+      .then((tickSize) => {
+        if (binding.stopped || resolving.get(key) !== request) return;
+        if (!Number.isFinite(tickSize) || tickSize <= 0) {
+          failed.set(key, Date.now());
+          return;
+        }
+        tickSizes.set(key, tickSize);
+        failed.delete(key);
+        binding.engineFor(marketKind, symbol);
+      })
+      .catch((error) => {
+        if (binding.stopped || resolving.get(key) !== request) return;
+        failed.set(key, Date.now());
+        console.error("l2-memory: tick size lookup failed", key, error?.message ?? error);
+      })
+      .finally(() => {
+        if (resolving.get(key) === request) resolving.delete(key);
+      });
+    return null;
+  }
+
+  const binding = createL2InputBinding({ createEngine, prune: { mode: "timer", everyMs: pruneIntervalMs } });
+
+  function onDepth(envelope, bookState, fullBook = null) {
+    if (binding.stopped || !envelope) return;
+    const key = pairKey(envelope.marketKind, envelope.providerSymbol);
+    if (bookState?.status === "READY") {
+      readySeen.add(key);
+      const bestBid = bestBidOf(bookState);
+      if (bestBid !== null) quotes.set(key, bestBid);
+    }
+    const engine = binding.engineFor(envelope.marketKind, envelope.providerSymbol);
+    if (!engine) return;
+    let state = bookState;
+    if (bookState?.status === "READY" && !bookState.book) {
+      if (!engine.seeded || !engine.live) {
+        state = typeof fullBook === "function" ? fullBook() : null;
+      } else {
+        state = { status: "READY", book: { bestBid: bookState.bestBid ?? null, bestAsk: bookState.bestAsk ?? null } };
+      }
+    }
+    binding.apply(envelope.marketKind, envelope.providerSymbol, binanceDepthFrame(envelope, state));
+  }
+
+  function onTrade(envelope) {
+    if (binding.stopped || !envelope) return;
+    const frame = binanceTradeFrame(envelope);
+    if (frame) binding.apply(envelope.marketKind, envelope.providerSymbol, frame);
+  }
+
+  function laneWindowPct(marketKind, symbol) {
+    const configured = typeof geometryFor === "function" ? geometryFor(marketKind, symbol) : null;
+    return configured && Number.isFinite(configured.windowPct) ? configured.windowPct : null;
+  }
+                aggressivePoolSnapshot(pairSymbol, pairMarketKind),
+              ),
+            );
+          }
+          if (coversFullWindow) {
+            if (stopped || generationAtStart !== lifecycleGeneration) return;
+            backfilledPairs.add(key);
+            backfillRetryAttempt.delete(key);
+            backfillRetryNotBeforeMs.delete(key);
+            setReadiness(pairSymbol, pairMarketKind, "candles", "READY", {
+              metrics: { bars: buffer.snapshotBars().length },
+            });
+            return;
+          }
+        } catch (error) {
+          console.error(
+            `market data server: storage read for ${key} failed, falling back to REST`,
+            error?.message ?? error,
+          );
+        }
+      }
+
+      const result = await connection.fetchRecentKlines(
+        pairMarketKind,
+        pairSymbol,
+        {
+          interval: KLINE_INTERVAL,
+          intervalMs: INTERVAL_MS[KLINE_INTERVAL],
+          days: BACKFILL_DAYS,
+        },
+      );
+
+      if (
+        stopped ||
+        generationAtStart !== lifecycleGeneration ||
+        !warmPairs.has(key)
+      )
+        return;
+
+      let recordedCount = 0;
+      let invalidFrameCount = 0;
+      for (const row of result.rows) {
+        let frame;
+        try {
+          frame = restKlineRowToBarFrame(
+            row,
+            pairSymbol,
+            pairMarketKind,
+            KLINE_INTERVAL,
+          );
+        } catch {
+          invalidFrameCount += 1;
+          continue;
+        }
+        if (frame) {
+          recordClosedBar(buffer, frame);
+          recordedCount += 1;
+        }
+      }
+
+      if (!result.ok || invalidFrameCount > 0) {
+        const reason = result.ok ? "WIRE_VALUE_OUT_OF_RANGE" : result.reason;
+        console.error(
+          `market data server: kline backfill for ${key} incomplete (${reason}), ${recordedCount} bars recovered before it stopped`,
+        );
+        scheduleBackfillRetry(key, result.retryAfterMs);
+        setReadiness(pairSymbol, pairMarketKind, "candles", "DEGRADED", {
+          reason: "RETRY_SCHEDULED",
+          metrics: { bars: recordedCount, invalidFrames: invalidFrameCount },
+        });
+      } else {
+221:  l2Memory = createLiveMemoryBinding({
+233:    memory: l2Memory,
+1064:      if (isTrackedPair && isNewTrade) l2Memory.onTrade(envelope);
+1138:      l2Memory.onDepth(envelope, state, fullBook);
+1688:      waiter.timer = setInterval(() => {
+3647:    healthPollTimer = setInterval(() => {
+3661:    l2Memory.start();
+3663:    icebergTickTimer = setInterval(() => {
+3673:      exhaustionTickTimer = setInterval(() => {
+3689:      initiativeTickTimer = setInterval(() => {
+3714:    volumeProfilePollTimer = setInterval(() => {
+3721:      vpinPollTimer = setInterval(() => {
+3730:    liquidityStatsTimer = setInterval(() => {
+3804:    l2Memory.stop();
+
+exec
+/bin/bash -lc "node <<'NODE'
+const cp=require('node:child_process');const vm=require('node:vm');
+function branchModule(file, requireImpl=require){const m={exports:{}};vm.runInNewContext(cp.execFileSync('git',['show','build/binance-rest-transport:'+file],{encoding:'utf8'}),{module:m,exports:m.exports,require:requireImpl,console});return m.exports;}
+const {createBinanceRestWeightBudget}=branchModule('apps/runtime/src/providers/binance/binance-rest-weight-budget.js');const b=createBinanceRestWeightBudget({budgetPerMinute:100,now:()=>1800000000000});b.reserve(20);b.observe({'x-mbx-used-weight-1m':'98'}); console.log('reserve at observed 98:',Array.from({length:5},()=>b.reserve(2)),b.stats());
+const {createBinanceRestBarCursor}=branchModule('apps/runtime/src/providers/binance/binance-rest-bar-cursor.js',()=>({MAX_KLINES_PER_REQUEST:1000}));const c=createBinanceRestBarCursor({intervalMs:60000});const row=(t)=>({openTime:t,closeTime:t+59999,open:'1',high:'1',low:'1',close:'1',volume:'1',numberOfTrades:1,takerBuyBaseVolume:'1'});c.apply({rows:[row(0),row(60000)],exchangeNowMs:90000,seq:1});console.log('empty poll:',c.apply({rows:[],exchangeNowMs:120000,seq:2}));
+NODE" in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ exited 1 in 0ms:
+<ref *1> node:child_process:955
+    throw err;
+    ^
+
+Error: spawnSync git EPERM
+    at Object.spawnSync (node:internal/child_process:1120:20)
+    at spawnSync (node:child_process:902:24)
+    at Object.execFileSync (node:child_process:945:15)
+    at branchModule ([stdin]:2:93)
+    at [stdin]:3:39
+    at runScriptInThisContext (node:internal/vm:209:10)
+    at node:internal/process/execution:446:12
+    at [stdin]-wrapper:6:24
+    at runScriptInContext (node:internal/process/execution:444:60)
+    at evalFunction (node:internal/process/execution:279:30) {
+  errno: -1,
+  code: 'EPERM',
+  syscall: 'spawnSync git',
+  path: 'git',
+  spawnargs: [
+    'show',
+    'build/binance-rest-transport:apps/runtime/src/providers/binance/binance-rest-weight-budget.js'
+  ],
+  error: [Circular *1],
+  status: 0,
+  signal: null,
+  output: [
+    null,
+    "// Binance's spot REST limit is REQUEST_WEIGHT 6000 per minute per IP, counted\n" +
+      "// by the exchange and reported back in every response's x-mbx-used-weight-1m\n" +
+      "// header. The REST transport reserves each request's weight here before it is\n" +
+      '// sent, against a budget that leaves at least 1000 of margin, and raises its\n' +
+      '// own count to whatever the exchange reports, so it never has to be told off.\n' +
+      'const REQUEST_WEIGHTS = Object.freeze({\n' +
+      '  KLINES: 2,\n' +
+      '  EXCHANGE_INFO: 20,\n' +
+      '  SERVER_TIME: 1,\n' +
+      '});\n' +
+      'const EXCHANGE_WEIGHT_LIMIT_PER_MINUTE = 6000;\n' +
+      'const DEFAULT_WEIGHT_BUDGET_PER_MINUTE = 4000;\n' +
+      'const MAX_WEIGHT_BUDGET_PER_MINUTE = 5000;\n' +
+      'const MIN_WEIGHT_BUDGET_PER_MINUTE = 100;\n' +
+      'const MINUTE_MS = 60_000;\n' +
+      'const USED_WEIGHT_HEADER = "x-mbx-used-weight-1m";\n' +
+      '// The share of the budget the steady cadence may plan on; the rest is kept\n' +
+      '// for the connect probe, the clock refresh, catch-up pages and the candle\n' +
+      '// backfill.\n' +
+      'const PLANNED_SHARE = 0.9;\n' +
+      'const MAX_CADENCE_STRETCH = 60;\n' +
+      '\n' +
+      'function assertBudget(budgetPerMinute) {\n' +
+      '  if (\n' +
+      '    !Number.isSafeInteger(budgetPerMinute) ||\n' +
+      '    budgetPerMinute < MIN_WEIGHT_BUDGET_PER_MINUTE ||\n' +
+      '    budgetPerMinute > MAX_WEIGHT_BUDGET_PER_MINUTE\n' +
+      '  ) {\n' +
+      '    throw new Error(\n' +
+      '      `weight budget must be a whole number between ${MIN_WEIGHT_BUDGET_PER_MINUTE} and ${MAX_WEIGHT_BUDGET_PER_MINUTE} per minute`,\n' +
+      '    );\n' +
+      '  }\n' +
+      '}\n' +
+      '\n' +
+      'function usedWeightFromHeaders(headers) {\n' +
+      '  if (headers === null || typeof headers !== "object") return null;\n' +
+      '  const entry = Object.entries(headers).find(([key]) => key.toLowerCase() === USED_WEIGHT_HEADER);\n' +
+      '  if (!entry || typeof entry[1] !== "string" || !/^\\d+$/.test(entry[1].trim())) return null;\n' +
+      '  const value = Number.parseInt(entry[1].trim(), 10);\n' +
+      '  return Number.isSafeInteger(value) ? value : null;\n' +
+      '}\n' +
+      '\n' +
+      'function createBinanceRestWeightBudget({ budgetPerMinute = DEFAULT_WEIGHT_BUDGET_PER_MINUTE, now = () => Date.now() } = {}) {\n' +
+      '  assertBudget(budgetPerMinute);\n' +
+      '  if (typeof now !== "function") throw new Error("now must be a function");\n' +
+      '\n' +
+      '  let minuteStart = Math.floor(now() / MINUTE_MS) * MINUTE_MS;\n' +
+      '  let reserved = 0;\n' +
+      '  let observed = 0;\n' +
+      '  let deferrals = 0;\n' +
+      '  let reservations = 0;\n' +
+      '\n' +
+      '  function rollMinute() {\n' +
+      '    const current = Math.floor(now() / MINUTE_MS) * MINUTE_MS;\n' +
+      '    if (current !== minuteStart) {\n' +
+      '      minuteStart = current;\n' +
+      '      reserved = 0;\n' +
+      '      observed = 0;\n' +
+      '    }\n' +
+      '  }\n' +
+      '\n' +
+      '  function used() {\n' +
+      '    rollMinute();\n' +
+      '    return Math.max(reserved, observed);\n' +
+      '  }\n' +
+      '\n' +
+      '  /** Reserves `weight` for a request about to be sent; false means wait for the next minute. */\n' +
+      '  function reserve(weight) {\n' +
+      '    if (!Number.isSafeInteger(weight) || weight <= 0) throw new Error("weight must be a positive safe integer");\n' +
+      '    rollMinute();\n' +
+      '    if (Math.max(reserved, observed) + weight > budgetPerMinute) {\n' +
+      '      deferrals += 1;\n' +
+      '      return false;\n' +
+      '    }\n' +
+      '    reserved += weight;\n' +
+      '    reservations += 1;\n' +
+      '    return true;\n' +
+      '  }\n' +
+      '\n' +
+      "  /** Raises this minute's count to what the exchange reports in a response's headers. */\n" +
+      '  function observe(headers) {\n' +
+      '    const value = usedWeightFromHeaders(headers);\n' +
+      '    if (value === null) return null;\n' +
+      '    rollMinute();\n' +
+      '    if (value > observed) observed = value;\n' +
+      '    return value;\n' +
+      '  }\n' +
+      '\n' +
+      '  function msUntilReset() {\n' +
+      '    const at = now();\n' +
+      '    return Math.max(1, minuteStart + MINUTE_MS - at);\n' +
+      '  }\n' +
+      '\n' +
+      '  function stats() {\n' +
+      '    rollMinute();\n' +
+      '    return Object.freeze({\n' +
+      '      budgetPerMinute,\n' +
+      '      minuteStart,\n' +
+      '      reserved,\n' +
+      '      observed,\n' +
+      '      used: Math.max(reserved, observed),\n' +
+      '      remaining: Math.max(0, budgetPerMinute - Math.max(reserved, observed)),\n' +
+      '      reservations,\n' +
+      '      deferrals,\n' +
+      '    });\n' +
+      '  }\n' +
+      '\n' +
+      '  return Object.freeze({ reserve, observe, used, msUntilReset, stats, get budgetPerMinute() { return budgetPerMinute; } });\n' +
+      '}\n' +
+      '\n' +
+      '/**\n' +
+      ' * The steady candle cadence that fits the budget: the poll interval, lengthened\n' +
+      ' * in whole multiples until the planned share holds. The caller says so in the\n' +
+      ' * health reason when it was lengthened. The budget is never exceeded to keep a\n' +
+      ' * cadence.\n' +
+      ' */\n' +
+      'function planCadence({ klinePollers, pollMs, budgetPerMinute }) {\n' +
+      '  assertBudget(budgetPerMinute);\n' +
+      '  if (!Number.isSafeInteger(pollMs) || pollMs <= 0) throw new Error("pollMs must be a positive safe integer");\n' +
+      '  if (!Number.isSafeInteger(klinePollers) || klinePollers < 0) throw new Error("klinePollers must be a non-negative safe integer");\n' +
+      '  const target = Math.floor(budgetPerMinute * PLANNED_SHARE);\n' +
+      '  const cost = (cadenceMs) => klinePollers * Math.ceil(MINUTE_MS / cadenceMs) * REQUEST_WEIGHTS.KLINES + REQUEST_WEIGHTS.SERVER_TIME;\n' +
+      '  let klineCadenceMs = pollMs;\n' +
+      '  let stretched = false;\n' +
+      '  for (let multiple = 2; cost(klineCadenceMs) > target && multiple <= MAX_CADENCE_STRETCH; multiple += 1) {\n' +
+      '    klineCadenceMs = pollMs * multiple;\n' +
+      '    stretched = true;\n' +
+      '  }\n' +
+      '  return Object.freeze({\n' +
+      '    klineCadenceMs,\n' +
+      '    stretched,\n' +
+      '    projectedPerMinute: cost(klineCadenceMs),\n' +
+      '    fits: cost(klineCadenceMs) <= target,\n' +
+      '  });\n' +
+      '}\n' +
+      '\n' +
+      'module.exports = {\n' +
+      '  createBinanceRestWeightBudget,\n' +
+      '  planCadence,\n' +
+      '  usedWeightFromHeaders,\n' +
+      '  REQUEST_WEIGHTS,\n' +
+      '  EXCHANGE_WEIGHT_LIMIT_PER_MINUTE,\n' +
+      '  DEFAULT_WEIGHT_BUDGET_PER_MINUTE,\n' +
+      '  MAX_WEIGHT_BUDGET_PER_MINUTE,\n' +
+      '  MIN_WEIGHT_BUDGET_PER_MINUTE,\n' +
+      '  USED_WEIGHT_HEADER,\n' +
+      '};\n',
+    ''
+  ],
+  pid: 10,
+  stdout: "// Binance's spot REST limit is REQUEST_WEIGHT 6000 per minute per IP, counted\n" +
+    "// by the exchange and reported back in every response's x-mbx-used-weight-1m\n" +
+    "// header. The REST transport reserves each request's weight here before it is\n" +
+    '// sent, against a budget that leaves at least 1000 of margin, and raises its\n' +
+    '// own count to whatever the exchange reports, so it never has to be told off.\n' +
+    'const REQUEST_WEIGHTS = Object.freeze({\n' +
+    '  KLINES: 2,\n' +
+    '  EXCHANGE_INFO: 20,\n' +
+    '  SERVER_TIME: 1,\n' +
+    '});\n' +
+    'const EXCHANGE_WEIGHT_LIMIT_PER_MINUTE = 6000;\n' +
+    'const DEFAULT_WEIGHT_BUDGET_PER_MINUTE = 4000;\n' +
+    'const MAX_WEIGHT_BUDGET_PER_MINUTE = 5000;\n' +
+    'const MIN_WEIGHT_BUDGET_PER_MINUTE = 100;\n' +
+    'const MINUTE_MS = 60_000;\n' +
+    'const USED_WEIGHT_HEADER = "x-mbx-used-weight-1m";\n' +
+    '// The share of the budget the steady cadence may plan on; the rest is kept\n' +
+    '// for the connect probe, the clock refresh, catch-up pages and the candle\n' +
+    '// backfill.\n' +
+    'const PLANNED_SHARE = 0.9;\n' +
+    'const MAX_CADENCE_STRETCH = 60;\n' +
+    '\n' +
+    'function assertBudget(budgetPerMinute) {\n' +
+    '  if (\n' +
+    '    !Number.isSafeInteger(budgetPerMinute) ||\n' +
+    '    budgetPerMinute < MIN_WEIGHT_BUDGET_PER_MINUTE ||\n' +
+    '    budgetPerMinute > MAX_WEIGHT_BUDGET_PER_MINUTE\n' +
+    '  ) {\n' +
+    '    throw new Error(\n' +
+    '      `weight budget must be a whole number between ${MIN_WEIGHT_BUDGET_PER_MINUTE} and ${MAX_WEIGHT_BUDGET_PER_MINUTE} per minute`,\n' +
+    '    );\n' +
+    '  }\n' +
+    '}\n' +
+    '\n' +
+    'function usedWeightFromHeaders(headers) {\n' +
+    '  if (headers === null || typeof headers !== "object") return null;\n' +
+    '  const entry = Object.entries(headers).find(([key]) => key.toLowerCase() === USED_WEIGHT_HEADER);\n' +
+    '  if (!entry || typeof entry[1] !== "string" || !/^\\d+$/.test(entry[1].trim())) return null;\n' +
+    '  const value = Number.parseInt(entry[1].trim(), 10);\n' +
+    '  return Number.isSafeInteger(value) ? value : null;\n' +
+    '}\n' +
+    '\n' +
+    'function createBinanceRestWeightBudget({ budgetPerMinute = DEFAULT_WEIGHT_BUDGET_PER_MINUTE, now = () => Date.now() } = {}) {\n' +
+    '  assertBudget(budgetPerMinute);\n' +
+    '  if (typeof now !== "function") throw new Error("now must be a function");\n' +
+    '\n' +
+    '  let minuteStart = Math.floor(now() / MINUTE_MS) * MINUTE_MS;\n' +
+    '  let reserved = 0;\n' +
+    '  let observed = 0;\n' +
+    '  let deferrals = 0;\n' +
+    '  let reservations = 0;\n' +
+    '\n' +
+    '  function rollMinute() {\n' +
+    '    const current = Math.floor(now() / MINUTE_MS) * MINUTE_MS;\n' +
+    '    if (current !== minuteStart) {\n' +
+    '      minuteStart = current;\n' +
+    '      reserved = 0;\n' +
+    '      observed = 0;\n' +
+    '    }\n' +
+    '  }\n' +
+    '\n' +
+    '  function used() {\n' +
+    '    rollMinute();\n' +
+    '    return Math.max(reserved, observed);\n' +
+    '  }\n' +
+    '\n' +
+    '  /** Reserves `weight` for a request about to be sent; false means wait for the next minute. */\n' +
+    '  function reserve(weight) {\n' +
+    '    if (!Number.isSafeInteger(weight) || weight <= 0) throw new Error("weight must be a positive safe integer");\n' +
+    '    rollMinute();\n' +
+    '    if (Math.max(reserved, observed) + weight > budgetPerMinute) {\n' +
+    '      deferrals += 1;\n' +
+    '      return false;\n' +
+    '    }\n' +
+    '    reserved += weight;\n' +
+    '    reservations += 1;\n' +
+    '    return true;\n' +
+    '  }\n' +
+    '\n' +
+    "  /** Raises this minute's count to what the exchange reports in a response's headers. */\n" +
+    '  function observe(headers) {\n' +
+    '    const value = usedWeightFromHeaders(headers);\n' +
+    '    if (value === null) return null;\n' +
+    '    rollMinute();\n' +
+    '    if (value > observed) observed = value;\n' +
+    '    return value;\n' +
+    '  }\n' +
+    '\n' +
+    '  function msUntilReset() {\n' +
+    '    const at = now();\n' +
+    '    return Math.max(1, minuteStart + MINUTE_MS - at);\n' +
+    '  }\n' +
+    '\n' +
+    '  function stats() {\n' +
+    '    rollMinute();\n' +
+    '    return Object.freeze({\n' +
+    '      budgetPerMinute,\n' +
+    '      minuteStart,\n' +
+    '      reserved,\n' +
+    '      observed,\n' +
+    '      used: Math.max(reserved, observed),\n' +
+    '      remaining: Math.max(0, budgetPerMinute - Math.max(reserved, observed)),\n' +
+    '      reservations,\n' +
+    '      deferrals,\n' +
+    '    });\n' +
+    '  }\n' +
+    '\n' +
+    '  return Object.freeze({ reserve, observe, used, msUntilReset, stats, get budgetPerMinute() { return budgetPerMinute; } });\n' +
+    '}\n' +
+    '\n' +
+    '/**\n' +
+    ' * The steady candle cadence that fits the budget: the poll interval, lengthened\n' +
+    ' * in whole multiples until the planned share holds. The caller says so in the\n' +
+    ' * health reason when it was lengthened. The budget is never exceeded to keep a\n' +
+    ' * cadence.\n' +
+    ' */\n' +
+    'function planCadence({ klinePollers, pollMs, budgetPerMinute }) {\n' +
+    '  assertBudget(budgetPerMinute);\n' +
+    '  if (!Number.isSafeInteger(pollMs) || pollMs <= 0) throw new Error("pollMs must be a positive safe integer");\n' +
+    '  if (!Number.isSafeInteger(klinePollers) || klinePollers < 0) throw new Error("klinePollers must be a non-negative safe integer");\n' +
+    '  const target = Math.floor(budgetPerMinute * PLANNED_SHARE);\n' +
+    '  const cost = (cadenceMs) => klinePollers * Math.ceil(MINUTE_MS / cadenceMs) * REQUEST_WEIGHTS.KLINES + REQUEST_WEIGHTS.SERVER_TIME;\n' +
+    '  let klineCadenceMs = pollMs;\n' +
+    '  let stretched = false;\n' +
+    '  for (let multiple = 2; cost(klineCadenceMs) > target && multiple <= MAX_CADENCE_STRETCH; multiple += 1) {\n' +
+    '    klineCadenceMs = pollMs * multiple;\n' +
+    '    stretched = true;\n' +
+    '  }\n' +
+    '  return Object.freeze({\n' +
+    '    klineCadenceMs,\n' +
+    '    stretched,\n' +
+    '    projectedPerMinute: cost(klineCadenceMs),\n' +
+    '    fits: cost(klineCadenceMs) <= target,\n' +
+    '  });\n' +
+    '}\n' +
+    '\n' +
+    'module.exports = {\n' +
+    '  createBinanceRestWeightBudget,\n' +
+    '  planCadence,\n' +
+    '  usedWeightFromHeaders,\n' +
+    '  REQUEST_WEIGHTS,\n' +
+    '  EXCHANGE_WEIGHT_LIMIT_PER_MINUTE,\n' +
+    '  DEFAULT_WEIGHT_BUDGET_PER_MINUTE,\n' +
+    '  MAX_WEIGHT_BUDGET_PER_MINUTE,\n' +
+    '  MIN_WEIGHT_BUDGET_PER_MINUTE,\n' +
+    '  USED_WEIGHT_HEADER,\n' +
+    '};\n',
+  stderr: ''
+}
+
+Node.js v22.22.0
+
+exec
+/bin/bash -lc "git show build/binance-rest-transport:apps/runtime/src/providers/binance/binance-rest-weight-budget.js | node -e 'let s=\"\";process.stdin.on(\"data\",x=>s+=x).on(\"end\",()=>{const m={exports:{}};new Function(\"module\",s)(m);const b=m.exports.createBinanceRestWeightBudget({budgetPerMinute:100,now:()=>1800000000000});b.reserve(20);b.observe({\"x-mbx-used-weight-1m\":\"98\"});console.log(JSON.stringify({granted:Array.from({length:5},()=>b.reserve(2)),stats:b.stats()}));});'" in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+{"granted":[true,true,true,true,true],"stats":{"budgetPerMinute":100,"minuteStart":1800000000000,"reserved":30,"observed":98,"used":98,"remaining":2,"reservations":6,"deferrals":0}}
+
+exec
+/bin/bash -lc "git show build/binance-rest-transport:apps/runtime/src/providers/binance/binance-kline-backfill.js | nl -ba | sed -n '40,125p'; git show build/binance-rest-transport:apps/runtime/src/server/app.js | nl -ba | sed -n '140,162p'; rg -n 'onBar|recordBar|recordClosedBar' apps/runtime/src/server/market-data-server.js apps/runtime/src/server/history.js" in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+    40	      throw new Error(`fetchRecentBars: maxPages must be a positive integer <= ${MAX_BACKFILL_PAGES}`);
+    41	    }
+    42	
+    43	    const rows = [];
+    44	    let retryAfterMs;
+    45	    const startedAtMs = Date.now();
+    46	    const closedBoundaryAt = (atMs) => Math.floor(atMs / intervalMs) * intervalMs;
+    47	    const lookbackMs = days * 24 * 60 * 60 * 1000;
+    48	    if (!Number.isSafeInteger(lookbackMs) || lookbackMs > startedAtMs) {
+    49	      throw new Error("fetchRecentBars: days resolves outside the supported epoch range");
+    50	    }
+    51	    let cursor = closedBoundaryAt(startedAtMs - lookbackMs);
+    52	    let pagesFetched = 0;
+    53	    let failureReason = null;
+    54	    let caughtUp = false;
+    55	
+    56	    while (pagesFetched < maxPages) {
+    57	      const closedBoundary = closedBoundaryAt(Date.now());
+    58	      if (cursor >= closedBoundary) {
+    59	        caughtUp = true;
+    60	        break;
+    61	      }
+    62	
+    63	      const result = await fetchKlines(marketKind, symbol, {
+    64	        interval,
+    65	        startTime: cursor,
+    66	        limit: MAX_KLINES_PER_REQUEST,
+    67	        fetchImpl,
+    68	        baseUrl: restBaseUrlFor(marketKind, endpoints),
+    69	      });
+    70	      pagesFetched += 1;
+    71	
+    72	      if (!result.ok) {
+    73	        failureReason = result.reason;
+    74	        if (Number.isSafeInteger(result.retryAfterMs) && result.retryAfterMs >= 0) {
+    75	          retryAfterMs = result.retryAfterMs;
+    76	        }
+    77	        emitTelemetry(telemetry, "market_data.binance_kline_backfill.page_failed", {
+    78	          symbol: safeTelemetrySymbol(symbol),
+    79	          marketKind: safeTelemetryMarketKind(marketKind),
+    80	          reason: result.reason,
+    81	          pagesFetched,
+    82	          barsSoFar: rows.length,
+    83	        });
+    84	        break;
+    85	      }
+    86	
+    87	      const page = parseKlineRows(result.value.body, intervalMs);
+    88	      if (!page) {
+    89	        failureReason = "MALFORMED_KLINE_PAGE";
+    90	        emitTelemetry(telemetry, "market_data.binance_kline_backfill.page_failed", {
+    91	          symbol: safeTelemetrySymbol(symbol),
+    92	          marketKind: safeTelemetryMarketKind(marketKind),
+    93	          reason: failureReason,
+    94	          pagesFetched,
+    95	          barsSoFar: rows.length,
+    96	        });
+    97	        break;
+    98	      }
+    99	
+   100	      if (page.length === 0) {
+   101	        failureReason = "INCOMPLETE_PAGE";
+   102	        break;
+   103	      }
+   104	
+   105	      if (page[0].openTime !== cursor) {
+   106	        failureReason = "PAGE_START_MISMATCH";
+   107	        break;
+   108	      }
+   109	      if (page[page.length - 1].openTime > closedBoundary) {
+   110	        failureReason = "PAGE_TIME_RANGE_INVALID";
+   111	        break;
+   112	      }
+   113	
+   114	      const closedPage = page[page.length - 1].openTime === closedBoundary
+   115	        ? page.slice(0, -1)
+   116	        : page;
+   117	      if (closedPage.length === 0) {
+   118	        failureReason = "INCOMPLETE_PAGE";
+   119	        break;
+   120	      }
+   121	
+   122	      for (const row of closedPage) {
+   123	        rows.push(row);
+   124	      }
+   125	
+   140	  if (!Object.values(BINANCE_TRANSPORTS).includes(binanceTransport)) {
+   141	    throw new Error("createApp: binanceTransport must be ws or rest");
+   142	  }
+   143	  // The tick-size lookup is the third spot REST call (exchangeInfo); it uses
+   144	  // the same origin override and the same fetch as the connection.
+   145	  const resolvedTickSizeResolver = tickSizeResolver ?? createInstrumentTickSizeResolver({ fetchImpl, endpoints: binanceEndpoints });
+   146	  const allowedOriginSet = new Set(allowedOrigins);
+   147	  // The stream transport is the default and untouched; the REST poller is an
+   148	  // explicit choice for hosts that cannot open a WebSocket (spot only).
+   149	  const connection = binanceTransport === BINANCE_TRANSPORTS.REST
+   150	    ? createBinanceRestConnection({
+   151	      telemetry, fetchImpl, endpoints: binanceEndpoints, pollMs: binanceRestPollMs, weightBudgetPerMinute: binanceRestWeightBudget,
+   152	    })
+   153	    : createBinanceConnection({
+   154	      telemetry, webSocketImpl, fetchImpl, backpressureMaxQueueDepth: binanceTradeQueueDepth, endpoints: binanceEndpoints,
+   155	    });
+   156	  const storageReader = resolveStorageReader({ dbPath, liveStorageServiceUrl, liveStorageClientToken });
+   157	  const volumeProfileCache = createVolumeProfileCache({ dbPath: volumeProfileCachePath });
+   158	  const clientBufferOptions = {
+   159	    ...(clientBufferSoftBytes === undefined ? {} : { clientBufferSoftBytes }),
+   160	    ...(clientBufferHardBytes === undefined ? {} : { clientBufferHardBytes }),
+   161	    ...(clientBufferGraceMs === undefined ? {} : { clientBufferGraceMs }),
+   162	  };
+apps/runtime/src/server/history.js:187:  function recordBar(barFrame) {
+apps/runtime/src/server/history.js:272:    recordBar, recordTrade, recordMarker, wouldRetainMarker, snapshotBars, snapshotTrades, snapshotMarkers, markerCount,
+apps/runtime/src/server/market-data-server.js:731:  function recordClosedBar(buffer, frame) {
+apps/runtime/src/server/market-data-server.js:732:    buffer.recordBar(frame);
+apps/runtime/src/server/market-data-server.js:1113:        recordClosedBar(
+apps/runtime/src/server/market-data-server.js:1769:            recordClosedBar(buffer, frame);
+apps/runtime/src/server/market-data-server.js:1840:          recordClosedBar(buffer, frame);
+
+exec
+/bin/bash -lc "sed -n '175,208p' apps/runtime/src/server/history.js; sed -n '1090,1124p' apps/runtime/src/server/market-data-server.js; sed -n '720,750p' apps/runtime/src/server/market-data-server.js; rg -n 'parseKlineRows|openTime|quoteVolume' apps/runtime/src/providers/binance/binance-event-normalizer.js | tail -25; git show build/binance-rest-transport:apps/runtime/test/providers/binance/binance-http-client.test.js | tail -90" in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+
+  function wouldRetainMarker(tsExchange, side, magnitude) {
+    if (!timeCoveredMarkers) return true;
+    const ids = markerIdsByBucketSide.get(`${Math.floor(tsExchange / markerBucketMs)}:${side}`);
+    if (ids === undefined || ids.size < maxMarkersPerBucketSide) return true;
+    for (const id of ids) {
+      const existing = markers.get(id);
+      if (existing !== undefined && markerMagnitude(existing) <= magnitude) return true;
+    }
+    return false;
+  }
+
+  function recordBar(barFrame) {
+    if (barFrame.closed !== true) {
+      return;
+    }
+    if (bars.has(barFrame.ts_open)) {
+      bars.delete(barFrame.ts_open);
+    }
+    bars.set(barFrame.ts_open, barFrame);
+    while (bars.size > maxBars) {
+      let oldestKey;
+      for (const key of bars.keys()) {
+        if (oldestKey === undefined || key < oldestKey) {
+          oldestKey = key;
+        }
+      }
+      bars.delete(oldestKey);
+    }
+  }
+
+  function recordTrade(tradeFrame) {
+    if (typeof tradeFrame?.trade_id !== "string" || tradeFrame.trade_id.length === 0) {
+      throw new Error("recordTrade: trade_id must be a non-empty string");
+          if (isActivePair && isNewMarker) broadcast(wireMarker);
+        }
+      }
+    } else if (
+      envelope.eventType === EVENT_TYPES.KLINE &&
+      envelope.state !== "UNAVAILABLE"
+    ) {
+      const failureKey = `${pairKey(envelope.providerSymbol, envelope.marketKind)}:${EVENT_TYPES.KLINE}`;
+      let frame;
+      try {
+        frame = klineEnvelopeToFrame(envelope);
+        wireFailures.delete(failureKey);
+      } catch (error) {
+        wireFailures.add(failureKey);
+        console.error(
+          "market data server: kline value cannot be represented on the numeric wire",
+          error?.message ?? error,
+        );
+        if (isActivePair) checkHealthAndMaybeBroadcast();
+        return;
+      }
+      if (frame.closed) {
+        repairDetectedKlineGap(frame);
+        recordClosedBar(
+          historyBufferFor(envelope.providerSymbol, envelope.marketKind),
+          frame,
+        );
+      } else {
+        repairDetectedKlineGap(frame);
+      }
+      if (isActivePair) {
+        broadcast(frame);
+      }
+    } else if (envelope.eventType === EVENT_TYPES.DEPTH && isTrackedPair) {
+      // The pair on screen needs the whole sorted book for its frame. A pair
+    }
+    markerHistorySeqByPair.set(key, seq);
+  }
+
+  function inlineMarkers(buffer) {
+    const markers = buffer.snapshotMarkers();
+    return markers.length > MAX_SNAPSHOT_MARKERS
+      ? markers.slice(markers.length - MAX_SNAPSHOT_MARKERS)
+      : markers;
+  }
+
+  function recordClosedBar(buffer, frame) {
+    buffer.recordBar(frame);
+    const key = pairKey(fromWireSymbol(frame.symbol), frame.marketKind);
+    const latest = latestClosedBarOpenTimeByPair.get(key);
+    if (latest === undefined || frame.ts_open > latest) {
+      latestClosedBarOpenTimeByPair.set(key, frame.ts_open);
+    }
+  }
+
+  function repairDetectedKlineGap(frame) {
+    const providerSymbol = fromWireSymbol(frame.symbol);
+    const key = pairKey(providerSymbol, frame.marketKind);
+    const latestClosedOpenTime = latestClosedBarOpenTimeByPair.get(key);
+    if (
+      latestClosedOpenTime === undefined ||
+      frame.ts_open <= latestClosedOpenTime + frame.interval_ms
+    ) {
+      return;
+    }
+    backfilledPairs.delete(key);
+412:function isValidKlineTimeRange(openTime, closeTime, interval) {
+416:    openTime % intervalMs === 0 &&
+417:    closeTime > openTime &&
+418:    closeTime - openTime + 1 === intervalMs
+432:function isValidKlineVolumeRange({ baseVolume, quoteVolume, takerBuyBaseVolume, takerBuyQuoteVolume }) {
+435:    compareDecimalStrings(takerBuyQuoteVolume, quoteVolume) <= 0
+517:    !isValidKlineTimeRange(cleanPayload.openTime, cleanPayload.closeTime, cleanPayload.interval)
+523:    const barTimeAssessment = assessLiveEventTime(cleanPayload.openTime, receivedAtMs);
+557:function parseKlineRows(rawRows, intervalMs) {
+576:    const openTimeBox = ownDataElementAt(row, 0);
+583:    const quoteVolumeBox = ownDataElementAt(row, 7);
+589:      !openTimeBox ||
+596:      !quoteVolumeBox ||
+605:    const openTime = openTimeBox.value;
+612:    const quoteVolume = quoteVolumeBox.value;
+618:      !isUsableTimestamp(openTime) ||
+625:      !isValidDecimalString(quoteVolume) ||
+629:      compareDecimalStrings(takerBuyQuoteVolume, quoteVolume) > 0 ||
+634:    if (intervalMs !== undefined && openTime % intervalMs !== 0) {
+637:    if (closeTime <= openTime || (intervalMs !== undefined && closeTime - openTime + 1 !== intervalMs)) {
+645:      (intervalMs === undefined ? openTime <= previousOpenTime : openTime - previousOpenTime !== intervalMs)
+650:    previousOpenTime = openTime;
+654:        openTime,
+661:        quoteVolume,
+699:  parseKlineRows,
+      "https://api.binance.com/api/v3/exchangeInfo?symbol=BTCUSDT",
+      expect.objectContaining({ method: "GET" }),
+    );
+  });
+
+  test("builds the correct USD-M exchangeInfo request URL", async () => {
+    const fetchImpl = jest.fn(async () => jsonResponse({ symbols: [] }));
+    await fetchExchangeInfo("PERPETUAL", "ETHUSDT", { fetchImpl });
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "https://fapi.binance.com/fapi/v1/exchangeInfo?symbol=ETHUSDT",
+      expect.objectContaining({ method: "GET" }),
+    );
+  });
+
+  test("returns the parsed exchangeInfo body on a 2xx response", async () => {
+    const body = { symbols: [{ symbol: "BTCUSDT", filters: [] }] };
+    const fetchImpl = jest.fn(async () => jsonResponse(body));
+    const result = await fetchExchangeInfo("SPOT", "BTCUSDT", { fetchImpl });
+    expect(result).toEqual({ ok: true, value: { status: 200, headers: expect.any(Object), body } });
+  });
+});
+
+test("HTTP helpers reject invalid resource controls before invoking fetch", async () => {
+  const fetchImpl = jest.fn();
+  await expect(fetchDepthSnapshot("SPOT", "BTCUSDT", { fetchImpl, timeoutMs: 0 })).rejects.toThrow(/timeoutMs/);
+  await expect(fetchDepthSnapshot("SPOT", "BTCUSDT", { fetchImpl, maxResponseBytes: Number.NaN })).rejects.toThrow(/maxResponseBytes/);
+  expect(fetchImpl).not.toHaveBeenCalled();
+});
+
+test("a genuine but already-locked response body fails closed instead of throwing", async () => {
+  const response = jsonResponse({ lastUpdateId: 1, bids: [], asks: [] });
+  const reader = response.body.getReader();
+  try {
+    await expect(fetchDepthSnapshot("SPOT", "BTCUSDT", { fetchImpl: async () => response })).resolves.toEqual({
+      ok: false,
+      reason: "INVALID_RESPONSE",
+    });
+  } finally {
+    reader.releaseLock();
+  }
+});
+
+test("a genuine Response with a hostile property override fails closed instead of throwing", async () => {
+  const response = jsonResponse({ lastUpdateId: 1, bids: [], asks: [] });
+  Object.defineProperty(response, "headers", {
+    configurable: true,
+    get() {
+      throw new Error("hostile getter");
+    },
+  });
+
+  await expect(fetchDepthSnapshot("SPOT", "BTCUSDT", { fetchImpl: async () => response })).resolves.toEqual({
+    ok: false,
+    reason: "INVALID_RESPONSE",
+  });
+});
+
+describe("binance-http-client fetchServerTime and cancellation", () => {
+  test("fetchServerTime asks /api/v3/time (or /fapi/v1/time) and returns the body with its headers", async () => {
+    const fetchImpl = jest.fn(async () => jsonResponse({ serverTime: 1_800_000_000_000 }, { headers: { "x-mbx-used-weight-1m": "3" } }));
+    const result = await fetchServerTime("SPOT", { fetchImpl, baseUrl: "https://data-api.binance.vision" });
+    await fetchServerTime("PERPETUAL", { fetchImpl });
+    expect(fetchImpl.mock.calls.map((call) => call[0])).toEqual([
+      "https://data-api.binance.vision/api/v3/time",
+      "https://fapi.binance.com/fapi/v1/time",
+    ]);
+    expect(result.ok).toBe(true);
+    expect(result.value.body).toEqual({ serverTime: 1_800_000_000_000 });
+    expect(result.value.headers["x-mbx-used-weight-1m"]).toBe("3");
+    await expect(fetchServerTime("COIN_M", { fetchImpl })).rejects.toThrow(/unrecognized/);
+  });
+
+  test("an external AbortSignal cancels the request and classifies it ABORTED, never TIMEOUT or NETWORK_ERROR", async () => {
+    const controller = new AbortController();
+    const fetchImpl = jest.fn((url, init) => new Promise((_, reject) => {
+      init.signal.addEventListener("abort", () => {
+        const error = new Error("aborted");
+        error.name = "AbortError";
+        reject(error);
+      });
+    }));
+    const pending = fetchKlines("SPOT", "BTCUSDT", { fetchImpl, interval: "1m", startTime: 0, limit: 2, signal: controller.signal });
+    controller.abort();
+    expect(await pending).toEqual({ ok: false, reason: "ABORTED" });
+    const alreadyAborted = await fetchKlines("SPOT", "BTCUSDT", { fetchImpl, interval: "1m", startTime: 0, signal: controller.signal });
+    expect(alreadyAborted).toEqual({ ok: false, reason: "ABORTED" });
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    await expect(fetchServerTime("SPOT", { fetchImpl, signal: {} })).rejects.toThrow(/AbortSignal/);
+  });
+});
+
+exec
+/bin/bash -lc "sed -n '485,545p' apps/runtime/src/providers/binance/binance-event-normalizer.js; rg -n 'assessLiveEventTime|MAX.*AGE|STALE' apps/runtime/src/providers/shared/* apps/runtime/src/providers/binance/binance-event-normalizer.js" in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+    eventTimeMs = receivedAtMs;
+  } else if (resolvedEventTimeMs === undefined) {
+    missingFields.push("eventTime");
+  } else {
+    eventTimeMs = resolvedEventTimeMs;
+  }
+
+  if (missingFields.length > 0) {
+    return degradedState(
+      eventType,
+      marketKind,
+      symbol,
+      "MISSING_OR_INVALID_REQUIRED_FIELD",
+      context,
+      missingFields,
+    );
+  }
+
+  const eventTimeAssessment = assessLiveEventTime(eventTimeMs, receivedAtMs);
+  if (!eventTimeAssessment.ok) {
+    return degradedState(eventType, marketKind, symbol, eventTimeAssessment.reason, context);
+  }
+
+  if (
+    eventType === EVENT_TYPES.DEPTH &&
+    cleanPayload.lastUpdateId < cleanPayload.firstUpdateId
+  ) {
+    return degradedState(eventType, marketKind, symbol, "UPDATE_ID_RANGE_INVALID", context);
+  }
+
+  if (
+    eventType === EVENT_TYPES.KLINE &&
+    !isValidKlineTimeRange(cleanPayload.openTime, cleanPayload.closeTime, cleanPayload.interval)
+  ) {
+    return degradedState(eventType, marketKind, symbol, "KLINE_TIME_RANGE_INVALID", context);
+  }
+
+  if (eventType === EVENT_TYPES.KLINE) {
+    const barTimeAssessment = assessLiveEventTime(cleanPayload.openTime, receivedAtMs);
+    if (!barTimeAssessment.ok) {
+      return degradedState(eventType, marketKind, symbol, barTimeAssessment.reason, context);
+    }
+  }
+
+  if (
+    eventType === EVENT_TYPES.KLINE &&
+    !isValidKlineOhlcRange(cleanPayload)
+  ) {
+    return degradedState(eventType, marketKind, symbol, "KLINE_OHLC_RANGE_INVALID", context);
+  }
+
+  if (eventType === EVENT_TYPES.KLINE && !isValidKlineVolumeRange(cleanPayload)) {
+    return degradedState(eventType, marketKind, symbol, "KLINE_VOLUME_RANGE_INVALID", context);
+  }
+
+  return Object.freeze({
+    provider: "BINANCE",
+    venue: "BINANCE",
+    marketKind,
+    providerSymbol: symbol,
+    eventType,
+apps/runtime/src/providers/binance/binance-event-normalizer.js:11:const { assessLiveEventTime } = require("../shared/live-event-time-policy");
+apps/runtime/src/providers/binance/binance-event-normalizer.js:503:  const eventTimeAssessment = assessLiveEventTime(eventTimeMs, receivedAtMs);
+apps/runtime/src/providers/binance/binance-event-normalizer.js:523:    const barTimeAssessment = assessLiveEventTime(cleanPayload.openTime, receivedAtMs);
+apps/runtime/src/providers/shared/live-event-time-policy.js:7:function assessLiveEventTime(eventTimeMs, receivedAtMs, {
+apps/runtime/src/providers/shared/live-event-time-policy.js:24:  assessLiveEventTime,
+
+exec
+/bin/bash -lc "cat apps/runtime/src/providers/shared/live-event-time-policy.js; cat apps/runtime/src/providers/shared/timestamp-domain.js 2>/dev/null; sed -n '1,18p' apps/runtime/src/providers/binance/binance-event-normalizer.js" in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+const MAX_LIVE_EVENT_FUTURE_SKEW_MS = 120_000;
+
+function isSafeEpochMs(value) {
+  return Number.isSafeInteger(value) && value > 0;
+}
+
+function assessLiveEventTime(eventTimeMs, receivedAtMs, {
+  maxFutureSkewMs = MAX_LIVE_EVENT_FUTURE_SKEW_MS,
+} = {}) {
+  if (!isSafeEpochMs(eventTimeMs) || !isSafeEpochMs(receivedAtMs)) {
+    return Object.freeze({ ok: false, reason: "EVENT_TIME_INVALID" });
+  }
+  if (!Number.isSafeInteger(maxFutureSkewMs) || maxFutureSkewMs < 0) {
+    throw new Error("live-event-time-policy: time bounds must be non-negative safe integers");
+  }
+  if (eventTimeMs > receivedAtMs + maxFutureSkewMs) {
+    return Object.freeze({ ok: false, reason: "EVENT_TIME_TOO_FAR_IN_FUTURE" });
+  }
+  return Object.freeze({ ok: true, reason: null });
+}
+
+module.exports = {
+  MAX_LIVE_EVENT_FUTURE_SKEW_MS,
+  assessLiveEventTime,
+};
+const { types: utilTypes } = require("node:util");
+const {
+  EVENT_TYPES,
+  MARKET_KINDS,
+  candleIntervalMsFor,
+  isAllowedSymbol,
+  isAllowedMarketKind,
+  isAllowedEventType,
+  isAllowedCandleInterval,
+} = require("./binance-config");
+const { assessLiveEventTime } = require("../shared/live-event-time-policy");
+
+const PRICE_STRING_PATTERN = /^\d+(\.\d+)?$/;
+const MAX_DECIMAL_STRING_LENGTH = 1024;
+const MAX_VALID_EPOCH_MS = 8640000000000000;
+const MAX_DEPTH_ENTRIES = 5000;
+const RECOVERY_STATES = new Set(["READY", "RECOVERING", "UNAVAILABLE"]);
+const RESOLVED_CONTEXT_KEYS = new Set(["marketKind", "symbol", "eventType", "interval", "raw"]);
+
+codex
+The weight bug is confirmed: after observing 98 used against a budget of 100, five concurrent weight-2 reservations all succeed. I also found that backfill still uses the machine clock to classify closed candles, so it can disagree with live polling under clock skew. I’m finishing the review with fixes and regression cases.
+codex
+Reviewed against the final Stage B scope: REST candles only, with tape and book unavailable.
+
+1. **WARNING — `apps/runtime/src/providers/binance/binance-rest-weight-budget.js:68–76` — Reservations can exceed the observed remaining budget.**  
+   When `observed > reserved`, successful reservations increment only `reserved`, leaving `used()` unchanged. Reproduction: reserve 20, observe 98 against budget 100, then reserve weight 2 five times—all succeed. Concurrent requests can exceed the intended limit.  
+   **Fix:** Advance a conservative accounted total on every reservation, including reservations after header observations. Add a test where a near-limit header permits exactly one further request.
+
+2. **WARNING — `apps/runtime/src/providers/binance/binance-rest-connection.js:121` and `apps/runtime/src/providers/binance/binance-kline-backfill.js:45–57,114–116` — Backfill bypasses exchange-time classification.**  
+   Live polling uses the synchronized exchange clock, but backfill uses `Date.now()` to identify closed candles. With the machine ahead, backfill can return an exchange-forming candle as closed; the server then records it as historical data. This breaks live-versus-history consistency.  
+   **Fix:** Inject the exchange clock into backfill and filter each row by its close time using the same finalization policy. Test backfill and live polling together with the machine clock ahead.
+
+3. **WARNING — `apps/runtime/src/providers/binance/binance-rest-connection.js:165–181` — Backfill ignores global rate-limit and ban windows.**  
+   `meteredFetch` checks only the weight budget. It can dispatch during an existing 429/418 pause, and a 429/418 received by backfill never updates the connection’s shared pause state. Other requests can therefore continue during `Retry-After`.  
+   **Fix:** Route backfill through the shared dispatch gate and failure handling. Make queued waits abortable. Test both directions: a polling ban blocks backfill, and a backfill ban blocks polling.
+
+4. **WARNING — `apps/runtime/src/providers/binance/binance-rest-connection.js:307–314` — Clock-refresh rate limits are ignored.**  
+   A `/time` response of 429 or 418 only increments `clockRefreshFailures`; it never calls `noteRequestFailure`. Candle polling continues, and a 418 does not disconnect the route or establish the ban window.  
+   **Fix:** Apply shared rate-limit/ban handling to failed clock requests while retaining the last valid offset. Add clock-refresh-specific 429 and 418 tests.
+
+5. **WARNING — `apps/runtime/src/server/app.js:143–151` — Tick-size requests bypass the runtime budget.**  
+   The tick-size resolver receives raw `fetchImpl`, while reservations exist only inside the REST connection. Its `exchangeInfo` requests consume weight without reservation and bypass the shared ban gate. The documented guarantee covering every runtime request therefore does not hold.  
+   **Fix:** Share a weighted dispatch service between the connection and resolver, charging `exchangeInfo` weight 20. Test a tick-size lookup while the budget is exhausted and during an IP ban.
+
+Validation: ran the requested diff and reproduced finding 1 directly from the branch module. The full branch test suite was not run; the workspace is read-only and checked out on `main`.
+
+VERDICT: REVISE
+tokens used
+78,684
+Reviewed against the final Stage B scope: REST candles only, with tape and book unavailable.
+
+1. **WARNING — `apps/runtime/src/providers/binance/binance-rest-weight-budget.js:68–76` — Reservations can exceed the observed remaining budget.**  
+   When `observed > reserved`, successful reservations increment only `reserved`, leaving `used()` unchanged. Reproduction: reserve 20, observe 98 against budget 100, then reserve weight 2 five times—all succeed. Concurrent requests can exceed the intended limit.  
+   **Fix:** Advance a conservative accounted total on every reservation, including reservations after header observations. Add a test where a near-limit header permits exactly one further request.
+
+2. **WARNING — `apps/runtime/src/providers/binance/binance-rest-connection.js:121` and `apps/runtime/src/providers/binance/binance-kline-backfill.js:45–57,114–116` — Backfill bypasses exchange-time classification.**  
+   Live polling uses the synchronized exchange clock, but backfill uses `Date.now()` to identify closed candles. With the machine ahead, backfill can return an exchange-forming candle as closed; the server then records it as historical data. This breaks live-versus-history consistency.  
+   **Fix:** Inject the exchange clock into backfill and filter each row by its close time using the same finalization policy. Test backfill and live polling together with the machine clock ahead.
+
+3. **WARNING — `apps/runtime/src/providers/binance/binance-rest-connection.js:165–181` — Backfill ignores global rate-limit and ban windows.**  
+   `meteredFetch` checks only the weight budget. It can dispatch during an existing 429/418 pause, and a 429/418 received by backfill never updates the connection’s shared pause state. Other requests can therefore continue during `Retry-After`.  
+   **Fix:** Route backfill through the shared dispatch gate and failure handling. Make queued waits abortable. Test both directions: a polling ban blocks backfill, and a backfill ban blocks polling.
+
+4. **WARNING — `apps/runtime/src/providers/binance/binance-rest-connection.js:307–314` — Clock-refresh rate limits are ignored.**  
+   A `/time` response of 429 or 418 only increments `clockRefreshFailures`; it never calls `noteRequestFailure`. Candle polling continues, and a 418 does not disconnect the route or establish the ban window.  
+   **Fix:** Apply shared rate-limit/ban handling to failed clock requests while retaining the last valid offset. Add clock-refresh-specific 429 and 418 tests.
+
+5. **WARNING — `apps/runtime/src/server/app.js:143–151` — Tick-size requests bypass the runtime budget.**  
+   The tick-size resolver receives raw `fetchImpl`, while reservations exist only inside the REST connection. Its `exchangeInfo` requests consume weight without reservation and bypass the shared ban gate. The documented guarantee covering every runtime request therefore does not hold.  
+   **Fix:** Share a weighted dispatch service between the connection and resolver, charging `exchangeInfo` weight 20. Test a tick-size lookup while the budget is exhausted and during an IP ban.
+
+Validation: ran the requested diff and reproduced finding 1 directly from the branch module. The full branch test suite was not run; the workspace is read-only and checked out on `main`.
+
+VERDICT: REVISE
+--- last message saved to /home/user/Terminal-L1-L2/PM/log/codex/20261026T042016Z-code-build-binance-rest-transport.last.md
+VERDICT: REVISE

@@ -58,6 +58,56 @@ Recent host storage is bounded by actual collector coverage and retention.
 Curated historical coverage is a separate S3 publication path and must be
 confirmed from its catalogs.
 
+## Browser-direct mode (no runtime)
+
+The web app can read Binance spot by itself, for a link that opens anywhere to
+test indicators on live data. It is opt-in and off by default: with neither
+switch below set, the worker speaks to the runtime over its WebSocket exactly
+as before.
+
+- Build-time: `VITE_DATA_SOURCE=browser-binance` baked into the bundle.
+- Per page: `?source=browser-binance` in the URL (wins over the build-time
+  value; `?source=runtime` switches a baked bundle back).
+
+The market-data worker then uses `BrowserBinanceTransport`
+(`apps/web/src/workers/browserBinanceTransport.ts`) in place of the socket to
+the runtime. On a selection it fetches the last 900 closed one-minute klines
+from Binance's public mirror (`https://data-api.binance.vision`), sends
+`selection`, `snapshot` (closed bars only, marked `reconstructed` as the
+runtime marks its REST backfill), `health` READY with `reason: "BROWSER_DIRECT"`
+and a `book` placeholder, then opens one mirror stream
+(`wss://data-stream.binance.vision:9443`) for `kline_1m`, `trade` and
+`depth20@100ms` and forwards each event as a `bar`, `trade` or `book` frame.
+Side, `buy_volume` and `trade_count` follow `src/server/frames.js`, so
+indicators see the same data as from the runtime; every frame still passes the
+browser's own frame parser. The status chip reads `LIVE (BROWSER_DIRECT)`.
+
+What it does not have: the L2 engine and heatmap, walls, icebergs, exhaustion,
+initiative, candle monitor, live profiles and VPIN (their requests get the
+contract's unavailable reply, so those indicators show their own "needs the
+runtime" state); history past 900 bars; trades from before the page opened;
+the marker pool; a book deeper than 20 levels. Spot only: perpetual pairs are
+attempted on `fapi`/`fstream` and report
+`BROWSER_DIRECT_PERPETUAL_UNREACHABLE` when the browser cannot reach them;
+dxFeed instruments report `BROWSER_DIRECT_NO_DXFEED`. A dropped spot stream
+shows `RECOVERING`, withdraws the book, and reconnects with backoff
+(`UNAVAILABLE` after five failures); whenever a stream opens, the closed bars
+between the last confirmed close and the live stream are paged from REST,
+minute by consecutive minute and marked `reconstructed`, before the feed is
+`READY` again. A REST row counts as final only when its minute closed before
+the request went out; the minute at the edge takes the stream's own close. A
+missing minute keeps the feed recovering; a gap past 11,000 minutes re-reads
+the history as a fresh snapshot.
+
+To build a static bundle with the mode baked in and relative asset paths:
+
+```bash
+cd apps/web && VITE_DATA_SOURCE=browser-binance npx vite build --base ./ --outDir ../../dist-browser-direct
+```
+
+Serve `dist-browser-direct/` from any static host or open `index.html` through
+one; nothing else needs to run.
+
 ## Contracts
 
 - [Canonical event v1](../../contracts/binance-canonical-event/v1/binance-canonical-event-v1.md)

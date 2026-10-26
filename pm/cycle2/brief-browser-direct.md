@@ -28,16 +28,16 @@ export function createTransport(url: string, source: DataSource | undefined): Tr
 
 A real `WebSocket` satisfies the interface, so the worker's `ws`, `socketCleanup`
 and helper parameters are retyped to `TransportSocket` and nothing else changes:
-it still sends `capabilities` then `select`, parses every incoming `event.data`
-string with `parseServerFrame`, and reconnects on close. The `start` message
-gains one optional field, `source: "browser-binance"`, set by `useMarketData.ts`
-from `import.meta.env.VITE_DATA_SOURCE` or `location.search`
-(`resolveDataSource()`); the query string wins so a tester can switch a bundle.
+it still sends `capabilities` then `select`, parses every `event.data` string
+with `parseServerFrame`, and reconnects on close. The `start` message gains one
+optional field, `source: "browser-binance"`, set by `useMarketData.ts` from
+`import.meta.env.VITE_DATA_SOURCE` or `location.search` (`resolveDataSource()`);
+the query string wins.
 
 `BrowserBinanceTransport` (`apps/web/src/workers/browserBinanceTransport.ts`)
 takes injectable `fetch`, `WebSocket`, clock and timers so tests run offline;
 every frame leaves it as a JSON `MessageEvent`, so the worker's parser stays
-the contract gate in production.
+the gate.
 
 ## 2. Frame sequence on selection
 
@@ -49,13 +49,13 @@ For a Binance SPOT pair:
 
 1. `selection`.
 2. REST `GET https://data-api.binance.vision/api/v3/klines?symbol=BTCUSDT&interval=1m&limit=901`
-3. `snapshot`: the closed rows (`closeTime < now`, at most 900, oldest first),
+3. `snapshot`: the rows closed 5 s before the request (at most 900, oldest first),
    each a `bar` with `closed: true` and `reconstructed: true` (REST-sourced, as
    `restKlineRowToBarFrame` marks them), `trades: []`, `markers: []`,
    `vpin_status: "DISABLED"`. No `bar_history`: the parser rejects it on Binance.
 4. `health` `READY`, `stale: false`, `reason: "BROWSER_DIRECT"`.
 5. `book` `UNAVAILABLE`, `reason: "BROWSER_DIRECT_STREAM_CONNECTING"`.
-6. The last REST row as a forming `bar` (`closed: false`) if its minute is open.
+6. The first unconfirmed row as a forming `bar` (`closed: false`).
 7. One combined mirror stream
    `wss://data-stream.binance.vision:9443/stream?streams=btcusdt@kline_1m/btcusdt@trade/btcusdt@depth20@100ms`,
    then `bar`, `trade` and `book` frames as events arrive.
@@ -71,7 +71,7 @@ A second `select` ends the session and restarts at step 1.
 | `trade` event | `trade` | `ts_exchange: T`, `price: +p`, `size: +q`, `side: m ? "sell" : "buy"`, `trade_id: String(t)` |
 | `depth20@100ms` `{lastUpdateId,bids,asks}` | `book` | `status: "READY"`, bids/asks as `{price,size}` numbers (zero sizes dropped), `lastUpdateId`, `stale: false` |
 | stream close, or no open within 15 s | `health`, `book` | `RECOVERING`, `stale: true`, `reason: "BROWSER_DIRECT_STREAM_CLOSED"`; a READY book is withdrawn (`book UNAVAILABLE`, same reason); reconnect with 1 s to 30 s backoff; after five failures `UNAVAILABLE`, `reason: "BROWSER_DIRECT_STREAM_UNAVAILABLE"`, retries continue |
-| every stream open | `bar`, `health` | REST pages (1,000 klines) from the last confirmed close until continuous with the stream's first close (held meanwhile, at most 120; older ones return through REST) or the forming minute: missed minutes as `reconstructed` bars, in order; then `READY` if degraded. A failed or short read keeps `RECOVERING` (`BROWSER_DIRECT_REST_FAILED`) and retries; a dead stream abandons its fill; a gap past 11,000 minutes re-reads the snapshot |
+| every stream open | `bar`, `health` | REST pages (1,000 klines) from the last confirmed close, each row the next consecutive minute, final only if its minute closed 5 s before the request (the stream's own close wins), until continuous with the stream's first close (held meanwhile, at most 120) or the forming minute; then `READY` if degraded. A missing, malformed, short or failed row keeps `RECOVERING` (`BROWSER_DIRECT_REST_FAILED`), retried from that minute; the edge minute waits for the stream's close or a re-read; a gap past 11,000 minutes, or a minute the exchange keeps omitting, re-reads the snapshot |
 | REST failure | `health` | `UNAVAILABLE`, `reason: "BROWSER_DIRECT_REST_FAILED"`, retried with the same backoff |
 
 Identity on every frame: `provider: "BINANCE"`, wire `symbol`, `marketKind`
@@ -81,10 +81,10 @@ from the selection. Side and `buy_volume` follow `apps/runtime/src/server/frames
 
 | Request | Answer |
 |---|---|
-| `aggressive_history` | `complete: false`, `reason: "STORAGE_UNAVAILABLE"`, `trades: []`; the client shows its degraded state, retries three times |
+| `aggressive_history` | `complete: false`, `reason: "STORAGE_UNAVAILABLE"`, `trades: []`; the client retries three times |
 | `delta_profile` | `complete: false`, `reason: "STORAGE_UNAVAILABLE"`, `pending: 0`, `rows: []` |
-| `band_history` | `complete: false`, `reason: "GEOMETRY_UNAVAILABLE"`, row fields `null` (no live book grid exists) |
-| `wall_history`, `l2_event_history` | `complete: false`, `reason: "HISTORY_UNAVAILABLE"`, `row_width: null`, empty rows, `next: null` |
+| `band_history` | `complete: false`, `reason: "GEOMETRY_UNAVAILABLE"`, row fields `null` |
+| `wall_history`, `l2_event_history` | `complete: false`, `reason: "HISTORY_UNAVAILABLE"`, `row_width: null`, empty, `next: null` |
 | `profile_config`, `profile_history` | `analytics_status` `PROFILE` `UNAVAILABLE` (the browser withdraws the live profile) |
 | `capabilities`, `liquidity_resync`, `l2_resync`, `exhaustion_history`, `initiative_history` | ignored: no reply shape exists; L2 indicators keep their "no frame yet" state |
 | `heatmap_history`, `heatmap_walls` | untouched: the fetch fails, stores back off |
@@ -110,5 +110,5 @@ UNAVAILABLE today, so the default display is unchanged.
 
 No L2 engine, heatmap, walls, icebergs, exhaustion, initiative, candle monitor,
 profiles or VPIN; no history past 900 bars; no trades before the page opened;
-no marker pool; a 20-level book. This container cannot open WebSockets, so the
-live stream is verified by tests and the REST-only rendering, not end to end.
+no marker pool; a 20-level book. This container cannot open WebSockets: the
+live stream is verified by tests and the REST-only rendering only.

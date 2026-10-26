@@ -50,3 +50,6 @@ Thumbs.db
 # The ledger's lock while a run writes it, and its rewrite before the rename
 benchmarks/mutation-ledger.jsonl.lock
 benchmarks/mutation-ledger.jsonl.*.tmp
+
+# Browser-direct static bundle (built on demand, never committed)
+dist-browser-direct/

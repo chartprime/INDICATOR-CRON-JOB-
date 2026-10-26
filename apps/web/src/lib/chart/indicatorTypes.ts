@@ -141,7 +141,14 @@ export interface CrossAttachmentSpec {
 
 interface SettingsFieldBase<T> {
   visibleIf?: (settings: T) => boolean;
-  tab?: "inputs" | "visibility";
+  /**
+   * Where the generic dialog puts the field. `inputs` (the default) and
+   * `visibility` are the two tabs. `advanced` is an input too, but rendered
+   * under a collapsed "Advanced" group at the end of the Inputs tab: the
+   * trader sees at most the few primary controls first and opens the rest
+   * on purpose. Presets, reset and persistence treat it like any input.
+   */
+  tab?: "inputs" | "visibility" | "advanced";
 }
 
 export type SettingsFieldSchema<T> =

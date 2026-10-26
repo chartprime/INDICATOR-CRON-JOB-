@@ -215,4 +215,42 @@ describe("GenericIndicatorSettingsBody", () => {
     expect(container.querySelector("input[type=number]")).toBeNull();
     expect(container.querySelector("input[type=checkbox]")).not.toBeNull();
   });
+
+  it("puts advanced fields in a collapsed Advanced group after the primary inputs, without adding tabs", async () => {
+    const schema: SettingsFieldSchema<TestSettings>[] = [
+      { kind: "numeric", key: "length", label: "Length", min: 1, max: 100, step: 1, affects: "recompute" },
+      { kind: "boolean", key: "visible", label: "Deeper toggle", affects: "cosmetic", tab: "advanced" },
+    ];
+    const { container, onChange } = await render(schema);
+    expect(container.querySelector('[role="tablist"]')).toBeNull();
+    const group = container.querySelector<HTMLDetailsElement>("details.indicator-settings-advanced")!;
+    expect(group.open).toBe(false);
+    expect(group.querySelector("summary")?.textContent).toBe("Advanced");
+    expect(group.querySelector("input[type=checkbox]")).not.toBeNull();
+    expect(container.querySelector("input[type=number]")?.closest("details")).toBeNull();
+
+    await act(async () => {
+      group.querySelector<HTMLInputElement>("input[type=checkbox]")!.click();
+    });
+    expect(onChange).toHaveBeenCalledWith({ ...DEFAULT_SETTINGS, visible: false });
+  });
+
+  it("keeps advanced fields on the Inputs tab when the schema also has a Visibility tab", async () => {
+    const schema: SettingsFieldSchema<TestSettings>[] = [
+      { kind: "numeric", key: "length", label: "Length", min: 1, max: 100, step: 1, affects: "recompute", tab: "inputs" },
+      { kind: "radioGroup", key: "mode", label: "Mode", affects: "recompute", tab: "advanced", options: [{ value: "a", label: "A" }, { value: "b", label: "B" }] },
+      { kind: "boolean", key: "visible", label: "Visible", affects: "cosmetic", tab: "visibility" },
+    ];
+    const { container } = await render(schema);
+    expect(container.querySelector("details.indicator-settings-advanced input[type=radio]")).not.toBeNull();
+
+    const visibilityTab = Array.from(container.querySelectorAll<HTMLButtonElement>('[role="tab"]')).find(
+      (tab) => tab.textContent === "Visibility",
+    )!;
+    await act(async () => {
+      visibilityTab.click();
+    });
+    expect(container.querySelector("details.indicator-settings-advanced")).toBeNull();
+    expect(container.querySelector("input[type=checkbox]")).not.toBeNull();
+  });
 });

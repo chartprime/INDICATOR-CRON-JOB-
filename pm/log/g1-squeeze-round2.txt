@@ -1,0 +1,2616 @@
+Reading additional input from stdin...
+OpenAI Codex v0.164.0
+--------
+workdir: /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+model: gpt-6.1-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 01a178d8-c06f-7c41-94c7-12eb6e74f3f5
+--------
+user
+You are the independent plan reviewer for a trading-indicator team. Review this build brief for an indicator in the repository you are running in (a React/TypeScript chart terminal with an indicator SDK; read apps/web/src/lib/chart/indicatorTypes.ts and docs/architecture/indicators/data-for-indicator-authors.md for the contract and rules).
+
+Judge: 1) Does it answer one specific trading question a retail trader has? 2) Is the calculation fully specified, incremental (one bar at a time, forming bar revised in place), and free of future data? 3) Is every data input actually available per the brief's data section, with honest behavior when it is missing? 4) Will a trader understand the default view in seconds with at most three primary controls? 5) Is the success criterion testable and the baseline fair? 6) What is the simplest alternative that would do most of the job?
+
+Be specific and actionable. End with exactly VERDICT: APPROVED or VERDICT: REVISE.
+
+----- BUILD BRIEF -----
+# Build brief: Squeeze Breakout Context (round 2, after Codex plan round 1 REVISE)
+
+OHLCV specialist for the PM. Shared rules: `PM/WORKER-BRIEF.md`,
+`PM/CAPABILITIES.md`, `PM/cycle1/ux-standard.md` (binding),
+`PM/cycle1/validation-protocol.md`; structure as `brief-rvol-clock.md`. Round
+1 review: `pm/log/codex/20261026T151836Z-plan-brief-squeeze-breakout.last.md`;
+the PM's ten rulings are applied and listed under "Round 2 changes".
+
+## The trading question
+
+"Did price break an established compression range with range and volume
+behind the break bar, and did it come back inside?" Trend bias is secondary
+context: it colours, it never decides.
+
+## Target user and decision
+
+Intraday and swing breakout traders on BTC, ETH, ES, NQ, AAPL, TSLA. Decision:
+act on a close outside the compression range, fade it once it fails, or treat
+it as counter-trend context. Descriptive only: "confirmed" means both activity
+tests passed on the break bar, never follow-through.
+
+## Identity
+
+- Folder `apps/web/src/lib/indicators/squeeze-breakout/`; def
+  `squeezeBreakout.ts`; pure state machine in `squeezeBreakoutMath.ts`;
+  tests in `tests/`.
+- id `squeezeBreakout`, label `"Squeeze Breakout (20)"`, category
+  `"technical"`, placement `{ kind: "overlay" }`, `maxReplayBars` 10,080
+  (equal to retention, so the rollover test and the replay are one series).
+- Historical Mode policy `OHLCV_POLICY`: reads `bar.high/low/close/volume`,
+  `bar.ts_open`, `bar.interval_ms`, `bar.closed` only. Every archived
+  instrument; equities fine (no `barSides`; protocol check 9 is N/A and the
+  doc says so). No `timeframeGate`.
+
+## Data and validity
+
+A bar's **price is valid** when open, high, low, close are finite,
+`high ≥ low` and `low ≤ close ≤ high`. **Volume is valid** when finite and
+`≥ 0`. An invalid-price bar contributes nothing: no ring entry, no box change,
+no age, no event; status `No usable price`. Invalid volume keeps the price
+context (rings, box, break test) but the bar enters no volume observation and
+cannot earn the volume test. Missing bars (gaps in `ts_open`) contribute
+nothing; see the gap rule.
+
+**No library streams drive events.** Codex showed that a never-closed bar left
+in a `trading-signals` stream flips the squeeze flag on the next committed bar,
+so box creation would depend on dispatch history. Every quantity is computed
+from own committed-bar rings (a 200-close ring for bands and bias; 20-entry
+true-range and volume rings holding only valid observations; primitives
+`createRing`/`ringInsert`/`ringMean` from `relative-volume/relativeVolumeMath.ts`),
+with the tail evaluated provisionally and never written. Corrections restore
+the rule-8 snapshot, so `ringUpdate`/`ringRemove` are not needed.
+
+Bands are finite windows so rollback and replay are exact: Bollinger middle =
+mean of the `len` closes (`len − 1` committed plus the tail), `±bbMult`
+population standard deviations; the Keltner-style channel takes the same mean
+as middle and `±kcMult ×` mean true range over the same window. This departs
+from the library's recursive EMA/Wilder Keltner, which has no finite ring form;
+`ta.ttmSqueeze` keeps it as the independent baseline. Bias uses MA 50 and
+MA 200 from the 200-ring plus a 6-entry ring of committed MA 50 values for the
+slope. The slot-median volume baseline is not used in v1 (three prior sessions
+per minute would null the grade on every 400-bar fixture); it is the v2
+`volumeRule` option (`createRelativeVolumeEngine`, `reading.rvol`).
+
+## Calculation
+
+Settings: `len` 20, `bbMult` 2, `kcMult` 1.5, `minSqueezeBars` 6,
+`releaseBars` 3, `confirmMultiple` 1.5, `failBars` 5, `holdBars` 40.
+`committedIndex` is an owned counter of committed valid-price bars.
+
+1. **Tail record and snapshot.** The first dispatch of a new `ts_open`
+   creates the tail record and copies the whole committed state `S`: the four
+   rings, `prevClose`, `lastCommittedTsOpen`, `committedIndex`, the active box
+   (`hi, lo, age, offRun, broken, excursion`), the held boxes with remaining
+   hold, the last event. Cost: about 250 numbers and a few small objects
+   copied once per `ts_open`, never per revision.
+2. **Gap.** If `ts_open − S.lastCommittedTsOpen > interval_ms`, the active
+   box is dropped from `S` before anything else (held boxes stay); status
+   `Gap · box reset` on this bar. Rings continue (the equity night is a gap).
+3. **Provisional values from `S` plus the tail.** `trueRange` uses
+   `S.prevClose` (first bar: `high − low`). Bands as above; `squeezeOn` =
+   `bbUpper < kcUpper && bbLower > kcLower`; `depth = bbWidth / kcWidth`,
+   `null` while the window is short or `kcWidth` is 0. Denominators
+   `avgRange20`, `avgVolume20`: the mean of a ring only when it holds 20 valid
+   observations and the mean is `> 0`; otherwise unavailable. `gradeBasis`:
+   0 none, 1 range only, 2 volume only, 3 both available. Bias: `up` if
+   `close > MA200` and `MA50 > MA50 five committed bars earlier`; `down` on the
+   mirror; `neutral` otherwise; `unknown` until 200 committed closes.
+4. **Decision (read only, against `S.active`).** Exactly one per bar:
+   - if `S.active.broken`: close inside the frozen `[lo, hi]` → `failed`;
+     else if `committedIndex − brokenIndex === failBars` → `completed`; else
+     `pending`. The failure window is the `failBars` committed bars after the
+     break bar, the last one included.
+   - else if `S.active` exists and `age ≥ minSqueezeBars`: `close > hi` →
+     break up, `close < lo` → break down. Tests: `trueRange ≥ confirmMultiple
+     × avgRange20`, `volume ≥ confirmMultiple × avgVolume20`, each only when
+     its denominator is available. `breakGrade`: 3 both passed, 1 range only
+     passed, 2 volume only passed, 0 neither. A break has priority over a
+     release on the same bar.
+   - else `none`.
+5. **Commit, only on the first dispatch with `closed === true`, in this
+   order.** (a) valid close and true range enter their rings, valid volume
+   its ring; (b) apply the decision: `break` → `broken = {committedIndex,
+   dir, grade, basis}`, edges frozen at `S.active.hi/lo` (the tested edges;
+   the break bar never extends them), `excursion` = this bar's high/low;
+   `failed` or `completed` → the active box moves to the held list with that
+   styling for `holdBars` committed bars and `active = null`; `pending` →
+   excursion extended, `age += 1`; (c) if `none` and an unbroken active box
+   exists: extend `hi/lo`, `age += 1`, `offRun = squeezeOn ? 0 : offRun + 1`,
+   and `offRun > releaseBars` discards the box silently (not held); (d) if
+   no active box remains, `squeezeOn` holds and the decision was `none`, open a
+   box `{hi: high, lo: low, age: 1, offRun: 0}`; (e) `prevClose`,
+   `lastCommittedTsOpen`, `committedIndex` advance. `age` counts committed
+   bars inside the box, squeeze or paused or pending.
+6. **No widening, no re-arm.** A failed break retires its box. A new coil
+   starts at the next closed squeeze bar with `age` 1 and must reach
+   `minSqueezeBars` again before it can break. (Cost: on design seed 10 an
+   unconfirmed break inside the compression retires the box 8 bars before
+   the labelled break, which is then missed; re-arm is deferred.)
+7. **Superseded without close.** A tail replaced by a newer `ts_open` while
+   `closed === false` writes nothing; its provisional marker is removed on the
+   next dispatch.
+8. **Corrections are tail-only, by restore.** A closed re-dispatch of the
+   tail restores `S` whole, then re-runs rules 2 to 5 with the corrected bar.
+   This covers a cancelled break (close corrected inside: no event, box
+   extends), a removed failure (close corrected outside: `pending` again), a
+   grade change, invalid-to-valid and valid-to-invalid in either field. An
+   older correction arrives as `REBUILT` and recreates state.
+9. **Outputs** (`readOutput`): `boxHigh`, `boxLow` (the active box: armed,
+   paused or pending; `null` otherwise, held boxes never), `depth`,
+   `squeezeOn` 0/1, `bias` −1/0/1 or `null`, `breakDir`, `breakGrade`,
+   `gradeBasis`, `failed` 0/1, `boxAge`. `boxHigh`/`boxLow` are the two line
+   outputs; the rest are numeric seams for the harness and later layers.
+10. **Status precedence (table row 2), first match wins.** `No usable price`;
+    `Gap · box reset`; `Failed break`; `Break ↑ · range+vol` / `range only` /
+    `vol only` / `unconfirmed` / `no baseline` (basis 0), ↓ for down, while
+    pending or on its bar; `Squeeze · 9 bars`; `Paused · 1 of 3`;
+    `No squeeze`. Row 1: `Box 61,240–61,480 · up` (active edges in the
+    instrument's precision, bias word `up`/`down`/`flat`/`—`), or `Warming up
+    · 12 of 20 bars`, or `No box · up`. Row 3: `Last · ↑ 12:34 · range+vol`
+    or `—`. Every string is at most 30 characters; the table is visible from
+    the first bar. Forming tail: same strings at provisional styling.
+11. **No future data; fail closed.** Every value at bar t uses bars with
+    `ts_open ≤ t.ts_open`; any non-finite intermediate yields `null`.
+
+## Default view
+
+Overlay. The active box as a translucent `draw.box` from its first bar to the
+current bar: fill 0.12 alpha, border 1 px, colour by bias (house bull / bear
+pair; purple `#8672b3` for neutral or unknown). A retired box is held
+`holdBars` bars at 0.06 alpha: `completed` keeps its bias colour, `failed`
+takes a `--warn` border. Pool of 8 handles created in `createState` (one
+active, seven held); when a ninth is needed the oldest held box is dropped.
+Drawing is skipped when `drawNow === false`. `boxHigh`/`boxLow` lines (width 1,
+bias colour) carry the edges for the harness. Table as in rule 10, top right,
+three rows. Nothing is drawn before warm-up except the table; never a zero.
+
+## Controls
+
+Primary (three): `squeezeLength` "Squeeze length (bars)" 20, 10..50, step 1
+(band window only; denominators stay 20, so warm-up is `max(squeezeLength,
+20) + 1` and the hint says so); `minSqueezeBars` "Minimum squeeze (bars)" 6,
+2..30; `confirmMultiple` "Confirm above (×)" 1.5, 1.0..3.0, step 0.1. All
+recompute. Advanced (`tab: "advanced"`): `bbMult` 2.0, `kcMult` 1.5 (1..3,
+0.1), `releaseBars` 3 (1..10), `failBars` 5 (1..20), `holdBars` 40 (0..200),
+`trendFast` 50, `trendSlow` 200 (10..200, slow ≥ fast at read). Visibility:
+`showMarkers`, `showBoxes` (true, recompute). No colour pickers in v1. Every
+key in the schema; one hint per control; a `staticHint` for the warm-up.
+
+## Alert conditions (markers plus table)
+
+Two event types. **Break**: `arrowUp` below or `arrowDown` above the bar,
+bull/bear colour, drawn when `breakGrade ≥ 1` (solid at 3, 50 percent alpha
+at 1 or 2); grade 0 is table and box only. **Failed break**: `circle`,
+`inBar`, `--warn`, only for a marked break. One decision per bar, so at most
+one marker per bar; markers are a pure function of the bar's current decision
+(provisional on the tail, revised by a correction, unchanged by a duplicate).
+
+## Fixtures
+
+Design seeds 7..16, both directions. **Evaluation seeds 17..21 are untouched:**
+no parameter or rule may be chosen on them; their results are reported in a
+separate table whatever they are.
+
+- `compressionBreakoutBars({ seed, direction })`, harness defaults (break at
+  index 220 closing `compressionHigh + 150` on 3× volume).
+- **New, to add to `validation/fixtures.ts` before the build.**
+  `compressionFailedBreakBars`: identical to `compressionBreakoutBars` through
+  `breakoutIndex` (same generator stream); bar `breakoutIndex + 1`: `open` =
+  previous close, `close = startPrice`, `high = max(open, close) + 5`, `low =
+  min(open, close) − 5`, `volume = 1.5 × baseVolume`, `buyShare` 0.5; every
+  later bar follows the compression generator at progress 1 (half width
+  `finalHalfWidth`, draws in the order target, wick, volume, buyShare, with
+  `volume = baseVolume × (0.5 + 0.2 × random())`). Labels add `failIndex =
+  breakoutIndex + 1`. `compressionContinuationBars`: identical through
+  `breakoutIndex`; later bars: `open` = previous close, `raw = open + (random()
+  − 0.5) × 16`, `close = direction > 0 ? max(edge + 0.2 × initialHalfWidth, raw)
+  : min(edge − 0.2 × initialHalfWidth, raw)` with `edge` the labelled
+  compression extreme, wick `random() × 8`, `volume = baseVolume × (1 + 0.6 ×
+  random())`, `buyShare = 0.5 + 0.12 × direction + (random() − 0.5) × 0.08`.
+  Labels add `completionIndex = breakoutIndex + 5`.
+- Correction cancellation (arrival script on seed 7): bar 220 closed as the
+  break; the same `ts_open` re-dispatched closed with `close =
+  compressionHigh − 1`: the event disappears, the box extends, and every later
+  bar equals a clean feed of the corrected series. Also bar 220 with `volume
+  = NaN` then corrected (grade from 1 to 3), and bar 221 closed inside then
+  corrected outside (failure removed, `pending`).
+- Controls: `trendBars({ seed, count: 1000 })`, `rangeBars({ seed, count:
+  1000 })`, seeds 7..11. Protocol edge cases on seed 7. Performance:
+  `relativeVolumeCryptoFixture()` bars 1..10,080, `probeReplayPooled`.
+
+Scoring, identical for tool and baselines: an event is **matched** when its
+index lies in `[breakoutIndex, breakoutIndex + 2]`; a **hit** is a matched
+event whose direction equals the label (first matched event counts); **early**
+events precede `breakoutIndex` (split lead / compression); **unmatched**
+events follow the window. Reported as all events, then with the identical
+range-or-volume filter (`trueRange ≥ 1.5 × avgRange20` or `volume ≥ 1.5 ×
+avgVolume20`, denominators as rule 3) applied to all three.
+
+## Baselines
+
+**TTM release** (`ta.ttmSqueeze(20, 2, 20, 1.5)`): the bar `isSqueezed` turns
+false after at least 6 true bars; direction = sign of `momentum`. **Bollinger
+crossing** (`ta.bollinger(20, 2)`): the first close outside a band after an
+inside close; direction by the band crossed. Codex's simplest alternative
+(frozen-edge range, outside close, return inside) is this v1 minus bias colour
+and held boxes, neither of which changes an event, so the tool's own event
+stream is that benchmark.
+
+## Acceptance
+
+Scratch replication of the round-2 rules (`sim3.mjs`, specialist scratchpad;
+the builder's tests pin the real numbers) on design seeds, per direction:
+
+| Events | Tool hits / early (lead, comp) / unmatched | TTM release | Bollinger crossing |
+|---|---|---|---|
+| All | 9 of 10 / 30 (21, 9) / 0 | 9 / 16 (6, 10) / 0 | 10 / 59 (41, 18) / 2 |
+| Filtered | 9 of 10 / 5 (3, 2) / 0 | 9 / 0 / 0 | 10 / 19 (5, 14) / 2 |
+
+All nine tool hits are grade 3. Range control: 10.8 marked markers per 1,000
+bars (48.6 counting unconfirmed); trend control 0. Failed-break fixture: break
+at 220 and failure at 221 on 9 of 10 seeds; continuation: break at 220,
+completion at 225, no failure, 9 of 10. The miss is seed 10 every time (rule
+6). Variant tried, not selected: `minSqueezeBars` 8 (fewer early events, same
+hits; the ES/NQ preset).
+
+Read honestly: on timing alone the filtered TTM release equals the tool's hits
+with fewer early events. The tool's claim is what the baselines cannot
+produce: the level, the failure, the completion, the test basis. Bounds:
+
+- Hits ≥ 8 of 10 per direction on design seeds; evaluation seeds reported.
+- On every hit: `boxHigh ≤ compressionHigh`, `boxLow ≥ compressionLow` and
+  the break close beyond the tested edge (the level is real); baselines have
+  no level by construction.
+- Failed-break fixture: break then `failed` at `failIndex` on ≥ 8 of 10;
+  continuation: break then `completed` at `completionIndex` with no failure
+  on ≥ 8 of 10; both baselines emit no failure or completion event.
+- Filtered early events ≤ 8 per direction, reported beside both baselines
+  with counts; all-events numbers reported.
+- Range control ≤ 20 marked markers per 1,000; trend ≤ 5; `maxPerBar` 1.
+- Live observation (REST transport, `data-api.binance.vision`): record the
+  10,080-bar BTC-USDT and ETH-USDT snapshots plus 30 minutes of forming
+  revisions and closes, drive through the real runtime with `driveLive`,
+  compare with `replayCapture`: equal outputs and confirmed markers, no fault,
+  ≤ 40 markers per 1,000 on 1m and resampled 5m; event list and box count in
+  the doc. A density, honesty and replay check, not accuracy.
+
+If the PM judges that the level and failure evidence does not meet protocol
+check 7, the concept returns to the backlog with these tables.
+
+## Replay horizon
+
+Every quantity is a finite window of at most 200 committed bars, so a replay
+from the first retained bar reproduces live values exactly once the window
+lies in the retained series: bands, denominators and events from retained
+index `max(squeezeLength, 20)`, bias from 200 (`unknown` before, where a
+long-running live chart may know it; bias never gates an event). An active box
+opened before the retained window exists live but not in replay, so the
+REBUILT equivalence test compares box and event outputs from the first bar at
+or after index 200 with no live active box, asserting a non-zero compared count.
+
+## Success criteria
+
+1. Hand-computed values on a 30-bar fixture: bands, box open and extension,
+   read-before-write test, grade and basis with pinned denominators, freeze,
+   failure, completion, retirement, pool eviction.
+2. Protocol checks 1 to 7 and 10 PASS, 9 N/A: truncation invariance on
+   breakout and trend fixtures; live-versus-replay equal at zero tolerance;
+   duplicate, REBUILT, time gap (`firstBarAfterGapIndex` shows `Gap · box
+   reset`, nothing earlier changes), forming tail, the three correction
+   scripts; warm-up `null` through bar 19 with the table visible from bar 0.
+3. Pooled p99 `onBar + readOutput` under 0.05 ms over bars 1..10,080 with the
+   snapshot inside the timed region; rollover with 10,080 outputs, no markers
+   before retention, heap slope within 3× the harness floor, 8 handles.
+4. UX: three primary controls; strings as rule 10; screenshots at two zooms:
+   coil forming, confirmed break, failed break, warm-up, dialog with Advanced
+   closed and open, cream and dark chart.
+5. Doc page and README row; `validate-docs`, web suite, `tsc`, lint green;
+   Codex code review APPROVED; validator ACCEPT.
+
+## Limitations to state
+
+Descriptive, not predictive. Warm-up `max(squeezeLength, 20) + 1` bars; bias
+200. Finite-window bands differ from EMA-based TTM dots. Continuation squeezes
+in a trend produce repeated boxes. A tall first bar makes a tall box. A failed
+break retires its coil, so a second break needs a fresh six-bar squeeze.
+Equity overnight gaps reset the box. Unit-free.
+
+## Deferred
+
+Re-arm and widening after a failed break (v1 simplicity; the seed-10 miss is
+its cost); time-of-day volume rule (fixture length); swing pivots; break-bar
+delta grade (`CANDLE_FLOW_POLICY`); session-open rule (the gap rule covers
+equities).
+
+## Seams for L1 and L2 (named, not built)
+
+`boxHigh`, `boxLow`, `breakDir`, `breakGrade`, `gradeBasis`, `failed`,
+`boxAge`: the L1 tape tally grades intensity on the `breakDir` bar; the L2
+Break Defense Monitor watches liquidity at the edges while `boxAge ≥
+minSqueezeBars`. Shared through `squeezeBreakoutMath.ts`; a combined score is
+its own brief.
+
+## Budget
+
+One build run, UX before the end, at most two fix rounds after Codex code
+review and validation; a third failure returns the concept to the backlog.
+
+## Ten-line summary
+
+1. Overlay box over a Bollinger-inside-Keltner squeeze from own committed rings; the tail is provisional, never written.
+2. Box coloured by MA 50/200 bias; bias never gates an event.
+3. Break = close outside the box as of the bar's open, after 6 bars in the box; break beats release.
+4. Grade = true range and volume versus 20 valid committed observations with positive means; basis exposed.
+5. Edges freeze at the tested values; failure = close back inside within 5 bars; failure or completion retires the box.
+6. No re-arm: a new coil must requalify; squeeze may pause 3 bars; a gap resets the box.
+7. Corrections restore a per-bar snapshot of all committed state and re-apply; older ones arrive as REBUILT.
+8. Markers only for breaks with a passed test and their failures; one per bar.
+9. Baselines compared all-events and under the identical filter; the tool's claim is the level, failure and completion they cannot produce.
+10. Design seeds 7..16, untouched evaluation seeds 17..21, two new fixtures, a correction script, a BTC/ETH live run.
+
+## Effort estimate
+
+M+: own-state bands and the snapshot restore add about a day to the round-1
+estimate; UX half a day; one validation loop expected.
+
+## Plan-gate history
+
+Round 1 REVISE (Codex, 2026-10-26): library streams change box creation;
+freeze the tested edges; transition priority; complete rollback; denominator
+validity; numeric edges and test basis in the table; fair all-events baseline
+comparison; failure, continuation and correction fixtures; untouched
+evaluation seeds; `maxReplayBars` versus retention. All ten PM rulings accepted.
+
+## Round 2 changes
+
+1. Own-state finite-window bands and bias from committed rings; `ta.ttmSqueeze`
+   baseline only. Flagged deviation: window mean and mean true range stand in
+   for EMA/Wilder Keltner, and MA 50/200 for the EMAs, because recursive forms
+   have no finite ring and would break exact rollback and replay (ruling 1).
+2. Edges frozen at `boxAtOpen`, excursion separate, rule 5 ordered
+   read-then-commit, break beats release (ruling 2).
+3. No widening or re-arm; failure retires; `age` defined; seed-10 miss
+   documented as the cost (ruling 3).
+4. Whole-state snapshot per new bar, restore-and-reapply, three correction
+   cases, cost stated (ruling 4).
+5. Denominators need 20 valid observations and positive means; `gradeBasis`
+   seam; validity rules; `no baseline` wording (ruling 5).
+6. Table edges, test-basis strings, visible in warm-up, ≤ 30 characters;
+   active box owns `boxHigh`/`boxLow`; pool eviction (ruling 6).
+7. All events versus all events, identical filter, direction-correct hits,
+   Bollinger as a crossing; numbers re-run and stated honestly (ruling 7).
+8. Two frozen generators with exact formulas, a correction script, design
+   seeds 7..16, evaluation seeds 17..21 untouched (ruling 8).
+9. `maxReplayBars` 10,080 and the replay horizon (ruling 9).
+10. Deferred list consolidated (ruling 10).
+
+## PM rulings on round 2 (before Codex round 2)
+
+1. **Keltner from window means, not EMA/ATR: accepted.** Exact rollback and
+   replay outrank the canonical recursion. The label and doc call the band
+   "Keltner-style (window mean, mean true range)" so nobody expects the
+   textbook values.
+2. **Seed 10 lost to the no-re-arm rule: accepted.** Nine of ten meets the
+   bound; re-arm stays deferred with this seed as its motivating case.
+3. **Protocol check 7 judgement.** On timing alone the filtered TTM release
+   matches the tool. The concept proceeds because the trading question asks
+   three things the baselines cannot answer at all: the tested level, the
+   failure event and the completion. These three must be demonstrated on the
+   new fixtures (9/10 failure and completion as simulated) or the concept
+   returns to the backlog at validation. Marketing copy may not claim better
+   break timing than a squeeze dot.
+warning: Codex could not find bubblewrap on PATH. Install bubblewrap with your OS package manager. See the sandbox prerequisites: https://developers.openai.com/codex/concepts/sandboxing#prerequisites. Codex will use the bundled bubblewrap in the meantime.
+codex
+I’ll check the SDK contract and data rules, then review the brief for calculation gaps, replay behavior, usability, and validation fairness.
+exec
+/bin/bash -lc "pwd && rg --files -g AGENTS.md -g 'indicatorTypes.ts' -g 'data-for-indicator-authors.md' -g 'validation-protocol.md' -g 'ux-standard.md' -g 'CAPABILITIES.md' -g 'WORKER-BRIEF.md'" in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+/home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+docs/architecture/indicators/data-for-indicator-authors.md
+pm/cycle1/ux-standard.md
+pm/cycle1/validation-protocol.md
+pm/CAPABILITIES.md
+pm/WORKER-BRIEF.md
+apps/web/src/lib/chart/indicatorTypes.ts
+
+exec
+/bin/bash -lc 'cat apps/web/src/lib/chart/indicatorTypes.ts' in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+import type { ReactNode } from "react";
+import type { BarFrame, FrameIdentity, TradeFrame } from "../../types/frames";
+import type { IndicatorLiquidity } from "./indicatorLiquidity";
+import type { IndicatorL2 } from "./indicatorL2";
+import type { BandHistoryWant, IndicatorBandHistory } from "./bandHistory";
+import type { IndicatorTicks } from "./indicatorTicks";
+import type { FillOptions } from "./draw/fill";
+import type { PlotCharOptions, PlotShapeOptions } from "./draw/markers";
+
+export type IndicatorCategory =
+  | "technical"
+  | "l1"
+  | "l2"
+  | "session"
+  | "community";
+
+export type TaNamespace = Record<string, never>;
+
+export interface DrawNamespace {
+  /**
+   * Fills the region between two values, bar by bar. `key` names the band, so
+   * one indicator can fill more than one region at once -- an inner band and
+   * the ring around it, say -- each keeping its own colour and its own point
+   * per bar. Omit it for a single fill; `DEFAULT_FILL_KEY` is used.
+   */
+  fill(
+    valueA: number | null,
+    valueB: number | null,
+    options?: FillOptions,
+    key?: string,
+  ): void;
+}
+
+export interface MarkersNamespace {
+  plotshape(options: PlotShapeOptions): void;
+  plotchar(options: PlotCharOptions): void;
+}
+
+export interface PaneNamespace {
+  paneIndex: number;
+}
+
+/**
+ * Provenance for the print array supplied to an indicator. An empty complete
+ * live range is materially different from a historical range we do not have
+ * or a bounded live range that overflowed before correlation.
+ */
+export type TradeAvailability =
+  | "LIVE_COMPLETE"
+  | "LIVE_PARTIAL"
+  | "HISTORICAL_UNAVAILABLE";
+
+export interface IndicatorBarCtx<S, T> {
+  bar: BarFrame;
+  /**
+   * The individual trades observed during this displayed chart bar. Only
+   * populated for a live bar going forward from activation -- every bar
+   * touched by a full replay (warm-start, REBUILT, a recompute-tagged
+   * settings change) gets an empty array here, honestly, since no
+   * historical trade-by-range query exists yet. Read tradeAvailability
+   * before interpreting an empty array as a genuine no-print bar.
+   */
+  trades: readonly TradeFrame[];
+  /**
+   * Indicators which derive signals from individual prints must not treat
+   * LIVE_PARTIAL or HISTORICAL_UNAVAILABLE as an observed zero-trade bar.
+   */
+  tradeAvailability?: TradeAvailability;
+  liquidity?: IndicatorLiquidity;
+  l2?: IndicatorL2;
+  bandHistory?: IndicatorBandHistory;
+  /** The terminal's L1 print store, when one exists for the selected pair. */
+  ticks?: IndicatorTicks;
+  state: S;
+  settings: T;
+  replace: boolean;
+  replaying: boolean;
+  drawNow?: boolean;
+  /**
+   * Where this bar sits in the series being fed to the indicator, 0-based, and
+   * how many bars that series holds. During a replay the series is the bars the
+   * replay iterates (all of them, or the `maxReplayBars` slice); for a live bar
+   * it is the chart's own bars, so the last one is `barCount - 1`.
+   *
+   * This is what lets an anchored indicator place itself a fixed number of bars
+   * back from the newest one, and it only describes the series -- it says
+   * nothing about whether the store can price the bar. The runtime always sets
+   * both; they are optional so a hand-written context in a test can leave them
+   * out, and an indicator that reads them should treat their absence as "position
+   * unknown" rather than as bar zero.
+   */
+  barIndex?: number;
+  barCount?: number;
+  ta: TaNamespace;
+  draw: DrawNamespace;
+  markers: MarkersNamespace;
+  pane: PaneNamespace;
+}
+
+export interface LineOutputSpec<S, T = unknown> {
+  key: string;
+  color?: (state: S, settings: T) => string;
+  recolor?: (currentColor: string | undefined, settings: T) => string;
+  lineWidth?: number;
+}
+
+export type PlacementSpec =
+  | { kind: "overlay" }
+  | {
+      kind: "ownPane";
+      priceLines?: readonly number[];
+      autoscaleRange?: { min: number; max: number };
+    }
+  | { kind: "sharedPane"; withIndicatorId: string };
+
+/**
+ * NOT IMPLEMENTED (found during TA.05's audit). Declaring this on a
+ * RuntimeIndicatorDef throws at registration -- createIndicatorRuntime()
+ * rejects it rather than silently ignoring it. `attachToLineKey` was meant
+ * to reference another indicator's `lines[].key`, but the one real case
+ * that motivated this (Delta Divergence attaching to Order Flow's CVD
+ * line) can't be expressed that way: Order Flow's CVD line is hand-built
+ * directly in ChartPanel.tsx (lines: [] on its own def), not produced
+ * through the generic `lines` output this field assumes. Building this for
+ * real needs a redesign validated against a second real use case, not
+ * guessed from one that doesn't even fit the current shape.
+ *
+ * Need to attach a primitive onto another specific indicator's own
+ * (possibly bespoke) series today? There is no self-serve path yet --
+ * hand-wire the attach/detach lifecycle directly in ChartPanel.tsx, the
+ * way deltaDivergenceIndicator.tsx's own real Order Flow attachment does,
+ * or ask whoever owns the chart pipeline. Every other placement need
+ * (own pane, overlay, or sharing a pane with an SDK indicator via
+ * `PlacementSpec`'s `sharedPane`) is fully self-serve already.
+ */
+export interface CrossAttachmentSpec {
+  attachToIndicatorId: string;
+  attachToLineKey: string;
+  createPrimitive: () => unknown;
+}
+
+interface SettingsFieldBase<T> {
+  visibleIf?: (settings: T) => boolean;
+  /**
+   * Where the generic dialog puts the field. `inputs` (the default) and
+   * `visibility` are the two tabs. `advanced` is an input too, but rendered
+   * under a collapsed "Advanced" group at the end of the Inputs tab: the
+   * trader sees at most the few primary controls first and opens the rest
+   * on purpose. Presets, reset and persistence treat it like any input.
+   */
+  tab?: "inputs" | "visibility" | "advanced";
+}
+
+export type SettingsFieldSchema<T> =
+  | (SettingsFieldBase<T> & {
+      kind: "boolean";
+      key: keyof T;
+      label: string;
+      affects: "recompute" | "cosmetic" | "liveOnly";
+    })
+  | (SettingsFieldBase<T> & {
+      kind: "checkboxList";
+      key: keyof T;
+      label: string;
+      options: readonly { value: unknown; label: string }[];
+      affects: "recompute" | "cosmetic" | "liveOnly";
+    })
+  | (SettingsFieldBase<T> & {
+      kind: "radioGroup";
+      key: keyof T;
+      label: string;
+      options: readonly { value: unknown; label: string; hint?: string }[];
+      affects: "recompute" | "cosmetic" | "liveOnly";
+    })
+  | (SettingsFieldBase<T> & {
+      kind: "select";
+      key: keyof T;
+      label: string;
+      options: readonly { value: unknown; label: string }[];
+      affects: "recompute" | "cosmetic" | "liveOnly";
+    })
+  | (SettingsFieldBase<T> & {
+      kind: "numeric";
+      key: keyof T;
+      label: string;
+      min: number;
+      max: number;
+      step: number;
+      /**
+       * A saved value outside [min, max] is brought to the nearest bound instead
+       * of falling back to the default -- for fields whose bounds have tightened,
+       * so a trader's setting keeps its side of the range.
+       */
+      clampOnRestore?: boolean;
+      affects: "recompute" | "cosmetic" | "liveOnly";
+    })
+  | (SettingsFieldBase<T> & {
+      kind: "color";
+      key: keyof T;
+      label: string;
+      affects: "recompute" | "cosmetic" | "liveOnly";
+    })
+  | (SettingsFieldBase<T> & {
+      kind: "slider";
+      key: keyof T;
+      label: string;
+      min: number;
+      max: number;
+      step: number;
+      /**
+       * A saved value outside [min, max] is brought to the nearest bound instead
+       * of falling back to the default -- for fields whose bounds have tightened,
+       * so a trader's setting keeps its side of the range.
+       */
+      clampOnRestore?: boolean;
+      affects: "recompute" | "cosmetic" | "liveOnly";
+    })
+  | (SettingsFieldBase<T> & {
+      kind: "staticHint";
+      text: string;
+    })
+  | (SettingsFieldBase<T> & {
+      kind: "custom";
+      /**
+       * Optional: when a custom field only ever writes one settings key,
+       * naming it here lets the runtime scope its recompute-change
+       * detection to that key instead of the whole settings object --
+       * otherwise an unrelated sibling field's change (e.g. a cosmetic
+       * toggle) is indistinguishable from this field's own and forces an
+       * unwanted full replay too. Omit only if the field genuinely writes
+       * more than one key.
+       */
+      key?: keyof T;
+      render: (settings: T, onChange: (next: T) => void) => ReactNode;
+      isValidPersistedValue?: (value: unknown) => boolean;
+      byInstrument?: boolean;
+      affects: "recompute" | "cosmetic" | "liveOnly";
+    });
+
+interface IndicatorMeta {
+  id: string;
+  label: string;
+  category: IndicatorCategory;
+}
+
+export interface RuntimeIndicatorDef<S, T> extends IndicatorMeta {
+  kind: "runtime";
+  createState(settings: T): S;
+  onBar(ctx: IndicatorBarCtx<S, T>): void;
+  readOutput(state: S): Record<string, number | null>;
+  getHoverData?: (state: S, settings: T) => unknown;
+  lines: readonly LineOutputSpec<S, T>[];
+  defaultSettings: T;
+  settingsSchema?: readonly SettingsFieldSchema<T>[];
+  persistenceSchema?: readonly SettingsFieldSchema<T>[];
+  settingsFieldsFor?: (identity: { symbol: string } & FrameIdentity) => Partial<Record<keyof T, SettingsFieldSchema<T>>>;
+  placement: PlacementSpec;
+  /** Limit historical bars processed when this indicator is activated or recomputed. */
+  maxReplayBars?: number;
+  crossAttachments?: readonly CrossAttachmentSpec[];
+  timeframeGate?: (intervalMs: number) => boolean;
+  bandHistoryWanted?: (state: S) => readonly BandHistoryWant[];
+  /**
+   * Set when the indicator reads `ctx.ticks`. The runtime replays only the
+   * indicators that declare it when the print store is handed over, since a
+   * print store arrives once per pair and a replay is what backfills the bars
+   * drawn before it did.
+   */
+  ticksWanted?: boolean;
+}
+
+export interface LegacyIndicatorDef extends IndicatorMeta {
+  kind: "legacy";
+}
+
+export type IndicatorDef = RuntimeIndicatorDef<any, any> | LegacyIndicatorDef;
+
+exec
+/bin/bash -lc 'cat docs/architecture/indicators/data-for-indicator-authors.md' in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+exec
+/bin/bash -lc 'cat pm/cycle1/validation-protocol.md pm/cycle1/ux-standard.md pm/WORKER-BRIEF.md pm/CAPABILITIES.md' in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+# Data for indicator authors
+
+[Handbook](../../README.md) · [Indicator index](README.md) ·
+[Onboarding](../../operations/00-developer-onboarding.md) ·
+[Indicator SDK](../indicator-sdk/TA.01-indicator-authoring-core-evidence.md)
+
+An indicator never opens SQLite, S3 or a provider connection itself. It reads
+what the runtime and the archive deliver through a small number of supported
+boundaries. This page names those boundaries, says what each one carries for
+each instrument, and lists the rules every indicator has to follow. The code
+named here is the authority; when this page and the code disagree, the code
+wins and this page is the defect.
+
+## Three sources of data
+
+| Source | How it reaches an indicator | You need | When it is missing |
+|---|---|---|---|
+| **Live ticks** | Terminal C holds the provider session and sends canonical frames (`bar`, `trade`, `book`, `health`, profiles, VPIN readings) over the local `/ws` WebSocket | Binance: nothing. dxFeed: layer 2 (Tailscale broker) | dxFeed instruments show *History only*: with layer 1 their recorded host history still loads, without new ticks |
+| **Warm-up** | Before live ticks arrive, the runtime reads recent history through its storage reader: candles, large trades, aggressive prints, volume profile, VPIN calibration | Layer 1 (WireGuard + bearer); otherwise only a local collector's SQLite | The indicator starts from live ticks only and reports itself not ready |
+| **Archive** | Historical Mode reads candles through `/archive/query` and asks the host for four studies through `/archive/study` | Layer 1 | Historical Mode shows *Historical Mode needs host data access* |
+
+The three layers are explained in [onboarding](../../operations/00-developer-onboarding.md);
+`npm run doctor` reports which ones a machine has.
+
+Warm-up and live ticks meet in the runtime; the archive is a separate path used
+only by Historical Mode. A successful warm-up does not prove an archive
+partition exists, and an archive answer says nothing about the live collector
+today.
+
+Live Mode also has a bounded `band_history` request for a historical price band.
+The laptop sends the instrument, price range and time window through Terminal C;
+the host replays its recorded raw depth and returns resting size and traded
+flow per row. Institutional Order Blocks v1 reads a block the visible live
+history did not cover from the host's stored heatmap columns first
+(`/heatmap/columns`, cut to the block's rows in the browser) and uses
+`band_history` only when the host has no stored columns for the pair or that
+read fails. Session Levels reads a touched level's five minutes and a range's
+totals from the same stored columns, with no raw-replay fallback. A missing book interval remains a gap, never a
+zero-liquidity observation. Each host read is capped at two hours, 256 rows and
+100,000 row/column cells; the client pieces longer requests. This is an
+on-demand derivation, **not a stored canonical L2 row dataset**, and it does
+not make order-book indicators available in the separate Historical Mode
+archive. See the [wire contract](../../contracts/ws-frame-contract/v1/ws-frame-contract-v1.md)
+and `apps/runtime/src/server/band-history.js` for the exact boundary.
+
+## What each instrument has
+
+| Instrument | Live ticks | Warm-up from the host | Historical candles | Historical studies |
+|---|---|---|---|---|
+| BTC, ETH spot and perpetual (Binance) | always | yes | 1m, 1h, 1d, each with taker buy volume | none yet |
+| ES, NQ (continuous futures) | with layer 2 | yes, what the weekday collector captured | 1m, 1h, 1d | profile, VPIN, large prints, bar flow |
+| AAPL, TSLA (equities) | with layer 2 | yes, what the weekday collector captured | 1m, 1h, 1d | profile, VPIN, large prints, bar flow |
+| NVDA (equity) | with layer 2 | yes, what the weekday collector captured | not archived | none |
+
+**Equity candles are regular session only**, live and historical alike:
+09:30–16:00 New York time, with the exchange's holidays and early closes from
+[`config/market-calendar.json`](../../../config/market-calendar.json). Hourly
+bars start at 09:30, the last one ends at the bell, and a daily bar is that
+session. Pre-market and after-hours prints are not in equity candles. Futures
+and crypto candles are UTC-aligned and cover every traded minute.
+
+Other timeframes are resampled in the browser from those rungs. The governed
+instrument list, exact provider symbols and tick sizes live in
+[`config/market-instruments.json`](../../../config/market-instruments.json);
+the archive's list lives in `apps/web/src/lib/archive/historicalCatalog.ts`.
+
+The four studies are computed on the host from trade-derived families, so the
+browser never pages minute rows. Their request, limits and refusals are in the
+[archive study contract](../../contracts/archive-study/v1/archive-study-v1.md).
+In short: a profile per requested range, VPIN over whole UTC weeks (at most 26),
+and large prints and bar flow over one bar-aligned range of at most 5,000 bars.
+
+## Which indicators work in Historical Mode
+
+`HISTORICAL_INDICATOR_POLICIES` in `apps/web/src/lib/chart/indicatorRegistry.ts`
+decides this, per indicator, from the capabilities the selected archive
+provides. There are three policies:
+
+| Policy | Needs | Works on |
+|---|---|---|
+| Candles | `ohlcv` | every archived instrument |
+| Candle flow | `ohlcv` + `buy_volume` | Binance (candles carry taker buy volume) and ES/NQ/AAPL/TSLA (the `bar_flow` study supplies both sides) |
+| Trade families | `ohlcv` + `trade_families` | ES/NQ/AAPL/TSLA |
+
+An indicator can also be marked unavailable with a reason, as order-book and
+every-trade indicators are: the archive has no historical depth and keeps only
+the largest prints of each minute.
+
+## Rules every indicator follows
+
+**Read buy and sell through `barSides`.** Never compute sell volume as
+`volume - buy_volume`. `apps/web/src/lib/indicators/barSides.ts` returns
+`{known, buy, sell, unknown, delta, sided}` for a bar. It uses an explicit
+`sell_volume` when the bar has one, and falls back to `volume - buy_volume`
+only for bars that carry just a buy side. That fallback is exact for Binance,
+where every trade has a taker side. It is not exact for equities.
+
+**Unsided volume is real and large for equities.** A Databento equity trade
+often has no aggressor side. Measured on the host (Report 54): ES and NQ are
+effectively fully sided, but AAPL is about 40% unsided on one-minute bars and
+65–75% on hourly and daily bars; TSLA is 35–55%. Historical bars carry that
+volume separately as `unknown`, and `unsidedShare(bars)` gives the share to
+show beside an equity delta. Counting it as selling would make every equity
+delta read bearish by that amount.
+
+Live dxFeed bars built from the tape carry buy and sell only when every trade in
+that minute had a side. A minute with any unsided trade carries neither, so
+`barSides` reports it unknown and it draws no delta, which is common for
+equities. Stored native dxFeed candles carry both sides explicitly (volume at
+the ask and at the bid), with any remainder unknown.
+
+**`missing` is not `empty`.** A study reports ranges it could not read as
+`missing`; draw them as unavailable, never as zero. It reports ranges it read
+and found no trades in (a weekend, an overnight hour for an equity) as `empty`,
+and those legitimately have nothing to draw. A bar with no trades is absent
+from `bar_flow`; draw no delta for it, not a zero delta.
+
+**Gate on capabilities, not on provider names.** Declare what the indicator
+needs through its `HISTORICAL_INDICATOR_POLICIES` entry. Do not branch on
+`provider === "BINANCE"`. The map is typed over every indicator id, so a new
+indicator does not compile until it has a policy.
+
+**Warm-up failure is not an empty signal.** When the storage reader cannot
+reach the host it reports the read as unavailable. Show the indicator as
+warming up or degraded, never as a flat or zero reading.
+
+**Quantities are provider units.** Futures sizes are contracts, equity sizes
+are shares, Binance sizes are the base asset. Do not add them across providers
+or convert them to a notional the provider did not report.
+
+**Need a new trade-derived aggregate?** Do not fetch minute rows into the
+browser. A new study is a change to the archive study contract and the host,
+and goes through the owner.
+
+## Adding an indicator that works in both modes
+
+1. Create `apps/web/src/lib/indicators/<name>/`. The folder owns the whole
+   indicator: computation, geometry, primitive and settings. Follow the
+   [SDK execution model](../indicator-sdk/TA.01-indicator-authoring-core-evidence.md).
+   Its settings dialog gets [setting presets](setting-presets.md): a
+   `settingsSchema` is enough for the generic dialog, and a hand-built one
+   declares a preset schema for every setting it stores.
+   Keep at most three primary controls on the Inputs tab and give every other
+   input `tab: "advanced"`, which the generic dialog renders as a collapsed
+   Advanced group.
+2. Register it in `INDICATOR_REGISTRY` and give it a
+   `HISTORICAL_INDICATOR_POLICIES` entry that names what it needs.
+3. Read sides through `barSides`. For example, a cumulative delta that leaves
+   bars without a known side undrawn:
+
+   ```ts
+   import type { BarFrame } from "../../../types/frames";
+   import { barSides } from "../barSides";
+
+   export function cumulativeDelta(bars: readonly BarFrame[]): (number | null)[] {
+     let total = 0;
+     return bars.map((bar) => {
+       const sides = barSides(bar);
+       if (!sides.known) return null;
+       total += sides.delta;
+       return total;
+     });
+   }
+   ```
+
+4. Check it in Live Mode on Binance (every machine can), then in Historical
+   Mode on BTC and on one futures and one equity instrument (layer 1). On AAPL,
+   confirm the unsided share is shown and the delta is not skewed.
+5. Add tests for the computation, lifecycle, capability gating and rendering,
+   as listed under *Adding or changing an indicator* in the
+   [indicator index](README.md).
+
+## Where the code is
+
+| Concern | File |
+|---|---|
+| Indicator registration and Historical Mode policy | `apps/web/src/lib/chart/indicatorRegistry.ts` |
+| Buy/sell sides of a bar | `apps/web/src/lib/indicators/barSides.ts` |
+| Archive instruments and candle rungs | `apps/web/src/lib/archive/historicalCatalog.ts` |
+| Study requests and validation | `apps/web/src/lib/archive/archiveStudyClient.ts` |
+| When studies are asked for, and how results reach the chart | `apps/web/src/lib/archive/useArchiveStudies.ts` |
+| Wire frames the browser accepts | `apps/web/src/types/frames.ts` and the [WebSocket frame contract](../../contracts/ws-frame-contract/v1/ws-frame-contract-v1.md) |
+| Warm-up source selection (local or host) | [Storage architecture](../storage/README.md) |
+
+ succeeded in 0ms:
+# Validation protocol (cycle 1)
+
+Owner: validation and performance specialist. Applies to every indicator that
+reaches step 6 of the pipeline in `PM/CHARTER.md`. The harness that runs these
+checks lives on the repository at `apps/web/src/lib/chart/validation/`
+(import from `./validation/index.ts`); each utility has its own proving test in
+`apps/web/src/lib/chart/validation/tests/`. A check is not passed because the
+specialist says so; it is passed because a vitest file in the indicator's
+`tests/` folder (or a validation spec next to it) runs the check and the
+evidence file named in the report records the result.
+
+Vocabulary: **replay** is the runtime's `onSnapshot`/activation pass over the
+retained bars (`replaying: true`, no `trades`, `HISTORICAL_UNAVAILABLE`);
+**live** is bars arriving one at a time through `onBar` as `APPENDED`, then
+`REPLACED_EDGE` for every forming revision, then `REPLACED_EDGE` once more when
+the bar closes. The harness classifies arrivals with the chart's own
+`mergeChartBar`, so a duplicated closed bar is a `REPLACED_EDGE` and a late bar
+is a `REBUILT`, exactly as `ChartPanel` would dispatch them.
+
+## How to run the harness
+
+```bash
+export PATH=/root/.nvm/versions/node/v24.21.0/bin:$PATH
+cd apps/web
+npx vitest run src/lib/chart/validation          # the harness proves itself (84 tests)
+npx vitest run src/lib/indicators/<folder>       # the indicator's own checks
+VALIDATION_BASELINES=1 NODE_OPTIONS=--expose-gc npx vitest run src/lib/chart/validation/tests/baselines.test.ts
+```
+
+Heap numbers are meaningful only under `NODE_OPTIONS=--expose-gc` (vitest's
+workers inherit it); every probe result carries `heap.gcExposed` so the evidence
+says which kind it is.
+
+| Utility | File | Purpose |
+|---|---|---|
+| `trendBars`, `rangeBars`, `compressionBreakoutBars`, `volumeSpikeBars`, `timeGapBars`, `equityUnsidedBars` | `fixtures.ts` | labelled synthetic regimes, deterministic by seed |
+| `relativeVolumeEquityFixture`, `relativeVolumeCryptoFixture`, `mulberry32`, `standardNormals` | `fixtures.ts` | the frozen Relative Volume fixtures of `PM/cycle1/brief-rvol-clock.md` (15-session equity U-curve with 12 labelled anomalies and predictable slots; 12,000-bar crypto cosine day), shared by the builder and the validation loop |
+| `formingRevisions`, `liveArrivals`, `duplicateClosedArrivals`, `rebuiltArrivals`, `sampledIndices` | `fixtures.ts` | arrival scripts for the live driver |
+| `openLiveSession`, `driveLive`, `replayCapture`, `diffOutputs`, `diffMarkers` | `liveDrive.ts` | the real `indicatorRuntime` driven the way the chart drives it, with the rollover |
+| `checkTruncationInvariance` | `truncation.ts` | check 1 |
+| `checkLiveReplayEquivalence`, `checkDuplicateClosedIdempotent`, `checkRebuiltEquivalence`, `checkArrivalsAgainstReplay` | `liveEquivalence.ts` | checks 2 and 3 |
+| `countMarkers`, `countMarkersOver`, `markerBudgetOf`, `judgeBudget`, `captureMarkers` | `markerBudget.ts` | check 5 |
+| `whaleVersusCrowd`, `busyTapeFor`, `tapeOf`, `historyTapeOf`, `ticksOf`, `candleOf` | `syntheticTape.ts` | real `AggressiveTape`s for L1 checks and the whale-versus-crowd baseline |
+| `fakeL2`, `fakeL2Unsynced`, `segmentOf`, `ladderOf`, `ladderWithWall`, `wallOf`, `wallLifecycle`, `absorbingAt`, `tradeEvent` | `fakeL2.ts` | a scripted `IndicatorL2` whose trust, segment and event-slice semantics mirror `indicatorL2Of`, `L2Store.trusted` and `EventRing.since`; `atTime` cuts the ladder, walls and events at a bar close. A wall under a cut is served from a timestamped snapshot or rebuilt from its `wall_born`/`wall_trade` events, with `absorbing` by the runtime's rule (traded into within 5 s, holding half its peak); a wall with neither is omitted, never served at its final size |
+| `probeReplay`, `probeFormingBar`, `probeRollover`, `probeReplayPooled` | `perfProbe.ts` | check 6; `probeReplayPooled` is the brief's frozen method (warm-ups, pooled timed runs, `onBar` plus `readOutput` only) |
+
+## The checks
+
+Each check states the method, the pass criterion and how the evidence is
+recorded. "Evidence file" means a vitest file committed on the indicator's
+branch whose test names match the check, plus any JSON or log the test writes
+(kept under `PM/log/validation/<indicator>/`).
+
+### 1. No future data
+
+Method. `checkTruncationInvariance(def, bars, settings)` replays the fixture
+once in full, then once truncated at every index (`sampledIndices` for series
+longer than 1,000 bars: every 25th index plus the last 50), and compares the
+committed outputs of every line and every marker at or before the cut. Run it
+on at least `compressionBreakoutBars()` and `trendBars()`; tick and book
+indicators also run it with the fixture's `extras` (`ticks` from `tapeOf`, `l2`
+from `fakeL2` with `atTime` cutting walls and events at the bar close).
+
+Pass. `report.ok === true`: zero output disagreements at tolerance 0 (a
+documented floating-point tolerance is acceptable only for a value computed in
+a different order live versus replay, never for a different value), zero marker
+disagreements, no fault. An indicator that reads `barIndex`/`barCount` to place
+anything is suspect by default and must show this check passing.
+
+Evidence. Test named `no future data: truncation invariance` in the
+indicator's tests; `summarizeTruncation(report)` written to the log on failure.
+
+### 2. Replay versus live equivalence
+
+Method. `checkLiveReplayEquivalence(def, bars, settings, { revisionsPerBar: 5 })`
+feeds every bar as five forming revisions (`closed: false`, path open through
+the wicks to the close, volume growing with buy, sell and unknown volume scaled
+independently through `barSides`, so an equity bar's unsided share stays
+unsided) followed by the closed bar,
+through the real runtime, and compares the committed outputs and markers with a
+clean replay of the same bars. For a tick or book indicator supply `tradesFor`
+and `extras` so the live side sees what the terminal would give it.
+
+Pass. Either `report.equal === true`, or the indicator's doc page states the
+exact difference and the test pins it: for a tick-only indicator the expected
+and accepted difference is `outputsEqual === true`, replay markers `[]`, live
+markers present (`largeTradeBubbles` is the reference: see
+`validation/tests/liveEquivalence.test.ts`). Any output difference on a
+candle-only indicator fails; it means forming revisions were committed (the
+harness catches this with a running sum that ignores `replace`).
+
+Evidence. Test named `replay versus live equivalence`; the documented
+difference quoted in the indicator's doc page under "Replay and Historical
+Mode".
+
+### 3. Gap, duplicate and late-event behavior
+
+Method, five parts, all through the live driver so the runtime's own
+classification is what the indicator sees:
+
+- Duplicate closed dispatch: `checkDuplicateClosedIdempotent(def, bars, settings, index)`.
+  The duplicate must be classified `REPLACED_EDGE` and the result must equal a
+  feed in which the bar arrived once.
+- `REBUILT`: `checkRebuiltEquivalence(def, bars, settings, lateIndex)`. A bar
+  arriving two bars late must leave the indicator equal to a clean replay
+  (`sawRebuilt === true`). Module-level state (a cache keyed by instrument, a
+  slot pool) is where this fails; the runtime replays, the module does not.
+- Reconnect that clears the tick store: an arrival script whose `act` hook
+  resets the `AggressiveTape` and hands a new `IndicatorTicks` to the session
+  (`session.setTicks`). Every bar whose window the store no longer covers must
+  read `null`, never a stale value (reference: `tickVolume` in the same test file).
+- Out-of-order prints: `tapeOf` with prints in shuffled order must give the
+  same per-window sums as in-order arrival (`syntheticTape.test.ts`); an
+  indicator that keeps its own print buffer must show the same.
+- Time gap: run the indicator on `timeGapBars()`; the output at
+  `labels.firstBarAfterGapIndex` must follow the indicator's documented gap rule
+  (restart, carry, or null), and nothing before the gap may change.
+- Book indicators: run the same checks with `extras.l2` from `fakeL2`. Its
+  `trusted(ts)` is false before the segment start, on a GAP or null segment and
+  when `l2_walls` or `l2_events` is unsynced; `events(cursor)` is `complete`
+  only for an exact cursor on a synced ring past any reported loss, exactly as
+  `EventRing.since`; so an indicator's missing-event and untrusted gates can be
+  exercised with `patch({ synced: { l2_events: false } })`, `missedEvents`, a
+  cursor before `eventResetSeq`, or `segment: segmentOf(start)`.
+
+Pass. All five hold; no fault; no `NaN`.
+
+Evidence. Tests named `duplicate closed bar is idempotent`, `late bar rebuilds
+to the replay`, `reconnect clears the store honestly`, `out-of-order prints`,
+`time gap`.
+
+### 4. Warm-up
+
+Method. Replay a fixture shorter than the warm-up length and one exactly at
+it; read every line of `replayCapture(...).outputs`.
+
+Pass. Every value before the documented warm-up length is `null`; the first
+non-null value appears exactly at the documented index; no value anywhere is
+`NaN`, `Infinity`, or a fabricated `0` standing in for "not yet" (a genuine
+zero from complete data is fine, and the test must say which it is). The
+warm-up length (bars, and for tick indicators the coverage condition) is stated
+in the doc page and in a `staticHint` of the settings schema.
+
+Evidence. Test named `warm-up is null, never NaN or zero`; the doc sentence.
+
+### 5. Marker and alert budget
+
+Method. `countMarkers(def, bars, settings, { live })` on a busy synthetic
+instrument: `trendBars({ count: 1000 })` or the breakout fixture with
+`busyTapeFor(bars, { printsPerBar: 60 })` supplying trades live (whales at 0.2
+percent of prints, 100 times the small size). In cycle 1 an alert is a marker
+(`PM/CHARTER.md`), so this is also the alert budget. Record `per1000Bars`,
+`maxPerBar`, `barsWithMarkers` and the breakdown by shape and color.
+
+The budget carries `faulted`; a run in which the runtime latched the indicator
+counts nothing and `judgeBudget` fails it whatever the rate.
+
+Pass. Ceilings, unless the build brief sets a different one with a reason:
+at most **40 markers per 1,000 bars** for a signal-type tool (a trader can act
+on roughly one mark an hour on 1-minute bars), at most **200 per 1,000** for a
+descriptive annotation tool (levels, labels), and at most **3 markers on one
+bar**. A duplicated closed bar must not add markers (`countMarkersOver` with
+`duplicateClosedArrivals`). The judged verdict is `judgeBudget(budget, ceiling,
+maxPerBar).ok`.
+
+Evidence. Test named `marker budget`; `summarizeBudget(...)` line in the log.
+
+### 6. Performance
+
+Method. The three probes in `perfProbe.ts`, run with `NODE_OPTIONS=--expose-gc`:
+
+- `probeReplay(def, bars10080, settings)`: activation over 10,080 one-minute
+  bars (the chart's retention cap); per-`onBar` p50 and p99, wall time of the
+  whole replay, heap delta.
+- `probeFormingBar(def, warmup, settings, { seconds: 60, revisionsPerSecond: 50, printsPerMinute: 1000 })`:
+  one bar revised 3,000 times with 1,000 prints landing in a real tape
+  (`ctx.ticks`) and in `ctx.trades` (`LIVE_COMPLETE`); per-revision p50 and p99.
+- `probeRollover(def, bars10080, settings, { extraBars: 1000 })`: the chart at
+  the cap, then 1,000 more bars so the front rolls off and `discardLeading`
+  runs; retained output lengths, markers older than the oldest retained bar,
+  heap growth per extra bar. The appended bars are built by `rolloverBar`,
+  which writes sides through `barSides` (sided, buy-only and unsided bars each
+  stay what they were).
+- `probeReplayPooled(def, bars, settings, { warmupRuns: 3, timedRuns: 5 })`:
+  the method frozen in the Relative Volume brief (amendment 9): three untimed
+  warm-up replays, five timed replays, per-bar samples pooled, p99 by nearest
+  rank, timed region `onBar` plus `readOutput` with no-op draw and marker
+  namespaces, no runtime bookkeeping. Its `extras` go through the same
+  knowledge-time cutoffs as `indicatorRuntime.makeCtx`: `liquidity.atTime(barClose)`
+  with a null answer meaning unavailable, and `l2.atTime(barClose)` with a
+  fallback to the uncut view. When a brief states a per-bar p99
+  criterion (Relative Volume: under 0.05 ms over the first 10,080 bars of the
+  crypto fixture) this is the probe that judges it; `probeReplay` remains the
+  measurement of a real activation and keeps the reference rows below.
+
+Pass. Replay p99 ≤ 0.5 ms and total replay wall ≤ 2 s for a candle indicator
+(≤ 5 s for a book or tick indicator that reads the store per bar); forming
+revision p99 ≤ 1 ms (an indicator revised 50 times a second gets at most 50 ms
+of the main thread per second); after the rollover every output line has
+exactly 10,080 entries, `markersBeforeRetention === 0`, and heap growth is
+flat: `bytesPerExtraBar` within 3× the harness floor measured below (about
+370 B per bar, which is the runtime's own output arrays and the bar frames
+themselves). A probe that reports `faulted` fails regardless of timing.
+
+Evidence. JSON written by the indicator's baseline test
+(`VALIDATION_BASELINES_OUT`), kept under `PM/log/validation/<indicator>/perf.json`,
+and the three formatted lines in the report.
+
+Reference points measured on this container (4 cores, Intel Xeon 2.10 GHz,
+Node 24.21.0, gc exposed, `trendBars({ count: 10080, driftPerBar: 0.5, noise: 25 })`,
+2026-10-26, raw JSON kept at `PM/log/validation/baselines-2026-10-26.json`):
+
+| Indicator | Replay 10,080 bars: onBar p50 / p99 / max (ms), wall (ms), heap Δ | Forming bar, 3,000 revisions, 1,000 prints: p50 / p99 / max (ms), wall (ms) | Rollover +1,000: outputs retained, p50 / p99 (ms), heap B per bar |
+|---|---|---|---|
+| rsi | 0.0003 / 0.0024 / 0.097, 20, 0.74 MB | 0.0002 / 0.0024 / 0.649, 29 | value 10,080; 0.0005 / 0.0046; 377 |
+| bollinger | 0.0008 / 0.0043 / 0.192, 32, 1.55 MB | 0.0006 / 0.0018 / 0.058, 24 | basis, upper, lower 10,080 each; 0.0009 / 0.0050; 385 |
+| cvdDivergence (registry def only, see note) | 0.0002 / 0.0004 / 0.051, 14, 0.14 MB | 0.0002 / 0.0003 / 0.028, 18 | no lines; 0.0002 / 0.0005; 361 |
+| l2FeedStatus (scripted book: 1,000-level ladder, 20 walls, 2,100 events) | 0.0001 / 0.0004 / 0.146, 35, 0.18 MB | 0.0543 / 0.1702 / 1.911, 229 | no lines; 0.0884 / 0.1910; 370 |
+
+Pooled method on the Relative Volume crypto fixture (bars 1..10,080, three
+warm-ups, five timed runs, `onBar` plus `readOutput`), the floor for the
+brief's criterion 4: 
+
+| Indicator | Pooled onBar+readOutput p50 / p90 / p99 / max (ms) | Per-run p99 (ms) | Per-run wall (ms) |
+|---|---|---|---|
+| rsi | 0.0002 / 0.0003 / 0.0009 / 0.264 | 0.0023, 0.0007, 0.0005, 0.0005, 0.0004 | 11, 6, 6, 5, 5 |
+| bollinger | 0.0003 / 0.0006 / 0.0009 / 0.271 | 0.0011, 0.0009, 0.0009, 0.0009, 0.0009 | 10, 6, 6, 6, 6 |
+
+Raw JSON: `PM/log/validation/baselines-pooled-2026-10-26.json`. The first timed
+run is still warmer-than-cold but slower than the rest (JIT settling), which is
+why the brief pools five runs; a single-run p99 would be luck.
+
+Notes on the reference points. The `cvdDivergence` registry def has an empty
+`onBar` (its computation is hand-wired in `ChartPanel.tsx` through
+`cvdDivergenceRenderer.ts` and `cvdDivergence.ts`), so its row is the harness
+floor: what the timing wrapper and the runtime cost with no indicator work at
+all. A real measurement of CVD Divergence needs the batch functions
+(`rollingDeltaSeries`, `detectCvdDivergences`) timed directly, which the
+indicator SDK probe cannot see. `l2FeedStatus` writes about ten table cells per
+revision and reads the whole ladder and event list each time, which is why its
+forming-bar cost is 200 times the floor while still inside the 1 ms ceiling.
+The rollover heap slope of 361 to 385 B per bar is the same for all four, so it
+is the runtime and the bar frames, not the indicators; an indicator's own
+retained state shows as a slope above that (the harness proves this with a
+`hoarder` def in `perfProbe.test.ts`).
+
+### 7. Baseline comparison
+
+For the cycle-1 indicator the brief freezes the fixtures and the acceptance
+numbers: `relativeVolumeEquityFixture()` (labels `anomalyIndices`,
+`predictableSlotIndices`, `evaluationIndices`, `sessionStarts`) and its
+`{ flatSeasonality: true }` control, judged by the recall and false-positive
+bounds in `PM/cycle1/brief-rvol-clock.md`; the fixture's own proving test is
+`validation/tests/relativeVolumeFixtures.test.ts`. The general rule follows.
+
+Method. The build brief names the simpler baseline (a rolling average, plain
+RVOL, a raw imbalance line, a candle-only version of the same idea). The
+specialist implements the baseline as a `RuntimeIndicatorDef` in the
+indicator's `tests/` (or Codex does, gate G4) and runs both on labelled
+fixtures:
+
+- Descriptive tools are judged on **detection accuracy on labelled fixtures**:
+  for `compressionBreakoutBars` the detection index versus
+  `labels.breakoutIndex` (hit if within the documented tolerance, early if
+  before, late if after, plus false positives inside `compressionStart..breakoutIndex`);
+  for `volumeSpikeBars` the same against `labels.spikeIndex`; for
+  `rangeBars` and `trendBars` the false-positive count. Run each fixture over at
+  least 10 seeds and report hits, early, late and false positives for the tool
+  and the baseline side by side.
+- L1 tools must pass the **whale-versus-crowd** fixture: `whaleVersusCrowd()`
+  builds two tapes making the identical candle (print count withheld); the tool
+  must respond differently to the two tapes while the candle-only baseline, by
+  construction, cannot. `largeTradeBubbles` is the reference (one bubble on the
+  whale tape, none on the crowd tape, `syntheticTape.test.ts`).
+- L2 tools state what is **observed** (ladder, walls, events as served) versus
+  **inferred**, and the baseline comparison is run on the same `fakeL2` script so
+  the book is the same for both.
+
+Pass. The report states, in one sentence, what the tool shows that the baseline
+hides, and the table shows it: strictly fewer false positives at equal or
+better hits, or hits the baseline cannot produce (whale versus crowd). A tool
+that only matches the baseline is returned to the backlog.
+
+Evidence. Test named `beats the baseline on labelled fixtures`; the
+side-by-side table in the report.
+
+### 8. Predictive claims
+
+Method. Any claim of the form "after X, price tends to Y" is predictive. The
+specialist freezes the rule (parameters included) on a development period,
+then measures it on an **unseen period** chosen after the rule was frozen:
+a different seed range of the synthetic fixtures (declared in the test before
+the development runs are made), and, where this container can reach it, a live
+Binance stretch recorded after the rule was written. Forward observation only:
+the outcome window starts at the signal bar's close and uses no bar before it.
+
+Overfitting rule. Choosing the best of several parameter sets, thresholds or
+variants by their result on the development period and reporting that result
+is rejected. At most **one** rule is carried to the unseen period; if it fails
+there the claim is dropped, not re-tuned. Every variant tried is listed in the
+report with its development result so the selection is visible.
+
+Pass. The unseen-period result is reported with its sample size and with the
+same statistic on the baseline; a claim with fewer than 30 signals in the
+unseen period is reported as "insufficient evidence", not as a pass. Marketing
+copy may state only what the unseen period supports.
+
+Evidence. `PM/EXPERIMENTS.md` entry with the frozen rule, the declared unseen
+period, every variant, and the two results.
+
+### 9. Equity unsided volume
+
+Method. Run the indicator on `equityUnsidedBars()` (dxFeed equity identity;
+every third bar carries no side, the others carry both sides and a 40 percent
+unsided remainder) and read every output that depends on sides.
+
+Pass. On `labels.unsidedIndices` every side-dependent output is `null`
+(`barSides(bar).known === false` draws nothing, never zero). On
+`labels.partiallySidedIndices` the delta equals `buy - sell` from `barSides`
+and the unsided remainder is **not** counted as selling; where the tool shows a
+delta on equities it shows `unsidedShare` beside it or in the doc. The code
+reads sides only through `barSides`: `grep -n "volume - " <folder>` and
+`grep -n "buy_volume" <folder>` outside `barSides` calls must be empty. No gate
+on `provider === "..."` except to label units.
+
+Evidence. Test named `equity unsided volume is honest`.
+
+### 10. Historical Mode policy honesty
+
+Method. Read the indicator's `HISTORICAL_INDICATOR_POLICIES` entry and the data
+it actually reads in `onBar`:
+
+| Reads | Required policy |
+|---|---|
+| candles only (`bar` OHLCV) | `OHLCV_POLICY` |
+| `barSides` / `buy_volume` | `CANDLE_FLOW_POLICY` |
+| `ctx.ticks`, `ctx.trades` | `unavailableReason` (or `l2_prints` only if the doc proves the verified hours suffice) |
+| `ctx.l2`, `ctx.liquidity`, `bandHistory` | `l2_states` / `l2_walls` capabilities or `unavailableReason` |
+| host studies | `TRADE_FAMILY_POLICY` |
+
+Then replay the indicator with `replayCapture` and no extras (what a candle
+archive gives): a tick or book indicator must produce `null` outputs and no
+markers (`largeTradeBubbles` and the `tickVolume` reference pass this); a
+candle-flow indicator on bars without `buy_volume` must produce `null`.
+
+Pass. The policy row matches the table; the replay-without-extras result is
+honest nulls; the doc page's "Historical Mode" paragraph says the same thing as
+the policy; `historicalIndicatorAvailability(id, capabilities)` for the
+instrument's real capability set agrees with the doc's claim of where the tool
+works. A policy that promises Historical Mode for data the archive does not
+contain fails the indicator outright.
+
+Evidence. Test named `Historical Mode policy is honest` (asserting the policy
+entry and the null replay).
+
+## Report template
+
+One report per validation loop, at `PM/log/validation/<indicator>/loop-<n>.md`.
+Codex's G3 challenge list is answered item by item in the same file.
+
+```markdown
+# Validation report: <indicator id> loop <n>
+
+Branch: <branch>   Commit: <sha>   Validator: <name>   Date: <date>
+Commands run: <each command with pass/fail counts>
+
+| # | Check | Result | Evidence file (test name) | Measured | Required fix |
+|---|---|---|---|---|---|
+| 1 | No future data | PASS / FAIL | <tests/...test.ts> (<test name>) | cuts checked, violations | |
+| 2 | Replay vs live | PASS / PASS WITH DOCUMENTED DIFFERENCE / FAIL | | output diffs, marker diffs | |
+| 3 | Gap, duplicate, late | PASS / FAIL | | per part | |
+| 4 | Warm-up | PASS / FAIL | | warm-up length | |
+| 5 | Marker budget | PASS / FAIL | | per 1,000 bars, max per bar, ceiling | |
+| 6 | Performance | PASS / FAIL | perf.json | replay p50/p99, forming p50/p99, rollover B/bar | |
+| 7 | Baseline comparison | PASS / FAIL | | hits/early/late/false positives, tool vs baseline | |
+| 8 | Predictive claims | PASS / INSUFFICIENT EVIDENCE / N/A / FAIL | EXPERIMENTS.md entry | unseen-period statistic, n | |
+| 9 | Equity unsided | PASS / FAIL / N/A | | | |
+| 10 | Historical policy | PASS / FAIL | | policy row, null replay | |
+
+Codex G3 challenge items: <item> -> <answer with evidence>
+
+Verdict: ACCEPT / FIX AND RERUN (list) / RETURN TO BACKLOG (reason)
+Not verified: <anything the container could not reach, e.g. live rendering, real dxFeed data>
+```
+
+A check marked FAIL always carries a required fix that names the file and the
+behavior, never "investigate". Two loops are the budget; a third failure
+returns the concept to the backlog with this report attached.
+# UX standard for new indicators (cycle 1)
+
+Written by the UX seat from the code in `Terminal-L1-L2-development-indicator-sdk`
+(snapshot 2026-10-26) and from rendered charts (`PM/cycle1/screenshots/`).
+Code wins over this page; report a disagreement to the PM. The rules in
+part 2 are what every new indicator must follow; part 1 is what the house
+already does, so a new indicator looks like it belongs.
+
+## 1. House conventions observed
+
+### 1.1 Colours
+
+| Where | Value | Source |
+|---|---|---|
+| Live chart (default, light) | background `#f2efe6`, up candle `#f8f8f5` with `#111111` stroke, down candle `#111111` | `CHART_PALETTE`, `ChartPanel.tsx` |
+| Dark chart (Historical Mode, `.shell.historical-active`) | background `#111316`, up `#36d684`, down `#f16a72`, text `#9ca3af` | `DARK_CHART_PALETTE`, `App.css` |
+| UI tokens | `--bull #4ade80`, `--bear #f87171`, `--warn #fbbf24` (dark page); `--bull #0e9a66`, `--bear #c23854`, `--warn #b07a1e`, `--accent #0e9a93` (light page) | `index.css` |
+| Existing indicator lines | RSI `#4d3d78`; SMA purple `#8672b3`, blue `#2563eb`, green `#16a34a`; CVD up `#16a34a`, down `#dc2626`; CVD on dark `#facc15`; reference lines `rgba(10,10,10,0.3)` | `rsi.ts`, `sma.ts`, `INDICATOR_PALETTE` |
+| Marker default | `#787b86`, shapes `circle`, `square`, `arrowUp`, `arrowDown` | `draw/markers.ts` |
+| Table overlay | `rgba(10,10,10,0.82)` background, `#f8f8f5` text, mono 11 px, top-right (or bottom-right) | `.draw-table-overlay`, `draw/table.ts` |
+
+The candles are monochrome on the default chart, so green and red are free
+for meaning: buyers, sellers, bull, bear. Hand-wired lines use
+`INDICATOR_LINE_WIDTH = 2`; an SDK line takes `lines[].lineWidth` and falls
+back to 2. SDK line series are created with `lastValueVisible: false` and
+`priceLineVisible: false`, so an SDK line has no current-value label on the
+price axis; own-pane `priceLines` do get dotted 1 px lines with axis labels
+(`ChartPanel.tsx`, runtime series creation).
+
+### 1.2 Legend rows
+
+Top-left stack over the chart, one white pill per indicator
+(`IndicatorLegendRow`): mono 11 px bold label, an optional grey `detail`, and
+eye / gear / trash buttons that appear on hover or focus. In Historical Mode
+the pill is dark. The label is the registry `label` (`"RSI (14)"`, so the
+default parameter is in the name). The detail is set per indicator by hand
+in `MainPanel.tsx`; a generic SDK indicator with a `settingsSchema` gets label
+and gear only. Observed detail strings: `Swing 20`, `≥ 5 ct`,
+`Bar volume × typical price`, `Live only · 20 bars required`,
+`Warming · ≥ 0.50z`, ` · history unavailable`, `waiting for the book`,
+`reconnecting`, `loading the view's prints`.
+
+### 1.3 Settings dialog
+
+`IndicatorSettingsModal` is a draggable fixed panel about 320 px wide, title
+bar with the indicator label and a close button, body, footer with
+**Reset to default**, **Defaults ▾** (presets) and **Ok**. Edits apply live;
+Ok only closes. The generic body (`GenericIndicatorSettingsBody`) stacks
+fields vertically, label above control; sliders show the value inline
+(`Inner band (σ) 1.00`); tabs **Inputs** / **Visibility** appear only when a
+field declares `tab`. Hand-built dialogs (Aggressive Orders, the heatmap)
+copy the same tab strip and classes. Every dialog has presets for free from
+its schema (`docs/architecture/indicators/setting-presets.md`).
+
+### 1.4 Copy tone
+
+Sentence case labels with the unit in brackets: `Session length`,
+`Lookback (bars)`, `Show orders larger than (BTC)`. Hints are plain full
+sentences that say what the control does and what it costs:
+"Changing the anchor, the session length or a band width replays every bar."
+Legend details and status strings are short lowercase phrases after ` · `.
+Status chips: `LIVE`, `SYNCING`, `STALE`, `QUIET`, `HISTORY ONLY`,
+`Feed unavailable`, `Live profile catching up`, `VPIN waiting for trades`,
+`Analytics incomplete — reload to rebuild`. Numbers are mono and tabular.
+
+### 1.5 How indicators signal warm-up, degraded and unavailable today
+
+- An SDK indicator returns `null` from `readOutput` until it has enough bars:
+  the line simply starts later (RSI draws nothing for its first 14 bars).
+  Nothing tells the trader it is warming up.
+- Hand-wired indicators put state in the legend detail (`Warming ·`,
+  `Unavailable ·`, `history unavailable`, `waiting for the book`) or in a
+  status chip. The data rule is "warm-up failure is not an empty signal";
+  never draw a zero or a flat line for data you do not have
+  (`data-for-indicator-authors.md`, Rules).
+- A throw, a non-finite number or a non-string colour latches a fault: the
+  indicator goes blank until removed and re-added, with no message in the
+  legend. Fail closed to `null` instead.
+- Historical Mode greys out indicators whose policy says unavailable and
+  shows the `unavailableReason` sentence.
+
+## 2. The standard every new indicator follows
+
+### 2.1 Default view: readable in three seconds
+
+1. One question, one primary mark. The first thing on screen is the series,
+   band or marker that answers the indicator's question. Secondary context
+   (a baseline, a threshold) is thinner and lighter.
+2. At most two lines and one fill at default settings. A third series goes
+   behind a Visibility toggle, off by default.
+3. Pane or overlay: a value in price units (a level, a band, a VWAP) is an
+   `overlay`. A bounded ratio, score or oscillator is an `ownPane` with
+   `priceLines` at its decision levels and a fixed `autoscaleRange`, so the
+   pane does not rescale as the trader scrolls. Do not share a pane unless
+   the two indicators are read together.
+4. Line widths: primary 2, secondary 1. Fills between 0.12 and 0.25 alpha.
+5. It must read on both charts: the cream live chart and the dark Historical
+   chart. Take a screenshot of each before handing over (section 4).
+6. The registry `label` carries the default parameter, as `RSI (14)` does,
+   so the legend explains itself.
+
+### 2.2 Controls: at most three primary, the rest Advanced
+
+- Inputs tab: at most three controls without a `tab` (or `tab: "inputs"`).
+  These are the ones a trader changes in the first session: the length,
+  the threshold, the mode.
+- Everything else that changes the calculation: `tab: "advanced"`. The
+  generic dialog renders it as a closed **Advanced** group at the end of the
+  Inputs tab (prototype on the UX branch, see
+  `PM/cycle1/advanced-settings-proposal.md`; until merged, keep the list of
+  advanced keys in the README and leave them off the schema's first screen).
+- Colours, show/hide toggles, opacity, labels: `tab: "visibility"`.
+- Prefer `slider` or `select` with named stops over free `numeric` boxes;
+  a numeric field needs `step > 0` or the generic dialog refuses every value.
+- One explanatory paragraph at most on the Inputs tab; a one-line hint per
+  control is fine. The full explanation lives in the indicator's README.
+- Use the generic dialog. A hand-built dialog needs a PM decision.
+- Settings that depend on the instrument (a size floor) use
+  `settingsFieldsFor` for the suggested value, never a provider branch in
+  the schema.
+
+### 2.3 Colour semantics
+
+- Green/red (`--bull`/`--bear`, or the candle-up/down colours on the dark
+  chart) only for direction or side: buying vs selling, above vs below.
+- A non-directional series takes one neutral colour from the house set:
+  purple `#4d3d78` / `#8672b3`, blue `#2563eb`, amber `#facc15` (dark chart
+  only). Never introduce a new hue for a single indicator.
+- Thresholds and reference lines: `rgba(10,10,10,0.3)` on the cream chart,
+  `rgba(250,250,247,0.32)` on the dark one.
+- Warning or "degraded" state: `--warn`, never red (red means sell).
+- Expose a colour in Visibility only when the trader could plausibly need
+  to change it; the default must already be right.
+
+### 2.4 Markers
+
+- At most two event types per indicator, one shape each: `arrowUp` below the
+  bar and `arrowDown` above it for directional events, `circle` for neutral.
+- `text` at most three characters; prefer none.
+- Density: at default settings on a 1m BTC chart, no more than about one
+  marker per ten bars on average. If the fixture shows more, raise the
+  default threshold; the trader can lower it under Advanced.
+- Marker colour equals the colour of the line or side it belongs to.
+- Markers never replace the line: a marker says "here", the series says "why".
+
+### 2.5 "Alert conditions" without an alert system
+
+There is no notification channel. An alert condition is:
+
+1. a named, documented condition in the README under **Alert conditions**
+   (name, exact rule, which bar it fires on, how often it fires on the
+   fixture);
+2. a marker on the bar where it fires (section 2.4);
+3. a row in the indicator's own `draw.table` (top-right): condition name,
+   the bar time and the value, for example `Squeeze fired · 12:34 · 1.8σ`.
+   A generic SDK indicator cannot write to the legend detail today, so the
+   table is the place.
+
+Never promise a notification in copy. Use the condition's name
+("Squeeze fired"), not the word "alert", in anything the trader reads.
+
+### 2.6 First use: before warm-up completes
+
+- Draw nothing for bars without a value (`null`), never a zero or a flat
+  line, never a partial window as if it were full.
+- While warming up, the table shows one row: `Warming up · 37 of 200 bars`.
+  When data the indicator needs is not there (ticks in replay, L2 before
+  the first frame, a timeframe outside the gate), the row says what it needs
+  in the trader's terms: `Needs live trades`, `Needs 1m to 15m`,
+  `Waiting for the book`. Remove the row once the indicator is live.
+- State the warm-up length in the README and keep it under the chart's
+  retention (`maxReplayBars`, at most 10,080 1m bars).
+- Replay honesty: a value the replay cannot compute (tick-only inputs) is
+  `null`, and the README says that history looks different from live.
+
+### 2.7 Tooltips and hover: what can and cannot be promised
+
+Only hand-wired indicators have hover today: `fvgDelta` and `sessionLevels`
+through `getHoverData` in `ChartPanel.tsx`, and the Aggressive Orders bubbles
+and the heatmap through their own primitives. A new SDK indicator gets no
+tooltip without a chart-pipeline change and PM approval. Therefore:
+
+- Design so nothing essential needs a hover: an SDK line has no price-axis
+  value label, so the current value and the state go in the table, and
+  thresholds are drawn as `priceLines` (which do get axis labels).
+- You may implement `getHoverData` for later wiring, but the README must not
+  claim a tooltip, and the screenshots must not show one.
+
+### 2.8 Copy for labels and hints
+
+- Labels: sentence case, at most four words, unit in brackets:
+  `Lookback (bars)`, `Minimum size (BTC)`.
+- Hints: one or two sentences, present tense, say what changes and whether
+  it replays ("Replays every bar").
+- Use the feed vocabulary from `CAPABILITIES.md`: top of book, aggregated
+  depth, tape, candles. Say "estimate" when it is one; never "detects" or
+  "predicts" unless validation established it.
+- Legend detail and table cells: at most 30 characters, ` · ` between parts,
+  numbers tabular.
+- Status phrases are lowercase and concrete: `waiting for the book`, not
+  `Initializing…`.
+
+## 3. Handover checklist (UX)
+
+- [ ] Default view screenshots at two zoom levels, cream and dark chart
+- [ ] Inputs tab shows at most three controls; Advanced group holds the rest
+- [ ] Every settings key is in the schema; presets work (test enforces)
+- [ ] Warm-up row visible on first use; nothing drawn as zero
+- [ ] Markers under the density cap on the fixture
+- [ ] README has: question answered, default view, controls, alert
+      conditions, warm-up length, what replay cannot show, no tooltip claim
+
+## 4. Producing screenshots in this container
+
+Binance is not reachable from the container (the runtime's startup fails
+after 30 s: `binance_connection.route_error` for every route, then
+`lifecycle.start_failed reason market data server: required routes never
+reached CONNECTED within 30000ms`). Use the fixture runtime, which speaks
+the frame contract and renders the real web app:
+
+```sh
+export PATH=/root/.nvm/versions/node/v24.21.0/bin:$PATH
+cd <your worktree>                       # with node_modules linked as in the brief
+cp -n .env.example .env
+# 1. fixture runtime on 8001 (the Vite proxy's default target)
+REPO=/home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk \
+  node /home/user/Terminal-L1-L2/PM/cycle1/screenshots/tools/fixture-ws-server.cjs 8001 900 7 &
+# 2. web app on 8000
+npm run dev --workspace web &
+# 3. screenshots: default, <indicator> zoomed out/in, <dialog indicator> Inputs/Visibility
+node /home/user/Terminal-L1-L2/PM/cycle1/screenshots/tools/screenshot.cjs \
+  /home/user/Terminal-L1-L2/PM/cycle1/screenshots/<indicator> "<legend label>" "<legend label with dialog>"
+```
+
+The fixture sends `selection`, `snapshot` (900 synthetic closed 1m BTC-USDT
+spot bars, a random walk with slow regimes), `health` READY, a two-level
+`book`, then a forming `bar` revised every second. Snapshot bars must all be
+`closed: true` and on the minute, or the browser drops the frame
+(`parseSnapshotFrame` in `types/frames.ts`). Tick-, L2- and heatmap-driven
+indicators get no data from it; extend the fixture with `trade` and
+`liquidity` frames from `frames.ts` when you need them, or state that the
+screenshot is OHLCV-only. For the dark chart, switch to Historical Mode in
+the UI (needs layer 1) or set `data-theme="dark"` on `<html>` in the script.
+Zoom is done with the mouse wheel over `.chart-mount`; the legend row's
+gear opens the dialog; `getByRole("tab", { name: "Visibility" })` switches
+tabs. Playwright and Chromium are preinstalled; never run
+`playwright install`. Stop both servers when done.
+# Worker brief: building an indicator for Terminal-L1-L2
+
+You are one of several worker agents. A project manager (PM) agent assigned you
+exactly one indicator, named in your task prompt. Build it completely: code,
+settings schema, tests, registry entry, Historical Mode policy, and a short doc
+page. Commit on your own branch in your own worktree. Do not push. Do not ask
+the PM questions; make a sensible decision, write it down in your report.
+
+## Repository and environment
+
+Repository root (the PM's checkout): `/home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk`
+You work in a separate git worktree of that repository; your task prompt or your
+shell's working directory tells you where. Everything below is relative to your
+worktree root.
+
+The project pins Node 24.21.0. Before running anything:
+
+```bash
+export PATH=/root/.nvm/versions/node/v24.21.0/bin:$PATH
+node --version   # must print v24.21.0
+```
+
+Dependencies are installed only in the PM's checkout. Link them into your
+worktree once (they are gitignored, so the links never enter a commit):
+
+```bash
+ROOT=/home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ln -s $ROOT/node_modules ./node_modules
+ln -s $ROOT/apps/web/node_modules ./apps/web/node_modules
+```
+
+Commands you will use (run from the worktree root unless noted):
+
+| Purpose | Command |
+|---|---|
+| Your indicator's tests only | `cd apps/web && npx vitest run src/lib/indicators/<folder>` |
+| Tests that enumerate the registry | `cd apps/web && npx vitest run src/lib/chart src/components` |
+| Whole web suite (do this once before you finish) | `cd apps/web && npx vitest run` |
+| Type check | `cd apps/web && npx tsc -b` |
+| Web lint | `cd apps/web && npx oxlint` |
+| Repo lint | `npx eslint .` |
+| Docs check | `node scripts/validate-docs.cjs` |
+
+All of these must pass before you commit. The runtime (jest) suite and the
+Python conversion suite are unaffected by indicator work; skip them.
+
+## Read these first, in this order
+
+1. `docs/architecture/indicators/data-for-indicator-authors.md` (the rules every indicator follows)
+2. `apps/web/src/lib/chart/indicatorTypes.ts` (the authoring contract: `RuntimeIndicatorDef`, `IndicatorBarCtx`, `SettingsFieldSchema`, `PlacementSpec`)
+3. `apps/web/src/lib/chart/indicatorRegistry.ts` (where you register, and `HISTORICAL_INDICATOR_POLICIES`)
+4. `docs/architecture/indicator-sdk/TA.01-indicator-authoring-core-evidence.md` (execution model: incremental `onBar`, `replace`, replay, fault latching)
+5. `docs/architecture/indicator-sdk/TA.02-ta-math-library-evidence.md` and `apps/web/src/lib/chart/ta/index.ts` (the `ta.*` factories: create them once in `createState`, never in `onBar`)
+6. `docs/architecture/indicator-sdk/TA.03-plotting-rendering-wrapper-evidence.md` (`ctx.draw.fill`, `ctx.markers.plotshape/plotchar`, `draw.line/box/label/table` handles)
+7. `docs/architecture/indicators/setting-presets.md` (every setting key must be in the schema, `step > 0` for numeric fields)
+8. Reference indicators: `apps/web/src/lib/indicators/rsi/rsi.ts` and its tests (simplest SDK indicator); `apps/web/src/lib/indicators/large-trade-bubbles/largeTradeBubbles.ts` (markers plus `tradeAvailability` gating); `apps/web/src/lib/indicators/vwap-bands/vwapBands.ts` and its tests (reading the tick store through `ctx.ticks`, and how tests fake it); `apps/web/src/lib/indicators/l2-feed-status/l2FeedStatus.ts` (reading `ctx.l2`)
+9. The test harness `apps/web/src/lib/chart/replayBars.ts`
+
+## What you deliver
+
+1. **One folder** `apps/web/src/lib/indicators/<folder>/` owning the whole
+   indicator: pure computation in its own module, the `RuntimeIndicatorDef` in
+   `<name>Indicator.ts` (or `<name>.ts` for a simple one), and `tests/`.
+2. **Registration**: add the import, append the def to the end of
+   `INDICATOR_REGISTRY`, and append an entry to the end of
+   `HISTORICAL_INDICATOR_POLICIES`, both in `apps/web/src/lib/chart/indicatorRegistry.ts`.
+   Append, never insert in the middle: several workers edit this file and the
+   PM merges the branches.
+3. **Historical Mode policy** that is honest: `OHLCV_POLICY` for candle-only
+   math, `CANDLE_FLOW_POLICY` when you read buy/sell sides, and an
+   `unavailableReason` sentence for anything that needs live ticks or the live
+   order book. Never fabricate a value a candle archive does not contain.
+4. **Settings schema** (`settingsSchema`) covering every key in
+   `defaultSettings`, with sensible `min`/`max`/`step`, `affects` set correctly
+   (`recompute` for anything that changes the math, `cosmetic` for colors), and a
+   `staticHint` explaining the data the indicator needs when it is live-only.
+   `apps/web/src/components/tests/indicatorPresetInputs.test.ts` fails if a
+   settings key is missing from the schema.
+5. **Tests** in `tests/`: exact hand-computed values for the math, `replace:
+   true` semantics (a revised forming bar does not corrupt committed state),
+   empty input, insufficient warm-up giving `null` (never `NaN`), and the
+   data-availability gates (an unavailable source yields `null`, not zero).
+   Use `replayBars` for bar sequences and a hand-built ctx for `replace` cases,
+   as `rsi/tests/rsi.test.ts` does.
+6. **A doc page** `docs/architecture/indicators/<name>.md`: what it computes,
+   the data family it reads, units, what happens when the data is missing,
+   settings and defaults, and how a retail trader reads it. Add one row to the
+   "Documentation map" table in `docs/architecture/indicators/README.md`. Keep
+   links relative and valid; `node scripts/validate-docs.cjs` checks them.
+7. **One commit** on your branch, message in the imperative, describing what the
+   indicator does. Use `git -c user.name="Worker" -c user.email="worker@chartprime.local" commit`.
+   No model names anywhere in the commit or code.
+
+## Rules that are not negotiable
+
+- Read buy/sell through `barSides` (`apps/web/src/lib/indicators/barSides.ts`).
+  Never compute sell as `volume - buy_volume`. A bar `barSides` reports as not
+  `known` draws no delta (`null`), not zero.
+- `missing` is not `empty`. Unavailable data yields `null`; a quiet bar with
+  complete data yields the real value (which may be 0).
+- Tick-based indicators read `ctx.ticks` (declare `ticksWanted: true`) and must
+  check `ticks.coverageOf(bar.ts_open, bar.ts_open + bar.interval_ms)`:
+  `"all"` is complete, `"thin"` means only large prints are present, `"none"`
+  means nothing. Anything that counts or sizes trades is valid only on `"all"`.
+  `ctx.trades` with `tradeAvailability === "LIVE_COMPLETE"` is the per-bar
+  alternative when you only need the forming bar's prints.
+- Order-book indicators read `ctx.l2`. Output `null` unless
+  `l2.availability === "LIVE"`, `l2.trusted()` is true and the channel you read
+  reports `synced`. Check `apps/web/src/lib/chart/indicatorL2.ts` and
+  `apps/web/src/lib/l2/types.ts`.
+- Quantities stay in provider units (Binance base asset, futures contracts,
+  equity shares). Label them; never convert to a notional the provider did not
+  report, except the documented Binance `price * size` USD notional.
+- Gate on capabilities and availability, never on `provider === "..."`, except
+  to label units (as `largeTradeBubbles.ts` does).
+- Incremental only: `onBar` nudges state forward one bar; never rebuild history
+  from an array. Respect `replace` (a forming bar revised in place). `ta.*` and
+  `draw.*` factories are created once in `createState`.
+- Fail closed to `null`. Never emit `NaN` or `Infinity`; the runtime latches
+  the indicator as faulted.
+- Match the surrounding code style (2-space indentation, double quotes,
+  trailing commas, `readonly` where the codebase uses it). Do not reformat lines
+  you did not change. No new dependencies.
+- Touch only: your folder, `indicatorRegistry.ts` (append only),
+  `docs/architecture/indicators/README.md` (one table row), your doc page, and
+  `indicatorPresetInputs.test.ts` only if you must list a key in
+  `NOT_IN_SDK_PRESETS` (prefer not to).
+
+## Quality bar
+
+The owner's goal is "top grade, very useful and marketable indicators for
+retail traders." That means: defaults a trader can use without reading docs,
+a label a trader recognizes, colors that read at a glance (bullish green
+`#26a69a` / bearish red `#ef5350` are the house pair; neutral `#d1d4dc`),
+honest nulls during warm-up, and a settings dialog that exposes what traders
+actually tune. Prefer one excellent indicator over two mediocre ones.
+
+## Your report back to the PM
+
+End with a short report containing: branch name, worktree path, files
+added/changed, the exact test and lint commands you ran with their pass/fail
+counts, every design decision you made that the brief left open, and anything
+you could not verify (for example, live rendering, which no worker can see).
+# Platform capability sheet (maintained by the PM)
+
+What an indicator in this terminal can read, draw, and configure. Specialists
+design against this sheet, not against what they wish existed. Code wins over
+this sheet; report a disagreement to the PM instead of working around it.
+
+Snapshot: `Terminal-L1-L2-development-indicator-sdk`, imported 2026-10-26.
+Authoritative files: `apps/web/src/lib/chart/indicatorTypes.ts` (contract),
+`indicatorRegistry.ts` (registration and Historical policies),
+`indicatorTicks.ts`, `indicatorL2.ts`, `indicatorLiquidity.ts`,
+`apps/web/src/types/frames.ts` (wire shapes),
+`docs/architecture/indicators/data-for-indicator-authors.md`,
+`docs/architecture/l2/l2-sdk.md`.
+
+## 1. Instruments and feeds
+
+| Instrument | Live source | What arrives live | Historical Mode |
+|---|---|---|---|
+| BTC, ETH spot and perpetual | Binance WebSocket | every trade with taker side; aggregated depth diffs per price (no individual orders); 1m bars | 1m/1h/1d candles with taker buy volume; verified L2 book states for some August 2026 hours only |
+| ES, NQ (continuous futures) | dxFeed (needs layer 2 access) | TimeAndSale tape with aggressor side; Order-v2 indexed orders assembled into a per-price book (one tick per level, full depth) | 1m/1h/1d candles; host studies: volume profile, VPIN, large prints, bar flow |
+| AAPL, TSLA (equities) | dxFeed (layer 2) | tape, 35 to 75 percent of volume has NO aggressor side; Order-v2 book | as futures; regular session only (09:30 to 16:00 New York) |
+| NVDA | dxFeed (layer 2) | tape and book | not archived |
+
+Not available anywhere: dxFeed DOM service (no entitlement), native dxFeed
+candles, individual order IDs on Binance, a complete historical tick archive
+(the archive keeps only the largest prints of each minute), historical depth
+outside the verified August 2026 hours.
+
+Feed vocabulary (use these exact terms in concepts): **top of book** (best
+bid and ask), **aggregated depth** (size per price level, what Binance and the
+assembled dxFeed book give), **individual orders** (dxFeed Order-v2 only, and
+only inside the runtime's L2 engine, not exposed raw to the browser),
+**tape** (individual trades with side), **candles** (OHLCV plus sided volume).
+
+## 2. Inputs an indicator receives (`IndicatorBarCtx`)
+
+| Field | Content | Availability |
+|---|---|---|
+| `bar` | OHLCV, `buy_volume`/`sell_volume` (read through `barSides`), `trade_count`, `closed`, `reconstructed`, `interval_ms`, `provider`, `marketKind`/`assetClass` | always; 1m source bars, other timeframes resampled in the browser; at most 10,080 bars retained |
+| `trades` + `tradeAvailability` | the forming bar's individual prints | live bars after activation only; replayed bars get `[]` and `HISTORICAL_UNAVAILABLE` |
+| `ticks` (declare `ticksWanted: true`) | the pair's print store: every live print since connection plus server history above a size floor; `coverageOf(from,to)` returns `all`, `thin` or `none` | live only |
+| `liquidity` | lane-0 heatmap: 1-second columns of resting bid/ask size per price row, buy/sell flow per row, up to 64 largest prints per column; recent 20 min fine, 2 h deep (10 s columns) | live; a bounded history stream for backfill |
+| `l2` (declare `category: "l2"`) | `ladder()` exact book `[price,size]`; `walls()` with evidence (`size, peak, ratio, fill, eaten, absorbing, startTs, endTs, endedBy, detail`); `events()` up to 5,000 (`wall_born/shrink/trade/hidden/end`, `trade`, `hidden`, `segment`); zoom `lanes()`; `trusted()`, `status(channel)`, `version` | live only; reads the state NOW, not as of a replayed bar; `undefined` until the first L2 frame |
+| `bandHistory` | on-demand host replay of resting size and traded flow for a price band over a window (2 h, 256 rows, 100k cells per request) | layer 1 |
+| `barIndex`, `barCount` | position in the series being fed | always from the runtime |
+| `replace`, `replaying`, `drawNow` | forming-bar revision, replay pass, redraw request | always |
+
+Heatmap and lane geometry: columns capped at 1,023 rows per side; lane 0
+reaches about ±5 percent on BTC/ETH and ±0.87 percent on NQ; wider lanes
+double row and column size.
+
+## 3. Execution model
+
+- Incremental: `createState(settings)` once, `onBar(ctx)` per bar event. A
+  forming bar is revised with `replace: true`, possibly many times per second.
+  Never recompute from a history array.
+- Full replay on activation, symbol/provider/timeframe switch, reconnect, and
+  any `recompute` setting change. `maxReplayBars` bounds it.
+- Fault latching: a throw, a non-finite number, or a non-string color disables
+  the indicator until it is removed and re-added. Fail closed to `null`.
+- `ta.*` (62 streaming factories: sma, ema, rsi, macd, atr, bollinger,
+  keltner, adx, superTrend, ttmSqueeze, vwap, obv, mfi, stdev, highest,
+  lowest, prev, crossover, crossunder, ...) and `draw.*` handles are created
+  once in `createState`, inside the guarded creation window.
+- Main thread. An L2 frame costs about 0.2 ms at p99; lane columns are
+  megabytes and are handed out by reference. Never copy them per bar.
+
+## 4. Rendering an indicator can do by itself
+
+| Primitive | Notes |
+|---|---|
+| Line series per output key | per-bar color via `color(state, settings)`, `recolor` for cheap cosmetic changes, `lineWidth` |
+| Placement | `overlay`, `ownPane` (with fixed `priceLines` and optional `autoscaleRange`), `sharedPane` with another SDK indicator |
+| `ctx.draw.fill(a, b, {colorAbove, colorBelow}, key)` | band between two values, split at sign flips; several keyed fills |
+| `ctx.markers.plotshape/plotchar` | circle, square, arrowUp, arrowDown; positions aboveBar, belowBar, inBar, atPriceTop/Bottom/Middle; `text`, `size`, `color` |
+| `draw.line/box/label/polyline` | created-once handles in domain coordinates, mutated per bar |
+| `draw.table` | DOM overlay, top right, cell text and color |
+| `getHoverData` | arbitrary hover payload, but only indicators hand-wired in ChartPanel show it today |
+
+Not self-serve (needs a chart-pipeline change, PM approval required): custom
+canvas primitives, histogram series, forward-displaced plots, attaching to
+another indicator's bespoke series, hover tooltips for a new indicator,
+alerts or notifications (no alert system exists in the web app at all).
+
+Cycle-1 definition of an "alert": a documented condition rendered as a marker
+and surfaced in the indicator's own table or legend. A notification channel is
+a separate SDK project, not something a specialist builds inside an indicator.
+
+## 5. Settings and presets
+
+Field kinds: boolean, checkboxList, radioGroup, select, numeric, color,
+slider, staticHint, custom. Each has `affects: recompute | cosmetic |
+liveOnly`, optional `visibleIf`, and `tab: "inputs" | "visibility" |
+"advanced"`. Numeric and slider `step` must be > 0. Every settings key must
+appear in the schema (a test enforces it) and presets come for free. Since
+2026-10-26 `tab: "advanced"` renders as a collapsed Advanced group at the end
+of the Inputs tab (UX option A, merged): keep at most three primary controls
+and mark the rest advanced. `recolor(oldColor, settings)` cannot reclassify
+history, so a setting that changes which bars are colored or marked must be
+`recompute`, not `cosmetic`.
+
+## 6. Historical Mode policies
+
+`OHLCV_POLICY` (candles), `CANDLE_FLOW_POLICY` (candles plus sided volume:
+Binance, and ES/NQ/AAPL/TSLA through the bar-flow study), `TRADE_FAMILY_POLICY`
+(host studies), capability lists including `l2_states`, `l2_walls`,
+`l2_prints` (verified hours only), or an `unavailableReason` sentence. A
+candle archive must never fabricate ticks or depth.
+
+## 6b. Screenshots and the fixture runtime
+
+Binance is unreachable from this container (runtime log: required routes
+never reached CONNECTED). Screenshots therefore come from the UX specialist's
+fixture WebSocket server at `PM/cycle1/screenshots/tools/fixture-ws-server.cjs`
+(speaks the frame contract: selection, snapshot of synthetic closed 1m bars,
+health, book, a forming bar revised each second) on port 8001, with the web
+app on 8000 and the Playwright scripts beside it. Every snapshot bar must be
+`closed: true` or the frame is dropped. Procedure in `PM/cycle1/ux-standard.md`
+section 4.
+
+## 7. Testing and evidence tooling
+
+- `replayBars(def, bars, settings)` replays a bar sequence through an indicator.
+- Fakes for the tick store (`AggressiveTape`, see `vwap-bands/tests`) and for
+  `IndicatorL2` (hand-built objects, see `liquidity-voids/tests`).
+- Vitest for the web app, jest for the runtime, mutation specs in
+  `benchmarks/mutations`, `npm run gate` for everything.
+- Recorded market data is NOT in the repository. The runtime can replay
+  recorded days from the collector's SQLite (`replay-source.js`) only on a
+  machine with that storage. Validation here therefore uses synthetic
+  fixtures and whatever live Binance data this container can reach; the
+  validation specialist states which.
+
+## 8. Units
+
+Binance sizes are base asset (documented USD notional is `price * size`);
+futures are contracts; equities are shares. Never add across providers.
+
+## 9. Data paths added in cycle 2 (2026-10-26)
+
+- Spot endpoint overrides `TT_BINANCE_SPOT_WS_BASE_URL` and
+  `TT_BINANCE_SPOT_REST_BASE_URL`: the stream transport can use Binance's
+  unblocked market-data mirrors. Spot only; perpetual endpoints untouched.
+- REST candle transport `TT_BINANCE_TRANSPORT=rest` (`TT_BINANCE_REST_POLL_MS`
+  250..20000, `TT_BINANCE_REST_WEIGHT_BUDGET`): spot candles only, forming and
+  closed, finality judged at dispatch time, catch-up and hole repair with an
+  honest `history incomplete` reason; tape and book unavailable, health reason
+  `Polled spot candles · no tape · no order book`. This is how the cloud
+  container reaches real Binance spot data; evidence in
+  `pm/cycle2/acceptance-rest-transport.md`. Stage B2 (aggregate trades behind a
+  capability contract) and Stage C (depth) remain in the backlog.
+- Browser-direct mode (`VITE_DATA_SOURCE=browser-binance` at build time, or
+  `?source=browser-binance`): the web app reads Binance spot in the browser
+  (REST history, then kline, trade and depth20 streams), no runtime. Candle and
+  tick indicators work; the L2 engine family shows unavailable.
+- Environment facts: the container cannot open WebSockets (proxy) and
+  Binance's primary API geo-blocks it (451); the mirror answers REST with
+  `access-control-allow-origin: *`.
+
+
+exec
+/bin/bash -lc 'cat pm/cycle1/validation-protocol.md' in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+# Validation protocol (cycle 1)
+
+Owner: validation and performance specialist. Applies to every indicator that
+reaches step 6 of the pipeline in `PM/CHARTER.md`. The harness that runs these
+checks lives on the repository at `apps/web/src/lib/chart/validation/`
+(import from `./validation/index.ts`); each utility has its own proving test in
+`apps/web/src/lib/chart/validation/tests/`. A check is not passed because the
+specialist says so; it is passed because a vitest file in the indicator's
+`tests/` folder (or a validation spec next to it) runs the check and the
+evidence file named in the report records the result.
+
+Vocabulary: **replay** is the runtime's `onSnapshot`/activation pass over the
+retained bars (`replaying: true`, no `trades`, `HISTORICAL_UNAVAILABLE`);
+**live** is bars arriving one at a time through `onBar` as `APPENDED`, then
+`REPLACED_EDGE` for every forming revision, then `REPLACED_EDGE` once more when
+the bar closes. The harness classifies arrivals with the chart's own
+`mergeChartBar`, so a duplicated closed bar is a `REPLACED_EDGE` and a late bar
+is a `REBUILT`, exactly as `ChartPanel` would dispatch them.
+
+## How to run the harness
+
+```bash
+export PATH=/root/.nvm/versions/node/v24.21.0/bin:$PATH
+cd apps/web
+npx vitest run src/lib/chart/validation          # the harness proves itself (84 tests)
+npx vitest run src/lib/indicators/<folder>       # the indicator's own checks
+VALIDATION_BASELINES=1 NODE_OPTIONS=--expose-gc npx vitest run src/lib/chart/validation/tests/baselines.test.ts
+```
+
+Heap numbers are meaningful only under `NODE_OPTIONS=--expose-gc` (vitest's
+workers inherit it); every probe result carries `heap.gcExposed` so the evidence
+says which kind it is.
+
+| Utility | File | Purpose |
+|---|---|---|
+| `trendBars`, `rangeBars`, `compressionBreakoutBars`, `volumeSpikeBars`, `timeGapBars`, `equityUnsidedBars` | `fixtures.ts` | labelled synthetic regimes, deterministic by seed |
+| `relativeVolumeEquityFixture`, `relativeVolumeCryptoFixture`, `mulberry32`, `standardNormals` | `fixtures.ts` | the frozen Relative Volume fixtures of `PM/cycle1/brief-rvol-clock.md` (15-session equity U-curve with 12 labelled anomalies and predictable slots; 12,000-bar crypto cosine day), shared by the builder and the validation loop |
+| `formingRevisions`, `liveArrivals`, `duplicateClosedArrivals`, `rebuiltArrivals`, `sampledIndices` | `fixtures.ts` | arrival scripts for the live driver |
+| `openLiveSession`, `driveLive`, `replayCapture`, `diffOutputs`, `diffMarkers` | `liveDrive.ts` | the real `indicatorRuntime` driven the way the chart drives it, with the rollover |
+| `checkTruncationInvariance` | `truncation.ts` | check 1 |
+| `checkLiveReplayEquivalence`, `checkDuplicateClosedIdempotent`, `checkRebuiltEquivalence`, `checkArrivalsAgainstReplay` | `liveEquivalence.ts` | checks 2 and 3 |
+| `countMarkers`, `countMarkersOver`, `markerBudgetOf`, `judgeBudget`, `captureMarkers` | `markerBudget.ts` | check 5 |
+| `whaleVersusCrowd`, `busyTapeFor`, `tapeOf`, `historyTapeOf`, `ticksOf`, `candleOf` | `syntheticTape.ts` | real `AggressiveTape`s for L1 checks and the whale-versus-crowd baseline |
+| `fakeL2`, `fakeL2Unsynced`, `segmentOf`, `ladderOf`, `ladderWithWall`, `wallOf`, `wallLifecycle`, `absorbingAt`, `tradeEvent` | `fakeL2.ts` | a scripted `IndicatorL2` whose trust, segment and event-slice semantics mirror `indicatorL2Of`, `L2Store.trusted` and `EventRing.since`; `atTime` cuts the ladder, walls and events at a bar close. A wall under a cut is served from a timestamped snapshot or rebuilt from its `wall_born`/`wall_trade` events, with `absorbing` by the runtime's rule (traded into within 5 s, holding half its peak); a wall with neither is omitted, never served at its final size |
+| `probeReplay`, `probeFormingBar`, `probeRollover`, `probeReplayPooled` | `perfProbe.ts` | check 6; `probeReplayPooled` is the brief's frozen method (warm-ups, pooled timed runs, `onBar` plus `readOutput` only) |
+
+## The checks
+
+Each check states the method, the pass criterion and how the evidence is
+recorded. "Evidence file" means a vitest file committed on the indicator's
+branch whose test names match the check, plus any JSON or log the test writes
+(kept under `PM/log/validation/<indicator>/`).
+
+### 1. No future data
+
+Method. `checkTruncationInvariance(def, bars, settings)` replays the fixture
+once in full, then once truncated at every index (`sampledIndices` for series
+longer than 1,000 bars: every 25th index plus the last 50), and compares the
+committed outputs of every line and every marker at or before the cut. Run it
+on at least `compressionBreakoutBars()` and `trendBars()`; tick and book
+indicators also run it with the fixture's `extras` (`ticks` from `tapeOf`, `l2`
+from `fakeL2` with `atTime` cutting walls and events at the bar close).
+
+Pass. `report.ok === true`: zero output disagreements at tolerance 0 (a
+documented floating-point tolerance is acceptable only for a value computed in
+a different order live versus replay, never for a different value), zero marker
+disagreements, no fault. An indicator that reads `barIndex`/`barCount` to place
+anything is suspect by default and must show this check passing.
+
+Evidence. Test named `no future data: truncation invariance` in the
+indicator's tests; `summarizeTruncation(report)` written to the log on failure.
+
+### 2. Replay versus live equivalence
+
+Method. `checkLiveReplayEquivalence(def, bars, settings, { revisionsPerBar: 5 })`
+feeds every bar as five forming revisions (`closed: false`, path open through
+the wicks to the close, volume growing with buy, sell and unknown volume scaled
+independently through `barSides`, so an equity bar's unsided share stays
+unsided) followed by the closed bar,
+through the real runtime, and compares the committed outputs and markers with a
+clean replay of the same bars. For a tick or book indicator supply `tradesFor`
+and `extras` so the live side sees what the terminal would give it.
+
+Pass. Either `report.equal === true`, or the indicator's doc page states the
+exact difference and the test pins it: for a tick-only indicator the expected
+and accepted difference is `outputsEqual === true`, replay markers `[]`, live
+markers present (`largeTradeBubbles` is the reference: see
+`validation/tests/liveEquivalence.test.ts`). Any output difference on a
+candle-only indicator fails; it means forming revisions were committed (the
+harness catches this with a running sum that ignores `replace`).
+
+Evidence. Test named `replay versus live equivalence`; the documented
+difference quoted in the indicator's doc page under "Replay and Historical
+Mode".
+
+### 3. Gap, duplicate and late-event behavior
+
+Method, five parts, all through the live driver so the runtime's own
+classification is what the indicator sees:
+
+- Duplicate closed dispatch: `checkDuplicateClosedIdempotent(def, bars, settings, index)`.
+  The duplicate must be classified `REPLACED_EDGE` and the result must equal a
+  feed in which the bar arrived once.
+- `REBUILT`: `checkRebuiltEquivalence(def, bars, settings, lateIndex)`. A bar
+  arriving two bars late must leave the indicator equal to a clean replay
+  (`sawRebuilt === true`). Module-level state (a cache keyed by instrument, a
+  slot pool) is where this fails; the runtime replays, the module does not.
+- Reconnect that clears the tick store: an arrival script whose `act` hook
+  resets the `AggressiveTape` and hands a new `IndicatorTicks` to the session
+  (`session.setTicks`). Every bar whose window the store no longer covers must
+  read `null`, never a stale value (reference: `tickVolume` in the same test file).
+- Out-of-order prints: `tapeOf` with prints in shuffled order must give the
+  same per-window sums as in-order arrival (`syntheticTape.test.ts`); an
+  indicator that keeps its own print buffer must show the same.
+- Time gap: run the indicator on `timeGapBars()`; the output at
+  `labels.firstBarAfterGapIndex` must follow the indicator's documented gap rule
+  (restart, carry, or null), and nothing before the gap may change.
+- Book indicators: run the same checks with `extras.l2` from `fakeL2`. Its
+  `trusted(ts)` is false before the segment start, on a GAP or null segment and
+  when `l2_walls` or `l2_events` is unsynced; `events(cursor)` is `complete`
+  only for an exact cursor on a synced ring past any reported loss, exactly as
+  `EventRing.since`; so an indicator's missing-event and untrusted gates can be
+  exercised with `patch({ synced: { l2_events: false } })`, `missedEvents`, a
+  cursor before `eventResetSeq`, or `segment: segmentOf(start)`.
+
+Pass. All five hold; no fault; no `NaN`.
+
+Evidence. Tests named `duplicate closed bar is idempotent`, `late bar rebuilds
+to the replay`, `reconnect clears the store honestly`, `out-of-order prints`,
+`time gap`.
+
+### 4. Warm-up
+
+Method. Replay a fixture shorter than the warm-up length and one exactly at
+it; read every line of `replayCapture(...).outputs`.
+
+Pass. Every value before the documented warm-up length is `null`; the first
+non-null value appears exactly at the documented index; no value anywhere is
+`NaN`, `Infinity`, or a fabricated `0` standing in for "not yet" (a genuine
+zero from complete data is fine, and the test must say which it is). The
+warm-up length (bars, and for tick indicators the coverage condition) is stated
+in the doc page and in a `staticHint` of the settings schema.
+
+Evidence. Test named `warm-up is null, never NaN or zero`; the doc sentence.
+
+### 5. Marker and alert budget
+
+Method. `countMarkers(def, bars, settings, { live })` on a busy synthetic
+instrument: `trendBars({ count: 1000 })` or the breakout fixture with
+`busyTapeFor(bars, { printsPerBar: 60 })` supplying trades live (whales at 0.2
+percent of prints, 100 times the small size). In cycle 1 an alert is a marker
+(`PM/CHARTER.md`), so this is also the alert budget. Record `per1000Bars`,
+`maxPerBar`, `barsWithMarkers` and the breakdown by shape and color.
+
+The budget carries `faulted`; a run in which the runtime latched the indicator
+counts nothing and `judgeBudget` fails it whatever the rate.
+
+Pass. Ceilings, unless the build brief sets a different one with a reason:
+at most **40 markers per 1,000 bars** for a signal-type tool (a trader can act
+on roughly one mark an hour on 1-minute bars), at most **200 per 1,000** for a
+descriptive annotation tool (levels, labels), and at most **3 markers on one
+bar**. A duplicated closed bar must not add markers (`countMarkersOver` with
+`duplicateClosedArrivals`). The judged verdict is `judgeBudget(budget, ceiling,
+maxPerBar).ok`.
+
+Evidence. Test named `marker budget`; `summarizeBudget(...)` line in the log.
+
+### 6. Performance
+
+Method. The three probes in `perfProbe.ts`, run with `NODE_OPTIONS=--expose-gc`:
+
+- `probeReplay(def, bars10080, settings)`: activation over 10,080 one-minute
+  bars (the chart's retention cap); per-`onBar` p50 and p99, wall time of the
+  whole replay, heap delta.
+- `probeFormingBar(def, warmup, settings, { seconds: 60, revisionsPerSecond: 50, printsPerMinute: 1000 })`:
+  one bar revised 3,000 times with 1,000 prints landing in a real tape
+  (`ctx.ticks`) and in `ctx.trades` (`LIVE_COMPLETE`); per-revision p50 and p99.
+- `probeRollover(def, bars10080, settings, { extraBars: 1000 })`: the chart at
+  the cap, then 1,000 more bars so the front rolls off and `discardLeading`
+  runs; retained output lengths, markers older than the oldest retained bar,
+  heap growth per extra bar. The appended bars are built by `rolloverBar`,
+  which writes sides through `barSides` (sided, buy-only and unsided bars each
+  stay what they were).
+- `probeReplayPooled(def, bars, settings, { warmupRuns: 3, timedRuns: 5 })`:
+  the method frozen in the Relative Volume brief (amendment 9): three untimed
+  warm-up replays, five timed replays, per-bar samples pooled, p99 by nearest
+  rank, timed region `onBar` plus `readOutput` with no-op draw and marker
+  namespaces, no runtime bookkeeping. Its `extras` go through the same
+  knowledge-time cutoffs as `indicatorRuntime.makeCtx`: `liquidity.atTime(barClose)`
+  with a null answer meaning unavailable, and `l2.atTime(barClose)` with a
+  fallback to the uncut view. When a brief states a per-bar p99
+  criterion (Relative Volume: under 0.05 ms over the first 10,080 bars of the
+  crypto fixture) this is the probe that judges it; `probeReplay` remains the
+  measurement of a real activation and keeps the reference rows below.
+
+Pass. Replay p99 ≤ 0.5 ms and total replay wall ≤ 2 s for a candle indicator
+(≤ 5 s for a book or tick indicator that reads the store per bar); forming
+revision p99 ≤ 1 ms (an indicator revised 50 times a second gets at most 50 ms
+of the main thread per second); after the rollover every output line has
+exactly 10,080 entries, `markersBeforeRetention === 0`, and heap growth is
+flat: `bytesPerExtraBar` within 3× the harness floor measured below (about
+370 B per bar, which is the runtime's own output arrays and the bar frames
+themselves). A probe that reports `faulted` fails regardless of timing.
+
+Evidence. JSON written by the indicator's baseline test
+(`VALIDATION_BASELINES_OUT`), kept under `PM/log/validation/<indicator>/perf.json`,
+and the three formatted lines in the report.
+
+Reference points measured on this container (4 cores, Intel Xeon 2.10 GHz,
+Node 24.21.0, gc exposed, `trendBars({ count: 10080, driftPerBar: 0.5, noise: 25 })`,
+2026-10-26, raw JSON kept at `PM/log/validation/baselines-2026-10-26.json`):
+
+| Indicator | Replay 10,080 bars: onBar p50 / p99 / max (ms), wall (ms), heap Δ | Forming bar, 3,000 revisions, 1,000 prints: p50 / p99 / max (ms), wall (ms) | Rollover +1,000: outputs retained, p50 / p99 (ms), heap B per bar |
+|---|---|---|---|
+| rsi | 0.0003 / 0.0024 / 0.097, 20, 0.74 MB | 0.0002 / 0.0024 / 0.649, 29 | value 10,080; 0.0005 / 0.0046; 377 |
+| bollinger | 0.0008 / 0.0043 / 0.192, 32, 1.55 MB | 0.0006 / 0.0018 / 0.058, 24 | basis, upper, lower 10,080 each; 0.0009 / 0.0050; 385 |
+| cvdDivergence (registry def only, see note) | 0.0002 / 0.0004 / 0.051, 14, 0.14 MB | 0.0002 / 0.0003 / 0.028, 18 | no lines; 0.0002 / 0.0005; 361 |
+| l2FeedStatus (scripted book: 1,000-level ladder, 20 walls, 2,100 events) | 0.0001 / 0.0004 / 0.146, 35, 0.18 MB | 0.0543 / 0.1702 / 1.911, 229 | no lines; 0.0884 / 0.1910; 370 |
+
+Pooled method on the Relative Volume crypto fixture (bars 1..10,080, three
+warm-ups, five timed runs, `onBar` plus `readOutput`), the floor for the
+brief's criterion 4: 
+
+| Indicator | Pooled onBar+readOutput p50 / p90 / p99 / max (ms) | Per-run p99 (ms) | Per-run wall (ms) |
+|---|---|---|---|
+| rsi | 0.0002 / 0.0003 / 0.0009 / 0.264 | 0.0023, 0.0007, 0.0005, 0.0005, 0.0004 | 11, 6, 6, 5, 5 |
+| bollinger | 0.0003 / 0.0006 / 0.0009 / 0.271 | 0.0011, 0.0009, 0.0009, 0.0009, 0.0009 | 10, 6, 6, 6, 6 |
+
+Raw JSON: `PM/log/validation/baselines-pooled-2026-10-26.json`. The first timed
+run is still warmer-than-cold but slower than the rest (JIT settling), which is
+why the brief pools five runs; a single-run p99 would be luck.
+
+Notes on the reference points. The `cvdDivergence` registry def has an empty
+`onBar` (its computation is hand-wired in `ChartPanel.tsx` through
+`cvdDivergenceRenderer.ts` and `cvdDivergence.ts`), so its row is the harness
+floor: what the timing wrapper and the runtime cost with no indicator work at
+all. A real measurement of CVD Divergence needs the batch functions
+(`rollingDeltaSeries`, `detectCvdDivergences`) timed directly, which the
+indicator SDK probe cannot see. `l2FeedStatus` writes about ten table cells per
+revision and reads the whole ladder and event list each time, which is why its
+forming-bar cost is 200 times the floor while still inside the 1 ms ceiling.
+The rollover heap slope of 361 to 385 B per bar is the same for all four, so it
+is the runtime and the bar frames, not the indicators; an indicator's own
+retained state shows as a slope above that (the harness proves this with a
+`hoarder` def in `perfProbe.test.ts`).
+
+### 7. Baseline comparison
+
+For the cycle-1 indicator the brief freezes the fixtures and the acceptance
+numbers: `relativeVolumeEquityFixture()` (labels `anomalyIndices`,
+`predictableSlotIndices`, `evaluationIndices`, `sessionStarts`) and its
+`{ flatSeasonality: true }` control, judged by the recall and false-positive
+bounds in `PM/cycle1/brief-rvol-clock.md`; the fixture's own proving test is
+`validation/tests/relativeVolumeFixtures.test.ts`. The general rule follows.
+
+Method. The build brief names the simpler baseline (a rolling average, plain
+RVOL, a raw imbalance line, a candle-only version of the same idea). The
+specialist implements the baseline as a `RuntimeIndicatorDef` in the
+indicator's `tests/` (or Codex does, gate G4) and runs both on labelled
+fixtures:
+
+- Descriptive tools are judged on **detection accuracy on labelled fixtures**:
+  for `compressionBreakoutBars` the detection index versus
+  `labels.breakoutIndex` (hit if within the documented tolerance, early if
+  before, late if after, plus false positives inside `compressionStart..breakoutIndex`);
+  for `volumeSpikeBars` the same against `labels.spikeIndex`; for
+  `rangeBars` and `trendBars` the false-positive count. Run each fixture over at
+  least 10 seeds and report hits, early, late and false positives for the tool
+  and the baseline side by side.
+- L1 tools must pass the **whale-versus-crowd** fixture: `whaleVersusCrowd()`
+  builds two tapes making the identical candle (print count withheld); the tool
+  must respond differently to the two tapes while the candle-only baseline, by
+  construction, cannot. `largeTradeBubbles` is the reference (one bubble on the
+  whale tape, none on the crowd tape, `syntheticTape.test.ts`).
+- L2 tools state what is **observed** (ladder, walls, events as served) versus
+  **inferred**, and the baseline comparison is run on the same `fakeL2` script so
+  the book is the same for both.
+
+Pass. The report states, in one sentence, what the tool shows that the baseline
+hides, and the table shows it: strictly fewer false positives at equal or
+better hits, or hits the baseline cannot produce (whale versus crowd). A tool
+that only matches the baseline is returned to the backlog.
+
+Evidence. Test named `beats the baseline on labelled fixtures`; the
+side-by-side table in the report.
+
+### 8. Predictive claims
+
+Method. Any claim of the form "after X, price tends to Y" is predictive. The
+specialist freezes the rule (parameters included) on a development period,
+then measures it on an **unseen period** chosen after the rule was frozen:
+a different seed range of the synthetic fixtures (declared in the test before
+the development runs are made), and, where this container can reach it, a live
+Binance stretch recorded after the rule was written. Forward observation only:
+the outcome window starts at the signal bar's close and uses no bar before it.
+
+Overfitting rule. Choosing the best of several parameter sets, thresholds or
+variants by their result on the development period and reporting that result
+is rejected. At most **one** rule is carried to the unseen period; if it fails
+there the claim is dropped, not re-tuned. Every variant tried is listed in the
+report with its development result so the selection is visible.
+
+Pass. The unseen-period result is reported with its sample size and with the
+same statistic on the baseline; a claim with fewer than 30 signals in the
+unseen period is reported as "insufficient evidence", not as a pass. Marketing
+copy may state only what the unseen period supports.
+
+Evidence. `PM/EXPERIMENTS.md` entry with the frozen rule, the declared unseen
+period, every variant, and the two results.
+
+### 9. Equity unsided volume
+
+Method. Run the indicator on `equityUnsidedBars()` (dxFeed equity identity;
+every third bar carries no side, the others carry both sides and a 40 percent
+unsided remainder) and read every output that depends on sides.
+
+Pass. On `labels.unsidedIndices` every side-dependent output is `null`
+(`barSides(bar).known === false` draws nothing, never zero). On
+`labels.partiallySidedIndices` the delta equals `buy - sell` from `barSides`
+and the unsided remainder is **not** counted as selling; where the tool shows a
+delta on equities it shows `unsidedShare` beside it or in the doc. The code
+reads sides only through `barSides`: `grep -n "volume - " <folder>` and
+`grep -n "buy_volume" <folder>` outside `barSides` calls must be empty. No gate
+on `provider === "..."` except to label units.
+
+Evidence. Test named `equity unsided volume is honest`.
+
+### 10. Historical Mode policy honesty
+
+Method. Read the indicator's `HISTORICAL_INDICATOR_POLICIES` entry and the data
+it actually reads in `onBar`:
+
+| Reads | Required policy |
+|---|---|
+| candles only (`bar` OHLCV) | `OHLCV_POLICY` |
+| `barSides` / `buy_volume` | `CANDLE_FLOW_POLICY` |
+| `ctx.ticks`, `ctx.trades` | `unavailableReason` (or `l2_prints` only if the doc proves the verified hours suffice) |
+| `ctx.l2`, `ctx.liquidity`, `bandHistory` | `l2_states` / `l2_walls` capabilities or `unavailableReason` |
+| host studies | `TRADE_FAMILY_POLICY` |
+
+Then replay the indicator with `replayCapture` and no extras (what a candle
+archive gives): a tick or book indicator must produce `null` outputs and no
+markers (`largeTradeBubbles` and the `tickVolume` reference pass this); a
+candle-flow indicator on bars without `buy_volume` must produce `null`.
+
+Pass. The policy row matches the table; the replay-without-extras result is
+honest nulls; the doc page's "Historical Mode" paragraph says the same thing as
+the policy; `historicalIndicatorAvailability(id, capabilities)` for the
+instrument's real capability set agrees with the doc's claim of where the tool
+works. A policy that promises Historical Mode for data the archive does not
+contain fails the indicator outright.
+
+Evidence. Test named `Historical Mode policy is honest` (asserting the policy
+entry and the null replay).
+
+## Report template
+
+One report per validation loop, at `PM/log/validation/<indicator>/loop-<n>.md`.
+Codex's G3 challenge list is answered item by item in the same file.
+
+```markdown
+# Validation report: <indicator id> loop <n>
+
+Branch: <branch>   Commit: <sha>   Validator: <name>   Date: <date>
+Commands run: <each command with pass/fail counts>
+
+| # | Check | Result | Evidence file (test name) | Measured | Required fix |
+|---|---|---|---|---|---|
+| 1 | No future data | PASS / FAIL | <tests/...test.ts> (<test name>) | cuts checked, violations | |
+| 2 | Replay vs live | PASS / PASS WITH DOCUMENTED DIFFERENCE / FAIL | | output diffs, marker diffs | |
+| 3 | Gap, duplicate, late | PASS / FAIL | | per part | |
+| 4 | Warm-up | PASS / FAIL | | warm-up length | |
+| 5 | Marker budget | PASS / FAIL | | per 1,000 bars, max per bar, ceiling | |
+| 6 | Performance | PASS / FAIL | perf.json | replay p50/p99, forming p50/p99, rollover B/bar | |
+| 7 | Baseline comparison | PASS / FAIL | | hits/early/late/false positives, tool vs baseline | |
+| 8 | Predictive claims | PASS / INSUFFICIENT EVIDENCE / N/A / FAIL | EXPERIMENTS.md entry | unseen-period statistic, n | |
+| 9 | Equity unsided | PASS / FAIL / N/A | | | |
+| 10 | Historical policy | PASS / FAIL | | policy row, null replay | |
+
+Codex G3 challenge items: <item> -> <answer with evidence>
+
+Verdict: ACCEPT / FIX AND RERUN (list) / RETURN TO BACKLOG (reason)
+Not verified: <anything the container could not reach, e.g. live rendering, real dxFeed data>
+```
+
+A check marked FAIL always carries a required fix that names the file and the
+behavior, never "investigate". Two loops are the budget; a third failure
+returns the concept to the backlog with this report attached.
+
+exec
+/bin/bash -lc 'cat pm/cycle1/ux-standard.md' in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+# UX standard for new indicators (cycle 1)
+
+Written by the UX seat from the code in `Terminal-L1-L2-development-indicator-sdk`
+(snapshot 2026-10-26) and from rendered charts (`PM/cycle1/screenshots/`).
+Code wins over this page; report a disagreement to the PM. The rules in
+part 2 are what every new indicator must follow; part 1 is what the house
+already does, so a new indicator looks like it belongs.
+
+## 1. House conventions observed
+
+### 1.1 Colours
+
+| Where | Value | Source |
+|---|---|---|
+| Live chart (default, light) | background `#f2efe6`, up candle `#f8f8f5` with `#111111` stroke, down candle `#111111` | `CHART_PALETTE`, `ChartPanel.tsx` |
+| Dark chart (Historical Mode, `.shell.historical-active`) | background `#111316`, up `#36d684`, down `#f16a72`, text `#9ca3af` | `DARK_CHART_PALETTE`, `App.css` |
+| UI tokens | `--bull #4ade80`, `--bear #f87171`, `--warn #fbbf24` (dark page); `--bull #0e9a66`, `--bear #c23854`, `--warn #b07a1e`, `--accent #0e9a93` (light page) | `index.css` |
+| Existing indicator lines | RSI `#4d3d78`; SMA purple `#8672b3`, blue `#2563eb`, green `#16a34a`; CVD up `#16a34a`, down `#dc2626`; CVD on dark `#facc15`; reference lines `rgba(10,10,10,0.3)` | `rsi.ts`, `sma.ts`, `INDICATOR_PALETTE` |
+| Marker default | `#787b86`, shapes `circle`, `square`, `arrowUp`, `arrowDown` | `draw/markers.ts` |
+| Table overlay | `rgba(10,10,10,0.82)` background, `#f8f8f5` text, mono 11 px, top-right (or bottom-right) | `.draw-table-overlay`, `draw/table.ts` |
+
+The candles are monochrome on the default chart, so green and red are free
+for meaning: buyers, sellers, bull, bear. Hand-wired lines use
+`INDICATOR_LINE_WIDTH = 2`; an SDK line takes `lines[].lineWidth` and falls
+back to 2. SDK line series are created with `lastValueVisible: false` and
+`priceLineVisible: false`, so an SDK line has no current-value label on the
+price axis; own-pane `priceLines` do get dotted 1 px lines with axis labels
+(`ChartPanel.tsx`, runtime series creation).
+
+### 1.2 Legend rows
+
+Top-left stack over the chart, one white pill per indicator
+(`IndicatorLegendRow`): mono 11 px bold label, an optional grey `detail`, and
+eye / gear / trash buttons that appear on hover or focus. In Historical Mode
+the pill is dark. The label is the registry `label` (`"RSI (14)"`, so the
+default parameter is in the name). The detail is set per indicator by hand
+in `MainPanel.tsx`; a generic SDK indicator with a `settingsSchema` gets label
+and gear only. Observed detail strings: `Swing 20`, `≥ 5 ct`,
+`Bar volume × typical price`, `Live only · 20 bars required`,
+`Warming · ≥ 0.50z`, ` · history unavailable`, `waiting for the book`,
+`reconnecting`, `loading the view's prints`.
+
+### 1.3 Settings dialog
+
+`IndicatorSettingsModal` is a draggable fixed panel about 320 px wide, title
+bar with the indicator label and a close button, body, footer with
+**Reset to default**, **Defaults ▾** (presets) and **Ok**. Edits apply live;
+Ok only closes. The generic body (`GenericIndicatorSettingsBody`) stacks
+fields vertically, label above control; sliders show the value inline
+(`Inner band (σ) 1.00`); tabs **Inputs** / **Visibility** appear only when a
+field declares `tab`. Hand-built dialogs (Aggressive Orders, the heatmap)
+copy the same tab strip and classes. Every dialog has presets for free from
+its schema (`docs/architecture/indicators/setting-presets.md`).
+
+### 1.4 Copy tone
+
+Sentence case labels with the unit in brackets: `Session length`,
+`Lookback (bars)`, `Show orders larger than (BTC)`. Hints are plain full
+sentences that say what the control does and what it costs:
+"Changing the anchor, the session length or a band width replays every bar."
+Legend details and status strings are short lowercase phrases after ` · `.
+Status chips: `LIVE`, `SYNCING`, `STALE`, `QUIET`, `HISTORY ONLY`,
+`Feed unavailable`, `Live profile catching up`, `VPIN waiting for trades`,
+`Analytics incomplete — reload to rebuild`. Numbers are mono and tabular.
+
+### 1.5 How indicators signal warm-up, degraded and unavailable today
+
+- An SDK indicator returns `null` from `readOutput` until it has enough bars:
+  the line simply starts later (RSI draws nothing for its first 14 bars).
+  Nothing tells the trader it is warming up.
+- Hand-wired indicators put state in the legend detail (`Warming ·`,
+  `Unavailable ·`, `history unavailable`, `waiting for the book`) or in a
+  status chip. The data rule is "warm-up failure is not an empty signal";
+  never draw a zero or a flat line for data you do not have
+  (`data-for-indicator-authors.md`, Rules).
+- A throw, a non-finite number or a non-string colour latches a fault: the
+  indicator goes blank until removed and re-added, with no message in the
+  legend. Fail closed to `null` instead.
+- Historical Mode greys out indicators whose policy says unavailable and
+  shows the `unavailableReason` sentence.
+
+## 2. The standard every new indicator follows
+
+### 2.1 Default view: readable in three seconds
+
+1. One question, one primary mark. The first thing on screen is the series,
+   band or marker that answers the indicator's question. Secondary context
+   (a baseline, a threshold) is thinner and lighter.
+2. At most two lines and one fill at default settings. A third series goes
+   behind a Visibility toggle, off by default.
+3. Pane or overlay: a value in price units (a level, a band, a VWAP) is an
+   `overlay`. A bounded ratio, score or oscillator is an `ownPane` with
+   `priceLines` at its decision levels and a fixed `autoscaleRange`, so the
+   pane does not rescale as the trader scrolls. Do not share a pane unless
+   the two indicators are read together.
+4. Line widths: primary 2, secondary 1. Fills between 0.12 and 0.25 alpha.
+5. It must read on both charts: the cream live chart and the dark Historical
+   chart. Take a screenshot of each before handing over (section 4).
+6. The registry `label` carries the default parameter, as `RSI (14)` does,
+   so the legend explains itself.
+
+### 2.2 Controls: at most three primary, the rest Advanced
+
+- Inputs tab: at most three controls without a `tab` (or `tab: "inputs"`).
+  These are the ones a trader changes in the first session: the length,
+  the threshold, the mode.
+- Everything else that changes the calculation: `tab: "advanced"`. The
+  generic dialog renders it as a closed **Advanced** group at the end of the
+  Inputs tab (prototype on the UX branch, see
+  `PM/cycle1/advanced-settings-proposal.md`; until merged, keep the list of
+  advanced keys in the README and leave them off the schema's first screen).
+- Colours, show/hide toggles, opacity, labels: `tab: "visibility"`.
+- Prefer `slider` or `select` with named stops over free `numeric` boxes;
+  a numeric field needs `step > 0` or the generic dialog refuses every value.
+- One explanatory paragraph at most on the Inputs tab; a one-line hint per
+  control is fine. The full explanation lives in the indicator's README.
+- Use the generic dialog. A hand-built dialog needs a PM decision.
+- Settings that depend on the instrument (a size floor) use
+  `settingsFieldsFor` for the suggested value, never a provider branch in
+  the schema.
+
+### 2.3 Colour semantics
+
+- Green/red (`--bull`/`--bear`, or the candle-up/down colours on the dark
+  chart) only for direction or side: buying vs selling, above vs below.
+- A non-directional series takes one neutral colour from the house set:
+  purple `#4d3d78` / `#8672b3`, blue `#2563eb`, amber `#facc15` (dark chart
+  only). Never introduce a new hue for a single indicator.
+- Thresholds and reference lines: `rgba(10,10,10,0.3)` on the cream chart,
+  `rgba(250,250,247,0.32)` on the dark one.
+- Warning or "degraded" state: `--warn`, never red (red means sell).
+- Expose a colour in Visibility only when the trader could plausibly need
+  to change it; the default must already be right.
+
+### 2.4 Markers
+
+- At most two event types per indicator, one shape each: `arrowUp` below the
+  bar and `arrowDown` above it for directional events, `circle` for neutral.
+- `text` at most three characters; prefer none.
+- Density: at default settings on a 1m BTC chart, no more than about one
+  marker per ten bars on average. If the fixture shows more, raise the
+  default threshold; the trader can lower it under Advanced.
+- Marker colour equals the colour of the line or side it belongs to.
+- Markers never replace the line: a marker says "here", the series says "why".
+
+### 2.5 "Alert conditions" without an alert system
+
+There is no notification channel. An alert condition is:
+
+1. a named, documented condition in the README under **Alert conditions**
+   (name, exact rule, which bar it fires on, how often it fires on the
+   fixture);
+2. a marker on the bar where it fires (section 2.4);
+3. a row in the indicator's own `draw.table` (top-right): condition name,
+   the bar time and the value, for example `Squeeze fired · 12:34 · 1.8σ`.
+   A generic SDK indicator cannot write to the legend detail today, so the
+   table is the place.
+
+Never promise a notification in copy. Use the condition's name
+("Squeeze fired"), not the word "alert", in anything the trader reads.
+
+### 2.6 First use: before warm-up completes
+
+- Draw nothing for bars without a value (`null`), never a zero or a flat
+  line, never a partial window as if it were full.
+- While warming up, the table shows one row: `Warming up · 37 of 200 bars`.
+  When data the indicator needs is not there (ticks in replay, L2 before
+  the first frame, a timeframe outside the gate), the row says what it needs
+  in the trader's terms: `Needs live trades`, `Needs 1m to 15m`,
+  `Waiting for the book`. Remove the row once the indicator is live.
+- State the warm-up length in the README and keep it under the chart's
+  retention (`maxReplayBars`, at most 10,080 1m bars).
+- Replay honesty: a value the replay cannot compute (tick-only inputs) is
+  `null`, and the README says that history looks different from live.
+
+### 2.7 Tooltips and hover: what can and cannot be promised
+
+Only hand-wired indicators have hover today: `fvgDelta` and `sessionLevels`
+through `getHoverData` in `ChartPanel.tsx`, and the Aggressive Orders bubbles
+and the heatmap through their own primitives. A new SDK indicator gets no
+tooltip without a chart-pipeline change and PM approval. Therefore:
+
+- Design so nothing essential needs a hover: an SDK line has no price-axis
+  value label, so the current value and the state go in the table, and
+  thresholds are drawn as `priceLines` (which do get axis labels).
+- You may implement `getHoverData` for later wiring, but the README must not
+  claim a tooltip, and the screenshots must not show one.
+
+### 2.8 Copy for labels and hints
+
+- Labels: sentence case, at most four words, unit in brackets:
+  `Lookback (bars)`, `Minimum size (BTC)`.
+- Hints: one or two sentences, present tense, say what changes and whether
+  it replays ("Replays every bar").
+- Use the feed vocabulary from `CAPABILITIES.md`: top of book, aggregated
+  depth, tape, candles. Say "estimate" when it is one; never "detects" or
+  "predicts" unless validation established it.
+- Legend detail and table cells: at most 30 characters, ` · ` between parts,
+  numbers tabular.
+- Status phrases are lowercase and concrete: `waiting for the book`, not
+  `Initializing…`.
+
+## 3. Handover checklist (UX)
+
+- [ ] Default view screenshots at two zoom levels, cream and dark chart
+- [ ] Inputs tab shows at most three controls; Advanced group holds the rest
+- [ ] Every settings key is in the schema; presets work (test enforces)
+- [ ] Warm-up row visible on first use; nothing drawn as zero
+- [ ] Markers under the density cap on the fixture
+- [ ] README has: question answered, default view, controls, alert
+      conditions, warm-up length, what replay cannot show, no tooltip claim
+
+## 4. Producing screenshots in this container
+
+Binance is not reachable from the container (the runtime's startup fails
+after 30 s: `binance_connection.route_error` for every route, then
+`lifecycle.start_failed reason market data server: required routes never
+reached CONNECTED within 30000ms`). Use the fixture runtime, which speaks
+the frame contract and renders the real web app:
+
+```sh
+export PATH=/root/.nvm/versions/node/v24.21.0/bin:$PATH
+cd <your worktree>                       # with node_modules linked as in the brief
+cp -n .env.example .env
+# 1. fixture runtime on 8001 (the Vite proxy's default target)
+REPO=/home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk \
+  node /home/user/Terminal-L1-L2/PM/cycle1/screenshots/tools/fixture-ws-server.cjs 8001 900 7 &
+# 2. web app on 8000
+npm run dev --workspace web &
+# 3. screenshots: default, <indicator> zoomed out/in, <dialog indicator> Inputs/Visibility
+node /home/user/Terminal-L1-L2/PM/cycle1/screenshots/tools/screenshot.cjs \
+  /home/user/Terminal-L1-L2/PM/cycle1/screenshots/<indicator> "<legend label>" "<legend label with dialog>"
+```
+
+The fixture sends `selection`, `snapshot` (900 synthetic closed 1m BTC-USDT
+spot bars, a random walk with slow regimes), `health` READY, a two-level
+`book`, then a forming `bar` revised every second. Snapshot bars must all be
+`closed: true` and on the minute, or the browser drops the frame
+(`parseSnapshotFrame` in `types/frames.ts`). Tick-, L2- and heatmap-driven
+indicators get no data from it; extend the fixture with `trade` and
+`liquidity` frames from `frames.ts` when you need them, or state that the
+screenshot is OHLCV-only. For the dark chart, switch to Historical Mode in
+the UI (needs layer 1) or set `data-theme="dark"` on `<html>` in the script.
+Zoom is done with the mouse wheel over `.chart-mount`; the legend row's
+gear opens the dialog; `getByRole("tab", { name: "Visibility" })` switches
+tabs. Playwright and Chromium are preinstalled; never run
+`playwright install`. Stop both servers when done.
+
+exec
+/bin/bash -lc "rg -n 'REBUILT|closed|replace|retention' apps/web/src/lib/chart/indicatorRuntime.ts apps/web/src/lib/chart/replayBars.ts apps/web/src/lib/indicators/relative-volume/relativeVolumeMath.ts" in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+apps/web/src/lib/indicators/relative-volume/relativeVolumeMath.ts:14: * Corrections are tail-only: a closed dispatch of the newest bar with a
+apps/web/src/lib/indicators/relative-volume/relativeVolumeMath.ts:20: * Only a closed bar is ever filed. A bar that is superseded by a newer bar
+apps/web/src/lib/indicators/relative-volume/relativeVolumeMath.ts:196:  /** The commit event (the first closed dispatch of this bar) has happened. */
+apps/web/src/lib/indicators/relative-volume/relativeVolumeMath.ts:200:  /** A closed dispatch has been seen: outputs are confirmed, not provisional. */
+apps/web/src/lib/indicators/relative-volume/relativeVolumeMath.ts:321:  /** Rule 7(a): the commit event for the tail on its first closed dispatch, filing its volume when it is usable. */
+apps/web/src/lib/indicators/relative-volume/relativeVolumeMath.ts:364:      // A tail superseded without ever closing files nothing (rule 7(b) was withdrawn): only a closed bar is an observation.
+apps/web/src/lib/indicators/relative-volume/relativeVolumeMath.ts:381:    if (bar.closed === true) tail.confirmed = true;
+apps/web/src/lib/indicators/relative-volume/relativeVolumeMath.ts:383:      if (bar.closed === true) commit(tail); // rule 7(a)
+apps/web/src/lib/chart/replayBars.ts:33:        replace: false,
+apps/web/src/lib/chart/indicatorRuntime.ts:140:  replace: boolean,
+apps/web/src/lib/chart/indicatorRuntime.ts:163:    replace,
+apps/web/src/lib/chart/indicatorRuntime.ts:202:  replace: boolean,
+apps/web/src/lib/chart/indicatorRuntime.ts:206:    if (replace) overwriteLastFillPoint(points, point);
+apps/web/src/lib/chart/indicatorRuntime.ts:214:    const points: (FillPoint | null)[] = new Array(replace ? Math.max(0, record.fillBars - 1) : record.fillBars).fill(null);
+apps/web/src/lib/chart/indicatorRuntime.ts:218:  if (!replace) record.fillBars += 1;
+apps/web/src/lib/chart/indicatorRuntime.ts:219:  if (replace) {
+apps/web/src/lib/chart/indicatorRuntime.ts:406:  const lastClosed = replayBars.findLastIndex((bar) => bar.closed);
+apps/web/src/lib/chart/indicatorRuntime.ts:662:    if (mutation === "REBUILT") {
+apps/web/src/lib/chart/indicatorRuntime.ts:711:      // source-bar index. Trim by timestamp to keep retention bounded.
+
+codex
+Two blockers stand out: the 20-entry true-range ring cannot support the allowed 50-bar channel window, and finite indicator windows do not bound how long a box can affect later events. The revised baseline comparison is more transparent, but using the tool’s own event stream as the simplest benchmark cannot test whether the extra squeeze logic adds value.
+codex
+The trading question is specific and useful, and round 2 substantially improves correction handling and baseline reporting. I would revise before building: the calculation still has a storage contradiction, and the replay and baseline claims need stronger tests.
+
+1. **Trading question: yes, with clearer outcome wording.**
+
+   “Did price leave an established compression range with activity behind it, then return inside?” is one coherent retail trading question. Bias is appropriately secondary.
+
+   Rename `completed` in trader-facing copy to “Held outside for 5 bars” or equivalent. Completion merely means the failure window expired; it does not establish a successful trade. Likewise, returning inside describes failure of this breakout rule, not evidence that fading it is profitable.
+
+2. **Calculation: causal and incremental in design, but not fully specified yet.**
+
+   The committed-state snapshot, provisional tail, tested-edge freeze, and restore-and-reapply correction policy are sound. Nothing inherently requires future data. Resolve these concrete gaps:
+
+   - **Channel storage contradicts the settings.** The true-range ring holds 20 observations, but the channel requires mean true range over `squeezeLength`, which can reach 50. Retain at least 50 true ranges and separately compute the preceding-20 denominator. Explicitly distinguish the channel window including the tail from confirmation denominators excluding it.
+   - **Advanced bias settings lack calculation rules.** The calculation hardcodes MA50/MA200 while exposing `trendFast` and `trendSlow`. Specify their use, normalization when fast exceeds slow, slope-history insertion, and readiness. With fast = slow = 200, the five-bar slope requires more than 200 closes.
+   - **Several state transitions remain implicit.** Specify held-box countdown and expiry order, `holdBars = 0`, `lastEvent` updates, and whether `breakDir`, `breakGrade`, and `failed` are event-bar pulses or persist during pending status. Pin each with expected outputs.
+   - **Snapshot gap handling must stay reversible.** Preserve the untouched pre-tail snapshot; apply the gap reset to a working copy on every evaluation. Otherwise an invalid-price tail could reset a box despite the promise that invalid price changes nothing.
+   - **Warm-up statements conflict.** Bands can first exist at zero-based index 19 with length 20; a preceding-20 confirmation denominator first exists at index 20. Define readiness separately for bands, box creation, grading, and bias, and reconcile “null through bar 19” with the specified numeric outputs.
+
+3. **Data availability: compatible with the SDK, with small corrections.**
+
+   The requested OHLCV fields are available under `OHLCV_POLICY` on the named archived instruments. No tape, sided volume, or depth is needed; check 9 being N/A is reasonable under the repository’s [data rules](/home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk/docs/architecture/indicators/data-for-indicator-authors.md).
+
+   Add `bar.open` to the declared read set because price validity checks it. Also distinguish **volume unavailable** from **volume observed but below threshold** in the table. `gradeBasis` currently describes denominator availability, so it can indicate both baselines exist even when the current volume is invalid.
+
+   Document that means span valid observations across gaps and that the first post-gap true range includes the overnight price jump. That behavior can materially affect grading on equities.
+
+4. **Default view: close, but needs clearer directional semantics.**
+
+   Three primary controls and the box-plus-marker presentation satisfy the basic usability goal. The main ambiguity is a green bias-coloured box containing a downward breakout: the trader must immediately understand that the box colour means trend context while the arrow means breakout direction.
+
+   Keep the range neutral by default, or label bias explicitly as `Trend ↑` while giving breakout direction visual priority. Show missing-volume status without requiring documentation. Define compact price formatting for large values and fine precision; instrument-precision edges cannot universally fit a 30-character row.
+
+5. **Success criteria: extensive and mostly testable, but replay and baseline acceptance remain blockers.**
+
+   **Replay:** finite numerical windows do not make the entire state machine finite-memory. An unbroken box can persist indefinitely, carrying old edges into later events. Held boxes and the last event also retain history. Starting comparison only when live has no active box excludes precisely the difficult cases; a non-zero comparison count is insufficient.
+
+   Choose an explicit policy:
+
+   - Bound box lifetime and define a full synchronization horizon, including held state and bias slope; or
+   - Document the retained-history limitation and test it as a specific expected replay difference.
+
+   Add an adversarial fixture with a squeeze lasting beyond retention, followed by a breakout after rebuilding. Verify outputs, events, and visible drawings. The blanket exact-replay claim cannot stand as written.
+
+   **Baseline:** the all-events and identically filtered timing comparisons are now honest. They show no timing advantage over filtered TTM release. However, adding levels and failure tracking to the tool does not establish superiority over baselines deliberately lacking those outputs.
+
+   Implement the simpler frozen-range alternative independently: establish a range, freeze its edges, detect outside closes, and detect returns inside within five bars. Apply the same activity filter and outcome window. Compare level validity, labelled failures, missed breaks, and false events. Calling the tool’s own event stream this benchmark makes the comparison circular. The repository’s [validation protocol](/home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk/pm/cycle1/validation-protocol.md) requires demonstrated incremental value.
+
+   Finally, report wrong-direction matched events explicitly. The current scoring makes them non-hits without assigning them a clear error category. Treat the scratch simulation numbers as provisional until reproduced through the runtime.
+
+6. **Simplest alternative.**
+
+   A frozen compression-range box with outside-close and return-inside markers would answer most of the question. Use a fixed lookback range or a simple range-width threshold, retain the same activity filter, and omit bias and held boxes initially. Its independent comparison should decide whether Bollinger-inside-Keltner qualification earns the additional complexity.
+
+VERDICT: REVISE
+tokens used
+43,675
+The trading question is specific and useful, and round 2 substantially improves correction handling and baseline reporting. I would revise before building: the calculation still has a storage contradiction, and the replay and baseline claims need stronger tests.
+
+1. **Trading question: yes, with clearer outcome wording.**
+
+   “Did price leave an established compression range with activity behind it, then return inside?” is one coherent retail trading question. Bias is appropriately secondary.
+
+   Rename `completed` in trader-facing copy to “Held outside for 5 bars” or equivalent. Completion merely means the failure window expired; it does not establish a successful trade. Likewise, returning inside describes failure of this breakout rule, not evidence that fading it is profitable.
+
+2. **Calculation: causal and incremental in design, but not fully specified yet.**
+
+   The committed-state snapshot, provisional tail, tested-edge freeze, and restore-and-reapply correction policy are sound. Nothing inherently requires future data. Resolve these concrete gaps:
+
+   - **Channel storage contradicts the settings.** The true-range ring holds 20 observations, but the channel requires mean true range over `squeezeLength`, which can reach 50. Retain at least 50 true ranges and separately compute the preceding-20 denominator. Explicitly distinguish the channel window including the tail from confirmation denominators excluding it.
+   - **Advanced bias settings lack calculation rules.** The calculation hardcodes MA50/MA200 while exposing `trendFast` and `trendSlow`. Specify their use, normalization when fast exceeds slow, slope-history insertion, and readiness. With fast = slow = 200, the five-bar slope requires more than 200 closes.
+   - **Several state transitions remain implicit.** Specify held-box countdown and expiry order, `holdBars = 0`, `lastEvent` updates, and whether `breakDir`, `breakGrade`, and `failed` are event-bar pulses or persist during pending status. Pin each with expected outputs.
+   - **Snapshot gap handling must stay reversible.** Preserve the untouched pre-tail snapshot; apply the gap reset to a working copy on every evaluation. Otherwise an invalid-price tail could reset a box despite the promise that invalid price changes nothing.
+   - **Warm-up statements conflict.** Bands can first exist at zero-based index 19 with length 20; a preceding-20 confirmation denominator first exists at index 20. Define readiness separately for bands, box creation, grading, and bias, and reconcile “null through bar 19” with the specified numeric outputs.
+
+3. **Data availability: compatible with the SDK, with small corrections.**
+
+   The requested OHLCV fields are available under `OHLCV_POLICY` on the named archived instruments. No tape, sided volume, or depth is needed; check 9 being N/A is reasonable under the repository’s [data rules](/home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk/docs/architecture/indicators/data-for-indicator-authors.md).
+
+   Add `bar.open` to the declared read set because price validity checks it. Also distinguish **volume unavailable** from **volume observed but below threshold** in the table. `gradeBasis` currently describes denominator availability, so it can indicate both baselines exist even when the current volume is invalid.
+
+   Document that means span valid observations across gaps and that the first post-gap true range includes the overnight price jump. That behavior can materially affect grading on equities.
+
+4. **Default view: close, but needs clearer directional semantics.**
+
+   Three primary controls and the box-plus-marker presentation satisfy the basic usability goal. The main ambiguity is a green bias-coloured box containing a downward breakout: the trader must immediately understand that the box colour means trend context while the arrow means breakout direction.
+
+   Keep the range neutral by default, or label bias explicitly as `Trend ↑` while giving breakout direction visual priority. Show missing-volume status without requiring documentation. Define compact price formatting for large values and fine precision; instrument-precision edges cannot universally fit a 30-character row.
+
+5. **Success criteria: extensive and mostly testable, but replay and baseline acceptance remain blockers.**
+
+   **Replay:** finite numerical windows do not make the entire state machine finite-memory. An unbroken box can persist indefinitely, carrying old edges into later events. Held boxes and the last event also retain history. Starting comparison only when live has no active box excludes precisely the difficult cases; a non-zero comparison count is insufficient.
+
+   Choose an explicit policy:
+
+   - Bound box lifetime and define a full synchronization horizon, including held state and bias slope; or
+   - Document the retained-history limitation and test it as a specific expected replay difference.
+
+   Add an adversarial fixture with a squeeze lasting beyond retention, followed by a breakout after rebuilding. Verify outputs, events, and visible drawings. The blanket exact-replay claim cannot stand as written.
+
+   **Baseline:** the all-events and identically filtered timing comparisons are now honest. They show no timing advantage over filtered TTM release. However, adding levels and failure tracking to the tool does not establish superiority over baselines deliberately lacking those outputs.
+
+   Implement the simpler frozen-range alternative independently: establish a range, freeze its edges, detect outside closes, and detect returns inside within five bars. Apply the same activity filter and outcome window. Compare level validity, labelled failures, missed breaks, and false events. Calling the tool’s own event stream this benchmark makes the comparison circular. The repository’s [validation protocol](/home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk/pm/cycle1/validation-protocol.md) requires demonstrated incremental value.
+
+   Finally, report wrong-direction matched events explicitly. The current scoring makes them non-hits without assigning them a clear error category. Treat the scratch simulation numbers as provisional until reproduced through the runtime.
+
+6. **Simplest alternative.**
+
+   A frozen compression-range box with outside-close and return-inside markers would answer most of the question. Use a fixed lookback range or a simple range-width threshold, retain the same activity filter, and omit bias and held boxes initially. Its independent comparison should decide whether Bollinger-inside-Keltner qualification earns the additional complexity.
+
+VERDICT: REVISE
+--- last message saved to /home/user/Terminal-L1-L2/PM/log/codex/20261026T153353Z-plan-brief-squeeze-breakout.last.md
+VERDICT: REVISE
+exit 0

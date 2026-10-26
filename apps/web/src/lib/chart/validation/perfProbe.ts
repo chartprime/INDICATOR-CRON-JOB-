@@ -353,7 +353,10 @@ export function probeReplayPooled<S, T>(def: RuntimeIndicatorDef<S, T>, bars: re
           bar,
           trades: [],
           tradeAvailability: "HISTORICAL_UNAVAILABLE",
-          liquidity: extras.liquidity ?? undefined,
+          // The same knowledge-time cutoffs indicatorRuntime.makeCtx applies: a
+          // liquidity provider with atTime is asked for the bar's close and a
+          // null answer is unavailable; an L2 view without a cut falls back.
+          liquidity: (extras.liquidity?.atTime ? extras.liquidity.atTime(bar.ts_open + bar.interval_ms) : extras.liquidity) ?? undefined,
           l2: extras.l2?.atTime?.(bar.ts_open + bar.interval_ms) ?? extras.l2 ?? undefined,
           ticks: extras.ticks ?? undefined,
           state,

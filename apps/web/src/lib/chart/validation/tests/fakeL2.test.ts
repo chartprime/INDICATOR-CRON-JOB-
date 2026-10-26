@@ -5,7 +5,7 @@ import type { L2EventsFrame } from "../../../../types/frames";
 import { resetDrawOwnerScopeForTests } from "../../draw/creationScope";
 import { handlesForOwners, resetDrawRegistryForTests } from "../../draw/registry";
 import type { TableData } from "../../draw/table";
-import { fakeL2, fakeL2Unsynced, ladderOf, ladderWithWall, segmentOf, tradeEvent, wallLifecycle, wallOf } from "../fakeL2";
+import { ABSORB_WINDOW_MS, absorbingAt, fakeL2, fakeL2Unsynced, ladderOf, ladderWithWall, segmentOf, tradeEvent, wallLifecycle, wallOf } from "../fakeL2";
 import { trendBars } from "../fixtures";
 import { openLiveSession } from "../liveDrive";
 
@@ -116,11 +116,54 @@ describe("wall state under a cut (Codex finding 3)", () => {
     ];
     const l2 = fakeL2({ walls: [final], events });
     expect(l2.atTime!(T0 + 5_000).wall(3)).toMatchObject({ size: 500, peak: 500, eaten: 0, fill: 0, absorbing: false, detail: null });
-    expect(l2.atTime!(T0 + 10_000).wall(3)).toMatchObject({ size: 320, peak: 500, eaten: 180, fill: 0.36 });
-    expect(l2.atTime!(T0 + 30_000).wall(3)).toMatchObject({ size: 20, eaten: 480 });
-    // A wall with neither snapshots nor events is served as freshly born at its scripted size.
+    // Right after the first trade the wall holds 64 percent of its peak: absorbing by the runtime's rule, until the 5 s window lapses.
+    expect(l2.atTime!(T0 + 10_000).wall(3)).toMatchObject({ size: 320, peak: 500, eaten: 180, fill: 0.36, absorbing: true });
+    expect(l2.atTime!(T0 + 16_000).wall(3)).toMatchObject({ size: 320, absorbing: false });
+    // After the second trade it holds 4 percent: traded into, but not holding, so not absorbing.
+    expect(l2.atTime!(T0 + 30_000).wall(3)).toMatchObject({ size: 20, eaten: 480, absorbing: false });
+  });
+
+  it("a wall with neither snapshots nor a birth record is omitted under a cut, never served at its final size (Codex round-2 finding 1)", () => {
+    const final = wallOf({ id: 3, side: "bid", row: 99, size: 20, peak: 500, eaten: 480, startTs: T0 });
     const bare = fakeL2({ walls: [final] });
-    expect(bare.atTime!(T0 + 5_000).wall(3)).toMatchObject({ size: 20, peak: 20, eaten: 0, fill: 0, absorbing: false });
+    expect(bare.atTime!(T0 + 5_000).wall(3)).toBeNull();
+    expect(bare.atTime!(T0 + 5_000).walls()).toEqual([]);
+    expect(bare.wall(3)).toBe(final);
+  });
+
+  it("changing a wall's future final record cannot change an earlier cut's view", () => {
+    const life = wallLifecycle({ id: 9, side: "bid", row: 50, size: 500, startTs: T0, tradeTs: T0 + 20_000, tradedSize: 100 });
+    const cut = T0 + 10_000;
+    const before = fakeL2({ walls: [life.wall], events: life.events, wallSnapshots: life.snapshots }).atTime!(cut).wall(9);
+    const shrunk = { ...life.wall, size: 20, peak: 500, eaten: 480, fill: 0.96, absorbing: false, endTs: T0 + 60_000, endedBy: "filled" as const };
+    const after = fakeL2({ walls: [shrunk], events: life.events, wallSnapshots: life.snapshots }).atTime!(cut).wall(9);
+    expect(before).toEqual(after);
+    expect(before).toMatchObject({ size: 500, peak: 500, eaten: 0 });
+    // The same holds for an event-backed view.
+    const eventsOnlyBefore = fakeL2({ walls: [life.wall], events: life.events }).atTime!(cut).wall(9);
+    const eventsOnlyAfter = fakeL2({ walls: [shrunk], events: life.events }).atTime!(cut).wall(9);
+    expect(eventsOnlyBefore).toEqual(eventsOnlyAfter);
+  });
+
+  it("snapshot-backed and event-backed views agree on absorbing after an absorbed trade (Codex round-2 finding 2)", () => {
+    const life = wallLifecycle({ id: 11, side: "ask", row: 120, size: 400, startTs: T0, tradeTs: T0 + 20_000, tradedSize: 100 });
+    const withSnapshots = fakeL2({ walls: [life.wall], events: life.events, wallSnapshots: life.snapshots });
+    const eventsOnly = fakeL2({ walls: [life.wall], events: life.events });
+    for (const cut of [T0, T0 + 19_999, T0 + 20_000, T0 + 24_000, T0 + 30_000]) {
+      const a = withSnapshots.atTime!(cut).wall(11);
+      const b = eventsOnly.atTime!(cut).wall(11);
+      expect(b).not.toBeNull();
+      expect({ size: a!.size, peak: a!.peak, eaten: a!.eaten, fill: a!.fill, absorbing: a!.absorbing }).toEqual({ size: b!.size, peak: b!.peak, eaten: b!.eaten, fill: b!.fill, absorbing: b!.absorbing });
+    }
+    expect(withSnapshots.atTime!(T0 + 20_000).wall(11)!.absorbing).toBe(true);
+    expect(eventsOnly.atTime!(T0 + 20_000).wall(11)!.absorbing).toBe(true);
+    expect(eventsOnly.atTime!(T0 + 30_000).wall(11)!.absorbing).toBe(false);
+    // The uncut final record follows the same rule as of the last event: traded into and holding 75 percent of its peak.
+    expect(life.wall.absorbing).toBe(true);
+    expect(absorbingAt({ size: 300, peak: 400, endTs: null }, T0 + 20_000, T0 + 20_000 + ABSORB_WINDOW_MS)).toBe(true);
+    expect(absorbingAt({ size: 300, peak: 400, endTs: null }, T0 + 20_000, T0 + 20_000 + ABSORB_WINDOW_MS + 1)).toBe(false);
+    expect(absorbingAt({ size: 199, peak: 400, endTs: null }, T0, T0)).toBe(false);
+    expect(absorbingAt({ size: 300, peak: 400, endTs: T0 }, T0, T0)).toBe(false);
   });
 });
 

@@ -8,7 +8,8 @@ import type { RuntimeIndicatorDef } from "../../indicatorTypes";
 import { barSides } from "../../../indicators/barSides";
 import type { BarFrame } from "../../../../types/frames";
 import { fakeL2, ladderOf } from "../fakeL2";
-import { equityUnsidedBars, seeded, trendBars } from "../fixtures";
+import type { IndicatorLiquidity } from "../../indicatorLiquidity";
+import { MINUTE_MS, equityUnsidedBars, seeded, trendBars } from "../fixtures";
 import {
   formatFormingBarProbe,
   formatPooledReplayProbe,
@@ -158,6 +159,52 @@ describe("perf probes", () => {
     const sorted = [...probe.perRun.flatMap(() => [])];
     expect(sorted).toEqual([]);
     expect(probeReplayPooled(rsiIndicator, bars, { length: 14 }).warmupRuns).toBe(3);
+  });
+
+  it("the pooled method applies the runtime's liquidity cutoff, so a historical provider never leaks future columns (Codex round-2 finding 3)", () => {
+    const { bars } = trendBars({ count: 20 });
+    const requested: number[] = [];
+    const futureColumn = { ts: bars[bars.length - 1].ts_open + 10 * MINUTE_MS, lo: 0, hi: 1, bid: new Float64Array([1, 1]), ask: new Float64Array([1, 1]) };
+    const seen: number[] = [];
+    const provider: IndicatorLiquidity = {
+      feed: { epoch: 1, deep: null, fine: { columns: [futureColumn], columnMs: 1_000 } },
+      rowWidth: 1,
+      baseAsset: "BTC",
+      version: 1,
+      atTime: (timeMs) => {
+        requested.push(timeMs);
+        // Nothing is known before the 10th bar's close; afterwards, an empty feed cut at the time asked.
+        if (timeMs < bars[10].ts_open + MINUTE_MS) return null;
+        return { feed: { epoch: 1, deep: null, fine: { columns: [], columnMs: 1_000 } }, rowWidth: 1, baseAsset: "BTC", version: 1 };
+      },
+    };
+    const reader: RuntimeIndicatorDef<{ value: number | null }, Record<string, never>> = {
+      kind: "runtime",
+      id: "liquidityReader",
+      label: "Liquidity Reader",
+      category: "l2",
+      defaultSettings: {},
+      lines: [{ key: "value" }],
+      placement: { kind: "overlay" },
+      createState: () => ({ value: null }),
+      onBar: (ctx) => {
+        if (ctx.liquidity === undefined) {
+          ctx.state.value = null;
+          return;
+        }
+        for (const column of ctx.liquidity.feed.fine.columns) seen.push(column.ts);
+        ctx.state.value = ctx.liquidity.feed.fine.columns.length;
+      },
+      readOutput: (state) => ({ value: state.value }),
+    };
+    const probe = probeReplayPooled(reader, bars, {}, { warmupRuns: 1, timedRuns: 1, extras: { liquidity: provider } });
+    expect(probe.faulted).toBe(false);
+    expect(seen).toEqual([]);
+    expect(requested).toEqual([...bars, ...bars].map((bar) => bar.ts_open + MINUTE_MS));
+    // A provider without atTime is handed over as is, exactly as makeCtx does.
+    const plain: IndicatorLiquidity = { feed: provider.feed, rowWidth: 1, baseAsset: "BTC", version: 1 };
+    probeReplayPooled(reader, bars.slice(0, 2), {}, { warmupRuns: 0, timedRuns: 1, extras: { liquidity: plain } });
+    expect(seen).toEqual([futureColumn.ts, futureColumn.ts]);
   });
 
   it("the pooled method marks a faulting indicator", () => {

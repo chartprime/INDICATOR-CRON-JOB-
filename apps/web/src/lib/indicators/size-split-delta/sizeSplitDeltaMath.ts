@@ -57,7 +57,7 @@ export interface SizeSplitMathSettings {
 /** `"noStore"` is a ctx without a print store (the REST transport, a replay with no extras). */
 export type SizeSplitCoverage = TickCoverage | "noStore";
 
-export type SizeSplitStatus = "noFeed" | "thinned" | "learning" | "shareUnknown" | "shareMismatch" | "shareLow" | "gap" | "forming" | "ready";
+export type SizeSplitStatus = "noFeed" | "tapeStarting" | "thinned" | "learning" | "shareUnknown" | "shareMismatch" | "shareLow" | "gap" | "forming" | "ready";
 
 export type ConfirmationState = "confirms" | "lags" | "noExtreme";
 
@@ -79,6 +79,8 @@ export interface SizeSplitRecord {
   volume: number;
   tierAtOpen: number | null;
   coverage: SizeSplitCoverage;
+  /** Coverage `"none"` only because the live recording began inside this window: the next bar is covered (UX finding 2). */
+  tapeStarting: boolean;
   largeBar: number | null;
   smallBar: number | null;
   tapeVolume: number;
@@ -117,6 +119,8 @@ export interface SizeSplitReading {
   sizesLearned: number;
   status: SizeSplitStatus;
   gapBars: number;
+  /** Committed by a close or a supersession; provisional styling ends here (UX finding 5). */
+  committed: boolean;
   confirmed: boolean;
   valid: boolean;
   /** Valid committed bars in the marker ring (at most `K`). */
@@ -129,8 +133,10 @@ export interface SizeSplitReading {
   conflictHeld: boolean;
   conflictOnset: boolean;
   conflictSums: readonly [number, number] | null;
-  /** Row (b): this bar's own condition when it has one, else the last committed one in this anchor window. */
-  condition: SizeSplitCondition | null;
+  /** The newest divergence in this anchor window, this bar's own included; the def shows it only while its toggle is on. */
+  lastDivergence: SizeSplitCondition | null;
+  /** The newest conflict onset in this anchor window, this bar's own included. */
+  lastConflict: SizeSplitCondition | null;
 }
 
 export interface MarkerRingEntry {
@@ -351,7 +357,8 @@ export function evaluateMarkers(
 }
 
 /** Status precedence, first match wins (rule 12, amendment 5). */
-export function statusOf(record: Pick<SizeSplitRecord, "coverage" | "tierAtOpen" | "share" | "eligible" | "confirmed">, gapBars: number, validSinceGap: number, K: number): SizeSplitStatus {
+export function statusOf(record: Pick<SizeSplitRecord, "coverage" | "tapeStarting" | "tierAtOpen" | "share" | "eligible" | "committed">, gapBars: number, validSinceGap: number, K: number): SizeSplitStatus {
+  if (record.coverage === "none" && record.tapeStarting) return "tapeStarting";
   if (record.coverage === "noStore" || record.coverage === "none") return "noFeed";
   if (record.coverage === "thin") return "thinned";
   if (record.tierAtOpen === null) return "learning";
@@ -359,7 +366,7 @@ export function statusOf(record: Pick<SizeSplitRecord, "coverage" | "tierAtOpen"
   if (record.share > MAX_TAPE_SHARE) return "shareMismatch";
   if (!record.eligible) return "shareLow";
   if (gapBars > 0 && validSinceGap < K) return "gap";
-  if (!record.confirmed) return "forming";
+  if (!record.committed) return "forming";
   return "ready";
 }
 
@@ -373,7 +380,8 @@ export interface SizeSplitEngine {
   readonly anchorStart: number | null;
   /** Committed bars, oldest first, at most `RECORD_RING_CAPACITY`. */
   readonly committed: readonly CommittedBar[];
-  readonly lastCondition: SizeSplitCondition | null;
+  readonly lastDivergence: SizeSplitCondition | null;
+  readonly lastConflict: SizeSplitCondition | null;
 }
 
 export function createSizeSplitEngine(settings: SizeSplitMathSettings): SizeSplitEngine {
@@ -386,7 +394,8 @@ export function createSizeSplitEngine(settings: SizeSplitMathSettings): SizeSpli
   let anchorSeen = false;
   let previousConflict = false;
   let previousDivergence: DivergenceDirection | null = null;
-  let lastCondition: SizeSplitCondition | null = null;
+  let lastDivergence: SizeSplitCondition | null = null;
+  let lastConflict: SizeSplitCondition | null = null;
   /** Whether a valid bar has committed in this anchor window (a gap needs a valid bar before it). */
   let validEver = false;
   /** Invalid committed bars in the most recent gap, and valid bars committed since it closed. */
@@ -399,10 +408,12 @@ export function createSizeSplitEngine(settings: SizeSplitMathSettings): SizeSpli
     return sizeRing.threshold();
   }
 
-  function conditionOf(tsOpen: number, evaluation: MarkerEvaluation): SizeSplitCondition | null {
-    if (evaluation.divergence !== null) return { kind: "divergence", direction: evaluation.divergence, tsOpen, values: [evaluation.depth ?? 0] };
-    if (evaluation.conflictOnset && evaluation.conflictSums !== null) return { kind: "conflict", direction: null, tsOpen, values: evaluation.conflictSums };
-    return null;
+  function divergenceOf(tsOpen: number, evaluation: MarkerEvaluation): SizeSplitCondition | null {
+    return evaluation.divergence === null ? null : { kind: "divergence", direction: evaluation.divergence, tsOpen, values: [evaluation.depth ?? 0] };
+  }
+
+  function conflictOf(tsOpen: number, evaluation: MarkerEvaluation): SizeSplitCondition | null {
+    return evaluation.conflictOnset && evaluation.conflictSums !== null ? { kind: "conflict", direction: null, tsOpen, values: evaluation.conflictSums } : null;
   }
 
   function readingOf(record: SizeSplitRecord): SizeSplitReading {
@@ -411,7 +422,8 @@ export function createSizeSplitEngine(settings: SizeSplitMathSettings): SizeSpli
     const evaluation = record.valid
       ? evaluateMarkers(markerRing, { close: record.close, largeBar: record.largeBar as number, smallBar: record.smallBar as number, large: large as number }, { conflict: previousConflict, divergence: previousDivergence }, settings)
       : NO_EVALUATION;
-    const own = record.valid ? conditionOf(record.tsOpen, evaluation) : null;
+    const ownDivergence = record.valid ? divergenceOf(record.tsOpen, evaluation) : null;
+    const ownConflict = record.valid ? conflictOf(record.tsOpen, evaluation) : null;
     return {
       tsOpen: record.tsOpen,
       large,
@@ -423,6 +435,7 @@ export function createSizeSplitEngine(settings: SizeSplitMathSettings): SizeSpli
       sizesLearned: sizeRing.count,
       status: statusOf(record, gapBars, validSinceGap, settings.K),
       gapBars,
+      committed: record.committed,
       confirmed: record.confirmed,
       valid: record.valid,
       ringLength: markerRing.length,
@@ -433,7 +446,8 @@ export function createSizeSplitEngine(settings: SizeSplitMathSettings): SizeSpli
       conflictHeld: evaluation.conflictHeld,
       conflictOnset: evaluation.conflictOnset,
       conflictSums: evaluation.conflictSums,
-      condition: own ?? lastCondition,
+      lastDivergence: ownDivergence ?? lastDivergence,
+      lastConflict: ownConflict ?? lastConflict,
     };
   }
 
@@ -442,6 +456,7 @@ export function createSizeSplitEngine(settings: SizeSplitMathSettings): SizeSpli
     record.close = bar.close;
     record.volume = bar.volume;
     record.coverage = scan.coverage;
+    record.tapeStarting = scan.coverage === "none" && ticks !== undefined && ticks.liveSince !== null && ticks.liveSince < record.windowEnd;
     record.largeBar = scan.largeBar;
     record.smallBar = scan.smallBar;
     record.tapeVolume = scan.tapeVolume;
@@ -455,9 +470,9 @@ export function createSizeSplitEngine(settings: SizeSplitMathSettings): SizeSpli
   /** Steps 2 to 4 of rule 6: freeze flow and eligibility, train the ring, advance the cumulatives (or record the gap). */
   function commit(record: SizeSplitRecord, confirmed: boolean): void {
     record.confirmed = confirmed;
+    record.committed = true;
     const reading = readingOf(record);
     record.reading = reading;
-    record.committed = true;
     if (record.coverage === "all" && record.sizes !== null) sizeRing.push(record.sizes);
     if (record.valid) {
       base.large += record.largeBar as number;
@@ -466,8 +481,10 @@ export function createSizeSplitEngine(settings: SizeSplitMathSettings): SizeSpli
       if (markerRing.length > settings.K) markerRing.splice(0, markerRing.length - settings.K);
       previousConflict = reading.conflictHeld;
       previousDivergence = reading.divergenceHeld;
-      const own = conditionOf(record.tsOpen, reading);
-      if (own !== null) lastCondition = own;
+      const ownDivergence = divergenceOf(record.tsOpen, reading);
+      const ownConflict = conflictOf(record.tsOpen, reading);
+      if (ownDivergence !== null) lastDivergence = ownDivergence;
+      if (ownConflict !== null) lastConflict = ownConflict;
       validEver = true;
       validSinceGap += 1;
     } else {
@@ -494,7 +511,8 @@ export function createSizeSplitEngine(settings: SizeSplitMathSettings): SizeSpli
         markerRing.length = 0;
         previousConflict = false;
         previousDivergence = null;
-        lastCondition = null;
+        lastDivergence = null;
+        lastConflict = null;
         validEver = false;
         gapBars = 0;
         validSinceGap = 0;
@@ -509,6 +527,7 @@ export function createSizeSplitEngine(settings: SizeSplitMathSettings): SizeSpli
       volume: bar.volume,
       tierAtOpen: tierFor(),
       coverage: "noStore",
+      tapeStarting: false,
       largeBar: null,
       smallBar: null,
       tapeVolume: 0,
@@ -554,8 +573,11 @@ export function createSizeSplitEngine(settings: SizeSplitMathSettings): SizeSpli
       return anchorStart;
     },
     committed,
-    get lastCondition() {
-      return lastCondition;
+    get lastDivergence() {
+      return lastDivergence;
+    },
+    get lastConflict() {
+      return lastConflict;
     },
   };
 }

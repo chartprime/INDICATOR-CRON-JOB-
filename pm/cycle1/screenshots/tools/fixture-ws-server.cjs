@@ -6,7 +6,7 @@
 // a second so live paths see motion. Any HTTP path (e.g. /health) answers 200
 // JSON so the Vite proxy is satisfied.
 //
-// Usage: REPO=<checkout> [TAPE=size-split] node fixture-ws-server.cjs [port=8001] [bars=900] [seed=7]
+// Usage: REPO=<checkout> [TAPE=size-split] [POOL_BARS=200] [LOW_SHARE_MINUTE=n] node fixture-ws-server.cjs [port=8001] [bars=900] [seed=7]
 // The web app's Vite proxy targets 127.0.0.1:8001 by default (TT_LIVE_PROXY_URL
 // overrides it), so running this on 8001 needs no web-app change. REPO is the
 // checkout whose node_modules holds `ws` and `rolldown` (the PM checkout by default).
@@ -19,6 +19,10 @@
 // reads those windows as complete, and the forming minute's prints arrive as
 // `trade` frames second by second; after the fixture's last bar the server
 // cycles its bars 200..299 with prices continuing from the last close.
+// POOL_BARS limits the pooled history to that many bars (0 for none, so the
+// tape starts at connect and the learning states show); LOW_SHARE_MINUTE=n
+// inflates the n-th live minute's candle volume to 2.6 times its prints, so the
+// tape share gate refuses that bar (`Tape 38% · below 50%`).
 const http = require("node:http");
 const os = require("node:os");
 const path = require("node:path");
@@ -33,6 +37,8 @@ const barCount = Number(process.argv[3] ?? 900);
 let seed = Number(process.argv[4] ?? 7);
 const random = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
 const withTape = process.env.TAPE === "size-split";
+const poolBars = process.env.POOL_BARS === undefined ? null : Number(process.env.POOL_BARS);
+const lowShareMinute = process.env.LOW_SHARE_MINUTE === undefined ? null : Number(process.env.LOW_SHARE_MINUTE);
 
 const identity = { provider: "BINANCE", symbol: "BTC-USDT", marketKind: "SPOT" };
 const INTERVAL = 60_000;
@@ -102,10 +108,11 @@ async function main() {
     for (const bar of prefix) { bar.open += priceFix; bar.high += priceFix; bar.low += priceFix; bar.close += priceFix; }
     const history = fixture.bars.slice(0, -1).map((bar) => shiftBar(bar, tsShift, 0));
     closedBars = [...prefix, ...history];
-    const firstPoolBar = Math.max(0, fixtureBars - 1 - POOL_PRINTS / fixture.printsByBar[0].length);
+    const pooledBars = poolBars === null ? POOL_PRINTS / fixture.printsByBar[0].length : poolBars;
+    const firstPoolBar = Math.max(0, fixtureBars - 1 - pooledBars);
     const poolPrints = [];
     for (let i = firstPoolBar; i < fixtureBars - 1; i += 1) for (const print of fixture.printsByBar[i]) poolPrints.push(shiftPrint(print, tsShift, 0));
-    pool = { aggressive_prints: poolPrints.slice(-POOL_PRINTS), aggressive_prints_floor: 0, aggressive_prints_from: history[firstPoolBar].ts_open };
+    if (pooledBars > 0) pool = { aggressive_prints: poolPrints.slice(-POOL_PRINTS), aggressive_prints_floor: 0, aggressive_prints_from: history[firstPoolBar].ts_open };
     const last = fixture.bars[fixtureBars - 1];
     forming = { type: "bar", ...identity, interval_ms: INTERVAL, ts_open: openTime, open: last.open, high: last.open, low: last.open, close: last.open, volume: 0, buy_volume: 0, sell_volume: 0, trade_count: 0, closed: false };
     pending = fixture.printsByBar[fixtureBars - 1].map((print) => ({ offset: print.ts_exchange - last.ts_open, print: shiftPrint(print, tsShift, 0) }));
@@ -138,13 +145,15 @@ async function main() {
     initialize(socket);
   });
 
+  /** The minute whose candle volume is inflated so the share gate refuses it (1 = the first live minute). */
+  let minuteIndex = 1;
   /** Fold one print into the forming bar's candle. */
   const fold = (print) => {
     if (forming.volume === 0) { forming.open = print.price; forming.high = print.price; forming.low = print.price; }
     forming.close = print.price;
     forming.high = Math.max(forming.high, print.price);
     forming.low = Math.min(forming.low, print.price);
-    forming.volume += print.size;
+    forming.volume += lowShareMinute === minuteIndex ? print.size * 2.6 : print.size;
     if (print.side === "buy") forming.buy_volume += print.size; else forming.sell_volume += print.size;
     forming.trade_count += 1;
   };
@@ -159,6 +168,7 @@ async function main() {
     forming = { type: "bar", ...identity, interval_ms: INTERVAL, ts_open: forming.ts_open + INTERVAL, open: forming.close, high: forming.close, low: forming.close, close: forming.close, volume: 0, buy_volume: 0, sell_volume: 0, trade_count: 0, closed: false };
     pending = fixture.printsByBar[sourceIndex].map((print) => ({ offset: print.ts_exchange - source.ts_open, print: shiftPrint(print, tsShift, priceShift, `-c${cycle}`) }));
     sent = [];
+    minuteIndex += 1;
   };
 
   setInterval(() => {
@@ -180,13 +190,16 @@ async function main() {
       const closed = { ...forming, closed: true };
       broadcast(closed);
       closedBars.push(closed);
+      // A browser connecting later gets this minute's prints with the pool, as the runtime's pool would hold them.
+      if (pool !== null) pool.aggressive_prints = [...pool.aggressive_prints, ...sent].slice(-POOL_PRINTS);
+      else if (sent.length > 0) pool = { aggressive_prints: [...sent], aggressive_prints_floor: 0, aggressive_prints_from: forming.ts_open };
       nextMinute();
     }
     broadcast({ ...forming });
   }, 1000);
 
   server.listen(port, "127.0.0.1", () => {
-    console.log(`fixture runtime on http://127.0.0.1:${port} (ws at /ws), ${closedBars.length + 1} synthetic 1m bars for ${identity.symbol}${withTape ? `, tape: ${pool.aggressive_prints.length} pooled prints from ${new Date(pool.aggressive_prints_from).toISOString()} plus live trade frames` : ""}`);
+    console.log(`fixture runtime on http://127.0.0.1:${port} (ws at /ws), ${closedBars.length + 1} synthetic 1m bars for ${identity.symbol}${withTape ? `, tape: ${pool ? `${pool.aggressive_prints.length} pooled prints from ${new Date(pool.aggressive_prints_from).toISOString()}` : "no pooled history"} plus live trade frames${lowShareMinute === null ? "" : `, low share on live minute ${lowShareMinute}`}` : ""}`);
   });
 }
 

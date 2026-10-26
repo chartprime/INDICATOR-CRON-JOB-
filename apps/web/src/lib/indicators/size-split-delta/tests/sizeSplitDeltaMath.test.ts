@@ -231,9 +231,10 @@ describe("sizeSplitDeltaMath -- tape share gate, fail closed (rule 5, amendment 
   });
 
   it("status precedence, first match wins", () => {
-    const base = { coverage: "all" as const, tierAtOpen: 1, share: 1, eligible: true, confirmed: true };
+    const base = { coverage: "all" as const, tapeStarting: false, tierAtOpen: 1, share: 1, eligible: true, committed: true };
     expect(statusOf({ ...base, coverage: "noStore" }, 0, 0, 20)).toBe("noFeed");
     expect(statusOf({ ...base, coverage: "none" }, 0, 0, 20)).toBe("noFeed");
+    expect(statusOf({ ...base, coverage: "none", tapeStarting: true }, 0, 0, 20)).toBe("tapeStarting");
     expect(statusOf({ ...base, coverage: "thin", tierAtOpen: null }, 0, 0, 20)).toBe("thinned");
     expect(statusOf({ ...base, tierAtOpen: null, share: null }, 0, 0, 20)).toBe("learning");
     expect(statusOf({ ...base, share: null, eligible: false }, 0, 0, 20)).toBe("shareUnknown");
@@ -241,7 +242,7 @@ describe("sizeSplitDeltaMath -- tape share gate, fail closed (rule 5, amendment 
     expect(statusOf({ ...base, share: 0.3, eligible: false }, 0, 0, 20)).toBe("shareLow");
     expect(statusOf(base, 3, 5, 20)).toBe("gap");
     expect(statusOf(base, 3, 20, 20)).toBe("ready");
-    expect(statusOf({ ...base, confirmed: false }, 0, 0, 20)).toBe("forming");
+    expect(statusOf({ ...base, committed: false }, 0, 0, 20)).toBe("forming");
     expect(statusOf(base, 0, 0, 20)).toBe("ready");
   });
 });
@@ -322,7 +323,8 @@ describe("sizeSplitDeltaMath -- anchor and gaps (rules 8 and 9, round 3 ruling 3
     expect(y.large).toBeCloseTo(-1.5, 12);
     expect(y.small).toBeCloseTo(-0.3, 12);
     expect(y.ringLength).toBe(0);
-    expect(y.condition).toBeNull();
+    expect(y.lastDivergence).toBeNull();
+    expect(y.lastConflict).toBeNull();
     expect(engine.base).toEqual({ large: 0, small: 0 });
     const yClosed = engine.onBar(barAt(midnight, 99.1, 2), ticks);
     expect(yClosed.large).toBeCloseTo(-1.5, 12);
@@ -422,5 +424,28 @@ describe("sizeSplitDeltaMath -- formatting (amendment 7)", () => {
     expect(formatClock(FIXTURE_T0, "BINANCE")).toBe("20:26");
     const ny = nyLocalMinuteOfDay(FIXTURE_T0);
     expect(formatClock(FIXTURE_T0, "DXFEED")).toBe(`${String(Math.floor(ny / 60)).padStart(2, "0")}:${String(ny % 60).padStart(2, "0")}`);
+  });
+});
+
+describe("sizeSplitDeltaMath -- the tape starting inside the window (UX finding 2)", () => {
+  it("a window that began before the live recording reads tapeStarting, not noFeed; a store without a live stretch reads noFeed", () => {
+    const tape = new AggressiveTape(() => A + 20_000);
+    tape.reset();
+    tape.add(tradeFrame(A + 20_000, 100, 1, "buy", BINANCE_PERP, "first-live"));
+    const ticks = indicatorTicksOf(tape)!;
+    expect(ticks.liveSince).toBe(A + 20_000);
+    const engine = createSizeSplitEngine(FIXED);
+    const first = engine.onBar(barAt(A, 100, 1, false), ticks);
+    expect(first.status).toBe("tapeStarting");
+    expect(first.large).toBeNull();
+    tape.add(tradeFrame(B + 1_000, 100, 1, "buy", BINANCE_PERP, "next"));
+    const next = engine.onBar(barAt(B, 100, 1, false), ticks);
+    expect(next.status).toBe("forming");
+    expect(next.large).toBe(1);
+    const empty = new AggressiveTape(() => A);
+    empty.reset();
+    const silent = createSizeSplitEngine(FIXED).onBar(barAt(A, 100, 1, false), indicatorTicksOf(empty)!);
+    expect(silent.status).toBe("noFeed");
+    expect(createSizeSplitEngine(FIXED).onBar(barAt(A, 100, 1, false), undefined).status).toBe("noFeed");
   });
 });

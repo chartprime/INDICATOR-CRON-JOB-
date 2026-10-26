@@ -68,7 +68,8 @@ One bar at a time, incrementally; `onBar` never rebuilds from an array.
 7. **Forming bar.** Every revision rescans the forming window from scratch and
    overwrites the tail; the forming output is the frozen cumulative under the
    current anchor plus the forming contribution, drawn provisional (50 percent
-   alpha, status `Forming`).
+   alpha, status `Forming`) until the bar commits, by its close or by
+   supersession (UX pass, finding 5).
 8. **Anchor and reset.** `day` (default) and `week` are UTC-aligned windows
    (`floor(ts / period) · period`, the session kernel's convention: the week
    window starts on the epoch's weekday, a Thursday); `tape` cumulates from the
@@ -126,9 +127,12 @@ The store drops live prints past 250,000 (`liveDroppedThrough`): at about
 1,600 trade frames a minute on BTC-USDT the complete stretch is roughly 2.6
 hours, and windows that reached the drop read `"thin"`. The cumulative starts
 at the later of the anchor and the covered start; the line's own start shows
-it. The first forming bar after connect is not covered either (its window
-began before the live recording), so the table reads `Needs live tape · no
-feed` for that one minute.
+it. The first forming bar after connect (or after a reconnect) is not covered
+either, because its window began before the live recording: that is its own
+state, `tapeStarting`, shown as `Tape live · next bar` (coverage `"none"`
+while the store exists and `liveSince` falls inside the window); `Needs live
+tape · no feed` is kept for no store at all or a store that has never
+recorded (UX pass, finding 2).
 
 Aggregates: the 10,000-row BTC-USDT fixture holds Binance aggregate trades
 (one taker order at one price), so a tier estimated on it is higher than one
@@ -139,31 +143,38 @@ delivered"; fixture numbers do not transfer between transports.
 ## Default view
 
 Own pane with a dotted zero line: `large` purple `#8672b3` width 2, `small`
-blue `#2563eb` width 1, no fill; both at 50 percent alpha while the bar forms.
-Divergence arrows (`arrowDown` above the bar for a bearish divergence,
-`arrowUp` below for a bullish one) in the large line's colour; conflict circles
-(`inBar`, same colour) are off by default. Table, top right, three rows of at
-most 30 characters, values with three significant digits and `k`/`M`
-suffixes:
+blue `#2563eb` width 1, no fill; both at 50 percent alpha until the bar
+commits. Divergence arrows (`arrowDown` above the bar for a bearish
+divergence, `arrowUp` below for a bullish one, size 2) in the large line's
+colour; conflict circles (`inBar`, size 1, same colour) are off by default.
+Table, top right, three rows of at most 30 characters, values with three
+significant digits and `k`/`M` suffixes; row (a) always in the solid large
+colour, since it describes the current reading:
 
 | Row | Content |
 |---|---|
-| (a) state | `L +12.4 · S −8.1 · confirms`, `… · lags` or `… · no extreme`; `Need 20 valid bars` until the ring is full; `—` while the bar has no value. If a row would exceed 30 characters the values are dropped and the state word kept. |
-| (b) condition | the last condition in this anchor window with its time (UTC on Binance, New York on dxFeed) and value: `Div ↓ 12:34 · −8.1` (depth `large − large_h`) or `Conflict 12:34 · +4.2/−3.1` (the two sums); divergence wins when both fire on one bar; `—` when none; cleared on an anchor reset. The row reports conditions, so a conflict shows here even while its circles are hidden. |
-| (c) status | first match wins: `Needs live tape · no feed`, `Needs live tape · thinned`, `Learning sizes · 120/200`, `Tape share unknown`, `Tape 160% · mismatch`, `Tape 38% · below 50%`, `Tape gap · 3 bars`, `Forming`, ready `≥ 0.106 BTC · tape 100%`. |
+| (a) state | `L +12.4 · S −8.1 · confirms`, `… · lags` or `… · no extreme`; `Need 20 valid bars` until the ring is full; `—` while the bar has no value. If a row would exceed 30 characters the values are dropped: `Large confirms`, `Large lags`, `No extreme`. |
+| (b) condition | the newest condition in this anchor window whose Visibility toggle is on, with its time (UTC on Binance, New York on dxFeed) and value: `Divergence ↓ 12:34 · −8.12k` (depth `large − large_h`) or `Conflict 12:34 · +4.21k/−3.12k` (the two sums; over 30 characters, `Conflict 12:34`); divergence wins when both fire on one bar; `—` when none, or when the toggle of the only condition is off; cleared on an anchor reset. |
+| (c) status | first match wins: `Needs live tape · no feed`, `Tape live · next bar`, `Needs live tape · thinned`, `Learning sizes · 120 of 200`, `Tape share unknown`, `Tape 160% · mismatch`, `Tape 38% · below 50%`, `Tape gap · 3 bars`, `Forming`, ready `≥ 0.106 BTC · tape 100%`. |
 
 ## Controls
 
-Inputs (primary): `tierMode` "Large tier" (Top 2% of recent sizes / Fixed
-size), `tierSize` "Large from (units)" (shown for a fixed tier; the label
-names the instrument's unit and a suggested size: 0.5 BTC, 20 contracts, 2,000
-shares; the stored default is 0.5), `anchor` "Anchor" (Day (UTC) / Week (UTC) /
-Tape start). Advanced: `K` "Window (bars)" 10..60 step 5, `m` "Divergence
-depth (×)" 1..4 step 0.5, `q` "Conflict strength (×)" 1..4 step 0.5,
-`minTapeShare` "Minimum tape share" 0.2..1 step 0.05. Visibility: `showSmall`
-(on), `showDivergence` (on), `showConflict` (off), `showBarLines` (off; the
-per-bar contributions as two grey lines, the harness's seams). Every setting
-replays; there are no colour pickers.
+Inputs (primary), each with a one-line hint: `tierMode` "Large tier"
+(Largest 2% of prints / Fixed size), `tierSize` "Large from (BTC)" (shown for
+a fixed tier; the label names the instrument's unit, the hint suggests 0.5
+BTC, 20 contracts or 2,000 shares; the stored default is 0.5), `anchor`
+"Anchor" (Day (UTC) / Week (UTC) / Tape start), and a closing paragraph:
+"Needs the live tape; lines start one bar after connect. Arrow: price made a
+new high or low that the large prints did not. Circle: large and small prints
+pulling opposite ways." Advanced: `K` "Extreme window (bars)" 10..60 step 5,
+`m` "Divergence depth (×)" 1..4 step 0.5, `q` "Conflict strength (×)" 1..4
+step 0.5, `minTapeShare` "Tape share floor (0–1)" 0.2..1 step 0.05.
+Visibility: `showSmall` "Show small tier (blue)" (on), `showDivergence` (on),
+`showConflict` (off), `showBarLines` "Show per-bar lines" (off; the per-bar
+contributions as two grey lines, the harness's seams). Every setting replays,
+the Visibility toggles included (a hidden line reads `null`, which `recolor`
+cannot do), so a toggle costs a replay of the retained bars, well under a
+second; there are no colour pickers.
 
 ## Alert conditions
 
@@ -175,8 +186,10 @@ replays; there are no colour pickers.
 ## Warm-up
 
 Auto mode: 200 trade frames from complete windows, then the next bar open; on
-the fixture (100 prints a bar) the first value is bar 2. Fixed mode values from
-the first covered bar. Markers need `K` valid committed bars before the bar.
+the fixture (100 prints a bar) the first value is bar 2 (`Learning sizes · 0
+of 200`, then `100 of 200`). Fixed mode values from the first covered bar.
+Markers and row (a) need `K` valid committed bars before the bar (`Need 20
+valid bars`). The first minute after connect reads `Tape live · next bar`.
 
 ## Replay and Historical Mode
 
@@ -302,3 +315,20 @@ reconnect, the retention equivalence), `tests/sizeSplitDeltaBaseline.test.ts`
 (checks 5 and 7, the acceptance table, whale versus crowd, the aggregate
 fixture), `tests/sizeSplitDeltaPerf.test.ts` (check 6). Run with
 `NODE_OPTIONS=--expose-gc npx vitest run src/lib/indicators/size-split-delta`.
+
+## Screenshots
+
+`pm/cycle2/screenshots/size-split-delta/`, taken from the fixture WebSocket
+server in `TAPE=size-split` mode (`pm/cycle1/screenshots/tools/fixture-ws-server.cjs`,
+with `POOL_BARS=0 LOW_SHARE_MINUTE=4` for the warm-up and share states and
+without `TAPE` for the no-feed state) by `size-split-states.cjs`, which polls
+the table and shoots each state at two zooms: `cream-01-tape-live-next-bar`,
+`cream-02-learning-sizes`, `cream-03-need-valid-bars`,
+`cream-04-tape-share-below`, `cream-05-rest-no-feed`,
+`cream-06-forming-no-extreme`, `cream-07-large-confirms`, `cream-08-large-lags`,
+`cream-09-divergence-row`, `cream-10-conflict-row`, the dark-chart
+(`data-theme="dark"`) variants of 06, 09 and 10, and the dialog shots
+(`cream-dialog-inputs-advanced-closed`, `cream-dialog-inputs-advanced-open`,
+both with Fixed size selected, `cream-dialog-visibility`). States that depend
+on the live minute (06 to 10) are whichever the fixture's cycled bars produced
+while the script ran; the handback lists what was captured.

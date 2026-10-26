@@ -15,6 +15,7 @@ import {
   formatMagnitude,
   formatSigned,
   type SizeSplitAnchor,
+  type SizeSplitCondition,
   type SizeSplitEngine,
   type SizeSplitReading,
   type TierMode,
@@ -92,8 +93,9 @@ const LARGE_PROVISIONAL = withAlpha(SIZE_SPLIT_LARGE_COLOR, SIZE_SPLIT_PROVISION
 const SMALL_PROVISIONAL = withAlpha(SIZE_SPLIT_SMALL_COLOR, SIZE_SPLIT_PROVISIONAL_ALPHA);
 const BAR_LINE_PROVISIONAL = withAlpha(SIZE_SPLIT_BAR_LINE_COLOR, SIZE_SPLIT_PROVISIONAL_ALPHA);
 
+/** Provisional until the bar commits (by a close or a supersession), not until it is confirmed (UX finding 5). */
 function provisional(reading: SizeSplitReading | null): boolean {
-  return reading !== null && !reading.confirmed;
+  return reading !== null && !reading.committed;
 }
 
 export function largeLineColor(reading: SizeSplitReading | null): string {
@@ -130,10 +132,12 @@ export function statusText(reading: SizeSplitReading | null, unit: string, minTa
   switch (reading.status) {
     case "noFeed":
       return "Needs live tape · no feed";
+    case "tapeStarting":
+      return "Tape live · next bar";
     case "thinned":
       return "Needs live tape · thinned";
     case "learning":
-      return `Learning sizes · ${reading.sizesLearned}/${TIER_MIN_SIZES}`;
+      return `Learning sizes · ${reading.sizesLearned} of ${TIER_MIN_SIZES}`;
     case "shareUnknown":
       return "Tape share unknown";
     case "shareMismatch":
@@ -155,17 +159,27 @@ export function stateText(reading: SizeSplitReading | null, K: number): string {
   if (reading.state === null) return `Need ${K} valid bars`;
   const word = reading.state === "noExtreme" ? "no extreme" : reading.state;
   const withValues = `L ${formatSigned(reading.large ?? 0)} · S ${formatSigned(reading.small ?? 0)} · ${word}`;
-  return withValues.length <= SIZE_SPLIT_TABLE_MAX_CHARS ? withValues : word;
+  if (withValues.length <= SIZE_SPLIT_TABLE_MAX_CHARS) return withValues;
+  return reading.state === "noExtreme" ? "No extreme" : `Large ${word}`;
 }
 
-/** Row (b): the last condition with its time and value, `—` when none in this anchor window. */
-export function conditionText(reading: SizeSplitReading | null, provider: BarFrame["provider"] | null): string {
-  const condition = reading?.condition ?? null;
+/** The newest condition whose Visibility toggle is on; divergence wins on the same bar (UX finding 3). */
+export function visibleCondition(reading: SizeSplitReading | null, settings: Pick<SizeSplitDeltaSettings, "showDivergence" | "showConflict">): SizeSplitCondition | null {
+  if (reading === null) return null;
+  const divergence = settings.showDivergence ? reading.lastDivergence : null;
+  const conflict = settings.showConflict ? reading.lastConflict : null;
+  if (divergence === null) return conflict;
+  if (conflict === null) return divergence;
+  return conflict.tsOpen > divergence.tsOpen ? conflict : divergence;
+}
+
+/** Row (b): the last visible condition with its time and value, `—` when none in this anchor window. */
+export function conditionText(condition: SizeSplitCondition | null, provider: BarFrame["provider"] | null): string {
   if (condition === null) return SIZE_SPLIT_UNAVAILABLE;
   const time = formatClock(condition.tsOpen, provider ?? "BINANCE");
   if (condition.kind === "divergence") {
     const arrow = condition.direction === "bearish" ? "↓" : "↑";
-    return `Div ${arrow} ${time} · ${formatSigned(condition.values[0] ?? 0)}`;
+    return `Divergence ${arrow} ${time} · ${formatSigned(condition.values[0] ?? 0)}`;
   }
   const text = `Conflict ${time} · ${formatSigned(condition.values[0] ?? 0)}/${formatSigned(condition.values[1] ?? 0)}`;
   return text.length <= SIZE_SPLIT_TABLE_MAX_CHARS ? text : `Conflict ${time}`;
@@ -182,8 +196,9 @@ export function sizeSplitTableRows(
   state: Pick<SizeSplitDeltaState, "provider" | "symbol" | "assetClass">,
 ): readonly SizeSplitTableRow[] {
   return [
-    { text: stateText(reading, settings.K), color: largeLineColor(reading) },
-    { text: conditionText(reading, state.provider), color: SIZE_SPLIT_TABLE_TEXT_COLOR },
+    // Row (a) is always the current reading, so it takes the solid large colour, never the provisional one (UX finding 1).
+    { text: stateText(reading, settings.K), color: SIZE_SPLIT_LARGE_COLOR },
+    { text: conditionText(visibleCondition(reading, settings), state.provider), color: SIZE_SPLIT_TABLE_TEXT_COLOR },
     { text: statusText(reading, sizeUnitOf(state), settings.minTapeShare), color: SIZE_SPLIT_TABLE_TEXT_COLOR },
   ];
 }
@@ -215,11 +230,12 @@ export const SIZE_SPLIT_SETTINGS_SCHEMA: readonly SettingsFieldSchema<SizeSplitD
     key: "tierMode",
     label: "Large tier",
     options: [
-      { value: "auto", label: "Top 2% of recent sizes" },
+      { value: "auto", label: "Largest 2% of prints" },
       { value: "fixed", label: "Fixed size" },
     ],
     affects: "recompute",
   },
+  { kind: "staticHint", text: "Large means the biggest 2 % of recent prints, learned from the first 200 prints after connect, or a size you set. Replays every bar." },
   {
     kind: "numeric",
     key: "tierSize",
@@ -230,6 +246,7 @@ export const SIZE_SPLIT_SETTINGS_SCHEMA: readonly SettingsFieldSchema<SizeSplitD
     affects: "recompute",
     visibleIf: (settings) => settings.tierMode === "fixed",
   },
+  { kind: "staticHint", text: "Prints at or above this size count as large. Try 0.5 BTC, 20 contracts or 2,000 shares. Replays every bar.", visibleIf: (settings) => settings.tierMode === "fixed" },
   {
     kind: "select",
     key: "anchor",
@@ -241,31 +258,31 @@ export const SIZE_SPLIT_SETTINGS_SCHEMA: readonly SettingsFieldSchema<SizeSplitD
     ],
     affects: "recompute",
   },
+  { kind: "staticHint", text: "Both lines restart from zero each day or week, or run from the first bar the tape covers. Replays every bar." },
   {
     kind: "staticHint",
-    text:
-      "Needs the live tape: 200 trade frames from complete windows, then the next bar open. Lines start where the store's complete tape starts. Arrow: a price extreme the large tier did not make. Circle: the two tiers pulling apart. Replays every bar.",
+    text: "Needs the live tape; lines start one bar after connect. Arrow: price made a new high or low that the large prints did not. Circle: large and small prints pulling opposite ways.",
   },
-  { kind: "numeric", key: "K", label: "Window (bars)", min: 10, max: 60, step: 5, affects: "recompute", tab: "advanced" },
+  { kind: "numeric", key: "K", label: "Extreme window (bars)", min: 10, max: 60, step: 5, affects: "recompute", tab: "advanced" },
   { kind: "numeric", key: "m", label: "Divergence depth (×)", min: 1, max: 4, step: 0.5, affects: "recompute", tab: "advanced" },
   { kind: "numeric", key: "q", label: "Conflict strength (×)", min: 1, max: 4, step: 0.5, affects: "recompute", tab: "advanced" },
-  { kind: "numeric", key: "minTapeShare", label: "Minimum tape share", min: 0.2, max: 1, step: 0.05, affects: "recompute", tab: "advanced" },
-  { kind: "boolean", key: "showSmall", label: "Show small tier", affects: "recompute", tab: "visibility" },
+  { kind: "numeric", key: "minTapeShare", label: "Tape share floor (0–1)", min: 0.2, max: 1, step: 0.05, affects: "recompute", tab: "advanced" },
+  { kind: "boolean", key: "showSmall", label: "Show small tier (blue)", affects: "recompute", tab: "visibility" },
   { kind: "boolean", key: "showDivergence", label: "Show divergence arrows", affects: "recompute", tab: "visibility" },
   { kind: "boolean", key: "showConflict", label: "Show conflict circles", affects: "recompute", tab: "visibility" },
-  { kind: "boolean", key: "showBarLines", label: "Show per-bar contributions", affects: "recompute", tab: "visibility" },
+  { kind: "boolean", key: "showBarLines", label: "Show per-bar lines", affects: "recompute", tab: "visibility" },
 ];
 
-/** Suggested fixed sizes per instrument (0.5 BTC, 20 contracts, 2,000 shares) appear in the field's label; the stored default stays 0.5. */
+/** The fixed-size field names the instrument's unit; the suggested sizes live in its hint and the stored default stays 0.5. */
 export function sizeSplitSettingsFieldsFor(identity: { symbol: string } & FrameIdentity): Partial<Record<keyof SizeSplitDeltaSettings, SettingsFieldSchema<SizeSplitDeltaSettings>>> {
   const base = SIZE_SPLIT_SETTINGS_SCHEMA.find((field) => field.kind === "numeric" && field.key === "tierSize");
   if (base === undefined || base.kind !== "numeric") return {};
   if (identity.provider === "BINANCE") {
     const coin = identity.symbol.includes("-") ? identity.symbol.slice(0, identity.symbol.indexOf("-")) : identity.symbol;
-    return { tierSize: { ...base, label: `Large from (${coin}, try 0.5)` } };
+    return { tierSize: { ...base, label: `Large from (${coin})` } };
   }
-  if (identity.assetClass === "FUTURE") return { tierSize: { ...base, label: "Large from (contracts, try 20)", min: 1, step: 1 } };
-  if (identity.assetClass === "EQUITY") return { tierSize: { ...base, label: "Large from (shares, try 2,000)", min: 1, step: 100 } };
+  if (identity.assetClass === "FUTURE") return { tierSize: { ...base, label: "Large from (contracts)", min: 1, step: 1 } };
+  if (identity.assetClass === "EQUITY") return { tierSize: { ...base, label: "Large from (shares)", min: 1, step: 100 } };
   return {};
 }
 
@@ -313,7 +330,7 @@ export const sizeSplitDeltaIndicator: RuntimeIndicatorDef<SizeSplitDeltaState, S
           shape: reading.divergence === "bearish" ? "arrowDown" : "arrowUp",
           position: reading.divergence === "bearish" ? "aboveBar" : "belowBar",
           color,
-          size: 1,
+          size: 2,
         });
       }
       if (settings.showConflict && reading.conflictOnset) {

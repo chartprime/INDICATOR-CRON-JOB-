@@ -74,12 +74,20 @@ function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 }
 
-function harness(fetchImpl?: (url: string) => Promise<Response>, now: number | (() => number) = NOW_MS): Harness {
+// The kline reads go to `fetchMock`; the tape bootstrap's aggTrades pages go to
+// `aggTrades` (an empty page by default: no history, nothing re-broadcast), so
+// the kline assertions below count only kline requests. The tape-derived
+// frames have their own file, browserBinanceTransport.l1.test.ts.
+function harness(
+  fetchImpl?: (url: string) => Promise<Response>,
+  now: number | (() => number) = NOW_MS,
+  aggTrades: (url: string) => Promise<Response> = async () => jsonResponse([]),
+): Harness {
   FakeUpstreamSocket.instances = [];
   const fetchMock = vi.fn(fetchImpl ?? (async () => jsonResponse(klineRows)));
   const nowFn = typeof now === "number" ? () => now : now;
   const transport = new BrowserBinanceTransport("ws://127.0.0.1:8000/ws", {
-    fetch: fetchMock as unknown as typeof fetch,
+    fetch: ((url: string) => (url.includes("/aggTrades") ? aggTrades(url) : fetchMock(url))) as unknown as typeof fetch,
     WebSocket: FakeUpstreamSocket,
     now: nowFn,
   });
@@ -163,14 +171,18 @@ describe("BrowserBinanceTransport", () => {
     for (const trade of tradeEvents) h.stream().message(trade);
     h.stream().message(depthEvent);
     h.stream().message(klineEvents.closed);
-    const frames = h.parsed();
-    expect(frames.map((frame) => frame.type)).toEqual(["bar", "trade", "trade", "trade", "book", "bar"]);
+    // Each trade is the first of its minute and side, so the runtime's
+    // retention admits it and a marker follows it (see the l1 test file).
+    const all = h.parsed();
+    expect(all.map((frame) => frame.type)).toEqual(["bar", "trade", "marker", "trade", "marker", "trade", "marker", "book", "bar"]);
+    const frames = all.filter((frame) => frame.type !== "marker");
 
     expect(frames[0]).toMatchObject({ type: "bar", ts_open: 1_761_400_140_000, closed: false, open: 65080, high: 65100, low: 65070, close: 65091, volume: 1.469, buy_volume: 0.719, trade_count: 43 });
     expect(frames[5]).toMatchObject({ type: "bar", ts_open: 1_761_400_140_000, closed: true, close: 65088, volume: 9.8, buy_volume: 5.1, trade_count: 160 });
     expect(frames[5]).not.toHaveProperty("reconstructed");
 
     expect(frames[1]).toEqual({ type: "trade", provider: "BINANCE", symbol: "BTC-USDT", marketKind: "SPOT", ts_exchange: 1_761_400_150_005, price: 65090, size: 0.015, side: "buy", trade_id: "5100000001" });
+    expect(all[2]).toEqual({ ...frames[1], type: "marker" });
     expect(frames[2]).toMatchObject({ side: "sell", trade_id: "5100000002", size: 0.25 });
     expect(frames[3]).toMatchObject({ side: "buy", trade_id: "5100000003" });
 
@@ -356,10 +368,10 @@ describe("BrowserBinanceTransport", () => {
     h.stream().message(klineEvent(D, false, "65300.00"));
     h.stream().message(klineEvent(D, true, "65310.00"));
     h.stream().message(tradeEvents[0]);
-    expect(h.frames.map((frame) => frame.type)).toEqual(["trade"]);
+    expect(h.frames.map((frame) => frame.type)).toEqual(["trade", "marker"]);
     pending().resolve(jsonResponse([klineRow(B, "65020.00"), klineRow(C, "65030.00")]));
     await vi.advanceTimersByTimeAsync(0);
-    const frames = h.parsed();
+    const frames = h.parsed().filter((frame) => frame.type !== "marker");
     expect(frames.map((frame) => frame.type)).toEqual(["trade", "bar", "bar", "bar", "health"]);
     expect(frames.slice(1, 4).map((frame) => (frame as { ts_open: number }).ts_open)).toEqual([B, C, D]);
     expect(frames[1]).toMatchObject({ closed: true, reconstructed: true, close: 65020 });

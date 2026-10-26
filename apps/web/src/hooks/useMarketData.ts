@@ -1186,6 +1186,9 @@ export function useMarketData({
         if (msg.status === "closed") {
           recordConnectionClose(msg.reason);
           connectionClosed = true;
+          // The tape is kept for a reconnect to the same pair, but its live
+          // stretch ends here: nothing is complete across the outage.
+          tape?.endLive();
           pendingRequest ??= confirmedPair;
           clearPairState(true);
           if (confirmedPair !== null) heldPair = confirmedPair;

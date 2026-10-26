@@ -1690,7 +1690,7 @@ export function MainPanel({
                     label={label}
                     detail={
                       whaleMode === "topPercent"
-                        ? `top ${(whaleTopFraction * 100).toFixed(2)}%`
+                        ? `top ${(whaleTopFraction * 100).toFixed(2)}%${whaleTruncated ? " · partial" : ""}`
                         : futuresMode
                           ? `≥ ${whaleThresholdContracts} ct`
                           : `≥ ${formatUsd(whaleThresholdUsd)}`

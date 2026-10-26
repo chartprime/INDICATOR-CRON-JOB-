@@ -274,6 +274,22 @@ export class AggressiveTape {
     this._notify();
   }
 
+  /**
+   * The feed is gone (the worker reported its socket closed): the live
+   * stretch ends at its last print and nothing is live until the next print
+   * or snapshot starts a new stretch, so a window that spans the outage
+   * never reads as complete, not even before the reconnect's snapshot.
+   */
+  endLive(): void {
+    if (this._liveSince === null) return;
+    if (this._lastLiveTs > this._liveSince) {
+      this._liveSpans.push({ from: this._liveSince, to: this._lastLiveTs });
+      if (this._liveSpans.length > MAX_LIVE_SPANS) this._liveSpans.splice(0, this._liveSpans.length - MAX_LIVE_SPANS);
+    }
+    this._liveSince = null;
+    this._notify();
+  }
+
   absorb(trades: readonly TradeFrame[]): void {
     // A (re)connect: the stretch recorded so far stays complete up to its last live print.
     if (this._liveSince !== null && this._lastLiveTs > this._liveSince) {

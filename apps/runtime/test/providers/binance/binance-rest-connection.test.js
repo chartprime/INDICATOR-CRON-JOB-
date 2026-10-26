@@ -7,6 +7,7 @@ const {
   DEFAULT_CLOCK_REFRESH_MS,
 } = require("../../../src/providers/binance/binance-rest-connection");
 const { normalizeBinanceEvent } = require("../../../src/providers/binance/binance-event-normalizer");
+const { createInstrumentTickSizeResolver } = require("../../../src/providers/shared/instrument-tick-size");
 
 const MINUTE = 60_000;
 const T0 = 1_800_000_000_000 - (1_800_000_000_000 % MINUTE) + 30_000; // :30 into a minute
@@ -63,7 +64,10 @@ function fakeBinance() {
     }
     switch (u.pathname) {
       case "/api/v3/exchangeInfo":
-        return respond({ serverTime: Date.now() + state.serverTimeOffsetMs, symbols: [] });
+        return respond({
+          serverTime: Date.now() + state.serverTimeOffsetMs,
+          symbols: [{ symbol: u.searchParams.get("symbol"), filters: [{ filterType: "PRICE_FILTER", tickSize: "0.01000000" }] }],
+        });
       case "/api/v3/time":
         return respond({ serverTime: Date.now() + state.serverTimeOffsetMs });
       case "/api/v3/klines": {
@@ -455,5 +459,158 @@ describe("binance-rest-connection: honesty under failure and the weight budget",
     const result = await created.fetchRecentKlines("SPOT", "BTCUSDT", { interval: "1m", intervalMs: MINUTE, days: 1 / 24 / 20 });
     expect(result.rows.length).toBeGreaterThan(0);
     expect(created.getOperationalStats().weight.reserved).toBe(22);
+  });
+});
+
+describe("binance-rest-connection: one dispatch gate for every request", () => {
+  const BACKFILL = { interval: "1m", intervalMs: MINUTE, days: 1 / 24 / 12 }; // five minutes
+
+  test("backfill and live polling together with the machine clock 45 s ahead: neither stores the exchange's forming candle as closed", async () => {
+    const fake = fakeBinance();
+    fake.state.serverTimeOffsetMs = -45_000; // the machine is :30 into a minute, the exchange :45 into the previous one
+    const created = await connected(fake);
+    const envelopes = collector(created);
+    created.subscribe(SPOT_KLINE, "c1");
+    await tick(0);
+    const exchangeOpen = OPEN - MINUTE;
+    expect(envelopes.map((e) => [(e.payload.openTime - exchangeOpen) / MINUTE, e.payload.isClosed])).toEqual([[-1, true], [0, false]]);
+    const result = await created.fetchRecentKlines("SPOT", "BTCUSDT", BACKFILL);
+    expect(result.ok).toBe(true);
+    expect(result.rows.length).toBeGreaterThan(0);
+    // The newest history row is the bar before the exchange's forming bar, not the one the machine clock says has closed.
+    expect(result.rows.at(-1).openTime).toBe(exchangeOpen - MINUTE);
+    expect(result.rows.some((row) => row.openTime === exchangeOpen)).toBe(false);
+    expect(created.getOperationalStats().weight.reserved).toBe(20 + 2 + 2); // probe, one poll, one backfill page
+  });
+
+  test("a polling ban blocks the backfill: its pages wait at the gate until the ban window ends", async () => {
+    const fake = fakeBinance();
+    const created = await connected(fake);
+    created.subscribe(SPOT_KLINE, "c1");
+    await tick(0);
+    fake.state.failures.push({ match: (u) => u.pathname === "/api/v3/klines", times: 1, status: 418, headers: { "retry-after": "10" } });
+    await tick(1000);
+    expect(created.getStatus().SPOT.public).toBe("DISCONNECTED");
+    const requestsAtBan = fake.requests.length;
+    const pending = created.fetchRecentKlines("SPOT", "BTCUSDT", BACKFILL);
+    await tick(8000);
+    expect(fake.requests.length).toBe(requestsAtBan);
+    expect(created.getOperationalStats().gatedRequests).toBe(1);
+    await tick(3000);
+    const result = await pending;
+    expect(result.ok).toBe(true);
+    const afterBan = fake.requests.slice(requestsAtBan);
+    expect(afterBan[0].pathname).toBe("/api/v3/exchangeInfo"); // the probe reopened the route first
+    expect(afterBan.filter((u) => u.pathname === "/api/v3/klines" && u.searchParams.get("limit") === "1000")).toHaveLength(1); // then the backfill page
+    expect(created.getStatus().SPOT.public).toBe("CONNECTED");
+  });
+
+  test("a backfill ban blocks polling: a 418 on a backfill page opens the ban window and takes the route down", async () => {
+    const fake = fakeBinance();
+    const created = await connected(fake);
+    created.subscribe(SPOT_KLINE, "c1");
+    await tick(0);
+    fake.state.failures.push({ match: (u) => u.pathname === "/api/v3/klines" && u.searchParams.get("limit") === "1000", times: 1, status: 418, headers: { "retry-after": "10" } });
+    const result = await created.fetchRecentKlines("SPOT", "BTCUSDT", BACKFILL);
+    expect(result).toMatchObject({ ok: false, reason: "IP_BANNED", retryAfterMs: 10_000 });
+    expect(created.getStatus().SPOT.public).toBe("DISCONNECTED");
+    const requestsAtBan = fake.requests.length;
+    await tick(8000);
+    expect(fake.requests.length).toBe(requestsAtBan);
+    expect(created.getFeedHealth("SPOT", "BTCUSDT", "KLINE", "1m")).toMatchObject({ stale: true, recoveryState: "UNAVAILABLE" });
+    expect(created.getFeedHealth("SPOT", "BTCUSDT", "KLINE", "1m").reason).toContain("rate limited");
+    await tick(3000);
+    expect(created.getStatus().SPOT.public).toBe("CONNECTED");
+    expect(fake.pathsRequested().slice(requestsAtBan)[0]).toBe("/api/v3/exchangeInfo");
+  });
+
+  test("a disconnect aborts a backfill queued at the gate instead of leaving it waiting", async () => {
+    const fake = fakeBinance();
+    const created = await connected(fake);
+    created.subscribe(SPOT_KLINE, "c1");
+    await tick(0);
+    fake.state.failures.push({ match: (u) => u.pathname === "/api/v3/klines", times: 1, status: 418, headers: { "retry-after": "60" } });
+    await tick(1000);
+    const pending = created.fetchRecentKlines("SPOT", "BTCUSDT", BACKFILL);
+    await tick(10);
+    created.disconnect();
+    await tick(10);
+    expect(await pending).toMatchObject({ ok: false, reason: "ABORTED" });
+    expect(created.getOperationalStats().gatedRequests).toBe(0);
+  });
+
+  test("clock refresh 429: the pause applies to polling and the last valid offset stays", async () => {
+    const fake = fakeBinance();
+    fake.state.serverTimeOffsetMs = 700;
+    const created = await connected(fake);
+    created.subscribe(SPOT_KLINE, "c1");
+    await tick(0);
+    fake.state.failures.push({ match: (u) => u.pathname === "/api/v3/time", times: 1, status: 429, headers: { "retry-after": "3" } });
+    await tick(DEFAULT_CLOCK_REFRESH_MS);
+    expect(created.getOperationalStats()).toMatchObject({ clockRefreshFailures: 1, exchangeOffsetMs: 700, routeState: "CONNECTED" });
+    expect(created.getFeedHealth("SPOT", "BTCUSDT", "KLINE", "1m").reason).toBe(`${HEALTH_REASON_BASE} · rate limited`);
+    const sent = fake.requests.length;
+    await tick(2500);
+    expect(fake.requests.length).toBe(sent);
+    await tick(1500);
+    expect(fake.requests.length).toBeGreaterThan(sent);
+    expect(created.getFeedHealth("SPOT", "BTCUSDT", "KLINE", "1m")).toMatchObject({ recoveryState: "READY", reason: HEALTH_REASON_BASE });
+  });
+
+  test("clock refresh 418: the ban window opens, the route is down for it, and a probe brings it back", async () => {
+    const fake = fakeBinance();
+    const created = await connected(fake);
+    created.subscribe(SPOT_KLINE, "c1");
+    await tick(0);
+    fake.state.failures.push({ match: (u) => u.pathname === "/api/v3/time", times: 1, status: 418, headers: { "retry-after": "10" } });
+    await tick(DEFAULT_CLOCK_REFRESH_MS);
+    expect(created.getStatus().SPOT.public).toBe("DISCONNECTED");
+    expect(created.getOperationalStats().banUntilMs).toBeGreaterThan(Date.now());
+    const sent = fake.requests.length;
+    await tick(8000);
+    expect(fake.requests.length).toBe(sent);
+    await tick(3000);
+    expect(fake.pathsRequested().slice(sent)[0]).toBe("/api/v3/exchangeInfo");
+    expect(created.getStatus().SPOT.public).toBe("CONNECTED");
+  });
+
+  test("a tick-size lookup while the budget is exhausted waits for the next minute and is charged 20", async () => {
+    const fake = fakeBinance();
+    const created = await connected(fake, { weightBudgetPerMinute: 100 });
+    const resolver = createInstrumentTickSizeResolver({ fetchExchangeInfoImpl: created.fetchExchangeInfo });
+    created.subscribe(SPOT_KLINE, "c1");
+    fake.state.usedWeight = 95;
+    await tick(1000); // a poll reads the exchange's count: 95 of 100 used
+    expect(created.getOperationalStats().weight.used).toBeGreaterThanOrEqual(95);
+    const exchangeInfoCalls = () => fake.pathsRequested().filter((path) => path === "/api/v3/exchangeInfo").length;
+    const before = exchangeInfoCalls();
+    const lookup = resolver.getBinanceTickSize("SPOT", "BTCUSDT");
+    await tick(20_000);
+    expect(exchangeInfoCalls()).toBe(before);
+    expect(created.getOperationalStats().gatedRequests).toBe(1);
+    fake.state.usedWeight = 10;
+    await tick(MINUTE);
+    expect(exchangeInfoCalls()).toBe(before + 1);
+    expect(await lookup).toBe(0.01);
+    expect(created.getOperationalStats().weight.reserved).toBeGreaterThanOrEqual(20);
+  });
+
+  test("a tick-size lookup during an IP ban waits at the gate until the ban ends", async () => {
+    const fake = fakeBinance();
+    const created = await connected(fake);
+    const resolver = createInstrumentTickSizeResolver({ fetchExchangeInfoImpl: created.fetchExchangeInfo });
+    created.subscribe(SPOT_KLINE, "c1");
+    await tick(0);
+    fake.state.failures.push({ match: (u) => u.pathname === "/api/v3/klines", times: 1, status: 418, headers: { "retry-after": "10" } });
+    await tick(1000);
+    expect(created.getStatus().SPOT.public).toBe("DISCONNECTED");
+    const sent = fake.requests.length;
+    const lookup = resolver.getBinanceTickSize("SPOT", "BTCUSDT");
+    await tick(8000);
+    expect(fake.requests.length).toBe(sent);
+    await tick(3000);
+    expect(await lookup).toBe(0.01);
+    expect(fake.pathsRequested().slice(sent).filter((path) => path === "/api/v3/exchangeInfo").length).toBe(2); // the probe and the lookup
+    await expect(created.fetchExchangeInfo("SPOT", "BTCUSDT", { signal: {} })).rejects.toThrow(/AbortSignal/);
   });
 });

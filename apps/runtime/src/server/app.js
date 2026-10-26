@@ -140,9 +140,6 @@ function createApp({
   if (!Object.values(BINANCE_TRANSPORTS).includes(binanceTransport)) {
     throw new Error("createApp: binanceTransport must be ws or rest");
   }
-  // The tick-size lookup is the third spot REST call (exchangeInfo); it uses
-  // the same origin override and the same fetch as the connection.
-  const resolvedTickSizeResolver = tickSizeResolver ?? createInstrumentTickSizeResolver({ fetchImpl, endpoints: binanceEndpoints });
   const allowedOriginSet = new Set(allowedOrigins);
   // The stream transport is the default and untouched; the REST poller is an
   // explicit choice for hosts that cannot open a WebSocket (spot only).
@@ -153,6 +150,15 @@ function createApp({
     : createBinanceConnection({
       telemetry, webSocketImpl, fetchImpl, backpressureMaxQueueDepth: binanceTradeQueueDepth, endpoints: binanceEndpoints,
     });
+  // The tick-size lookup is the third spot REST call (exchangeInfo). It uses
+  // the same origin override and fetch as the connection, and on the REST
+  // transport it goes through the connection's dispatch gate, so its weight
+  // (20) is reserved and a ban or rate-limit pause holds it like any poll.
+  const resolvedTickSizeResolver = tickSizeResolver ?? createInstrumentTickSizeResolver({
+    fetchImpl,
+    endpoints: binanceEndpoints,
+    ...(binanceTransport === BINANCE_TRANSPORTS.REST ? { fetchExchangeInfoImpl: connection.fetchExchangeInfo } : {}),
+  });
   const storageReader = resolveStorageReader({ dbPath, liveStorageServiceUrl, liveStorageClientToken });
   const volumeProfileCache = createVolumeProfileCache({ dbPath: volumeProfileCachePath });
   const clientBufferOptions = {

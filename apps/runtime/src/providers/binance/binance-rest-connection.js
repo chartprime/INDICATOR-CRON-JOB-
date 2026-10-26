@@ -118,13 +118,22 @@ function createBinanceRestConnection(options = {}) {
   });
   const feedHealth = createBinanceFeedHealthMonitor({ now });
   const budget = createBinanceRestWeightBudget({ budgetPerMinute: weightBudgetPerMinute, now });
-  const klineBackfill = createBinanceKlineBackfill({ fetchImpl: meteredFetch, telemetry, endpoints: resolvedEndpoints });
+  // The backfill classifies candles against this transport's exchange clock
+  // with its grace, and every page goes through the shared dispatch gate.
+  const klineBackfill = createBinanceKlineBackfill({
+    fetchKlinesImpl: gatedFetchKlines,
+    telemetry,
+    endpoints: resolvedEndpoints,
+    now: exchangeNow,
+    finalizeGraceMs,
+  });
 
   const messageListeners = new Set();
   const errorListeners = new Set();
   const pollers = new Map();
   const probe = { inflight: null, timer: null, attempt: 0 };
   const clock = { inflight: null, timer: null };
+  const gatedControllers = new Set();
   let accepting = false;
   let sessionGeneration = 0;
   let routeState = "DISCONNECTED";
@@ -162,23 +171,88 @@ function createBinanceRestConnection(options = {}) {
     for (const listener of [...errorListeners]) safelyInvokeListener(listener, Object.freeze(payload));
   }
 
-  // Wraps fetch for the candle backfill: each page's weight is reserved first
-  // and the exchange's own count is read back from the response.
-  async function meteredFetch(url, init) {
-    while (!budget.reserve(REQUEST_WEIGHTS.KLINES)) {
+  /** Resolves true after `ms`, or false at once when `signal` aborts first. */
+  function sleep(ms, signal) {
+    return new Promise((resolve) => {
+      if (signal.aborted) {
+        resolve(false);
+        return;
+      }
+      const timer = setTimeout(() => {
+        signal.removeEventListener("abort", onAbort);
+        resolve(true);
+      }, Math.max(1, ms));
+      timer.unref?.();
+      function onAbort() {
+        clearTimeout(timer);
+        resolve(false);
+      }
+      signal.addEventListener("abort", onAbort, { once: true });
+    });
+  }
+
+  // The dispatch gate every request of this transport passes: it waits out a
+  // ban or rate-limit pause, then reserves the request's weight, waiting for
+  // the next minute when the budget is spent. False means the wait was aborted.
+  async function awaitDispatch(weight, signal) {
+    for (;;) {
+      if (signal.aborted) return false;
+      const wait = waitBeforeDispatchMs();
+      if (wait > 0) {
+        if (!(await sleep(wait, signal))) return false;
+        continue;
+      }
+      if (budget.reserve(weight)) return true;
       counters.budgetDeferrals += 1;
-      await new Promise((resolve) => {
-        const timer = setTimeout(resolve, budget.msUntilReset());
-        timer.unref?.();
-      });
+      if (!(await sleep(budget.msUntilReset(), signal))) return false;
     }
-    const response = await Reflect.apply(fetchImpl, undefined, [url, init]);
+  }
+
+  // A request issued on behalf of another module (the candle backfill, the
+  // tick-size lookup): gated, weighed, its headers read back, its failure fed
+  // to the shared rate-limit, ban and route handling, and abortable by the
+  // caller's signal or by disconnect().
+  async function gatedRequest(weight, externalSignal, perform) {
+    if (externalSignal !== undefined && !(externalSignal instanceof AbortSignal)) {
+      throw new Error("signal must be an AbortSignal when provided");
+    }
+    const controller = new AbortController();
+    const forwardAbort = () => controller.abort();
+    if (externalSignal?.aborted) controller.abort();
+    else externalSignal?.addEventListener("abort", forwardAbort, { once: true });
+    gatedControllers.add(controller);
     try {
-      budget.observe(Object.fromEntries(response.headers.entries()));
-    } catch {
-      void 0;
+      if (!(await awaitDispatch(weight, controller.signal))) return Object.freeze({ ok: false, reason: "ABORTED" });
+      let result;
+      try {
+        result = await perform(controller.signal);
+      } catch (error) {
+        result = Object.freeze({ ok: false, reason: error?.name === "AbortError" ? "ABORTED" : "NETWORK_ERROR" });
+      }
+      observeWeight(result);
+      if (!result.ok && result.reason !== "ABORTED") noteRequestFailure(result);
+      return result;
+    } finally {
+      gatedControllers.delete(controller);
+      externalSignal?.removeEventListener("abort", forwardAbort);
     }
-    return response;
+  }
+
+  function gatedFetchKlines(marketKind, symbol, options = {}) {
+    return gatedRequest(REQUEST_WEIGHTS.KLINES, options.signal, (signal) =>
+      fetchKlines(marketKind, symbol, { ...options, fetchImpl, timeoutMs: requestTimeoutMs, signal }));
+  }
+
+  /** exchangeInfo for another module (the tick-size resolver), charged 20 through the same gate. */
+  function fetchExchangeInfoGated(marketKind, symbol, options = {}) {
+    return gatedRequest(REQUEST_WEIGHTS.EXCHANGE_INFO, options.signal, (signal) =>
+      fetchExchangeInfo(marketKind, symbol, {
+        ...options,
+        fetchImpl,
+        baseUrl: restBaseUrlFor(marketKind, resolvedEndpoints),
+        timeoutMs: requestTimeoutMs,
+        signal,
+      }));
   }
 
   function setRouteState(next, fields = {}) {
@@ -308,8 +382,11 @@ function createBinanceRestConnection(options = {}) {
     if (result.ok && Number.isSafeInteger(result.value.body?.serverTime)) {
       applyServerTime(result.value.body.serverTime, sentAt, now());
     } else {
+      // The last valid offset stays; the failure itself gets the shared
+      // handling, so a 429 pauses polling and a 418 opens the ban window.
       counters.clockRefreshFailures += 1;
-      telemetryEvent("clock_refresh_failed", { reason: result.ok ? "MALFORMED_RESPONSE_BODY" : result.reason });
+      telemetryEvent("clock_refresh_failed", { reason: result.ok ? "MALFORMED_RESPONSE_BODY" : result.reason, status: result.status ?? null });
+      if (!result.ok && result.reason !== "ABORTED") noteRequestFailure(result);
     }
     scheduleClockRefresh();
   }
@@ -548,6 +625,7 @@ function createBinanceRestConnection(options = {}) {
       holder.inflight?.abort();
       holder.inflight = null;
     }
+    for (const controller of gatedControllers) controller.abort();
   }
 
   function disconnect() {
@@ -775,7 +853,8 @@ function createBinanceRestConnection(options = {}) {
       projectedWeightPerMinute: plan.projectedPerMinute,
       weight: budget.stats(),
       ...counters,
-      inflight: inflight + (probe.inflight ? 1 : 0) + (clock.inflight ? 1 : 0),
+      inflight: inflight + (probe.inflight ? 1 : 0) + (clock.inflight ? 1 : 0) + gatedControllers.size,
+      gatedRequests: gatedControllers.size,
       exchangeOffsetMs,
       clockSyncedAtMs,
       rateLimitedUntilMs,
@@ -790,6 +869,9 @@ function createBinanceRestConnection(options = {}) {
     }
     accepting = false;
     for (const holder of [probe, clock, ...pollers.values()]) clearTimer(holder);
+    // A backfill or lookup still queued at the gate would wait for a minute
+    // boundary or a ban to end; shutdown does not.
+    for (const controller of gatedControllers) controller.abort();
     const deadline = now() + timeoutMs;
     return new Promise((resolve, reject) => {
       const inspect = () => {
@@ -831,6 +913,7 @@ function createBinanceRestConnection(options = {}) {
     getOperationalStats,
     quiesce,
     fetchRecentKlines,
+    fetchExchangeInfo: fetchExchangeInfoGated,
   });
 }
 

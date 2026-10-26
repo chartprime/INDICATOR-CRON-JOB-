@@ -47,6 +47,10 @@ function createBinanceRestWeightBudget({ budgetPerMinute = DEFAULT_WEIGHT_BUDGET
   let minuteStart = Math.floor(now() / MINUTE_MS) * MINUTE_MS;
   let reserved = 0;
   let observed = 0;
+  // The conservative total this minute: every reservation adds to it, and an
+  // exchange header raises it when the exchange counts more than we did.
+  // Reservations after a header keep adding on top of that header.
+  let accounted = 0;
   let deferrals = 0;
   let reservations = 0;
 
@@ -56,23 +60,25 @@ function createBinanceRestWeightBudget({ budgetPerMinute = DEFAULT_WEIGHT_BUDGET
       minuteStart = current;
       reserved = 0;
       observed = 0;
+      accounted = 0;
     }
   }
 
   function used() {
     rollMinute();
-    return Math.max(reserved, observed);
+    return accounted;
   }
 
   /** Reserves `weight` for a request about to be sent; false means wait for the next minute. */
   function reserve(weight) {
     if (!Number.isSafeInteger(weight) || weight <= 0) throw new Error("weight must be a positive safe integer");
     rollMinute();
-    if (Math.max(reserved, observed) + weight > budgetPerMinute) {
+    if (accounted + weight > budgetPerMinute) {
       deferrals += 1;
       return false;
     }
     reserved += weight;
+    accounted += weight;
     reservations += 1;
     return true;
   }
@@ -83,6 +89,7 @@ function createBinanceRestWeightBudget({ budgetPerMinute = DEFAULT_WEIGHT_BUDGET
     if (value === null) return null;
     rollMinute();
     if (value > observed) observed = value;
+    if (value > accounted) accounted = value;
     return value;
   }
 
@@ -98,8 +105,8 @@ function createBinanceRestWeightBudget({ budgetPerMinute = DEFAULT_WEIGHT_BUDGET
       minuteStart,
       reserved,
       observed,
-      used: Math.max(reserved, observed),
-      remaining: Math.max(0, budgetPerMinute - Math.max(reserved, observed)),
+      used: accounted,
+      remaining: Math.max(0, budgetPerMinute - accounted),
       reservations,
       deferrals,
     });

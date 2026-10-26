@@ -989,6 +989,7 @@ describe("server/app on the REST transport (TT_BINANCE_TRANSPORT=rest)", () => {
       symbol: "BTCUSDT",
       webSocketImpl: WebSocketImpl,
       fetchImpl,
+      telemetry: () => {},
       binanceTransport: "rest",
       binanceEndpoints: { spotRestBaseUrl: "https://data-api.binance.vision" },
       dbPath: noStorageDbPath(),
@@ -1025,6 +1026,14 @@ describe("server/app on the REST transport (TT_BINANCE_TRANSPORT=rest)", () => {
       const bar = seen.find((frame) => frame.type === "bar");
       expect(bar).toMatchObject({ type: "bar", provider: "BINANCE", symbol: "BTC-USDT", marketKind: "SPOT", interval_ms: MINUTE, closed: false, trade_count: 418, buy_volume: 6 });
       expect(seen.filter((frame) => frame.type === "trade")).toEqual([]);
+      // Every request went through the connection's gate: the probe, the
+      // backfill pages and the polls were all reserved (the tick-size lookup's
+      // gating is covered in the connection suite with the real resolver).
+      const delivery = (await (await fetch(`http://127.0.0.1:${port}/health`)).json()).delivery;
+      const exchangeInfoCalls = fetchImpl.mock.calls.filter(([url]) => String(url).includes("/exchangeInfo")).length;
+      expect(exchangeInfoCalls).toBeGreaterThanOrEqual(1);
+      expect(delivery.weight.reservations).toBeGreaterThanOrEqual(delivery.polls + exchangeInfoCalls);
+      expect(delivery.gatedRequests).toBe(0);
     } finally {
       client?.close();
       await app.stop();

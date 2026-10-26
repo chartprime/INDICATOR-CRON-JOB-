@@ -174,10 +174,13 @@ clock offset.
 
 **Weight.** The guarantee is this runtime's reserved dispatch budget: every
 request reserves its weight before it is sent (klines 2, `exchangeInfo` 20 for
-the connect probe, `time` 1, candle backfill 2 per page), against
-`TT_BINANCE_REST_WEIGHT_BUDGET` per calendar minute (default 4000, at most
-5000; the exchange limit is 6000). The exchange's own `x-mbx-used-weight-1m`
-raises the count when it is higher. The steady cadence plans on 90 % of the
+the connect probe and for each tick-size lookup, `time` 1, candle backfill 2
+per page), against `TT_BINANCE_REST_WEIGHT_BUDGET` per calendar minute
+(default 4000, at most 5000; the exchange limit is 6000). The exchange's own
+`x-mbx-used-weight-1m` raises the count when it is higher, and reservations
+keep adding on top of it. One gate holds every request, polls, clock refresh,
+backfill pages and tick-size lookups alike, during a rate-limit pause or an IP
+ban, and a 429 or 418 on any of them pauses all of them. The steady cadence plans on 90 % of the
 budget and is lengthened in whole multiples of the poll interval when the
 pairs would not fit; the reason then says `slow polling`. The budget is never
 exceeded to keep a cadence. One pair at 1 s costs about 121 of 4000 per minute.

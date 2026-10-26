@@ -112,6 +112,53 @@ describe("binance-kline-backfill", () => {
     expect(fetchImpl.mock.calls[0][0]).toMatch(/^https:\/\/data-api\.binance\.vision\/api\/v3\/klines\?symbol=BTCUSDT/);
   });
 
+  test("classifies candles against the injected clock with the finalisation grace, so a candle still open on that clock is never returned as history", async () => {
+    const minuteOpen = Math.floor(NOW_MS / ONE_MINUTE_MS) * ONE_MINUTE_MS;
+    const fetchImpl = jest.fn(async (url) => jsonResponse(fullPage(Number(new URL(url).searchParams.get("startTime")), 60)));
+    const options = { interval: "1m", intervalMs: ONE_MINUTE_MS, days: 1 / 24 };
+    // The machine clock (Date.now, mocked to :30) says the previous minute is closed; the default backfill agrees.
+    const machine = await createBinanceKlineBackfill({ fetchImpl, telemetry: () => {} }).fetchRecentBars("SPOT", "BTCUSDT", options);
+    expect(machine.ok).toBe(true);
+    expect(machine.rows.at(-1).openTime).toBe(minuteOpen - ONE_MINUTE_MS);
+    // An exchange clock 45 s behind the machine is still inside that previous minute: it is not history.
+    const exchange = await createBinanceKlineBackfill({ fetchImpl, telemetry: () => {}, now: () => NOW_MS - 45_000, finalizeGraceMs: 1000 })
+      .fetchRecentBars("SPOT", "BTCUSDT", options);
+    expect(exchange.ok).toBe(true);
+    expect(exchange.rows.at(-1).openTime).toBe(minuteOpen - 2 * ONE_MINUTE_MS);
+    // Half a second after a close the grace has not passed: with the grace the bar is still forming, without it it is final.
+    const justClosed = await createBinanceKlineBackfill({ fetchImpl, telemetry: () => {}, now: () => minuteOpen + 500, finalizeGraceMs: 1000 })
+      .fetchRecentBars("SPOT", "BTCUSDT", options);
+    expect(justClosed.rows.at(-1).openTime).toBe(minuteOpen - 2 * ONE_MINUTE_MS);
+    const noGrace = await createBinanceKlineBackfill({ fetchImpl, telemetry: () => {}, now: () => minuteOpen + 500, finalizeGraceMs: 0 })
+      .fetchRecentBars("SPOT", "BTCUSDT", options);
+    expect(noGrace.rows.at(-1).openTime).toBe(minuteOpen - ONE_MINUTE_MS);
+    expect(() => createBinanceKlineBackfill({ finalizeGraceMs: -1 })).toThrow(/finalizeGraceMs/);
+  });
+
+  test("a fetchKlinesImpl hook receives every page request with its signal, and an abort ends the backfill as ABORTED without a further request", async () => {
+    const seen = [];
+    const controller = new AbortController();
+    const fetchKlinesImpl = jest.fn(async (marketKind, symbol, options) => {
+      seen.push(options);
+      return { ok: true, value: { status: 200, headers: {}, body: await jsonResponse(fullPage(options.startTime)).json() } };
+    });
+    const backfill = createBinanceKlineBackfill({ fetchKlinesImpl, telemetry: () => {} });
+    const pending = backfill.fetchRecentBars("SPOT", "BTCUSDT", { interval: "1m", intervalMs: ONE_MINUTE_MS, days: 7, pageDelayMs: 5000, signal: controller.signal });
+    await new Promise((resolve) => setImmediate(resolve));
+    controller.abort();
+    const result = await pending;
+    expect(result.ok).toBe(false);
+    expect(result.reason).toBe("ABORTED");
+    expect(result.rows.length).toBe(MAX_KLINES_PER_REQUEST);
+    expect(fetchKlinesImpl).toHaveBeenCalledTimes(1);
+    expect(seen[0].signal).toBe(controller.signal);
+    expect(seen[0].baseUrl).toBe("https://api.binance.com");
+    const aborted = await backfill.fetchRecentBars("SPOT", "BTCUSDT", { interval: "1m", intervalMs: ONE_MINUTE_MS, days: 1 / 24, signal: controller.signal });
+    expect(aborted).toMatchObject({ ok: false, reason: "ABORTED", rows: [] });
+    expect(fetchKlinesImpl).toHaveBeenCalledTimes(1);
+    await expect(backfill.fetchRecentBars("SPOT", "BTCUSDT", { interval: "1m", intervalMs: ONE_MINUTE_MS, signal: {} })).rejects.toThrow(/AbortSignal/);
+  });
+
   test("paginates across pages until the cursor itself proves it reached the closed-candle boundary", async () => {
     let call = 0;
     const fetchImpl = jest.fn(async (url) => {

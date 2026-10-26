@@ -50,6 +50,22 @@ describe("binance-rest-weight-budget", () => {
     expect(budget.stats()).toMatchObject({ reserved: 2, deferrals: 5 });
   });
 
+  test("a near-limit header permits exactly one further request: reservations keep adding on top of the exchange's count", () => {
+    const clock = fakeClock(1_800_000_000_000);
+    const budget = createBinanceRestWeightBudget({ budgetPerMinute: 100, now: clock.now });
+    expect(budget.reserve(20)).toBe(true);
+    expect(budget.observe({ "x-mbx-used-weight-1m": "98" })).toBe(98);
+    expect(budget.used()).toBe(98);
+    expect(budget.reserve(2)).toBe(true);
+    expect(budget.used()).toBe(100);
+    expect(budget.reserve(2)).toBe(false);
+    expect(budget.reserve(1)).toBe(false);
+    expect(budget.stats()).toMatchObject({ reserved: 22, observed: 98, used: 100, remaining: 0, deferrals: 2 });
+    // A later, lower header never lowers the accounted total.
+    expect(budget.observe({ "x-mbx-used-weight-1m": "50" })).toBe(50);
+    expect(budget.used()).toBe(100);
+  });
+
   test("the exchange's own x-mbx-used-weight-1m raises the count when it is higher and never lowers it", () => {
     const clock = fakeClock(1_800_000_000_000);
     const budget = createBinanceRestWeightBudget({ budgetPerMinute: 1000, now: clock.now });

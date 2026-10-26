@@ -331,9 +331,11 @@ the table and shoots each state at two zooms: `cream-01-tape-live-next-bar`,
 `cream-02-learning-sizes`, `cream-03-need-valid-bars`,
 `cream-04-tape-share-below`, `cream-05-rest-no-feed`,
 `cream-06-forming-no-extreme`, `cream-07-large-confirms`, `cream-08-large-lags`,
-`cream-09-divergence-row`, `cream-10-conflict-row`, the dark-chart
-(`data-theme="dark"`) variants of 06, 09 and 10, and the dialog shots
+`cream-09-divergence-row`, the dark-chart (`data-theme="dark"`) variants
+`dark-01`, `dark-03`, `dark-06`, `dark-07`, `dark-08` and `dark-10-conflict-row`
+(the dark run has conflict circles on, so its row (b) is the conflict row and
+the cream run's is the divergence row; a cream `10` and a dark `09` were not
+produced because row (b) shows one condition at a time), and the dialog shots
 (`cream-dialog-inputs-advanced-closed`, `cream-dialog-inputs-advanced-open`,
-both with Fixed size selected, `cream-dialog-visibility`). States that depend
-on the live minute (06 to 10) are whichever the fixture's cycled bars produced
-while the script ran; the handback lists what was captured.
+both with Fixed size selected, `cream-dialog-visibility`). Each shot comes in a
+`-zoomed-out` and a `-zoomed-in` pair taken from the same reset view.

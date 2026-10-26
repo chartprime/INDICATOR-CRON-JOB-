@@ -18,7 +18,7 @@ suite green (351 files, 5170 tests).
 | UX standard: default view, primary vs advanced controls, colors, copy | UX | done (`cycle1/ux-standard.md`, Advanced group merged to main, 7 screenshots) |
 | Validation protocol and fixture harness | Validator | v1 merged (`cycle1/validation-protocol.md`, `apps/web/src/lib/chart/validation/`); Codex fix round in progress |
 | Shortlist 3, brief 1, G1 Codex plan review | PM + Codex | done (`cycle1/scoring.md`, `cycle1/brief-rvol-clock.md`; 5 Codex rounds, PM-approved) |
-| Build, UX pass, G2, validation, G3, fixes, merge, package | team | build running on branch `build/relative-volume` (worktree `/home/user/Terminal-L1-L2/worktrees/relative-volume`); build landed (61 tests, suite green); Codex G2 REVISE (1 real finding), G3 FAIL (7 challenges, ruled); UX pass approved pending one retake (`cycle1/ux-pass-relative-volume.md`); validator loop 1 running; harness v1.1 merged (fixtures shared); harness v1.2 merged; one L2 fake item parked as harness debt |
+| Build, UX pass, G2, validation, G3, fixes, merge, package | team | build running on branch `build/relative-volume` (worktree `/home/user/Terminal-L1-L2/worktrees/relative-volume`); build landed (61 tests, suite green); Codex G2 REVISE (1 real finding), G3 FAIL (7 challenges, ruled); UX pass approved pending one retake (`cycle1/ux-pass-relative-volume.md`); validator loop 1: FIX AND RERUN (6 fixes, `pm/log/validation/relativeVolume/loop-1.md`); builder fix round 1 running; harness v1.1 merged (fixtures shared); harness v1.2 merged; one L2 fake item parked as harness debt |
 
 ## Seed concepts the PM already holds (feed into scoring, not pre-approved)
 

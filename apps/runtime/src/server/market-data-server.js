@@ -843,16 +843,31 @@ function createMarketDataServer({
       });
     }
     const rank = { READY: 0, RECOVERING: 1, UNAVAILABLE: 2 };
-    const recoveryState = contexts.reduce(
+    // A feed a transport declares it does not serve at all (the REST poller
+    // has no tape) does not drag the state down: the state follows the feeds
+    // that are served, and the reason names what is missing.
+    const served = contexts.filter((context) => context.served !== false);
+    const ranked = served.length > 0 ? served : contexts;
+    const recoveryState = ranked.reduce(
       (worst, context) =>
         rank[context.recoveryState] > rank[worst]
           ? context.recoveryState
           : worst,
       "READY",
     );
+    // A transport that explains itself (the REST poller's trader-facing
+    // reason) is quoted on the health frame; the stream transport has none.
+    const reason =
+      ranked.find(
+        (context) =>
+          context.recoveryState === recoveryState &&
+          typeof context.reason === "string",
+      )?.reason ??
+      contexts.find((context) => typeof context.reason === "string")?.reason;
     return Object.freeze({
-      stale: contexts.some((context) => context.stale),
+      stale: ranked.some((context) => context.stale),
       recoveryState,
+      ...(reason !== undefined ? { reason } : {}),
     });
   }
 

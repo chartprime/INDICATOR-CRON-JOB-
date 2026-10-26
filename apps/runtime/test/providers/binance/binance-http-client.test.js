@@ -1,6 +1,7 @@
 const {
   fetchDepthSnapshot,
   fetchKlines,
+  fetchServerTime,
   fetchExchangeInfo,
   MAX_KLINES_PER_REQUEST,
   parseRetryAfterMs,
@@ -92,14 +93,38 @@ describe("binance-http-client fetchDepthSnapshot", () => {
       jsonResponse({ msg: "too many requests" }, { status: 429, headers: { "retry-after": "30" } }),
     );
     const result = await fetchDepthSnapshot("SPOT", "BTCUSDT", { fetchImpl });
-    expect(result).toEqual({ ok: false, reason: "RATE_LIMITED", retryAfterMs: 30_000 });
+    expect(result).toMatchObject({ ok: false, reason: "RATE_LIMITED", retryAfterMs: 30_000, status: 429 });
+    expect(result.headers["retry-after"]).toBe("30");
   });
 
-  test("classifies a 418 as RATE_LIMITED the same way as 429, with no retryAfterMs when the header is absent", async () => {
-    const fetchImpl = jest.fn(async () => jsonResponse({}, { status: 418 }));
+  test("a 429 keeps its status and headers (Retry-After, x-mbx-used-weight-1m) for the caller's weight accounting", async () => {
+    const fetchImpl = jest.fn(async () =>
+      jsonResponse({ msg: "too many requests" }, { status: 429, headers: { "retry-after": "7", "x-mbx-used-weight-1m": "6012" } }),
+    );
     const result = await fetchDepthSnapshot("SPOT", "BTCUSDT", { fetchImpl });
-    expect(result).toEqual({ ok: false, reason: "RATE_LIMITED" });
+    expect(result.ok).toBe(false);
+    expect(result.reason).toBe("RATE_LIMITED");
+    expect(result.status).toBe(429);
+    expect(result.retryAfterMs).toBe(7_000);
+    expect(result.headers["x-mbx-used-weight-1m"]).toBe("6012");
+    expect(Object.isFrozen(result.headers)).toBe(true);
+  });
+
+  test("classifies a 418 as IP_BANNED, distinct from a 429, with its status and headers and no retryAfterMs when the header is absent", async () => {
+    const fetchImpl = jest.fn(async () => jsonResponse({}, { status: 418, headers: { "x-mbx-used-weight-1m": "6200" } }));
+    const result = await fetchDepthSnapshot("SPOT", "BTCUSDT", { fetchImpl });
+    expect(result).toMatchObject({ ok: false, reason: "IP_BANNED", status: 418 });
     expect(result.retryAfterMs).toBeUndefined();
+    expect(result.headers["x-mbx-used-weight-1m"]).toBe("6200");
+    const banned = await fetchDepthSnapshot("SPOT", "BTCUSDT", {
+      fetchImpl: async () => jsonResponse({}, { status: 418, headers: { "retry-after": "120" } }),
+    });
+    expect(banned).toMatchObject({ ok: false, reason: "IP_BANNED", status: 418, retryAfterMs: 120_000 });
+  });
+
+  test("other HTTP errors keep their status too", async () => {
+    const result = await fetchDepthSnapshot("SPOT", "BTCUSDT", { fetchImpl: async () => jsonResponse({}, { status: 503 }) });
+    expect(result).toMatchObject({ ok: false, reason: "HTTP_ERROR", status: 503 });
   });
 
   test("cancels an unsuccessful response body before returning its failure classification", async () => {
@@ -115,7 +140,8 @@ describe("binance-http-client fetchDepthSnapshot", () => {
     const result = await fetchDepthSnapshot("SPOT", "BTCUSDT", {
       fetchImpl: async () => new Response(stream, { status: 429 }),
     });
-    expect(result).toEqual({ ok: false, reason: "RATE_LIMITED" });
+    expect(result).toMatchObject({ ok: false, reason: "RATE_LIMITED", status: 429 });
+    expect(result.retryAfterMs).toBeUndefined();
     expect(cancelled).toBe(true);
   });
 
@@ -129,14 +155,15 @@ describe("binance-http-client fetchDepthSnapshot", () => {
       jsonResponse({}, { status: 429, headers: { "retry-after": "not-a-deadline" } }),
     );
     const result = await fetchDepthSnapshot("SPOT", "BTCUSDT", { fetchImpl });
-    expect(result).toEqual({ ok: false, reason: "RATE_LIMITED" });
+    expect(result).toMatchObject({ ok: false, reason: "RATE_LIMITED", status: 429 });
+    expect(result.retryAfterMs).toBeUndefined();
     expect(result.retryAfterMs).toBeUndefined();
   });
 
   test("classifies an unrelated non-2xx status as HTTP_ERROR", async () => {
     const fetchImpl = jest.fn(async () => jsonResponse({}, { status: 500 }));
     const result = await fetchDepthSnapshot("SPOT", "BTCUSDT", { fetchImpl });
-    expect(result).toEqual({ ok: false, reason: "HTTP_ERROR" });
+    expect(result).toMatchObject({ ok: false, reason: "HTTP_ERROR", status: 500 });
   });
 
   test("rejects a response once its streamed byte total exceeds the ceiling, without buffering it whole", async () => {
@@ -407,7 +434,8 @@ describe("binance-http-client fetchKlines", () => {
   test("a rate-limit response is classified the same way fetchDepthSnapshot's shared path already is", async () => {
     const fetchImpl = jest.fn(async () => jsonResponse({ msg: "too many requests" }, { status: 429 }));
     const result = await fetchKlines("SPOT", "BTCUSDT", { interval: "1m", startTime: 0, fetchImpl });
-    expect(result).toEqual({ ok: false, reason: "RATE_LIMITED" });
+    expect(result).toMatchObject({ ok: false, reason: "RATE_LIMITED", status: 429 });
+    expect(result.retryAfterMs).toBeUndefined();
   });
 });
 
@@ -482,5 +510,39 @@ test("a genuine Response with a hostile property override fails closed instead o
   await expect(fetchDepthSnapshot("SPOT", "BTCUSDT", { fetchImpl: async () => response })).resolves.toEqual({
     ok: false,
     reason: "INVALID_RESPONSE",
+  });
+});
+
+describe("binance-http-client fetchServerTime and cancellation", () => {
+  test("fetchServerTime asks /api/v3/time (or /fapi/v1/time) and returns the body with its headers", async () => {
+    const fetchImpl = jest.fn(async () => jsonResponse({ serverTime: 1_800_000_000_000 }, { headers: { "x-mbx-used-weight-1m": "3" } }));
+    const result = await fetchServerTime("SPOT", { fetchImpl, baseUrl: "https://data-api.binance.vision" });
+    await fetchServerTime("PERPETUAL", { fetchImpl });
+    expect(fetchImpl.mock.calls.map((call) => call[0])).toEqual([
+      "https://data-api.binance.vision/api/v3/time",
+      "https://fapi.binance.com/fapi/v1/time",
+    ]);
+    expect(result.ok).toBe(true);
+    expect(result.value.body).toEqual({ serverTime: 1_800_000_000_000 });
+    expect(result.value.headers["x-mbx-used-weight-1m"]).toBe("3");
+    await expect(fetchServerTime("COIN_M", { fetchImpl })).rejects.toThrow(/unrecognized/);
+  });
+
+  test("an external AbortSignal cancels the request and classifies it ABORTED, never TIMEOUT or NETWORK_ERROR", async () => {
+    const controller = new AbortController();
+    const fetchImpl = jest.fn((url, init) => new Promise((_, reject) => {
+      init.signal.addEventListener("abort", () => {
+        const error = new Error("aborted");
+        error.name = "AbortError";
+        reject(error);
+      });
+    }));
+    const pending = fetchKlines("SPOT", "BTCUSDT", { fetchImpl, interval: "1m", startTime: 0, limit: 2, signal: controller.signal });
+    controller.abort();
+    expect(await pending).toEqual({ ok: false, reason: "ABORTED" });
+    const alreadyAborted = await fetchKlines("SPOT", "BTCUSDT", { fetchImpl, interval: "1m", startTime: 0, signal: controller.signal });
+    expect(alreadyAborted).toEqual({ ok: false, reason: "ABORTED" });
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    await expect(fetchServerTime("SPOT", { fetchImpl, signal: {} })).rejects.toThrow(/AbortSignal/);
   });
 });

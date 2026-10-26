@@ -1,4 +1,5 @@
 const { fetchExchangeInfo } = require("../binance/binance-http-client");
+const { restBaseUrlFor, DEFAULT_BINANCE_ENDPOINTS } = require("../binance/binance-config");
 const { tickSizeFor } = require("../dxfeed/dxfeed-instrument-catalog");
 
 const DEFAULT_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
@@ -25,6 +26,7 @@ function createInstrumentTickSizeResolver({
   fetchImpl,
   timeoutMs,
   maxResponseBytes = DEFAULT_MAX_RESPONSE_BYTES,
+  endpoints = DEFAULT_BINANCE_ENDPOINTS,
 } = {}) {
   if (typeof fetchExchangeInfoImpl !== "function") {
     throw new Error("instrument-tick-size: fetchExchangeInfoImpl must be a function");
@@ -49,6 +51,7 @@ function createInstrumentTickSizeResolver({
         fetchImpl,
         timeoutMs,
         maxResponseBytes,
+        baseUrl: restBaseUrlFor(marketKind, endpoints),
       });
       if (!result.ok) {
         console.error("instrument-tick-size: exchangeInfo fetch failed", marketKind, symbol, result.reason);

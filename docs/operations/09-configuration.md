@@ -55,6 +55,9 @@ generated from `apps/runtime/src/platform/config-registry.js`, and
 | `BINANCE_TRADE_QUEUE_DEPTH` | terminal-c | a whole number, above 0 |  | .env | Binance trade queue depth before overflow (default 5000) |
 | `TT_BINANCE_SPOT_WS_BASE_URL` | terminal-c | a ws(s) origin without path, query or credentials |  | .env | Binance spot stream origin (default wss://stream.binance.com); the market-data mirror wss://data-stream.binance.vision:9443 is not geo-blocked. USD-M perpetuals keep their fixed origin |
 | `TT_BINANCE_SPOT_REST_BASE_URL` | terminal-c | an http(s) origin without path, query or credentials |  | .env | Binance spot REST origin for depth snapshots and candle backfill (default https://api.binance.com); the market-data mirror https://data-api.binance.vision is not geo-blocked. USD-M perpetuals keep their fixed origin |
+| `TT_BINANCE_TRANSPORT` | terminal-c | ws or rest |  | .env | Binance transport: ws streams every trade and depth diff (default); rest polls the spot REST API for 1m candles only, with no tape and no order book, for a host that cannot open a WebSocket |
+| `TT_BINANCE_REST_POLL_MS` | terminal-c | a whole number, at least 250 |  | .env | REST transport: milliseconds between polls of a pair's candles (default 1000); the weight budget may lengthen it |
+| `TT_BINANCE_REST_WEIGHT_BUDGET` | terminal-c | a whole number, at least 100, at most 5000 |  | .env | REST transport: Binance REQUEST_WEIGHT reserved per minute before each request (default 4000); the exchange limit is 6000, so at most 5000 |
 | `L2_MEMORY_DEBUG` | terminal-c | 0 or 1 |  | .env | 1 logs L2 memory debugging |
 | `L2_ICEBERG` | terminal-c | 0 or 1 |  | .env | 0 turns the Iceberg Detector off (default on): no trackers, no history restore or save, no host fill; the channel still answers with empty pages |
 | `L2_ICEBERG_HISTORY` | terminal-c | 0 or 1 |  | .env | 0 keeps iceberg histories in memory only, never on disk, and asks the host for nothing (default on) |
@@ -125,6 +128,64 @@ generated from `apps/runtime/src/platform/config-registry.js`, and
 | `L2_AGGRESSIVE_PERCENTILE` | terminal-c | a number, above 0, at most 1 |  | .env | Percentile a cluster must reach before it is sent (default 0.9) |
 | `L2_AGGRESSIVE_FLOOR` | terminal-c | a number, above 0, at most 10000000 |  | .env | Fixed reporting floor in base units instead of the percentile |
 | `L2_AGGRESSIVE_MIN` | terminal-c | a number, at least 0, at most 10000000 |  | .env | Floor under the calibrated floor, in base units |
+
+### Binance REST transport (`TT_BINANCE_TRANSPORT=rest`)
+
+For a host that cannot open a WebSocket (a cloud container whose proxy refuses
+upgrades, a region Binance's primary API blocks). Spot only; set
+`TT_BINANCE_SPOT_REST_BASE_URL=https://data-api.binance.vision` beside it when
+`api.binance.com` is blocked. Nothing changes while the setting is absent.
+
+**What it serves: 1m candles**, from `/api/v3/klines`, each with open, high,
+low, close, volume, taker-buy volume (the sided candle flow) and trade count,
+forming and closed. Every `TT_BINANCE_REST_POLL_MS` the previous and the
+forming bar are read. Every row is classified by its own open and close time
+against the exchange clock, never by its position or by the machine clock: a
+bar is final one second after its close time has passed on the exchange and is
+emitted closed exactly once; the forming bar is re-sent only when one of its
+seven fields changed; a response from an older poll never overwrites a newer
+one. The exchange clock comes from the `exchangeInfo` probe that brings the
+route up (`serverTime`) and is re-read from `/api/v3/time` once a minute; a
+failed refresh keeps the last offset. After an outage of more than one bar the
+poller catches up from the last confirmed close, in pages of up to 1000 candles,
+at most 10 pages back to back before it yields for one cadence and continues;
+the health reason reads `catching up` until it is current.
+
+**What it does not serve.** There is no tape and no order book. No trade frame
+is sent; the book is `UNAVAILABLE` with reason `REST_NO_DEPTH`. Unavailable:
+time and sales, Large Trade Bubbles and large-trade markers, aggressive-print
+clusters, every `ctx.ticks` and `ctx.trades` indicator (VWAP bands on prints,
+tick intensity), VPIN, the DOM, the Passive Liquidity heatmap and its walls,
+the L2 memory indicators (liquidity voids, L2 feed status), the Iceberg
+Detector, Exhaustion, Initiative Continuation, the `l2_*` channels and
+`bandHistory`. Works: candles and every resampled timeframe, `buy_volume` and
+`sell_volume` from taker-buy volume (`barSides`), `trade_count`, the candle
+backfill and Historical Mode candles, and every candle-only indicator (RSI,
+relative volume, structure, volatility, candle flow).
+
+**Health.** The feed's reason reads `Polled spot candles · no tape · no order
+book`, with `· rate limited` (a 429 or an IP ban: polling paused for
+`Retry-After`), `· poll failed` (the last poll failed or the route is down),
+`· catching up` or `· slow polling (weight budget)` appended while they apply.
+The health frame's state follows the candle feed; the tape and depth feeds
+are reported unavailable and do not change that state. `/health` reports
+`delivery.transport: "rest"`, the cadence, the weight used and the exchange
+clock offset.
+
+**Weight.** The guarantee is this runtime's reserved dispatch budget: every
+request reserves its weight before it is sent (klines 2, `exchangeInfo` 20 for
+the connect probe, `time` 1, candle backfill 2 per page), against
+`TT_BINANCE_REST_WEIGHT_BUDGET` per calendar minute (default 4000, at most
+5000; the exchange limit is 6000). The exchange's own `x-mbx-used-weight-1m`
+raises the count when it is higher. The steady cadence plans on 90 % of the
+budget and is lengthened in whole multiples of the poll interval when the
+pairs would not fit; the reason then says `slow polling`. The budget is never
+exceeded to keep a cadence. One pair at 1 s costs about 121 of 4000 per minute.
+
+**Proxy.** Node's built-in `fetch` ignores `HTTPS_PROXY` unless
+`NODE_USE_ENV_PROXY=1` is set (Node 22.21 and later; the project pins 24.21.0).
+A custom CA is read from `NODE_EXTRA_CA_CERTS`, not from `SSL_CERT_FILE`. The
+stream transport (`ws`) never used a proxy and still does not.
 
 ## Collectors
 

@@ -17,6 +17,18 @@ function exchangeInfoOk(symbol, tickSize) {
 }
 
 describe("instrument-tick-size getBinanceTickSize", () => {
+  test("the exchangeInfo call goes to the spot REST origin override when one is configured, and to the fixed USD-M origin otherwise", async () => {
+    const fetchExchangeInfoImpl = jest.fn().mockResolvedValue(exchangeInfoOk("BTCUSDT", "0.01"));
+    const resolver = createInstrumentTickSizeResolver({
+      fetchExchangeInfoImpl,
+      endpoints: { spotWsBaseUrl: "wss://stream.binance.com", spotRestBaseUrl: "https://data-api.binance.vision" },
+    });
+    await resolver.getBinanceTickSize("SPOT", "BTCUSDT");
+    await resolver.getBinanceTickSize("PERPETUAL", "BTCUSDT");
+    expect(fetchExchangeInfoImpl.mock.calls[0][2].baseUrl).toBe("https://data-api.binance.vision");
+    expect(fetchExchangeInfoImpl.mock.calls[1][2].baseUrl).toBe("https://fapi.binance.com");
+  });
+
   test("fetches and returns the real PRICE_FILTER.tickSize on first call", async () => {
     const fetchExchangeInfoImpl = jest.fn().mockResolvedValue(exchangeInfoOk("BTCUSDT", "0.01000000"));
     const resolver = createInstrumentTickSizeResolver({ fetchExchangeInfoImpl });

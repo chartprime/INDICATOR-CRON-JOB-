@@ -2004,7 +2004,7 @@ describe("binance-connection", () => {
 
         connection.subscribe({ symbol: "BTCUSDT", marketKind: "SPOT", eventType: "DEPTH" }, "consumer-a");
         await flushAsync();
-        expect(connection.getDepthSnapshot("SPOT", "BTCUSDT")).toEqual({ ok: false, reason: "HTTP_ERROR" });
+        expect(connection.getDepthSnapshot("SPOT", "BTCUSDT")).toMatchObject({ ok: false, reason: "HTTP_ERROR", status: 500 });
         expect(fetchImpl).toHaveBeenCalledTimes(1);
 
         await jest.advanceTimersByTimeAsync(1500);
@@ -2033,8 +2033,8 @@ describe("binance-connection", () => {
 
         connection.subscribe({ symbol: "BTCUSDT", marketKind: "SPOT", eventType: "DEPTH" }, "consumer-a");
         await flushAsync();
-        expect(connection.getDepthSnapshot("SPOT", "BTCUSDT")).toEqual({
-          ok: false, reason: "RATE_LIMITED", retryAfterMs: 5000,
+        expect(connection.getDepthSnapshot("SPOT", "BTCUSDT")).toMatchObject({
+          ok: false, reason: "RATE_LIMITED", retryAfterMs: 5000, status: 429,
         });
         expect(fetchImpl).toHaveBeenCalledTimes(1);
 

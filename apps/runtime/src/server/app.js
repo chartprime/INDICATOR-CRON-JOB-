@@ -2,7 +2,15 @@ const http = require("node:http");
 const { createRuntimeHealthMonitor } = require("../platform/runtime-health-monitor");
 const { WebSocket, WebSocketServer } = require("ws");
 const { createBinanceConnection } = require("../providers/binance/binance-connection");
+const {
+  createBinanceRestConnection,
+  binanceTransportFromEnv,
+  TRANSPORTS: BINANCE_TRANSPORTS,
+  DEFAULT_POLL_MS: DEFAULT_BINANCE_REST_POLL_MS,
+} = require("../providers/binance/binance-rest-connection");
+const { DEFAULT_WEIGHT_BUDGET_PER_MINUTE: DEFAULT_BINANCE_REST_WEIGHT_BUDGET } = require("../providers/binance/binance-rest-weight-budget");
 const { binanceEndpointsFromEnv } = require("../providers/binance/binance-config");
+const { createInstrumentTickSizeResolver } = require("../providers/shared/instrument-tick-size");
 const { assertAllowedSymbol } = require("../providers/binance/binance-subscription-guard");
 const { createMarketDataServer } = require("./market-data-server");
 const { createDxFeedMarketDataServer } = require("./dxfeed-market-data-server");
@@ -96,6 +104,9 @@ function createApp({
   wsHeartbeatMs = DEFAULT_WS_HEARTBEAT_MS,
   binanceTradeQueueDepth = positiveIntegerFromEnv(process.env.BINANCE_TRADE_QUEUE_DEPTH) ?? DEFAULT_BINANCE_TRADE_QUEUE_DEPTH,
   binanceEndpoints = binanceEndpointsFromEnv(process.env),
+  binanceTransport = binanceTransportFromEnv(process.env),
+  binanceRestPollMs = positiveIntegerFromEnv(process.env.TT_BINANCE_REST_POLL_MS) ?? DEFAULT_BINANCE_REST_POLL_MS,
+  binanceRestWeightBudget = positiveIntegerFromEnv(process.env.TT_BINANCE_REST_WEIGHT_BUDGET) ?? DEFAULT_BINANCE_REST_WEIGHT_BUDGET,
   archiveRoute = createArchiveRouteOrRefuse(),
   historicalL2Route = createHistoricalL2Route(),
   heatmapRoute,
@@ -126,10 +137,22 @@ function createApp({
       throw new Error(`createApp: ${name} must be a positive safe integer`);
     }
   }
+  if (!Object.values(BINANCE_TRANSPORTS).includes(binanceTransport)) {
+    throw new Error("createApp: binanceTransport must be ws or rest");
+  }
+  // The tick-size lookup is the third spot REST call (exchangeInfo); it uses
+  // the same origin override and the same fetch as the connection.
+  const resolvedTickSizeResolver = tickSizeResolver ?? createInstrumentTickSizeResolver({ fetchImpl, endpoints: binanceEndpoints });
   const allowedOriginSet = new Set(allowedOrigins);
-  const connection = createBinanceConnection({
-    telemetry, webSocketImpl, fetchImpl, backpressureMaxQueueDepth: binanceTradeQueueDepth, endpoints: binanceEndpoints,
-  });
+  // The stream transport is the default and untouched; the REST poller is an
+  // explicit choice for hosts that cannot open a WebSocket (spot only).
+  const connection = binanceTransport === BINANCE_TRANSPORTS.REST
+    ? createBinanceRestConnection({
+      telemetry, fetchImpl, endpoints: binanceEndpoints, pollMs: binanceRestPollMs, weightBudgetPerMinute: binanceRestWeightBudget,
+    })
+    : createBinanceConnection({
+      telemetry, webSocketImpl, fetchImpl, backpressureMaxQueueDepth: binanceTradeQueueDepth, endpoints: binanceEndpoints,
+    });
   const storageReader = resolveStorageReader({ dbPath, liveStorageServiceUrl, liveStorageClientToken });
   const volumeProfileCache = createVolumeProfileCache({ dbPath: volumeProfileCachePath });
   const clientBufferOptions = {
@@ -137,7 +160,7 @@ function createApp({
     ...(clientBufferHardBytes === undefined ? {} : { clientBufferHardBytes }),
     ...(clientBufferGraceMs === undefined ? {} : { clientBufferGraceMs }),
   };
-  const marketDataServer = createMarketDataServer({ connection, symbol, storageReader, volumeProfileCache, ...clientBufferOptions, ...(tickSizeResolver ? { tickSizeResolver } : {}) });
+  const marketDataServer = createMarketDataServer({ connection, symbol, storageReader, volumeProfileCache, ...clientBufferOptions, tickSizeResolver: resolvedTickSizeResolver });
   const dxfeedStorageReader = resolveDxFeedStorageReader({
     dbPath: dxfeedDbPath,
     liveStorageServiceUrl,
@@ -150,7 +173,7 @@ function createApp({
     telemetry,
     brokerUrl: dxfeedBrokerUrl,
     ...clientBufferOptions,
-    ...(tickSizeResolver ? { tickSizeResolver } : {}),
+    tickSizeResolver: resolvedTickSizeResolver,
     ...(dxfeedCreateConnection ? { createConnection: dxfeedCreateConnection } : {}),
     ...(dxfeedRequestToken ? { requestToken: dxfeedRequestToken } : {}),
   });

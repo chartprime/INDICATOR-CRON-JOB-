@@ -242,7 +242,10 @@ function drawActive(box: BoxHandle, reading: Reading, settings: CompressionBreak
   box.setLeftTop(active.openedTs, active.hi);
   box.setRightBottom(reading.tsOpen, active.lo);
   box.setBackgroundColor(withAlpha(CB_RANGE_COLOR, established ? CB_FILL_ESTABLISHED_ALPHA : CB_FILL_FORMING_ALPHA));
-  box.setBorderColor(established ? trendColor(reading.trend) : withAlpha(CB_RANGE_COLOR, CB_FORMING_BORDER_ALPHA));
+  // On the outcome bar the range already wears its outcome: amber when the break failed, purple when it held or expired.
+  const kind = reading.decision.kind;
+  const border = kind === "failed" ? CB_WARN_COLOR : kind === "heldOutside" || kind === "expired" ? CB_RANGE_COLOR : established ? trendColor(reading.trend) : withAlpha(CB_RANGE_COLOR, CB_FORMING_BORDER_ALPHA);
+  box.setBorderColor(border);
   box.setBorderWidth(1);
 }
 

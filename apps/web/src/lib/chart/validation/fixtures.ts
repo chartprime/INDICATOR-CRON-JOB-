@@ -1,4 +1,6 @@
 import type { BarFrame, FrameIdentity, Side, TradeFrame } from "../../../types/frames";
+import { barSides } from "../../indicators/barSides";
+import { regularSessionAt } from "../marketCalendar";
 import type { IndicatorL2 } from "../indicatorL2";
 import type { IndicatorTicks } from "../indicatorTicks";
 import type { TradeAvailability } from "../indicatorTypes";
@@ -444,7 +446,10 @@ export function formingRevisions(bar: BarFrame, revisions: number): BarFrame[] {
   const out: BarFrame[] = [];
   let high = bar.open;
   let low = bar.open;
-  const sided = bar.buy_volume !== undefined && bar.buy_volume !== null;
+  // Sides are read through barSides and scaled independently, so a revision
+  // keeps the bar's buy, sell and unknown shares: unsided equity volume stays
+  // unknown instead of being turned into selling by `volume - buy`.
+  const sides = barSides(bar);
   for (let index = 0; index < revisions; index += 1) {
     const close = path[index];
     high = Math.max(high, close);
@@ -453,10 +458,9 @@ export function formingRevisions(bar: BarFrame, revisions: number): BarFrame[] {
     const volume = round(bar.volume * share, 4);
     const partial: Record<string, unknown> = { ...bar, high: round(high), low: round(low), close: round(close), volume, closed: false };
     if (bar.trade_count !== null) partial.trade_count = Math.max(1, Math.round(bar.trade_count * share));
-    if (sided) {
-      const buy = round((bar.buy_volume ?? 0) * share, 4);
-      partial.buy_volume = buy;
-      if (bar.sell_volume !== undefined) partial.sell_volume = round(volume - buy, 4);
+    if (sides.known) {
+      partial.buy_volume = round(sides.buy * share, 4);
+      if (bar.sell_volume !== undefined && bar.sell_volume !== null) partial.sell_volume = round(sides.sell * share, 4);
     }
     out.push(partial as BarFrame);
   }
@@ -537,4 +541,261 @@ export function sampledIndices(count: number, step: number, tail = 20): number[]
   for (let index = 0; index < count; index += Math.max(1, step)) out.add(index);
   for (let index = Math.max(0, count - tail); index < count; index += 1) out.add(index);
   return [...out].sort((a, b) => a - b);
+}
+
+/*
+ * Frozen fixtures for the cycle-1 Relative Volume (Time of Day) build
+ * (`PM/cycle1/brief-rvol-clock.md`, "Baseline comparison" and "Crypto
+ * fixture"). The builder and the validation loop import the same functions, so
+ * the numbers quoted in the doc page are reproducible from here alone. Every
+ * choice the brief leaves open is fixed in the doc comments below.
+ */
+
+/** mulberry32, the PRNG the brief names; the same implementation the swing alphabet profile uses. */
+export function mulberry32(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/**
+ * Standard normals by Box-Muller over `uniform`: two uniforms per pair,
+ * `z0 = r·cos(2πu2)` then `z1 = r·sin(2πu2)` with `r = sqrt(-2·ln(1 - u1))`
+ * (`1 - u1` keeps the logarithm finite when the generator returns 0). Both
+ * outputs are used, in that order, before the next pair is drawn.
+ */
+export function standardNormals(uniform: () => number): () => number {
+  let pending: number | null = null;
+  return () => {
+    if (pending !== null) {
+      const z = pending;
+      pending = null;
+      return z;
+    }
+    const u1 = uniform();
+    const u2 = uniform();
+    const r = Math.sqrt(-2 * Math.log(1 - u1));
+    pending = r * Math.sin(2 * Math.PI * u2);
+    return r * Math.cos(2 * Math.PI * u2);
+  };
+}
+
+export const RVOL_EQUITY_SEED = 20261026;
+export const RVOL_CRYPTO_SEED = 20261027;
+export const RVOL_BASE_VOLUME = 1_000;
+export const RVOL_NOISE_SIGMA = 0.15;
+export const RVOL_EQUITY_SESSIONS = 15;
+export const RVOL_EQUITY_BARS_PER_SESSION = 390;
+export const RVOL_EQUITY_ANOMALIES = 12;
+export const RVOL_ANOMALY_MULTIPLE = 2.5;
+export const RVOL_CRYPTO_BARS = 12_000;
+/** The brief's "first 10,080 bars" timing window and the REBUILT replay start (bars 1,921..12,000). */
+export const RVOL_CRYPTO_TIMING_BARS = 10_080;
+export const RVOL_CRYPTO_REBUILT_FROM_INDEX = 1_920;
+
+/** `E(m)` for the equity U-curve: an opening surge decaying over an hour, flat midday, a linear rise into the close. */
+export function relativeVolumeExpectedEquity(minute: number, baseVolume = RVOL_BASE_VOLUME): number {
+  if (minute < 60) return baseVolume * (1 + 3 * Math.max(0, 1 - minute / 60) ** 2);
+  if (minute <= 330) return baseVolume;
+  return baseVolume * (1 + (minute - 330) / 59);
+}
+
+/** `E(m)` for crypto: one cosine over the UTC day, peaking at 14:00 UTC (minute 840). */
+export function relativeVolumeExpectedCrypto(minuteOfDay: number, baseVolume = RVOL_BASE_VOLUME): number {
+  return baseVolume * (1 + 0.5 * Math.cos((2 * Math.PI * (minuteOfDay - 840)) / 1440));
+}
+
+function noisyVolume(expected: number, z: number): number {
+  return Math.round(expected * Math.exp(RVOL_NOISE_SIGMA * z));
+}
+
+/** A deterministic, random-free price path so the volume generator's stream is the only source of randomness. */
+function rvolBar(ts_open: number, index: number, volume: number, basePrice: number, amplitude: number, identity: FixtureIdentity, sided: boolean): BarFrame {
+  const close = round(basePrice + amplitude * Math.sin(index / 40), 2);
+  const open = round(basePrice + amplitude * Math.sin((index - 1) / 40), 2);
+  const spec: BarSpec = { open, close, high: Math.max(open, close) + amplitude * 0.02, low: Math.min(open, close) - amplitude * 0.02, volume, tradeCount: Math.max(1, Math.round(volume / 5)) };
+  if (sided) spec.buyShare = 0.5;
+  return barFrame(ts_open, spec, identity, MINUTE_MS);
+}
+
+export interface RelativeVolumeAnomaly {
+  /** 1-based session number, as the brief counts them. */
+  session: number;
+  /** Minute of the session, 0..389. */
+  minute: number;
+  /** Position in `bars`. */
+  index: number;
+  expectedVolume: number;
+  /** `round(2.5 · E(m))`, the volume written into the bar. */
+  volume: number;
+}
+
+export interface RelativeVolumeEquityLabels {
+  regime: "relativeVolumeEquity" | "relativeVolumeEquityFlat";
+  seed: number;
+  baseVolume: number;
+  sessions: number;
+  barsPerSession: number;
+  /** `ts_open` of each session's first bar (09:30 New York), in order. */
+  sessionStarts: number[];
+  /** New York calendar date of each session. */
+  sessionDates: string[];
+  /** `E(m)` for every minute of a session. */
+  expectedVolumes: number[];
+  anomalies: RelativeVolumeAnomaly[];
+  anomalyIndices: number[];
+  /** Bars at minutes 0..9 and 380..389, every session: the slots where volume is always loud and a rolling baseline misfires. */
+  predictableSlotIndices: number[];
+  /** Every bar of sessions 4..15; a method's own readiness narrows it further. */
+  evaluationIndices: number[];
+  evaluationSessions: { first: number; last: number };
+  /** Sessions 1..5 trade on EST and 6..15 on EDT: same New York start minute, different UTC offset. */
+  dstChangeAfterSession: number;
+}
+
+export interface RelativeVolumeEquityOptions {
+  /** The control experiment: `E(m) = V` and anomalies drawn from every minute. */
+  flatSeasonality?: boolean;
+  seed?: number;
+  baseVolume?: number;
+}
+
+function sessionDateKey(openMs: number): string {
+  const date = new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(openMs));
+  return date;
+}
+
+/**
+ * Fifteen regular equity sessions of 390 one-minute bars starting Monday
+ * 2026-03-02 09:30 New York (the US spring DST change falls on Sunday
+ * 2026-03-08). Volume: `round(E(m) · exp(0.15 z))`, one z per bar in session
+ * order then minute order, from `standardNormals(mulberry32(20261026))`. Then
+ * twelve anomalies: pairs drawn with the same generator, two uniforms each
+ * (`session = 4 + floor(u · 12)`, `minute = 90 + floor(u · 241)`), duplicates
+ * rejected, each bar replaced by `round(2.5 · E(m))`. Only `volume` carries
+ * information; prices are a smooth deterministic path and the bars carry no
+ * sides, as a dxFeed equity minute with any unsided print would not.
+ */
+export function relativeVolumeEquityFixture(options: RelativeVolumeEquityOptions = {}): LabelledBars<RelativeVolumeEquityLabels> {
+  const flat = options.flatSeasonality ?? false;
+  const seed = options.seed ?? RVOL_EQUITY_SEED;
+  const baseVolume = options.baseVolume ?? RVOL_BASE_VOLUME;
+  const expected = (minute: number) => (flat ? baseVolume : relativeVolumeExpectedEquity(minute, baseVolume));
+  const expectedVolumes = Array.from({ length: RVOL_EQUITY_BARS_PER_SESSION }, (_, minute) => expected(minute));
+
+  const sessionStarts: number[] = [];
+  const sessionDates: string[] = [];
+  for (let day = Date.UTC(2026, 2, 2, 17); sessionStarts.length < RVOL_EQUITY_SESSIONS; day += 24 * 60 * MINUTE_MS) {
+    const session = regularSessionAt(day);
+    if (session === null) continue;
+    sessionStarts.push(session.openMs);
+    sessionDates.push(sessionDateKey(session.openMs));
+  }
+
+  const uniform = mulberry32(seed);
+  const normal = standardNormals(uniform);
+  const bars: BarFrame[] = [];
+  const predictableSlotIndices: number[] = [];
+  const evaluationIndices: number[] = [];
+  sessionStarts.forEach((start, sessionIndex) => {
+    for (let minute = 0; minute < RVOL_EQUITY_BARS_PER_SESSION; minute += 1) {
+      const index = bars.length;
+      bars.push(rvolBar(start + minute * MINUTE_MS, index, noisyVolume(expectedVolumes[minute], normal()), 190, 2, DXFEED_EQUITY, false));
+      if (minute < 10 || minute >= 380) predictableSlotIndices.push(index);
+      if (sessionIndex + 1 >= 4) evaluationIndices.push(index);
+    }
+  });
+
+  const anomalies: RelativeVolumeAnomaly[] = [];
+  const taken = new Set<string>();
+  while (anomalies.length < RVOL_EQUITY_ANOMALIES) {
+    const session = 4 + Math.floor(uniform() * 12);
+    const minute = flat ? Math.floor(uniform() * RVOL_EQUITY_BARS_PER_SESSION) : 90 + Math.floor(uniform() * 241);
+    const key = `${session}:${minute}`;
+    if (taken.has(key)) continue;
+    taken.add(key);
+    const index = (session - 1) * RVOL_EQUITY_BARS_PER_SESSION + minute;
+    const volume = Math.round(RVOL_ANOMALY_MULTIPLE * expectedVolumes[minute]);
+    bars[index] = { ...bars[index], volume, trade_count: Math.max(1, Math.round(volume / 5)) } as BarFrame;
+    anomalies.push({ session, minute, index, expectedVolume: expectedVolumes[minute], volume });
+  }
+  anomalies.sort((a, b) => a.index - b.index);
+
+  return {
+    bars,
+    labels: {
+      regime: flat ? "relativeVolumeEquityFlat" : "relativeVolumeEquity",
+      seed,
+      baseVolume,
+      sessions: RVOL_EQUITY_SESSIONS,
+      barsPerSession: RVOL_EQUITY_BARS_PER_SESSION,
+      sessionStarts,
+      sessionDates,
+      expectedVolumes,
+      anomalies,
+      anomalyIndices: anomalies.map((anomaly) => anomaly.index),
+      predictableSlotIndices,
+      evaluationIndices,
+      evaluationSessions: { first: 4, last: RVOL_EQUITY_SESSIONS },
+      dstChangeAfterSession: 5,
+    },
+  };
+}
+
+export interface RelativeVolumeCryptoLabels {
+  regime: "relativeVolumeCrypto";
+  seed: number;
+  baseVolume: number;
+  count: number;
+  startTs: number;
+  /** `E(m)` for every minute of the UTC day. */
+  expectedVolumes: number[];
+  /** Minute of the UTC day of every bar. */
+  minuteOfDay: number[];
+  /** The brief's timing window, as `[first, last]` indices. */
+  timingIndices: { first: number; last: number };
+  /** The REBUILT replay runs from this index to the end (bars 1,921..12,000). */
+  rebuiltFromIndex: number;
+}
+
+/**
+ * Twelve thousand one-minute Binance perpetual bars from 2026-03-02 00:00 UTC
+ * with `E(m) = V · (1 + 0.5 · cos(2π (m - 840) / 1440))` over the UTC minute
+ * of day, the same noise model and generation order as the equity fixture,
+ * seed 20261027, no anomalies. Sides are split evenly, since the indicator
+ * reads only `volume`.
+ */
+export function relativeVolumeCryptoFixture(options: { seed?: number; baseVolume?: number; count?: number } = {}): LabelledBars<RelativeVolumeCryptoLabels> {
+  const seed = options.seed ?? RVOL_CRYPTO_SEED;
+  const baseVolume = options.baseVolume ?? RVOL_BASE_VOLUME;
+  const count = options.count ?? RVOL_CRYPTO_BARS;
+  const startTs = Date.UTC(2026, 2, 2, 0, 0);
+  const expectedVolumes = Array.from({ length: 1440 }, (_, minute) => relativeVolumeExpectedCrypto(minute, baseVolume));
+  const normal = standardNormals(mulberry32(seed));
+  const bars: BarFrame[] = [];
+  const minuteOfDay: number[] = [];
+  for (let index = 0; index < count; index += 1) {
+    const ts_open = startTs + index * MINUTE_MS;
+    const minute = Math.floor((ts_open / MINUTE_MS) % 1440);
+    minuteOfDay.push(minute);
+    bars.push(rvolBar(ts_open, index, noisyVolume(expectedVolumes[minute], normal()), 60_000, 300, BINANCE_PERP, true));
+  }
+  return {
+    bars,
+    labels: {
+      regime: "relativeVolumeCrypto",
+      seed,
+      baseVolume,
+      count,
+      startTs,
+      expectedVolumes,
+      minuteOfDay,
+      timingIndices: { first: 0, last: Math.min(count, RVOL_CRYPTO_TIMING_BARS) - 1 },
+      rebuiltFromIndex: RVOL_CRYPTO_REBUILT_FROM_INDEX,
+    },
+  };
 }

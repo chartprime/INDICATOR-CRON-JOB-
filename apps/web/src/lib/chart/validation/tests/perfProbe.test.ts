@@ -5,16 +5,21 @@ import { MAX_RETAINED_SOURCE_BARS } from "../../candleLifecycle";
 import { resetDrawOwnerScopeForTests } from "../../draw/creationScope";
 import { resetDrawRegistryForTests } from "../../draw/registry";
 import type { RuntimeIndicatorDef } from "../../indicatorTypes";
+import { barSides } from "../../../indicators/barSides";
+import type { BarFrame } from "../../../../types/frames";
 import { fakeL2, ladderOf } from "../fakeL2";
-import { trendBars } from "../fixtures";
+import { equityUnsidedBars, seeded, trendBars } from "../fixtures";
 import {
   formatFormingBarProbe,
+  formatPooledReplayProbe,
   formatReplayProbe,
   formatRolloverProbe,
   percentilesOf,
   probeFormingBar,
   probeReplay,
+  probeReplayPooled,
   probeRollover,
+  rolloverBar,
 } from "../perfProbe";
 
 afterEach(() => {
@@ -93,6 +98,79 @@ describe("perf probes", () => {
     expect(probe.markersBeforeRetention).toBe(0);
     expect(probe.onBar.count).toBe(50);
     expect(formatRolloverProbe(probe)).toContain("rollover +50 bars: retained 10080");
+  });
+
+  it("rollover bars carry coherent sides through barSides (Codex finding 7)", () => {
+    const random = seeded(1);
+    const sidedLast = trendBars({ count: 1 }).bars[0];
+    const { bars: equity, labels } = equityUnsidedBars({ count: 6 });
+    const partial = equity[labels.partiallySidedIndices[0]];
+    const unsided = equity[labels.unsidedIndices[0]];
+    const buyOnly = { ...sidedLast } as BarFrame & { sell_volume?: number };
+    delete buyOnly.sell_volume;
+
+    let last = sidedLast;
+    for (let index = 0; index < 50; index += 1) {
+      const bar = rolloverBar(last, random);
+      const sides = barSides(bar);
+      expect(bar.ts_open).toBe(last.ts_open + last.interval_ms);
+      expect(sides.known).toBe(true);
+      // Two-decimal rounding of buy and sell can leave a float residue of 1e-14; that is arithmetic, not unknown volume.
+      expect(sides.unknown).toBeCloseTo(0, 9);
+      expect(sides.buy + sides.sell).toBeCloseTo(bar.volume, 6);
+      expect(sides.buy).toBeGreaterThan(0);
+      expect(sides.sell).toBeGreaterThan(0);
+      last = bar;
+    }
+    const fromPartial = rolloverBar(partial, random);
+    const partialSides = barSides(fromPartial);
+    expect(partialSides.known).toBe(true);
+    expect(partialSides.unknown / fromPartial.volume).toBeCloseTo(barSides(partial).unknown / partial.volume, 2);
+    expect(partialSides.buy + partialSides.sell + partialSides.unknown).toBeCloseTo(fromPartial.volume, 6);
+    const fromUnsided = rolloverBar(unsided, random);
+    expect(barSides(fromUnsided).known).toBe(false);
+    expect(fromUnsided.buy_volume).toBeUndefined();
+    expect(fromUnsided.sell_volume).toBeUndefined();
+    const fromBuyOnly = rolloverBar(buyOnly, random);
+    expect(fromBuyOnly.sell_volume).toBeUndefined();
+    expect(barSides(fromBuyOnly)).toMatchObject({ known: true, unknown: 0 });
+  });
+
+  it("the brief's pooled method: warm-ups untimed, timed runs pooled, onBar plus readOutput only", () => {
+    const { bars } = trendBars({ count: 500 });
+    let onBarCalls = 0;
+    const counted: RuntimeIndicatorDef<unknown, unknown> = {
+      ...(rsiIndicator as RuntimeIndicatorDef<unknown, unknown>),
+      onBar: (ctx) => {
+        onBarCalls += 1;
+        rsiIndicator.onBar(ctx as never);
+      },
+    };
+    const probe = probeReplayPooled(counted, bars, { length: 14 }, { warmupRuns: 2, timedRuns: 3 });
+    expect(onBarCalls).toBe(5 * 500);
+    expect(probe.pooled.count).toBe(3 * 500);
+    expect(probe.perRun).toHaveLength(3);
+    expect(probe.runWallMs).toHaveLength(3);
+    expect(probe.perRun.every((run) => run.count === 500)).toBe(true);
+    expect(probe.pooled.p99).toBeGreaterThanOrEqual(probe.pooled.p50);
+    expect(probe.faulted).toBe(false);
+    expect(formatPooledReplayProbe(probe)).toContain("pooled replay 500 bars x 3 after 2 warm-ups");
+    const sorted = [...probe.perRun.flatMap(() => [])];
+    expect(sorted).toEqual([]);
+    expect(probeReplayPooled(rsiIndicator, bars, { length: 14 }).warmupRuns).toBe(3);
+  });
+
+  it("the pooled method marks a faulting indicator", () => {
+    const thrower: RuntimeIndicatorDef<Record<string, never>, Record<string, never>> = {
+      ...hoarder,
+      id: "pooledThrower",
+      createState: () => ({}),
+      onBar: () => {
+        throw new Error("boom");
+      },
+      readOutput: () => ({ value: null }),
+    } as unknown as RuntimeIndicatorDef<Record<string, never>, Record<string, never>>;
+    expect(probeReplayPooled(thrower, trendBars({ count: 5 }).bars, {}, { warmupRuns: 0, timedRuns: 1 }).faulted).toBe(true);
   });
 
   it("shows a hoarder growing per bar while the runtime's own caches stay bounded", () => {

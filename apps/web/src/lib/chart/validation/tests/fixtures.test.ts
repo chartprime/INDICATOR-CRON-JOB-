@@ -121,6 +121,32 @@ describe("arrival scripts", () => {
     expect(frames.map((frame) => frame.volume)).toEqual([...frames.map((frame) => frame.volume)].sort((a, b) => a - b));
   });
 
+  it("forming revisions scale buy, sell and unknown volume independently, never turning unsided volume into selling (Codex finding 1)", () => {
+    const { bars: equity, labels } = equityUnsidedBars({ count: 6 });
+    const partial = equity[labels.partiallySidedIndices[0]];
+    const full = barSides(partial);
+    expect(full.unknown).toBeGreaterThan(0);
+    expect(full.delta).toBeGreaterThan(0);
+    for (const frame of formingRevisions(partial, 4).slice(0, 4)) {
+      const sides = barSides(frame);
+      const share = frame.volume / partial.volume;
+      expect(sides.known).toBe(true);
+      expect(sides.buy).toBeCloseTo(full.buy * share, 3);
+      expect(sides.sell).toBeCloseTo(full.sell * share, 3);
+      expect(sides.unknown).toBeCloseTo(full.unknown * share, 3);
+      expect(sides.unknown / frame.volume).toBeCloseTo(full.unknown / partial.volume, 3);
+      expect(Math.sign(sides.delta)).toBe(Math.sign(full.delta));
+    }
+    const unsided = equity[labels.unsidedIndices[0]];
+    for (const frame of formingRevisions(unsided, 3)) expect(barSides(frame).known).toBe(false);
+    // A Binance bar carrying only buy_volume keeps carrying only buy_volume, and its implied sell scales with it.
+    const buyOnly = { ...bars[0], sell_volume: undefined } as BarFrame;
+    delete (buyOnly as { sell_volume?: number }).sell_volume;
+    const revision = formingRevisions(buyOnly, 2)[0];
+    expect(revision.sell_volume).toBeUndefined();
+    expect(barSides(revision).sell).toBeCloseTo(barSides(buyOnly).sell * (revision.volume / buyOnly.volume), 3);
+  });
+
   it("the chart classifies live arrivals as APPENDED then REPLACED_EDGE for each bar", () => {
     const arrivals = liveArrivals(bars.slice(0, 2), 3);
     const chart: BarFrame[] = [];

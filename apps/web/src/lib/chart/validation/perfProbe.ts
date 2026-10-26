@@ -1,6 +1,9 @@
 import type { BarFrame, TradeFrame } from "../../../types/frames";
 import { MAX_RETAINED_SOURCE_BARS } from "../candleLifecycle";
-import type { RuntimeIndicatorDef } from "../indicatorTypes";
+import { withDrawOwnerScope } from "../draw/creationScope";
+import { clearForIndicator } from "../draw/registry";
+import type { IndicatorBarCtx, RuntimeIndicatorDef } from "../indicatorTypes";
+import { barSides } from "../../indicators/barSides";
 import { seeded, tradeFrame, type FixtureIdentity } from "./fixtures";
 import { openLiveSession, type LiveExtras } from "./liveDrive";
 import { tapeOf, ticksOf } from "./syntheticTape";
@@ -218,6 +221,44 @@ export interface RolloverProbe {
   faulted: boolean;
 }
 
+function round2(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+/**
+ * The bar after `last` for the rollover probe: a small random step in price
+ * and volume, with sides read through `barSides` and written coherently. A
+ * sided bar gets a fresh buy share and keeps `last`'s unknown share; a bar
+ * that carried only `buy_volume` keeps carrying only that; an unsided bar
+ * stays unsided. Nothing is inherited by spreading `last`.
+ */
+export function rolloverBar(last: BarFrame, random: () => number): BarFrame {
+  const open = last.close;
+  const close = Math.max(1, open + (random() - 0.5) * open * 0.001);
+  const volume = round2(50 + random() * 100);
+  const { buy_volume: _buy, sell_volume: _sell, ...rest } = last;
+  const bar: Record<string, unknown> = {
+    ...rest,
+    ts_open: last.ts_open + last.interval_ms,
+    open,
+    high: Math.max(open, close) + random(),
+    low: Math.min(open, close) - random(),
+    close,
+    volume,
+    trade_count: last.trade_count === null ? null : Math.max(1, Math.round(volume / 3)),
+    closed: true,
+  };
+  const sides = barSides(last);
+  if (sides.known) {
+    const unknownShare = last.volume > 0 ? sides.unknown / last.volume : 0;
+    const sided = round2(volume * (1 - unknownShare));
+    const buy = round2(sided * (0.3 + random() * 0.4));
+    bar.buy_volume = buy;
+    if (last.sell_volume !== undefined && last.sell_volume !== null) bar.sell_volume = round2(sided - buy);
+  }
+  return bar as BarFrame;
+}
+
 /** `bars` fills the chart to the cap; `extraBars` more then roll the front off, as the live chart does after a week. */
 export function probeRollover<S, T>(def: RuntimeIndicatorDef<S, T>, bars: readonly BarFrame[], settings: T, options: RolloverOptions = {}): RolloverProbe {
   const extraBars = options.extraBars ?? 1_000;
@@ -230,20 +271,7 @@ export function probeRollover<S, T>(def: RuntimeIndicatorDef<S, T>, bars: readon
   const random = seeded(13);
   let last = seed[seed.length - 1];
   for (let index = 0; index < extraBars; index += 1) {
-    const open = last.close;
-    const close = Math.max(1, open + (random() - 0.5) * open * 0.001);
-    const volume = Math.round((50 + random() * 100) * 100) / 100;
-    const bar = {
-      ...last,
-      ts_open: last.ts_open + last.interval_ms,
-      open,
-      high: Math.max(open, close) + random(),
-      low: Math.min(open, close) - random(),
-      close,
-      volume,
-      buy_volume: Math.round(volume * (0.3 + random() * 0.4) * 100) / 100,
-      closed: true,
-    } as BarFrame;
+    const bar = rolloverBar(last, random);
     session.dispatch({ bar });
     last = bar;
   }
@@ -266,6 +294,105 @@ export function probeRollover<S, T>(def: RuntimeIndicatorDef<S, T>, bars: readon
   };
   session.close();
   return result;
+}
+
+export interface PooledReplayOptions {
+  /** Untimed replays before measuring (default 3). */
+  warmupRuns?: number;
+  /** Timed replays whose per-bar samples are pooled (default 5). */
+  timedRuns?: number;
+  extras?: LiveExtras;
+}
+
+export interface PooledReplayProbe {
+  id: string;
+  bars: number;
+  warmupRuns: number;
+  timedRuns: number;
+  /** Per-bar `onBar` plus `readOutput` over every timed run, pooled; percentiles by nearest rank. */
+  pooled: Percentiles;
+  /** Each timed run on its own, for the spread. */
+  perRun: Percentiles[];
+  /** Wall time of each timed run, ms. */
+  runWallMs: number[];
+  faulted: boolean;
+}
+
+const NOOP_DRAW = Object.freeze({ fill: () => {} });
+const NOOP_MARKERS = Object.freeze({ plotshape: () => {}, plotchar: () => {} });
+const EMPTY_TA = Object.freeze({});
+let nextPooledOwnerId = 1;
+
+/**
+ * The frozen measurement of `PM/cycle1/brief-rvol-clock.md` (amendment 9):
+ * `warmupRuns` untimed replays, then `timedRuns` timed replays over `bars`,
+ * timing `onBar` plus `readOutput` per bar with no-op draw and marker
+ * namespaces (drawing excluded), samples pooled across runs, p99 by nearest
+ * rank. It bypasses the runtime's own bookkeeping so the number is the
+ * indicator's alone; `probeReplay` stays the measurement of a real activation.
+ */
+export function probeReplayPooled<S, T>(def: RuntimeIndicatorDef<S, T>, bars: readonly BarFrame[], settings: T, options: PooledReplayOptions = {}): PooledReplayProbe {
+  const warmupRuns = options.warmupRuns ?? 3;
+  const timedRuns = options.timedRuns ?? 5;
+  const extras = options.extras ?? {};
+  const pooled: number[] = [];
+  const perRun: Percentiles[] = [];
+  const runWallMs: number[] = [];
+  let faulted = false;
+  const lastClosed = bars.findLastIndex((bar) => bar.closed);
+  const run = (timed: boolean): void => {
+    const ownerId = `pooled:${nextPooledOwnerId}:${def.id}`;
+    nextPooledOwnerId += 1;
+    const samples: number[] = [];
+    try {
+      const state = withDrawOwnerScope(ownerId, () => def.createState(settings));
+      const runStarted = performance.now();
+      for (let index = 0; index < bars.length; index += 1) {
+        const bar = bars[index];
+        const ctx: IndicatorBarCtx<S, T> = {
+          bar,
+          trades: [],
+          tradeAvailability: "HISTORICAL_UNAVAILABLE",
+          liquidity: extras.liquidity ?? undefined,
+          l2: extras.l2?.atTime?.(bar.ts_open + bar.interval_ms) ?? extras.l2 ?? undefined,
+          ticks: extras.ticks ?? undefined,
+          state,
+          settings,
+          replace: false,
+          replaying: true,
+          drawNow: index >= lastClosed,
+          barIndex: index,
+          barCount: bars.length,
+          ta: EMPTY_TA,
+          draw: NOOP_DRAW,
+          markers: NOOP_MARKERS,
+          pane: { paneIndex: 0 },
+        };
+        const started = performance.now();
+        def.onBar(ctx);
+        const output = def.readOutput(state);
+        const elapsed = performance.now() - started;
+        if (timed) samples.push(elapsed);
+        for (const value of Object.values(output)) if (value !== null && !Number.isFinite(value)) faulted = true;
+      }
+      if (timed) {
+        runWallMs.push(performance.now() - runStarted);
+        perRun.push(percentilesOf(samples));
+        pooled.push(...samples);
+      }
+    } catch {
+      faulted = true;
+    } finally {
+      clearForIndicator(ownerId);
+    }
+  };
+  for (let index = 0; index < warmupRuns; index += 1) run(false);
+  for (let index = 0; index < timedRuns; index += 1) run(true);
+  return { id: def.id, bars: bars.length, warmupRuns, timedRuns, pooled: percentilesOf(pooled), perRun, runWallMs, faulted };
+}
+
+export function formatPooledReplayProbe(probe: PooledReplayProbe): string {
+  return `${probe.id} pooled replay ${probe.bars} bars x ${probe.timedRuns} after ${probe.warmupRuns} warm-ups: onBar+readOutput p50 ${ms(probe.pooled.p50)} p99 ${ms(probe.pooled.p99)} max ${ms(probe.pooled.max)}; run p99s ${probe.perRun.map((run) => run.p99.toFixed(4)).join("/")} ms; run wall ${probe.runWallMs.map((wall) => wall.toFixed(0)).join("/")} ms${probe.faulted ? "; FAULTED" : ""}`;
 }
 
 function ms(value: number): string {

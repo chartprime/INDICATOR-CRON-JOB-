@@ -67,6 +67,30 @@ describe("marker budget", () => {
     expect(judgeBudget(markerBudgetOf([], 500), 50).ok).toBe(true);
   });
 
+  it("a faulting indicator is reported as faulted and never passes the budget (Codex finding 6)", () => {
+    let calls = 0;
+    const thrower: RuntimeIndicatorDef<Record<string, never>, Record<string, never>> = {
+      ...everyBar,
+      id: "throwsAfterTen",
+      onBar: (ctx) => {
+        calls += 1;
+        if (calls > 10) throw new Error("boom");
+        ctx.markers.plotshape({ shape: "circle" });
+      },
+    };
+    const budget = countMarkers(thrower, bars, {});
+    expect(budget.faulted).toBe(true);
+    expect(budget.total).toBe(0);
+    expect(judgeBudget(budget, 1_000_000).ok).toBe(false);
+    expect(judgeBudget(budget, 1_000_000).faulted).toBe(true);
+    expect(summarizeBudget("thrower", budget, judgeBudget(budget, 50))).toContain("FAULTED");
+    calls = 0;
+    const over = countMarkersOver(thrower, bars.slice(0, 20).map((bar) => ({ bar })), {});
+    expect(over.faulted).toBe(true);
+    expect(judgeBudget(over, 1_000_000).ok).toBe(false);
+    expect(judgeBudget(markerBudgetOf([], 500, false), 50)).toMatchObject({ ok: true, faulted: false });
+  });
+
   it("a duplicated closed bar does not double the budget", () => {
     const { arrivals } = duplicateClosedArrivals(bars.slice(0, 20), 10);
     const budget = countMarkersOver(everyBar, arrivals, {});

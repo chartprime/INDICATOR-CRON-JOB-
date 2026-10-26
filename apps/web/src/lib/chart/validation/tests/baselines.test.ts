@@ -9,14 +9,16 @@ import { resetDrawOwnerScopeForTests } from "../../draw/creationScope";
 import { resetDrawRegistryForTests } from "../../draw/registry";
 import type { RuntimeIndicatorDef } from "../../indicatorTypes";
 import { fakeL2, ladderOf, tradeEvent, wallLifecycle } from "../fakeL2";
-import { trendBars } from "../fixtures";
+import { relativeVolumeCryptoFixture, trendBars } from "../fixtures";
 import type { LiveExtras } from "../liveDrive";
 import {
   formatFormingBarProbe,
+  formatPooledReplayProbe,
   formatReplayProbe,
   formatRolloverProbe,
   probeFormingBar,
   probeReplay,
+  probeReplayPooled,
   probeRollover,
 } from "../perfProbe";
 
@@ -74,6 +76,27 @@ describe.runIf(process.env.VALIDATION_BASELINES === "1")("performance baselines 
       expect(row.replay.faulted).toBe(false);
       expect(row.forming.faulted).toBe(false);
       expect(row.rollover.faulted).toBe(false);
+    }
+  }, 600_000);
+
+  // The brief's frozen method (amendment 9) on the brief's own crypto fixture:
+  // the floor a Relative Volume measurement is compared against. Separate from
+  // the rows above so those reference points keep their original method.
+  it("measures the pooled method on the Relative Volume crypto fixture for rsi and bollinger", () => {
+    const { bars, labels } = relativeVolumeCryptoFixture();
+    const window = bars.slice(labels.timingIndices.first, labels.timingIndices.last + 1);
+    const probes = [
+      probeReplayPooled(rsiIndicator as RuntimeIndicatorDef<unknown, unknown>, window, rsiIndicator.defaultSettings),
+      probeReplayPooled(bollingerIndicator as RuntimeIndicatorDef<unknown, unknown>, window, bollingerIndicator.defaultSettings),
+    ];
+    console.log(probes.map(formatPooledReplayProbe).join("\n"));
+    if (process.env.VALIDATION_BASELINES_POOLED_OUT) {
+      writeFileSync(process.env.VALIDATION_BASELINES_POOLED_OUT, `${JSON.stringify({ bars: window.length, node: process.version, probes }, null, 2)}\n`);
+    }
+    for (const probe of probes) {
+      expect(probe.bars).toBe(10_080);
+      expect(probe.pooled.count).toBe(5 * 10_080);
+      expect(probe.faulted).toBe(false);
     }
   }, 600_000);
 });

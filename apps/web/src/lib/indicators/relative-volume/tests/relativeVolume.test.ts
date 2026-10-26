@@ -80,7 +80,8 @@ const reading = (overrides: Partial<RvolReading>): RvolReading => ({
 
 describe("relativeVolume -- identity, registry and Historical Mode policy", () => {
   it("is registered last with the brief's identity and an honest candle-only policy", () => {
-    expect(INDICATOR_REGISTRY[INDICATOR_REGISTRY.length - 1].id).toBe("relativeVolume");
+    // Appended at its build; every later indicator appends after it (Compression Breakout did), so the check is registration, not last place.
+    expect(INDICATOR_REGISTRY.map((def) => def.id)).toContain("relativeVolume");
     expect(relativeVolumeIndicator.label).toBe("Relative Volume (Time of Day)");
     expect(relativeVolumeIndicator.category).toBe("technical");
     expect(relativeVolumeIndicator.placement).toEqual({ kind: "ownPane", priceLines: [1, 2, 3], autoscaleRange: { min: 0, max: 4 } });

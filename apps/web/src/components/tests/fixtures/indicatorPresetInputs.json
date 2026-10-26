@@ -212,6 +212,72 @@
       "kind": "color"
     }
   ],
+  "compressionBreakout": [
+    {
+      "key": "rangeLength",
+      "kind": "numeric",
+      "min": 10,
+      "max": 50,
+      "step": 1
+    },
+    {
+      "key": "minCompressionBars",
+      "kind": "numeric",
+      "min": 2,
+      "max": 30,
+      "step": 1
+    },
+    {
+      "key": "confirmMultiple",
+      "kind": "numeric",
+      "min": 1,
+      "max": 3,
+      "step": 0.1
+    },
+    {
+      "key": "widthMultiple",
+      "kind": "numeric",
+      "min": 1,
+      "max": 4,
+      "step": 0.5
+    },
+    {
+      "key": "failBars",
+      "kind": "numeric",
+      "min": 1,
+      "max": 20,
+      "step": 1
+    },
+    {
+      "key": "holdBars",
+      "kind": "numeric",
+      "min": 0,
+      "max": 200,
+      "step": 1
+    },
+    {
+      "key": "trendFast",
+      "kind": "numeric",
+      "min": 10,
+      "max": 199,
+      "step": 1
+    },
+    {
+      "key": "trendSlow",
+      "kind": "numeric",
+      "min": 20,
+      "max": 400,
+      "step": 1
+    },
+    {
+      "key": "showMarkers",
+      "kind": "boolean"
+    },
+    {
+      "key": "showRanges",
+      "kind": "boolean"
+    }
+  ],
   "cvdDivergence": [
     {
       "key": "period",

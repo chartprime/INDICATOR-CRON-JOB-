@@ -178,7 +178,8 @@ describe("equity unsided volume (check 9) and Historical Mode policy (check 10)"
   });
 
   it("OHLCV_POLICY row, appended last in the registry, and a candle-only replay with no extras yields real ratios on every archived instrument", () => {
-    expect(INDICATOR_REGISTRY[INDICATOR_REGISTRY.length - 1].id).toBe("relativeVolume");
+    // Appended at its build; every later indicator appends after it (Compression Breakout did), so the check is registration, not last place.
+    expect(INDICATOR_REGISTRY.map((def) => def.id)).toContain("relativeVolume");
     expect(HISTORICAL_INDICATOR_POLICIES.relativeVolume).toEqual({ requiredCapabilities: ["ohlcv"] });
     for (const provider of ["BINANCE", "DXFEED", "DATABENTO"] as const) {
       expect(historicalIndicatorAvailability("relativeVolume", new Set(["ohlcv"]), provider)).toEqual({ available: true, reason: null });

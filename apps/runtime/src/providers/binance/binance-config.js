@@ -7,6 +7,18 @@ const BINANCE_USDM_WS_MARKET_BASE_URL = "wss://fstream.binance.com/market";
 const BINANCE_SPOT_REST_BASE_URL = "https://api.binance.com";
 const BINANCE_USDM_REST_BASE_URL = "https://fapi.binance.com";
 
+// The spot origins can be moved to Binance's market-data mirrors
+// (wss://data-stream.binance.vision:9443, https://data-api.binance.vision),
+// which are not geo-blocked. The USD-M origins have no mirror and stay fixed.
+const DEFAULT_BINANCE_ENDPOINTS = Object.freeze({
+  spotWsBaseUrl: BINANCE_SPOT_WS_BASE_URL,
+  spotRestBaseUrl: BINANCE_SPOT_REST_BASE_URL,
+});
+const ENDPOINT_RULES = Object.freeze({
+  spotWsBaseUrl: Object.freeze({ env: "TT_BINANCE_SPOT_WS_BASE_URL", protocols: Object.freeze(["ws:", "wss:"]) }),
+  spotRestBaseUrl: Object.freeze({ env: "TT_BINANCE_SPOT_REST_BASE_URL", protocols: Object.freeze(["http:", "https:"]) }),
+});
+
 const MARKET_KINDS = Object.freeze({ SPOT: "SPOT", PERPETUAL: "PERPETUAL" });
 const EVENT_TYPES = Object.freeze({
   TRADE: "TRADE",
@@ -108,9 +120,58 @@ function listAllowedCandleIntervals() {
   return Object.freeze([...ALLOWED_CANDLE_INTERVALS]);
 }
 
-function restBaseUrlFor(marketKind) {
+function isBareOrigin(url) {
+  return url.username === "" && url.password === "" && url.search === "" && url.hash === "" &&
+    (url.pathname === "/" || url.pathname === "");
+}
+
+function normalizeEndpointOrigin(name, raw) {
+  const rule = ENDPOINT_RULES[name];
+  let url = null;
+  if (typeof raw === "string") {
+    try {
+      url = new URL(raw.trim());
+    } catch {
+      url = null;
+    }
+  }
+  if (url === null || !rule.protocols.includes(url.protocol) || !isBareOrigin(url)) {
+    throw new Error(
+      `binance-config: ${rule.env} must be a bare ${rule.protocols.map((p) => p.slice(0, -1)).join(" or ")} origin without path, query or credentials`,
+    );
+  }
+  return url.origin;
+}
+
+/** The spot endpoints with any override applied and validated; USD-M has none. */
+function resolveBinanceEndpoints(overrides = {}) {
+  if (overrides === null || typeof overrides !== "object" || Array.isArray(overrides)) {
+    throw new Error("binance-config: endpoints must be a plain object");
+  }
+  const resolved = { ...DEFAULT_BINANCE_ENDPOINTS };
+  for (const key of Object.keys(overrides)) {
+    if (!Object.hasOwn(ENDPOINT_RULES, key)) {
+      throw new Error(`binance-config: unknown endpoint override "${key}"`);
+    }
+    if (overrides[key] === undefined) continue;
+    resolved[key] = normalizeEndpointOrigin(key, overrides[key]);
+  }
+  return Object.freeze(resolved);
+}
+
+/** Reads the spot endpoint overrides from the environment; an empty value counts as unset. */
+function binanceEndpointsFromEnv(env = process.env) {
+  const overrides = {};
+  const ws = env.TT_BINANCE_SPOT_WS_BASE_URL;
+  if (typeof ws === "string" && ws.trim() !== "") overrides.spotWsBaseUrl = ws;
+  const rest = env.TT_BINANCE_SPOT_REST_BASE_URL;
+  if (typeof rest === "string" && rest.trim() !== "") overrides.spotRestBaseUrl = rest;
+  return resolveBinanceEndpoints(overrides);
+}
+
+function restBaseUrlFor(marketKind, endpoints = DEFAULT_BINANCE_ENDPOINTS) {
   if (marketKind === MARKET_KINDS.SPOT) {
-    return BINANCE_SPOT_REST_BASE_URL;
+    return endpoints.spotRestBaseUrl;
   }
   if (marketKind === MARKET_KINDS.PERPETUAL) {
     return BINANCE_USDM_REST_BASE_URL;
@@ -118,9 +179,9 @@ function restBaseUrlFor(marketKind) {
   return undefined;
 }
 
-function wsBaseUrlsFor(marketKind) {
+function wsBaseUrlsFor(marketKind, endpoints = DEFAULT_BINANCE_ENDPOINTS) {
   if (marketKind === MARKET_KINDS.SPOT) {
-    return Object.freeze({ public: BINANCE_SPOT_WS_BASE_URL });
+    return Object.freeze({ public: endpoints.spotWsBaseUrl });
   }
   if (marketKind === MARKET_KINDS.PERPETUAL) {
     return Object.freeze({
@@ -131,7 +192,7 @@ function wsBaseUrlsFor(marketKind) {
   return undefined;
 }
 
-function createBinanceMarketKindContext(marketKind) {
+function createBinanceMarketKindContext(marketKind, endpoints = DEFAULT_BINANCE_ENDPOINTS) {
   if (!isAllowedMarketKind(marketKind)) {
     const category = marketKind === undefined ? "missing" : "unrecognized";
     throw new Error(
@@ -140,7 +201,7 @@ function createBinanceMarketKindContext(marketKind) {
   }
   return Object.freeze({
     marketKind,
-    wsBaseUrls: wsBaseUrlsFor(marketKind),
+    wsBaseUrls: wsBaseUrlsFor(marketKind, endpoints),
     subscriptionRegistry: createSubscriptionRegistry(),
   });
 }
@@ -162,4 +223,7 @@ module.exports = {
   createBinanceMarketKindContext,
   l2GeometryFor,
   validL2Geometry,
+  DEFAULT_BINANCE_ENDPOINTS,
+  resolveBinanceEndpoints,
+  binanceEndpointsFromEnv,
 };

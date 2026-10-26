@@ -53,6 +53,8 @@ generated from `apps/runtime/src/platform/config-registry.js`, and
 | `TT_DXFEED_TOKEN_TIMEOUT_MS` | terminal-c, dxfeed-collector, operator | a number, above 0 |  | .env | Deadline for one broker token request (default 30000) |
 | `TT_VPIN_ENABLED` | terminal-c | 0 or 1 |  | .env | 0 disables VPIN warm-up and live polling (default on) |
 | `BINANCE_TRADE_QUEUE_DEPTH` | terminal-c | a whole number, above 0 |  | .env | Binance trade queue depth before overflow (default 5000) |
+| `TT_BINANCE_SPOT_WS_BASE_URL` | terminal-c | a ws(s) origin without path, query or credentials |  | .env | Binance spot stream origin (default wss://stream.binance.com); the market-data mirror wss://data-stream.binance.vision:9443 is not geo-blocked. USD-M perpetuals keep their fixed origin |
+| `TT_BINANCE_SPOT_REST_BASE_URL` | terminal-c | an http(s) origin without path, query or credentials |  | .env | Binance spot REST origin for depth snapshots and candle backfill (default https://api.binance.com); the market-data mirror https://data-api.binance.vision is not geo-blocked. USD-M perpetuals keep their fixed origin |
 | `L2_MEMORY_DEBUG` | terminal-c | 0 or 1 |  | .env | 1 logs L2 memory debugging |
 | `L2_ICEBERG` | terminal-c | 0 or 1 |  | .env | 0 turns the Iceberg Detector off (default on): no trackers, no history restore or save, no host fill; the channel still answers with empty pages |
 | `L2_ICEBERG_HISTORY` | terminal-c | 0 or 1 |  | .env | 0 keeps iceberg histories in memory only, never on disk, and asks the host for nothing (default on) |

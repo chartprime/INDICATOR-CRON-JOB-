@@ -1,7 +1,7 @@
 const { fetchKlines, MAX_KLINES_PER_REQUEST } = require("./binance-http-client");
 const { parseKlineRows } = require("./binance-event-normalizer");
 const { assertAllowedMarketKind, assertAllowedSymbol, safeTelemetrySymbol, safeTelemetryMarketKind } = require("./binance-subscription-guard");
-const { isAllowedCandleInterval, candleIntervalMsFor } = require("./binance-config");
+const { isAllowedCandleInterval, candleIntervalMsFor, restBaseUrlFor, DEFAULT_BINANCE_ENDPOINTS } = require("./binance-config");
 const { emitTelemetry } = require("../../platform/telemetry");
 
 const DEFAULT_DAYS = 7;
@@ -13,7 +13,7 @@ function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function createBinanceKlineBackfill({ fetchImpl = globalThis.fetch, telemetry } = {}) {
+function createBinanceKlineBackfill({ fetchImpl = globalThis.fetch, telemetry, endpoints = DEFAULT_BINANCE_ENDPOINTS } = {}) {
   async function fetchRecentBars(
     marketKind,
     symbol,
@@ -65,6 +65,7 @@ function createBinanceKlineBackfill({ fetchImpl = globalThis.fetch, telemetry } 
         startTime: cursor,
         limit: MAX_KLINES_PER_REQUEST,
         fetchImpl,
+        baseUrl: restBaseUrlFor(marketKind, endpoints),
       });
       pagesFetched += 1;
 

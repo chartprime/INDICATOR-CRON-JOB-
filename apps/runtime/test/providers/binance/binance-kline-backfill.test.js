@@ -97,6 +97,21 @@ describe("binance-kline-backfill", () => {
     expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 
+  test("an endpoints override sends every spot page to the mirror origin", async () => {
+    const fetchImpl = jest.fn(async (url) => {
+      const startTime = Number(new URL(url).searchParams.get("startTime"));
+      return jsonResponse(fullPage(startTime, 60));
+    });
+    const backfill = createBinanceKlineBackfill({
+      fetchImpl,
+      telemetry: () => {},
+      endpoints: { spotWsBaseUrl: "wss://stream.binance.com", spotRestBaseUrl: "https://data-api.binance.vision" },
+    });
+    const result = await backfill.fetchRecentBars("SPOT", "BTCUSDT", { interval: "1m", intervalMs: ONE_MINUTE_MS, days: 1 / 24 });
+    expect(result.ok).toBe(true);
+    expect(fetchImpl.mock.calls[0][0]).toMatch(/^https:\/\/data-api\.binance\.vision\/api\/v3\/klines\?symbol=BTCUSDT/);
+  });
+
   test("paginates across pages until the cursor itself proves it reached the closed-candle boundary", async () => {
     let call = 0;
     const fetchImpl = jest.fn(async (url) => {

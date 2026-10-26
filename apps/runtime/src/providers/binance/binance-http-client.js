@@ -253,12 +253,13 @@ async function fetchDepthSnapshot(marketKind, symbol, options = {}) {
     fetchImpl = globalThis.fetch,
     timeoutMs = DEFAULT_TIMEOUT_MS,
     maxResponseBytes = DEFAULT_MAX_RESPONSE_BYTES,
+    baseUrl: baseUrlOverride,
   } = options;
 
   assertAllowedMarketKind(marketKind);
   assertAllowedSymbol(symbol);
 
-  const baseUrl = restBaseUrlFor(marketKind);
+  const baseUrl = baseUrlOverride ?? restBaseUrlFor(marketKind);
   const path = DEPTH_SNAPSHOT_PATHS[marketKind];
   const url = new URL(path, baseUrl);
   url.searchParams.set("symbol", symbol);
@@ -275,6 +276,7 @@ async function fetchKlines(marketKind, symbol, options = {}) {
     fetchImpl = globalThis.fetch,
     timeoutMs = DEFAULT_TIMEOUT_MS,
     maxResponseBytes = DEFAULT_MAX_RESPONSE_BYTES,
+    baseUrl: baseUrlOverride,
   } = options;
 
   assertAllowedMarketKind(marketKind);
@@ -289,7 +291,7 @@ async function fetchKlines(marketKind, symbol, options = {}) {
     throw new Error(`fetchKlines: limit must be a positive integer <= ${MAX_KLINES_PER_REQUEST}`);
   }
 
-  const baseUrl = restBaseUrlFor(marketKind);
+  const baseUrl = baseUrlOverride ?? restBaseUrlFor(marketKind);
   const path = KLINES_PATHS[marketKind];
   const url = new URL(path, baseUrl);
   url.searchParams.set("symbol", symbol);
@@ -305,12 +307,13 @@ async function fetchExchangeInfo(marketKind, symbol, options = {}) {
     fetchImpl = globalThis.fetch,
     timeoutMs = DEFAULT_TIMEOUT_MS,
     maxResponseBytes = DEFAULT_MAX_RESPONSE_BYTES,
+    baseUrl: baseUrlOverride,
   } = options;
 
   assertAllowedMarketKind(marketKind);
   assertAllowedSymbol(symbol);
 
-  const baseUrl = restBaseUrlFor(marketKind);
+  const baseUrl = baseUrlOverride ?? restBaseUrlFor(marketKind);
   const path = EXCHANGE_INFO_PATHS[marketKind];
   const url = new URL(path, baseUrl);
   url.searchParams.set("symbol", symbol);

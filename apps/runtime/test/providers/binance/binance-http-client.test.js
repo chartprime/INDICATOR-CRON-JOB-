@@ -39,6 +39,18 @@ describe("binance-http-client fetchDepthSnapshot", () => {
     );
   });
 
+  test("an explicit baseUrl replaces the default origin and nothing else in the request", async () => {
+    const fetchImpl = jest.fn(async () => jsonResponse({ lastUpdateId: 1, bids: [], asks: [] }));
+    await fetchDepthSnapshot("SPOT", "BTCUSDT", { fetchImpl, baseUrl: "https://data-api.binance.vision" });
+    await fetchKlines("SPOT", "BTCUSDT", { fetchImpl, interval: "1m", startTime: 0, limit: 2, baseUrl: "http://127.0.0.1:8099" });
+    await fetchExchangeInfo("SPOT", "BTCUSDT", { fetchImpl, baseUrl: "https://data-api.binance.vision" });
+    expect(fetchImpl.mock.calls.map((call) => call[0])).toEqual([
+      "https://data-api.binance.vision/api/v3/depth?symbol=BTCUSDT&limit=5000",
+      "http://127.0.0.1:8099/api/v3/klines?symbol=BTCUSDT&interval=1m&startTime=0&limit=2",
+      "https://data-api.binance.vision/api/v3/exchangeInfo?symbol=BTCUSDT",
+    ]);
+  });
+
   test("never follows a redirect silently, rejecting it at the fetch layer instead", async () => {
     const fetchImpl = jest.fn(async () => jsonResponse({ lastUpdateId: 1, bids: [], asks: [] }));
     await fetchDepthSnapshot("SPOT", "BTCUSDT", { fetchImpl });

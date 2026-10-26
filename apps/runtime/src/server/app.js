@@ -2,6 +2,7 @@ const http = require("node:http");
 const { createRuntimeHealthMonitor } = require("../platform/runtime-health-monitor");
 const { WebSocket, WebSocketServer } = require("ws");
 const { createBinanceConnection } = require("../providers/binance/binance-connection");
+const { binanceEndpointsFromEnv } = require("../providers/binance/binance-config");
 const { assertAllowedSymbol } = require("../providers/binance/binance-subscription-guard");
 const { createMarketDataServer } = require("./market-data-server");
 const { createDxFeedMarketDataServer } = require("./dxfeed-market-data-server");
@@ -94,6 +95,7 @@ function createApp({
   clientMessageRateWindowMs = DEFAULT_CLIENT_MESSAGE_RATE_WINDOW_MS,
   wsHeartbeatMs = DEFAULT_WS_HEARTBEAT_MS,
   binanceTradeQueueDepth = positiveIntegerFromEnv(process.env.BINANCE_TRADE_QUEUE_DEPTH) ?? DEFAULT_BINANCE_TRADE_QUEUE_DEPTH,
+  binanceEndpoints = binanceEndpointsFromEnv(process.env),
   archiveRoute = createArchiveRouteOrRefuse(),
   historicalL2Route = createHistoricalL2Route(),
   heatmapRoute,
@@ -125,7 +127,9 @@ function createApp({
     }
   }
   const allowedOriginSet = new Set(allowedOrigins);
-  const connection = createBinanceConnection({ telemetry, webSocketImpl, fetchImpl, backpressureMaxQueueDepth: binanceTradeQueueDepth });
+  const connection = createBinanceConnection({
+    telemetry, webSocketImpl, fetchImpl, backpressureMaxQueueDepth: binanceTradeQueueDepth, endpoints: binanceEndpoints,
+  });
   const storageReader = resolveStorageReader({ dbPath, liveStorageServiceUrl, liveStorageClientToken });
   const volumeProfileCache = createVolumeProfileCache({ dbPath: volumeProfileCachePath });
   const clientBufferOptions = {

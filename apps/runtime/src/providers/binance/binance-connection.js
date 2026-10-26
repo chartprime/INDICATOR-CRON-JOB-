@@ -1,5 +1,12 @@
 const { WebSocket: DefaultWebSocket } = require("ws");
-const { MARKET_KINDS, EVENT_TYPES, createBinanceMarketKindContext } = require("./binance-config");
+const {
+  MARKET_KINDS,
+  EVENT_TYPES,
+  createBinanceMarketKindContext,
+  restBaseUrlFor,
+  resolveBinanceEndpoints,
+  DEFAULT_BINANCE_ENDPOINTS,
+} = require("./binance-config");
 const {
   describeBinanceSubscription,
   safeTelemetrySymbol,
@@ -136,11 +143,13 @@ function createBinanceConnection(options = {}) {
     rawIngressPauseQueueBytes = Math.max(1, Math.floor(rawIngressMaxQueueBytes * 0.5)),
     rawIngressResumeQueueBytes = Math.max(0, Math.floor(rawIngressMaxQueueBytes * 0.125)),
     rawIngressNow = () => performance.now(),
+    endpoints = DEFAULT_BINANCE_ENDPOINTS,
   } = options;
 
   if (typeof webSocketImpl !== "function") {
     throw new Error("Binance connection requires a WebSocket implementation.");
   }
+  const resolvedEndpoints = resolveBinanceEndpoints(endpoints);
   if (!Number.isSafeInteger(routeSilenceTimeoutMs) || routeSilenceTimeoutMs <= 0) {
     throw new Error("routeSilenceTimeoutMs must be a positive safe integer.");
   }
@@ -224,8 +233,8 @@ function createBinanceConnection(options = {}) {
   }
 
   const marketKindContexts = Object.freeze({
-    SPOT: createBinanceMarketKindContext(MARKET_KINDS.SPOT),
-    PERPETUAL: createBinanceMarketKindContext(MARKET_KINDS.PERPETUAL),
+    SPOT: createBinanceMarketKindContext(MARKET_KINDS.SPOT, resolvedEndpoints),
+    PERPETUAL: createBinanceMarketKindContext(MARKET_KINDS.PERPETUAL, resolvedEndpoints),
   });
   const bookAssemblers = new Map();
   const depthSnapshots = new Map();
@@ -248,7 +257,7 @@ function createBinanceConnection(options = {}) {
       overflowPolicy: backpressureOverflowPolicy,
     }),
   });
-  const klineBackfill = createBinanceKlineBackfill({ fetchImpl, telemetry });
+  const klineBackfill = createBinanceKlineBackfill({ fetchImpl, telemetry, endpoints: resolvedEndpoints });
   const backpressureDrainScheduled = { SPOT: false, PERPETUAL: false };
   const backpressureDrainCursor = { SPOT: 0, PERPETUAL: 0 };
   const backpressureEpochs = new Map();
@@ -1609,7 +1618,10 @@ function createBinanceConnection(options = {}) {
 
     let result;
     try {
-      result = await fetchDepthSnapshot(descriptor.marketKind, descriptor.symbol, { fetchImpl });
+      result = await fetchDepthSnapshot(descriptor.marketKind, descriptor.symbol, {
+        fetchImpl,
+        baseUrl: restBaseUrlFor(descriptor.marketKind, resolvedEndpoints),
+      });
     } catch {
       result = Object.freeze({ ok: false, reason: "NETWORK_ERROR" });
     }
@@ -1649,7 +1661,10 @@ function createBinanceConnection(options = {}) {
 
     let result;
     try {
-      result = await fetchDepthSnapshot(descriptor.marketKind, descriptor.symbol, { fetchImpl });
+      result = await fetchDepthSnapshot(descriptor.marketKind, descriptor.symbol, {
+        fetchImpl,
+        baseUrl: restBaseUrlFor(descriptor.marketKind, resolvedEndpoints),
+      });
     } catch (error) {
       result = Object.freeze({ ok: false, reason: "NETWORK_ERROR" });
       emitTelemetry(telemetry, "market_data.binance_connection.depth_snapshot_exception", {

@@ -3,7 +3,7 @@ import globals from "globals";
 
 export default [
   {
-    ignores: ["**/node_modules/**", "**/.pytest_cache/**", "**/.venv/**", "apps/web/**", "apps/runtime/data/**", "scratch/**", "apps/runtime-python-reference/**", "benchmarks/results/**"],
+    ignores: ["**/node_modules/**", "dist-browser-direct/**", "**/.pytest_cache/**", "**/.venv/**", "apps/web/**", "apps/runtime/data/**", "scratch/**", "apps/runtime-python-reference/**", "benchmarks/results/**"],
   },
   js.configs.recommended,
   {

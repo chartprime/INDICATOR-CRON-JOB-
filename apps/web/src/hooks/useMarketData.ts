@@ -20,6 +20,7 @@ import type {
   SelectionTraceTransport,
   WorkerToMainMessage,
 } from "../workers/marketDataWorker";
+import { resolveDataSource, type DataSource } from "../workers/browserBinanceTransport";
 import {
   createTimeCoveredMarkerRetentionBuffer,
   type MarkerRetentionBuffer,
@@ -87,6 +88,12 @@ const ID_ORDER_COMPACTION_MIN_HEAD = 4_096;
 
 export interface UseMarketDataOptions {
   url: string;
+  /**
+   * Where the worker reads market data: the runtime WebSocket at `url`
+   * (default) or Binance directly from the browser ("browser-binance").
+   * Resolved from `?source=` and VITE_DATA_SOURCE when not given.
+   */
+  source?: DataSource;
   onSnapshotBars?: (
     bars: BarFrame[],
     selectionTrace?: SelectionTraceTransport,
@@ -318,10 +325,15 @@ export function createBoundedIdTracker(maxIds: number): BoundedIdTracker {
 
 export function useMarketData({
   url,
+  source: sourceOption,
   onSnapshotBars,
   onSelectionTrace,
   onBar,
 }: UseMarketDataOptions): UseMarketDataResult {
+  const source = sourceOption ?? resolveDataSource(
+    import.meta.env.VITE_DATA_SOURCE,
+    typeof location === "undefined" ? undefined : location.search,
+  );
   const [analyticsStatus, setAnalyticsStatus] = useState<
     NonNullable<UseMarketDataResult["analyticsStatus"]>
   >({});
@@ -1792,7 +1804,7 @@ export function useMarketData({
       postWorkerControl({ kind: "delta_profile", ...request }, "delta profile request");
     };
 
-    const startMsg: MainToWorkerMessage = { kind: "start", url };
+    const startMsg: MainToWorkerMessage = { kind: "start", url, ...(source === undefined ? {} : { source }) };
     if (
       postWorkerControl({ kind: "flow_control" }, "delivery flow control") &&
       postWorkerControl(startMsg, "start request")
@@ -1857,7 +1869,7 @@ export function useMarketData({
         askRangePrintsImplRef.current = () => {};
       }
     };
-  }, [url]);
+  }, [url, source]);
 
   return {
     analyticsStatus,

@@ -4874,3 +4874,2332 @@ export function createCompressionBreakoutEngine(input: CompressionBreakoutMathSe
 }
 
 
+exec
+/bin/bash -lc 'git show build/compression-breakout:apps/web/src/lib/indicators/compression-breakout/compressionBreakout.ts | nl -ba' in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+     1	import { draw } from "../../chart/draw";
+     2	import type { BoxHandle } from "../../chart/draw/box";
+     3	import type { TableHandle } from "../../chart/draw/table";
+     4	import type { IndicatorBarCtx, LineOutputSpec, RuntimeIndicatorDef, SettingsFieldSchema } from "../../chart/indicatorTypes";
+     5	import {
+     6	  MAX_HELD_RANGES,
+     7	  RANGE_LIFETIME,
+     8	  createCompressionBreakoutEngine,
+     9	  type CompressionBreakoutEngine,
+    10	  type HeldRange,
+    11	  type Reading,
+    12	} from "./compressionBreakoutMath";
+    13	
+    14	/**
+    15	 * Compression Breakout (20): a committed 20-bar high/low range that is
+    16	 * narrower than twice the mean true range of the 20 bars before it, drawn as
+    17	 * a neutral purple box with frozen edges; a break is a close outside it after
+    18	 * six bars inside, graded by the break bar's true range and volume against the
+    19	 * preceding 20 bars (arrow solid when both pass, faded when one does); a close
+    20	 * back inside within five bars is a failed break (circle); otherwise the break
+    21	 * is "held outside 5 bars". Trend (MA 50/200) colours the border and one table
+    22	 * row only. Candle-only, `OHLCV_POLICY`.
+    23	 */
+    24	
+    25	export interface CompressionBreakoutSettings {
+    26	  rangeLength: number;
+    27	  minCompressionBars: number;
+    28	  confirmMultiple: number;
+    29	  widthMultiple: number;
+    30	  failBars: number;
+    31	  holdBars: number;
+    32	  trendFast: number;
+    33	  trendSlow: number;
+    34	  showMarkers: boolean;
+    35	  showRanges: boolean;
+    36	}
+    37	
+    38	export const COMPRESSION_BREAKOUT_DEFAULT_SETTINGS: CompressionBreakoutSettings = Object.freeze({
+    39	  rangeLength: 20,
+    40	  minCompressionBars: 6,
+    41	  confirmMultiple: 1.5,
+    42	  widthMultiple: 2,
+    43	  failBars: 5,
+    44	  holdBars: 40,
+    45	  trendFast: 50,
+    46	  trendSlow: 200,
+    47	  showMarkers: true,
+    48	  showRanges: true,
+    49	});
+    50	
+    51	/** Fixed for this version: a colour picker would force a replay over the retained bars. */
+    52	export const CB_RANGE_COLOR = "#8672b3";
+    53	export const CB_BULL_COLOR = "#26a69a";
+    54	export const CB_BEAR_COLOR = "#ef5350";
+    55	export const CB_WARN_COLOR = "#b07a1e";
+    56	export const CB_TABLE_TEXT_COLOR = "#d1d4dc";
+    57	export const CB_UNAVAILABLE = "—";
+    58	export const CB_PROVISIONAL_ALPHA = 0.5;
+    59	/** A break with one activity test passed: faded, but still visible on the cream chart at the zoomed-out level (UX finding 11). */
+    60	export const CB_FADED_MARKER_ALPHA = 0.65;
+    61	export const CB_FILL_ESTABLISHED_ALPHA = 0.14;
+    62	export const CB_FILL_FORMING_ALPHA = 0.08;
+    63	export const CB_FILL_HELD_ALPHA = 0.06;
+    64	export const CB_FORMING_BORDER_ALPHA = 0.35;
+    65	export const CB_HELD_BORDER_ALPHA = 0.5;
+    66	export const CB_BOX_POOL = 1 + MAX_HELD_RANGES;
+    67	export const CB_TABLE_MAX_CHARS = 30;
+    68	/** The invisible colour of a range's last edge point; distinct from the hidden-box colour so the two are told apart. */
+    69	export const CB_EDGE_JOIN_COLOR = "rgba(1,1,1,0)";
+    70	const TRANSPARENT = "rgba(0,0,0,0)";
+    71	
+    72	export interface CompressionBreakoutState {
+    73	  engine: CompressionBreakoutEngine;
+    74	  table: TableHandle;
+    75	  /** Handle 0 is the active range; 1..7 the held ranges, oldest first. */
+    76	  boxes: BoxHandle[];
+    77	  reading: Reading | null;
+    78	}
+    79	
+    80	/** `#rgb` or `#rrggbb` with an alpha; any other colour string is returned unchanged. */
+    81	export function withAlpha(color: string, alpha: number): string {
+    82	  const hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(color.trim());
+    83	  if (hex === null) return color;
+    84	  let digits = hex[1];
+    85	  if (digits.length === 3) digits = digits.split("").map((d) => d + d).join("");
+    86	  const r = Number.parseInt(digits.slice(0, 2), 16);
+    87	  const g = Number.parseInt(digits.slice(2, 4), 16);
+    88	  const b = Number.parseInt(digits.slice(4, 6), 16);
+    89	  return `rgba(${r},${g},${b},${alpha})`;
+    90	}
+    91	
+    92	export function trendColor(trend: -1 | 0 | 1 | null): string {
+    93	  if (trend === 1) return CB_BULL_COLOR;
+    94	  if (trend === -1) return CB_BEAR_COLOR;
+    95	  return CB_RANGE_COLOR;
+    96	}
+    97	
+    98	/** Decimal places a price carries, from its shortest round-trip text; at most eight. */
+    99	export function decimalsOf(value: number): number {
+   100	  if (!Number.isFinite(value)) return 0;
+   101	  const text = String(value);
+   102	  const exponent = text.indexOf("e");
+   103	  if (exponent !== -1) return Math.min(8, Math.max(0, -Number.parseInt(text.slice(exponent + 1), 10)));
+   104	  const point = text.indexOf(".");
+   105	  return point === -1 ? 0 : Math.min(8, text.length - point - 1);
+   106	}
+   107	
+   108	function formatAt(value: number, decimals: number): string {
+   109	  return value.toFixed(decimals);
+   110	}
+   111	
+   112	/** Six significant digits with trailing zeros removed, for a row that would not fit. */
+   113	function formatSignificant(value: number): string {
+   114	  const text = Number(value.toPrecision(6)).toString();
+   115	  return text.includes("e") ? value.toPrecision(6) : text;
+   116	}
+   117	
+   118	/**
+   119	 * `Range lo–hi` at the instrument's precision with no thousands separators; if
+   120	 * the row would exceed 30 characters, both edges round to six significant
+   121	 * digits (brief ruling 8).
+   122	 */
+   123	export function rangeRowText(hi: number, lo: number): string {
+   124	  const decimals = Math.max(decimalsOf(hi), decimalsOf(lo));
+   125	  const exact = `Range ${formatAt(lo, decimals)}–${formatAt(hi, decimals)}`;
+   126	  if (exact.length <= CB_TABLE_MAX_CHARS) return exact;
+   127	  return `Range ${formatSignificant(lo)}–${formatSignificant(hi)}`;
+   128	}
+   129	
+   130	function arrow(dir: number): string {
+   131	  return dir > 0 ? "↑" : "↓";
+   132	}
+   133	
+   134	/** The test-basis wording of a break: what passed, and what could not be tested. */
+   135	export function breakBasisText(grade: number, basis: number): string {
+   136	  const rangeTestable = (basis & 1) === 1;
+   137	  const volumeTestable = (basis & 2) === 2;
+   138	  const rangePassed = grade === 1 || grade === 3;
+   139	  const volumePassed = grade === 2 || grade === 3;
+   140	  if (rangeTestable && volumeTestable) {
+   141	    if (rangePassed && volumePassed) return "range+vol";
+   142	    if (rangePassed) return "range only";
+   143	    if (volumePassed) return "vol only";
+   144	    return "unconfirmed";
+   145	  }
+   146	  if (rangeTestable) return rangePassed ? "range, vol n/a" : "vol n/a";
+   147	  if (volumeTestable) return volumePassed ? "vol, range n/a" : "range n/a";
+   148	  return "no baseline";
+   149	}
+   150	
+   151	function timeText(tsOpen: number, intervalMs: number): string {
+   152	  const date = new Date(tsOpen);
+   153	  if (intervalMs >= 86_400_000) return `${date.getUTCDate()} ${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][date.getUTCMonth()]}`;
+   154	  return `${String(date.getUTCHours()).padStart(2, "0")}:${String(date.getUTCMinutes()).padStart(2, "0")}`;
+   155	}
+   156	
+   157	export interface TableRow {
+   158	  text: string;
+   159	  color: string;
+   160	}
+   161	
+   162	/** Row 3 of the table: the state, first match wins (brief rule 12 and amendments 1, 5 and 7). */
+   163	export function stateText(reading: Reading, settings: CompressionBreakoutSettings): string {
+   164	  const d = reading.decision;
+   165	  if (d.kind === "invalidPrice") return "No usable price";
+   166	  if (reading.gap) return "Gap · range reset";
+   167	  if (d.kind === "failed") return "Failed break";
+   168	  if (d.kind === "heldOutside") return `Held outside · ${settings.failBars} bars`;
+   169	  if (d.kind === "expired") return `Range expired · ${RANGE_LIFETIME} bars`;
+   170	  if (d.kind === "break") return `Break ${arrow(d.dir)} · ${breakBasisText(d.grade, d.basis)}`;
+   171	  const active = reading.active;
+   172	  if (d.kind === "pending") return `Holding · ${Math.min(settings.failBars, reading.pendingBars)} of ${settings.failBars} bars`;
+   173	  if (active !== null) {
+   174	    if (active.age >= settings.minCompressionBars) {
+   175	      const ratio = active.widthRatio === null ? "" : ` · width ${active.widthRatio.toFixed(1)}×`;
+   176	      return `Range · ${active.age} bars${ratio}`;
+   177	    }
+   178	    return `Range forming · ${active.age} of ${settings.minCompressionBars}`;
+   179	  }
+   180	  // No range: how far the rolling window is from the width limit, so the row carries a reason.
+   181	  return reading.widthRatio === null ? "Watching" : `Watching · width ${reading.widthRatio.toFixed(1)}×`;
+   182	}
+   183	
+   184	export function trendText(reading: Reading, settings: CompressionBreakoutSettings): string {
+   185	  const pair = `MA ${settings.trendFast}/${settings.trendSlow}`;
+   186	  if (reading.trendStatus === "fastGeSlow") return "Trend off · fast ≥ slow";
+   187	  if (reading.trendStatus === "warming") return `Trend warming · ${reading.closesCount} of ${settings.trendSlow + 5}`;
+   188	  if (reading.trend === 1) return `Trend ↑ · ${pair}`;
+   189	  if (reading.trend === -1) return `Trend ↓ · ${pair}`;
+   190	  return `Trend flat · ${pair}`;
+   191	}
+   192	
+   193	export function lastEventText(reading: Reading, settings: CompressionBreakoutSettings): string {
+   194	  const event = reading.lastEvent;
+   195	  if (event === null) return CB_UNAVAILABLE;
+   196	  const when = timeText(event.tsOpen, reading.intervalMs);
+   197	  switch (event.kind) {
+   198	    case "break":
+   199	      return `Last ${arrow(event.dir)} ${when} · ${breakBasisText(event.grade, event.basis)}`;
+   200	    case "failed":
+   201	      return `Last failed ${arrow(event.dir)} ${when}`;
+   202	    case "heldOutside":
+   203	      return `Last held ${arrow(event.dir)} ${when} · ${settings.failBars} bars`;
+   204	    default:
+   205	      return `Last expired ${when}`;
+   206	  }
+   207	}
+   208	
+   209	/**
+   210	 * The table rows: during warm-up only `[{ text }]` (one row is written, so one
+   211	 * row shows); afterwards the four rows at full colour. Provisional styling
+   212	 * stays on markers and on the edge lines' last point only: the table is
+   213	 * flushed after every forming revision, so a dimmed forming row would read
+   214	 * as a permanently dimmed table (UX finding 1).
+   215	 */
+   216	export function tableRows(reading: Reading | null, settings: CompressionBreakoutSettings): TableRow[] {
+   217	  const neutral = CB_TABLE_TEXT_COLOR;
+   218	  if (reading === null) return [{ text: `Warming up · 0 of ${2 * settings.rangeLength} bars`, color: neutral }];
+   219	  if (!reading.rangeReady) return [{ text: `Warming up · ${reading.warmupCount} of ${reading.warmupNeeded} bars`, color: neutral }];
+   220	  const row1 = reading.active !== null ? rangeRowText(reading.active.hi, reading.active.lo) : "No range";
+   221	  const d = reading.decision;
+   222	  const stateColor =
+   223	    d.kind === "break" ? (d.dir > 0 ? CB_BULL_COLOR : CB_BEAR_COLOR) : d.kind === "failed" ? CB_WARN_COLOR : neutral;
+   224	  return [
+   225	    { text: row1, color: neutral },
+   226	    { text: trendText(reading, settings), color: trendColor(reading.trend) },
+   227	    { text: stateText(reading, settings), color: stateColor },
+   228	    { text: lastEventText(reading, settings), color: neutral },
+   229	  ];
+   230	}
+   231	
+   232	function hideBox(box: BoxHandle): void {
+   233	  box.setBackgroundColor(TRANSPARENT);
+   234	  box.setBorderColor(TRANSPARENT);
+   235	}
+   236	
+   237	function drawActive(box: BoxHandle, reading: Reading, settings: CompressionBreakoutSettings): void {
+   238	  const active = reading.active;
+   239	  if (active === null) {
+   240	    hideBox(box);
+   241	    return;
+   242	  }
+   243	  const established = active.age >= settings.minCompressionBars;
+   244	  box.setLeftTop(active.openedTs, active.hi);
+   245	  box.setRightBottom(reading.tsOpen, active.lo);
+   246	  box.setBackgroundColor(withAlpha(CB_RANGE_COLOR, established ? CB_FILL_ESTABLISHED_ALPHA : CB_FILL_FORMING_ALPHA));
+   247	  // On the outcome bar the range already wears its outcome: amber when the break failed, purple when it held or expired.
+   248	  const kind = reading.decision.kind;
+   249	  const border = kind === "failed" ? CB_WARN_COLOR : kind === "heldOutside" || kind === "expired" ? CB_RANGE_COLOR : established ? trendColor(reading.trend) : withAlpha(CB_RANGE_COLOR, CB_FORMING_BORDER_ALPHA);
+   250	  box.setBorderColor(border);
+   251	  box.setBorderWidth(1);
+   252	}
+   253	
+   254	function drawHeld(box: BoxHandle, held: HeldRange | undefined, tsOpen: number): void {
+   255	  // A range retired on this very bar is still shown through the active snapshot; it joins the held drawing from the next bar.
+   256	  if (held === undefined || held.closedTs >= tsOpen) {
+   257	    hideBox(box);
+   258	    return;
+   259	  }
+   260	  box.setLeftTop(held.openedTs, held.hi);
+   261	  box.setRightBottom(held.closedTs, held.lo);
+   262	  box.setBackgroundColor(withAlpha(CB_RANGE_COLOR, CB_FILL_HELD_ALPHA));
+   263	  box.setBorderColor(withAlpha(held.outcome === "failed" ? CB_WARN_COLOR : CB_RANGE_COLOR, CB_HELD_BORDER_ALPHA));
+   264	  box.setBorderWidth(1);
+   265	}
+   266	
+   267	function plotMarkers(ctx: IndicatorBarCtx<CompressionBreakoutState, CompressionBreakoutSettings>, reading: Reading): void {
+   268	  const d = reading.decision;
+   269	  if (d.kind === "break" && d.grade >= 1) {
+   270	    const base = d.dir > 0 ? CB_BULL_COLOR : CB_BEAR_COLOR;
+   271	    const alpha = (d.grade === 3 ? 1 : CB_FADED_MARKER_ALPHA) * (reading.confirmed ? 1 : CB_PROVISIONAL_ALPHA);
+   272	    ctx.markers.plotshape({
+   273	      shape: d.dir > 0 ? "arrowUp" : "arrowDown",
+   274	      position: d.dir > 0 ? "belowBar" : "aboveBar",
+   275	      color: alpha === 1 ? base : withAlpha(base, alpha),
+   276	      size: 1,
+   277	    });
+   278	  } else if (d.kind === "failed" && d.grade >= 1) {
+   279	    ctx.markers.plotshape({
+   280	      shape: "circle",
+   281	      position: "inBar",
+   282	      color: reading.confirmed ? CB_WARN_COLOR : withAlpha(CB_WARN_COLOR, CB_PROVISIONAL_ALPHA),
+   283	      size: 1,
+   284	    });
+   285	  }
+   286	}
+   287	
+   288	/**
+   289	 * The edge lines' per-bar colour. The chart paints each segment with the
+   290	 * colour of the point it starts from, so the last point of a range (the bar
+   291	 * whose decision retires it) is painted transparent: the segment that would
+   292	 * otherwise join this range's edge to the next range's edge never appears.
+   293	 */
+   294	export function edgeLineColor(state: CompressionBreakoutState): string {
+   295	  const reading = state.reading;
+   296	  if (reading === null) return CB_RANGE_COLOR;
+   297	  const kind = reading.decision.kind;
+   298	  if (kind === "failed" || kind === "heldOutside" || kind === "expired" || kind === "abandoned") return CB_EDGE_JOIN_COLOR;
+   299	  return CB_RANGE_COLOR;
+   300	}
+   301	
+   302	const LINES: readonly LineOutputSpec<CompressionBreakoutState>[] = [
+   303	  { key: "rangeHigh", lineWidth: 1, color: edgeLineColor, recolor: (current) => current ?? CB_RANGE_COLOR },
+   304	  { key: "rangeLow", lineWidth: 1, color: edgeLineColor, recolor: (current) => current ?? CB_RANGE_COLOR },
+   305	];
+   306	
+   307	const SCHEMA: readonly SettingsFieldSchema<CompressionBreakoutSettings>[] = [
+   308	  { kind: "numeric", key: "rangeLength", label: "Range length (bars)", min: 10, max: 50, step: 1, affects: "recompute" },
+   309	  { kind: "staticHint", text: "The range needs twice this many bars before it can qualify. Replays every bar." },
+   310	  { kind: "numeric", key: "minCompressionBars", label: "Minimum bars inside", min: 2, max: 30, step: 1, affects: "recompute" },
+   311	  { kind: "staticHint", text: "Closed bars inside the range before a close outside counts as a break. Replays every bar." },
+   312	  { kind: "numeric", key: "confirmMultiple", label: "Activity threshold (×)", min: 1, max: 3, step: 0.1, affects: "recompute" },
+   313	  { kind: "staticHint", text: "The break bar's range and volume versus the prior 20 bars: one passing gives a faded arrow, both a solid one. Replays every bar." },
+   314	  { kind: "numeric", key: "widthMultiple", label: "Width limit (× bar range)", min: 1, max: 4, step: 0.5, affects: "recompute", tab: "advanced" },
+   315	  { kind: "staticHint", text: "A range qualifies when narrower than this many times the mean bar range before it. Replays every bar.", tab: "advanced" },
+   316	  { kind: "numeric", key: "failBars", label: "Failure window (bars)", min: 1, max: 20, step: 1, affects: "recompute", tab: "advanced" },
+   317	  { kind: "numeric", key: "holdBars", label: "Keep retired range (bars)", min: 0, max: 200, step: 1, affects: "recompute", tab: "advanced" },
+   318	  { kind: "staticHint", text: "Bars a failed or held range stays drawn. Replays every bar.", tab: "advanced" },
+   319	  { kind: "numeric", key: "trendFast", label: "Trend fast MA (bars)", min: 10, max: 199, step: 1, affects: "recompute", tab: "advanced" },
+   320	  { kind: "numeric", key: "trendSlow", label: "Trend slow MA (bars)", min: 20, max: 400, step: 1, affects: "recompute", tab: "advanced" },
+   321	  { kind: "boolean", key: "showMarkers", label: "Show break markers", affects: "recompute", tab: "visibility" },
+   322	  { kind: "boolean", key: "showRanges", label: "Show ranges", affects: "recompute", tab: "visibility" },
+   323	];
+   324	
+   325	export const compressionBreakoutIndicator: RuntimeIndicatorDef<CompressionBreakoutState, CompressionBreakoutSettings> = {
+   326	  kind: "runtime",
+   327	  id: "compressionBreakout",
+   328	  label: "Compression Breakout (20)",
+   329	  category: "technical",
+   330	  defaultSettings: COMPRESSION_BREAKOUT_DEFAULT_SETTINGS,
+   331	  settingsSchema: SCHEMA,
+   332	  lines: LINES,
+   333	  placement: { kind: "overlay" },
+   334	  maxReplayBars: 10_080,
+   335	  createState: (settings) => ({
+   336	    engine: createCompressionBreakoutEngine(settings),
+   337	    table: draw.table(),
+   338	    boxes: Array.from({ length: CB_BOX_POOL }, () =>
+   339	      draw.box({ time1: 0, price1: 0, time2: 0, price2: 0, borderColor: TRANSPARENT, backgroundColor: TRANSPARENT, borderWidth: 1 }),
+   340	    ),
+   341	    reading: null,
+   342	  }),
+   343	  onBar: (ctx) => {
+   344	    const { bar, state, settings } = ctx;
+   345	    const reading = state.engine.onBar(bar);
+   346	    state.reading = reading;
+   347	    if (settings.showMarkers) plotMarkers(ctx, reading);
+   348	    if (ctx.drawNow === false) return;
+   349	    if (settings.showRanges) {
+   350	      drawActive(state.boxes[0], reading, settings);
+   351	      for (let slot = 0; slot < MAX_HELD_RANGES; slot += 1) drawHeld(state.boxes[slot + 1], reading.held[slot], reading.tsOpen);
+   352	    } else {
+   353	      for (const box of state.boxes) hideBox(box);
+   354	    }
+   355	    const rows = tableRows(reading, settings);
+   356	    for (let row = 0; row < rows.length; row += 1) state.table.cell(row, 0, { text: rows[row].text, textColor: rows[row].color });
+   357	  },
+   358	  readOutput: (state) => {
+   359	    const reading = state.reading;
+   360	    if (reading === null) {
+   361	      return { rangeHigh: null, rangeLow: null, activeHigh: null, activeLow: null, heldCount: 0, widthRatio: null, qualified: null, trend: null, rangeAge: null, pending: 0, breakDir: 0, breakGrade: 0, gradeBasis: 0, failed: 0, heldOutside: 0, expired: 0 };
+   362	    }
+   363	    const d = reading.decision;
+   364	    const isBreak = d.kind === "break";
+   365	    // The brief's edge keys carry the snapshot whenever a range exists, forming included; `edgeLineColor` paints a
+   366	    // range's last point transparent so successive ranges never join into a slope that never existed.
+   367	    return {
+   368	      rangeHigh: reading.rangeHigh,
+   369	      rangeLow: reading.rangeLow,
+   370	      // The same snapshot under the names the harness tests used, and the held count: the replay policy's "quiet bar"
+   371	      // has neither an active nor a held range.
+   372	      activeHigh: reading.rangeHigh,
+   373	      activeLow: reading.rangeLow,
+   374	      heldCount: reading.held.length,
+   375	      widthRatio: reading.widthRatio,
+   376	      qualified: reading.qualified === null ? null : reading.qualified ? 1 : 0,
+   377	      trend: reading.trend,
+   378	      rangeAge: reading.rangeAge,
+   379	      pending: reading.pending,
+   380	      breakDir: isBreak ? d.dir : 0,
+   381	      breakGrade: isBreak ? d.grade : 0,
+   382	      gradeBasis: isBreak ? d.basis : 0,
+   383	      failed: d.kind === "failed" ? 1 : 0,
+   384	      heldOutside: d.kind === "heldOutside" ? 1 : 0,
+   385	      expired: d.kind === "expired" ? 1 : 0,
+   386	    };
+   387	  },
+   388	};
+
+exec
+/bin/bash -lc 'ls /home/user/Terminal-L1-L2/worktrees/compression-breakout; cat apps/web/package.json' in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+README.md
+apps
+benchmarks
+config
+docs
+eslint.config.mjs
+node_modules
+ops
+package-lock.json
+package.json
+pm
+scripts
+tools
+{
+  "name": "web",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "engines": {
+    "node": "24.21.0"
+  },
+  "scripts": {
+    "pretest": "node ../../scripts/verify-node-version.cjs",
+    "prebuild": "node ../../scripts/verify-node-version.cjs",
+    "dev": "node ../../scripts/node-launcher.cjs ../../node_modules/vite/bin/vite.js",
+    "build": "tsc -b && vite build",
+    "lint": "oxlint",
+    "preview": "node ../../scripts/node-launcher.cjs ../../node_modules/vite/bin/vite.js preview",
+    "test": "set \"ELECTRON_RUN_AS_NODE=\"&& vitest run"
+  },
+  "dependencies": {
+    "lightweight-charts": "^5.2.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "trading-signals": "8.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.2",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.3",
+    "@vitest/coverage-v8": "4.1.11",
+    "@vitest/ui": "^4.1.11",
+    "fast-check": "4.10.2",
+    "jsdom": "^29.1.1",
+    "oxlint": "^1.71.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.1.1",
+    "vitest": "^4.1.11"
+  },
+  "optionalDependencies": {
+    "@oxlint/binding-linux-x64-gnu": "1.73.0"
+  }
+}
+
+codex
+The engine uses committed OHLCV observations and keeps the pre-tail state for corrections. I’m checking two edge cases more closely: failure-window timing across invalid-price bars, and non-finite arithmetic in qualification.
+exec
+/bin/bash -lc "rg -n 'invalid|overflow|failBars|holdBars|quiet|squeeze|release|hint' apps/web/src/lib/indicators/compression-breakout/tests/{compressionBreakoutMath.test.ts,compressionBreakoutTimeline.test.ts,compressionBreakoutValidation.test.ts,comparators.ts}" in /home/user/Terminal-L1-L2/worktrees/compression-breakout
+ succeeded in 0ms:
+apps/web/src/lib/indicators/compression-breakout/tests/comparators.ts:15: * - `squeezeQualifiedVariant`: the squeeze qualifier (Bollinger inside a
+apps/web/src/lib/indicators/compression-breakout/tests/comparators.ts:17: *   round-2 state machine with its pause and release rules: the comparison
+apps/web/src/lib/indicators/compression-breakout/tests/comparators.ts:20: *   six squeezed bars; direction from the momentum sign. Timing and density
+apps/web/src/lib/indicators/compression-breakout/tests/comparators.ts:44:      failBars: 5,
+apps/web/src/lib/indicators/compression-breakout/tests/comparators.ts:45:      holdBars: 40,
+apps/web/src/lib/indicators/compression-breakout/tests/comparators.ts:83:export const squeezeQualifiedVariant = engineDef("squeezeQualifiedVariant", "squeeze");
+apps/web/src/lib/indicators/compression-breakout/tests/comparators.ts:92:/** TTM Squeeze release: the first bar `isSqueezed` is false after at least `minSqueezedBars` consecutive true bars. */
+apps/web/src/lib/indicators/compression-breakout/tests/compressionBreakoutTimeline.test.ts:58:    // The held range is drawn from 226 and freed at 266's commit (holdBars 40).
+apps/web/src/lib/indicators/compression-breakout/tests/compressionBreakoutValidation.test.ts:57:function quietBarIndex(outputs: Outputs, from: number, settings: CompressionBreakoutSettings): number {
+apps/web/src/lib/indicators/compression-breakout/tests/compressionBreakoutValidation.test.ts:136:  it("the tail corrections of the brief: cancelled break, volume invalid then valid, failure removed; each equals a clean feed of the corrected series", () => {
+apps/web/src/lib/indicators/compression-breakout/tests/compressionBreakoutValidation.test.ts:152:    // 2. The break bar first arrives with an invalid volume (range only, vol n/a), then valid (range+vol).
+apps/web/src/lib/indicators/compression-breakout/tests/compressionBreakoutValidation.test.ts:284:    const quiet = quietBarIndex(live.outputs, offset, SETTINGS);
+apps/web/src/lib/indicators/compression-breakout/tests/compressionBreakoutValidation.test.ts:285:    expect(quiet).toBeGreaterThan(-1);
+apps/web/src/lib/indicators/compression-breakout/tests/compressionBreakoutValidation.test.ts:287:    for (let index = quiet; index < bars.length; index += 1) {
+apps/web/src/lib/indicators/compression-breakout/tests/compressionBreakoutValidation.test.ts:291:    const liveMarkers = live.markers.filter((call) => call.time >= bars[quiet].ts_open).map((call) => JSON.stringify(call));
+apps/web/src/lib/indicators/compression-breakout/tests/compressionBreakoutValidation.test.ts:292:    const rebuiltMarkers = rebuilt.markers.filter((call) => call.time >= bars[quiet].ts_open).map((call) => JSON.stringify(call));
+apps/web/src/lib/indicators/compression-breakout/tests/compressionBreakoutValidation.test.ts:294:    console.log(`${label}: quiet bar ${quiet}, ${compared} bars compared equal after it`);
+apps/web/src/lib/indicators/compression-breakout/tests/compressionBreakoutValidation.test.ts:298:  it("outputs, events and markers are equal from the first quiet bar on the breakout and control fixtures, with a non-zero compared count", () => {
+apps/web/src/lib/indicators/compression-breakout/tests/compressionBreakoutValidation.test.ts:304:  it("before any quiet bar the difference is the range phase, pinned on the constant-width fixture at offsets 0, 137 and 500", () => {
+apps/web/src/lib/indicators/compression-breakout/tests/compressionBreakoutValidation.test.ts:310:    expect(quietBarIndex(live.outputs, 0, SETTINGS)).toBe(-1);
+apps/web/src/lib/indicators/compression-breakout/tests/compressionBreakoutMath.test.ts:36:  failBars: 5,
+apps/web/src/lib/indicators/compression-breakout/tests/compressionBreakoutMath.test.ts:37:  holdBars: 40,
+apps/web/src/lib/indicators/compression-breakout/tests/compressionBreakoutMath.test.ts:167:  it("an invalid volume on the break bar keeps the price context: basis 1, the volume test not taken", () => {
+apps/web/src/lib/indicators/compression-breakout/tests/compressionBreakoutMath.test.ts:228:  it("an invalid-price bar inside the window counts for the clock but decides nothing: still held outside at 51", () => {
+apps/web/src/lib/indicators/compression-breakout/tests/compressionBreakoutMath.test.ts:233:    expect(readings[48].decision.kind).toBe("invalidPrice");
+apps/web/src/lib/indicators/compression-breakout/tests/compressionBreakoutMath.test.ts:240:  it("the held countdown: drawn for holdBars bars after the outcome bar and freed at the commit after; holdBars 0 keeps nothing", () => {
+apps/web/src/lib/indicators/compression-breakout/tests/compressionBreakoutMath.test.ts:248:    const none = run(long, { ...SETTINGS, holdBars: 0 }).readings;
+apps/web/src/lib/indicators/compression-breakout/tests/compressionBreakoutMath.test.ts:272:    const { readings, committed } = run(bars, { ...SETTINGS, holdBars: 200 });
+apps/web/src/lib/indicators/compression-breakout/tests/compressionBreakoutMath.test.ts:317:describe("compressionBreakoutMath -- gaps, invalid tails, corrections and supersession (amendments 4, 5 and 6)", () => {
+apps/web/src/lib/indicators/compression-breakout/tests/compressionBreakoutMath.test.ts:340:  it("an invalid-price tail across a gap cannot reset the range; the gap stays pending and the next valid-price bar resets, with true range high − low", () => {
+apps/web/src/lib/indicators/compression-breakout/tests/compressionBreakoutMath.test.ts:347:    expect(readings[43].decision.kind).toBe("invalidPrice");
+apps/web/src/lib/indicators/compression-breakout/tests/compressionBreakoutMath.test.ts:360:  it("non-finite intermediates never escape: overflowing volumes make the volume test untestable, overflowing prices make the range test untestable and the window unqualifiable", () => {
+apps/web/src/lib/indicators/compression-breakout/tests/compressionBreakoutMath.test.ts:361:    // The frames are built directly: the fixture helper's rounding would itself overflow these values to Infinity.
+apps/web/src/lib/indicators/compression-breakout/tests/compressionBreakoutMath.test.ts:382:  it("a closed re-dispatch of the tail recomputes C from the untouched P: cancelled break, invalid-to-valid volume, removed failure", () => {
+
+exec
+/bin/bash -lc 'git status --short; git rev-parse HEAD; git rev-parse build/compression-breakout; rg --files -g AGENTS.md /home/user/Terminal-L1-L2 /home/user 2>/dev/null | head -30' in /home/user/Terminal-L1-L2/worktrees/compression-breakout
+ succeeded in 634ms:
+?? apps/runtime/node_modules
+?? node_modules
+e86dcc676f3d80ebb12a3308e5106ef04c77a05d
+e86dcc676f3d80ebb12a3308e5106ef04c77a05d
+
+exec
+/bin/bash -lc "sed -n '1,115p' apps/web/src/lib/indicators/compression-breakout/tests/compressionBreakoutMath.test.ts; sed -n '195,285p' apps/web/src/lib/indicators/compression-breakout/tests/compressionBreakoutMath.test.ts; sed -n '355,385p' apps/web/src/lib/indicators/compression-breakout/tests/compressionBreakoutMath.test.ts; cat apps/web/src/lib/indicators/compression-breakout/tests/scoring.ts" in /home/user/Terminal-L1-L2/worktrees/compression-breakout
+ succeeded in 0ms:
+import { describe, expect, it } from "vitest";
+import type { BarFrame } from "../../../../types/frames";
+import { BINANCE_PERP, DXFEED_EQUITY, barFrame } from "../../../chart/validation";
+import {
+  DAY_MS,
+  DENOMINATOR_LENGTH,
+  MAX_HELD_RANGES,
+  RANGE_LIFETIME,
+  createCompressionBreakoutEngine,
+  isPriceValid,
+  qualificationOf,
+  normalizedSettings,
+  trueRangeOf,
+  type CommittedState,
+  type CompressionBreakoutMathSettings,
+  type Reading,
+} from "../compressionBreakoutMath";
+
+/**
+ * Success criterion 1, hand-computed. The base pattern alternates a down bar
+ * (open 60050, close 59950) and an up bar (open 59950, close 60050) with wicks
+ * of 5, so every bar's true range is 110, every 20-bar window spans
+ * 59945..60055 (width 110), the reference mean true range is 110 and the
+ * width ratio is exactly 1. Volume is 100 on every base bar. At the defaults
+ * the range opens at the commit of index 39 with age 0, bars 40..45 inside
+ * make it eligible, and index 46 is the first bar that can break (amendment 2).
+ */
+
+const T0 = 1_780_000_000_000;
+const MINUTE = 60_000;
+const SETTINGS: CompressionBreakoutMathSettings = {
+  rangeLength: 20,
+  widthMultiple: 2,
+  minCompressionBars: 6,
+  confirmMultiple: 1.5,
+  failBars: 5,
+  holdBars: 40,
+  trendFast: 50,
+  trendSlow: 200,
+};
+
+interface Spec {
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
+function baseSpec(index: number): Spec {
+  const up = index % 2 === 1;
+  return up ? { open: 59_950, high: 60_055, low: 59_945, close: 60_050, volume: 100 } : { open: 60_050, high: 60_055, low: 59_945, close: 59_950, volume: 100 };
+}
+
+function bar(index: number, spec: Spec, overrides: Partial<BarFrame> = {}, intervalMs = MINUTE): BarFrame {
+  const frame = barFrame(T0 + index * intervalMs, { ...spec, tradeCount: 10 }, BINANCE_PERP, intervalMs);
+  return { ...frame, ...overrides } as BarFrame;
+}
+
+/** `count` base bars with `specAt` overriding any index. */
+function series(count: number, specAt: (index: number) => Spec | null = () => null, intervalMs = MINUTE): BarFrame[] {
+  return Array.from({ length: count }, (_, index) => bar(index, specAt(index) ?? baseSpec(index), {}, intervalMs));
+}
+
+function run(bars: readonly BarFrame[], settings: CompressionBreakoutMathSettings = SETTINGS): { readings: Reading[]; committed: CommittedState } {
+  const engine = createCompressionBreakoutEngine(settings);
+  const readings = bars.map((frame) => engine.onBar(frame));
+  return { readings, committed: engine.committed };
+}
+
+/** Index 46 is even, so its previous committed close is 60050: true range = max(260, 255, 5) = 260 ≥ 1.5 × 110. */
+const BREAK_UP: Spec = { open: 60_050, high: 60_305, low: 60_045, close: 60_300, volume: 200 };
+
+describe("compressionBreakoutMath -- validity and true range", () => {
+  it("price validity needs finite values with low ≤ open, close ≤ high", () => {
+    expect(isPriceValid(bar(0, baseSpec(0)))).toBe(true);
+    expect(isPriceValid(bar(0, baseSpec(0), { high: 59_000 }))).toBe(false);
+    expect(isPriceValid(bar(0, baseSpec(0), { open: 70_000 }))).toBe(false);
+    expect(isPriceValid(bar(0, baseSpec(0), { close: 50_000 }))).toBe(false);
+    expect(isPriceValid(bar(0, baseSpec(0), { low: Number.NaN }))).toBe(false);
+  });
+
+  it("true range uses the previous committed close, and high − low on the first bar and after a gap", () => {
+    const up = bar(1, baseSpec(1));
+    expect(trueRangeOf(up, null, false)).toBe(110);
+    expect(trueRangeOf(up, 59_950, false)).toBe(110);
+    expect(trueRangeOf(up, 50_000, false)).toBe(10_055);
+    expect(trueRangeOf(up, 50_000, true)).toBe(110);
+  });
+
+  it("settings are brought into their schema ranges", () => {
+    const n = normalizedSettings({ ...SETTINGS, rangeLength: 5, widthMultiple: 9, trendFast: 0, trendSlow: 1_000 });
+    expect(n.rangeLength).toBe(10);
+    expect(n.widthMultiple).toBe(4);
+    expect(n.trendFast).toBe(10);
+    expect(n.trendSlow).toBe(400);
+    expect(n.qualifier).toBe("width");
+  });
+});
+
+describe("compressionBreakoutMath -- establishment timeline (amendment 2)", () => {
+  it("readiness, qualification and the opening commit at index 39 with age 0; eligible at 46", () => {
+    const { readings, committed } = run(series(46));
+    for (let index = 0; index < 39; index += 1) {
+      expect(readings[index].rangeReady).toBe(false);
+      expect(readings[index].qualified).toBeNull();
+      expect(readings[index].rangeHigh).toBeNull();
+    }
+    expect(readings[39].rangeReady).toBe(true);
+    expect(readings[39].warmupCount).toBe(40);
+    expect(readings[39].qualified).toBe(true);
+    expect(readings[39].widthRatio).toBe(1);
+    expect(readings[39].rangeHigh).toBeNull(); // the range opens at this bar's commit, after the snapshot
+    expect(readings[40].rangeHigh).toBe(60_055);
+    expect(readings[40].rangeLow).toBe(59_945);
+  it("a close back inside the frozen edges is a failure; the edges are still reported on that bar; the range is held", () => {
+    const { readings, committed } = run(breakThenInside(60_000));
+    expect(readings[47].pending).toBe(1);
+    expect(readings[47].pendingBars).toBe(1);
+    expect(readings[47].decision).toMatchObject({ kind: "failed", dir: 1, grade: 3 });
+    expect(readings[47].rangeHigh).toBe(60_055);
+    expect(committed.active).toBeNull();
+    expect(committed.held).toHaveLength(1);
+    expect(committed.held[0]).toMatchObject({ hi: 60_055, lo: 59_945, outcome: "failed", remaining: 40 });
+    expect(committed.lastEvent).toMatchObject({ kind: "failed", index: 47 });
+  });
+
+  it("a close beyond the opposite edge is a failure too (it passed back through the range)", () => {
+    const { readings } = run(breakThenInside(59_900));
+    expect(readings[47].decision.kind).toBe("failed");
+  });
+
+  it("five bars outside, the last included: held outside at index 51 with the edges still reported; nothing from 52", () => {
+    const outside = { open: 60_300, high: 60_315, low: 60_295, close: 60_310, volume: 100 };
+    const { readings, committed } = run(series(53, (index) => (index === 46 ? BREAK_UP : index > 46 ? outside : null)));
+    for (let index = 47; index <= 50; index += 1) {
+      expect(readings[index].decision.kind).toBe("pending");
+      expect(readings[index].pending).toBe(1);
+    }
+    expect(readings[51].decision).toMatchObject({ kind: "heldOutside", dir: 1, grade: 3 });
+    expect(readings[51].pending).toBe(1);
+    expect(readings[51].rangeHigh).toBe(60_055);
+    expect(readings[52].pending).toBe(0);
+    expect(readings[52].rangeHigh).toBeNull();
+    expect(committed.held[0].outcome).toBe("heldOutside");
+    expect(committed.lastEvent).toMatchObject({ kind: "heldOutside", index: 51 });
+  });
+
+  it("an invalid-price bar inside the window counts for the clock but decides nothing: still held outside at 51", () => {
+    const outside = { open: 60_300, high: 60_315, low: 60_295, close: 60_310, volume: 100 };
+    const bars = series(53, (index) => (index === 46 ? BREAK_UP : index > 46 ? outside : null));
+    bars[48] = { ...bars[48], high: 1 } as BarFrame;
+    const { readings } = run(bars);
+    expect(readings[48].decision.kind).toBe("invalidPrice");
+    expect(readings[48].pending).toBe(1);
+    expect(readings[51].decision.kind).toBe("heldOutside");
+    expect(run(bars).committed.validCount).toBe(52);
+    expect(run(bars).committed.committedIndex).toBe(53);
+  });
+
+  it("the held countdown: drawn for holdBars bars after the outcome bar and freed at the commit after; holdBars 0 keeps nothing", () => {
+    const long = series(100, (index) => (index === 46 ? BREAK_UP : index === 47 ? { open: 60_300, high: 60_305, low: 59_995, close: 60_000, volume: 100 } : null));
+    const { readings } = run(long);
+    expect(readings[47].held).toHaveLength(1);
+    expect(readings[47].held[0].remaining).toBe(40);
+    expect(readings[87].held).toHaveLength(1);
+    expect(readings[87].held[0].remaining).toBe(0);
+    expect(readings[88].held).toHaveLength(0);
+    const none = run(long, { ...SETTINGS, holdBars: 0 }).readings;
+    expect(none[47].held).toHaveLength(1);
+    expect(none[47].held[0].remaining).toBe(0);
+    expect(none[48].held).toHaveLength(0);
+  });
+
+  it("the pool keeps the seven newest held ranges: the oldest gives way to the eighth", () => {
+    // Cycles of a small break (close one above the edge) and a return inside, so every window qualifies again at once.
+    const bars: BarFrame[] = [];
+    let hi = 60_055;
+    let index = 0;
+    const push = (spec: Spec) => {
+      bars.push(bar(index, spec));
+      index += 1;
+    };
+    for (let base = 0; base < 40; base += 1) push(baseSpec(base));
+    for (let cycle = 0; cycle < 9; cycle += 1) {
+      // The range re-opens at the commit of the bar after a failure, which does not count as inside: one more base bar per later cycle.
+      for (let inside = 0; inside < (cycle === 0 ? 6 : 7); inside += 1) push(baseSpec(index));
+      const close = hi + 1;
+      push({ open: 60_050, high: close + 5, low: 60_045, close, volume: 200 });
+      push({ open: close, high: close + 5, low: 59_995, close: 60_000, volume: 100 });
+      hi = close + 5;
+    }
+    const { readings, committed } = run(bars, { ...SETTINGS, holdBars: 200 });
+    const failures = readings.filter((reading) => reading.decision.kind === "failed");
+    expect(failures).toHaveLength(9);
+    expect(committed.held).toHaveLength(MAX_HELD_RANGES);
+    expect(committed.held[0].closedTs).toBe(failures[2].tsOpen);
+    expect(committed.held[MAX_HELD_RANGES - 1].closedTs).toBe(failures[8].tsOpen);
+  });
+});
+
+describe("compressionBreakoutMath -- lifetime and trend with reduced fixtures (amendment 8)", () => {
+  it("a range that never breaks expires 500 committed bars after it opened and a new one opens on the next bar", () => {
+    const { readings, committed } = run(series(560));
+    expect(readings[39 + RANGE_LIFETIME].decision.kind).toBe("expired");
+    expect(readings[39 + RANGE_LIFETIME].rangeHigh).toBe(60_055);
+    expect(committed.pendingGapReset).toBe(false);
+    // Without the pending reset the stale range would have been broken by bar 44: no event may exist.
+    expect(readings.some((reading) => reading.decision.kind === "break")).toBe(false);
+  });
+
+  it("non-finite intermediates never escape: overflowing volumes make the volume test untestable, overflowing prices make the range test untestable and the window unqualifiable", () => {
+    // The frames are built directly: the fixture helper's rounding would itself overflow these values to Infinity.
+    const hugeVolumes = series(47, (index) => (index === 46 ? BREAK_UP : null)).map((frame, index) => (index >= 26 && index < 46 ? ({ ...frame, volume: 1e308 } as BarFrame) : frame));
+    expect(hugeVolumes[30].volume).toBe(1e308);
+    const v = run(hugeVolumes).readings[46];
+    expect(v.avgVolume).toBeNull();
+    expect(v.decision).toMatchObject({ kind: "break", grade: 1, basis: 1 });
+    const wild = Array.from({ length: 60 }, (_, index) => ({ ...bar(index, baseSpec(index)), open: 0, high: 1e308, low: -1e308, close: 0, volume: 100 }) as BarFrame);
+    expect(wild[0].high).toBe(1e308);
+    const { readings, committed } = run(wild);
+    for (const reading of readings) {
+      expect(reading.trueRange).toBeNull();
+      expect(reading.widthRatio).toBeNull();
+      expect(reading.qualified === null || reading.qualified === false).toBe(true);
+      expect(reading.rangeHigh).toBeNull();
+      for (const value of [reading.avgRange, reading.avgVolume, reading.widthRatio]) expect(value === null || Number.isFinite(value)).toBe(true);
+    }
+    expect(committed.trs).toEqual([]);
+    expect(committed.highs).toHaveLength(20);
+    expect(committed.active).toBeNull();
+  });
+
+  it("a closed re-dispatch of the tail recomputes C from the untouched P: cancelled break, invalid-to-valid volume, removed failure", () => {
+    const base = series(46);
+    const breakBar = bar(46, BREAK_UP);
+    const insideBar = bar(46, baseSpec(46));
+import type { BarFrame } from "../../../../types/frames";
+import type { CompressionBreakoutLabels, Outputs } from "../../../chart/validation";
+
+/**
+ * The scoring of the brief and amendment 8, identical for every def:
+ * matched = a break event inside `[breakoutIndex, breakoutIndex + 2]`; hit =
+ * the first matched event carries the labelled direction; wrong-direction = a
+ * break event opposing the label inside that window; early = before the
+ * window (split at `compressionStart`); unmatched = after it; missed = no
+ * matched event; level valid = on a hit, the frozen edges lie inside the
+ * labelled compression range and the close is beyond the tested edge.
+ * Filtering keeps only events whose bar passes the identical activity test
+ * (true range or volume at or above 1.5 times the mean of the preceding 20
+ * bars), computed here from the bars alone, independently of any def.
+ */
+
+export interface BreakEvent {
+  index: number;
+  dir: number;
+  grade: number | null;
+}
+
+export function breakEventsOf(outputs: Outputs): BreakEvent[] {
+  const events: BreakEvent[] = [];
+  const dirs = outputs.breakDir ?? [];
+  const grades = outputs.breakGrade;
+  dirs.forEach((dir, index) => {
+    if (dir !== null && dir !== 0) events.push({ index, dir, grade: grades === undefined ? null : (grades[index] ?? null) });
+  });
+  return events;
+}
+
+/** The identical activity filter: true range or volume at least 1.5× the mean of the preceding 20 bars. */
+export function activityFlags(bars: readonly BarFrame[], multiple = 1.5): boolean[] {
+  const flags: boolean[] = [];
+  const trs: number[] = [];
+  const vols: number[] = [];
+  let prevClose: number | null = null;
+  for (const bar of bars) {
+    const tr = prevClose === null ? bar.high - bar.low : Math.max(bar.high - bar.low, Math.abs(bar.high - prevClose), Math.abs(bar.low - prevClose));
+    const mean = (values: number[]): number | null => (values.length < 20 ? null : values.slice(-20).reduce((a, b) => a + b, 0) / 20);
+    const avgTr = mean(trs);
+    const avgVol = mean(vols);
+    const rangePass = avgTr !== null && avgTr > 0 && tr >= multiple * avgTr;
+    const volumePass = avgVol !== null && avgVol > 0 && bar.volume >= multiple * avgVol;
+    flags.push(rangePass || volumePass);
+    trs.push(tr);
+    vols.push(bar.volume);
+    prevClose = bar.close;
+  }
+  return flags;
+}
+
+export interface Score {
+  hit: 0 | 1;
+  wrongDirection: number;
+  matched: number;
+  early: number;
+  earlyLead: number;
+  earlyCompression: number;
+  unmatched: number;
+  missed: 0 | 1;
+  /** 1 when the hit's edges and close satisfy the level rule; 0 when a hit fails it; null without a hit or without edges. */
+  levelValid: 0 | 1 | null;
+}
+
+export function scoreBreakout(
+  bars: readonly BarFrame[],
+  outputs: Outputs,
+  labels: CompressionBreakoutLabels,
+  filter: readonly boolean[] | null = null,
+  tolerance = 2,
+): Score {
+  const events = breakEventsOf(outputs).filter((event) => filter === null || filter[event.index]);
+  const b = labels.breakoutIndex;
+  const score: Score = { hit: 0, wrongDirection: 0, matched: 0, early: 0, earlyLead: 0, earlyCompression: 0, unmatched: 0, missed: 0, levelValid: null };
+  let first: BreakEvent | null = null;
+  for (const event of events) {
+    if (event.index >= b && event.index <= b + tolerance) {
+      score.matched += 1;
+      if (event.dir !== labels.direction) score.wrongDirection += 1;
+      if (first === null) first = event;
+    } else if (event.index < b) {
+      score.early += 1;
+      if (event.index < labels.compressionStart) score.earlyLead += 1;
+      else score.earlyCompression += 1;
+    } else {
+      score.unmatched += 1;
+    }
+  }
+  if (first === null) {
+    score.missed = 1;
+    return score;
+  }
+  if (first.dir === labels.direction) {
+    score.hit = 1;
+    const hi = outputs.activeHigh?.[first.index];
+    const lo = outputs.activeLow?.[first.index];
+    if (hi !== undefined && lo !== undefined && hi !== null && lo !== null) {
+      const close = bars[first.index].close;
+      const beyond = labels.direction > 0 ? close > hi : close < lo;
+      score.levelValid = hi <= labels.compressionHigh + 1e-9 && lo >= labels.compressionLow - 1e-9 && beyond ? 1 : 0;
+    }
+  }
+  return score;
+}
+
+export function addScores(total: Record<string, number>, score: Score): void {
+  for (const [key, value] of Object.entries(score)) {
+    if (value === null) continue;
+    total[key] = (total[key] ?? 0) + value;
+  }
+  if (score.levelValid !== null) total.levelChecked = (total.levelChecked ?? 0) + 1;
+}
+
+/** The labelled outcome: a break at `breakoutIndex` and the pulse at `outcomeIndex`. */
+export function outcomeHit(outputs: Outputs, breakoutIndex: number, outcomeIndex: number, key: "failed" | "heldOutside"): boolean {
+  const broke = (outputs.breakDir?.[breakoutIndex] ?? 0) !== 0;
+  const outcome = (outputs[key]?.[outcomeIndex] ?? 0) === 1;
+  return broke && outcome;
+}
+
+exec
+/bin/bash -lc 'node --version; node node_modules/vitest/vitest.mjs run apps/web/src/lib/indicators/compression-breakout/tests/compressionBreakoutMath.test.ts apps/web/src/lib/indicators/compression-breakout/tests/compressionBreakoutTimeline.test.ts --config apps/web/vite.config.ts' in /home/user/Terminal-L1-L2/worktrees/compression-breakout
+ exited 1 in 263ms:
+v22.22.0
+failed to load config from /home/user/Terminal-L1-L2/worktrees/compression-breakout/apps/web/vite.config.ts
+
+⎯⎯⎯⎯⎯⎯⎯ Startup Error ⎯⎯⎯⎯⎯⎯⎯⎯
+Error: EROFS: read-only file system, open '/home/user/Terminal-L1-L2/worktrees/compression-breakout/apps/web/node_modules/.vite-temp/vite.config.ts.timestamp-1793037690569-ce338174c0c87.mjs'
+    at async open (node:internal/fs/promises:636:25)
+    at async Object.writeFile (node:internal/fs/promises:1205:14)
+    at async loadConfigFromBundledFile (file:///home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk/node_modules/vite/dist/node/chunks/node.js:37163:3)
+    at async bundleAndLoadConfigFile (file:///home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk/node_modules/vite/dist/node/chunks/node.js:37015:21)
+    at async loadConfigFromFile (file:///home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk/node_modules/vite/dist/node/chunks/node.js:36975:42)
+    at async resolveConfig (file:///home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk/node_modules/vite/dist/node/chunks/node.js:36581:22)
+    at async _createServer (file:///home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk/node_modules/vite/dist/node/chunks/node.js:26388:65)
+    at async createViteServer (file:///home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk/node_modules/vitest/dist/chunks/cli-api.CnMVyzaz.js:8902:17)
+    at async createVitest (file:///home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk/node_modules/vitest/dist/chunks/cli-api.CnMVyzaz.js:14288:18)
+    at async prepareVitest (file:///home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk/node_modules/vitest/dist/chunks/cli-api.CnMVyzaz.js:14655:14) {
+  errno: -30,
+  code: 'EROFS',
+  syscall: 'open',
+  path: '/home/user/Terminal-L1-L2/worktrees/compression-breakout/apps/web/node_modules/.vite-temp/vite.config.ts.timestamp-1793037690569-ce338174c0c87.mjs'
+}
+
+
+
+
+exec
+/bin/bash -lc "node --input-type=module <<'JS'
+import fs from 'node:fs';
+import ts from 'typescript';
+const path='apps/web/src/lib/indicators/compression-breakout/compressionBreakoutMath.ts';
+const js=ts.transpileModule(fs.readFileSync(path,'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022}}).outputText;
+const {createCompressionBreakoutEngine}=await import('data:text/javascript;base64,'+Buffer.from(js).toString('base64'));
+const settings={rangeLength:20,widthMultiple:2,minCompressionBars:6,confirmMultiple:1.5,failBars:5,holdBars:40,trendFast:50,trendSlow:200};
+const engine=createCompressionBreakoutEngine(settings);
+for(let i=0;i<=52;i++) {
+ let b={ts_open:i*60000,interval_ms:60000,closed:true,open:100,high:110,low:90,close:100,volume:100};
+ if(i===46)b={...b,high:160,close:150,volume:300};
+ if(i>46&&i<51)b={...b,open:150,high:160,low:140,close:150};
+ if(i===51)b={...b,high:NaN};
+ const r=engine.onBar(b);
+ if(i>=46) console.log(i,r.decision.kind,r.pendingBars);
+}
+const e=createCompressionBreakoutEngine(settings);
+for(let i=0;i<=40;i++) {
+ const b={ts_open:i*60000,interval_ms:60000,closed:true,open:0,high:10,low:-10,close:0,volume:100};
+ if(i===40){b.high=1e308;b.low=-1e308;}
+ const r=e.onBar(b);
+ if(i===40)console.log('overflow-tail', {tr:r.trueRange,qualified:r.qualified,width:r.widthRatio});
+}
+JS" in /home/user/Terminal-L1-L2/worktrees/compression-breakout
+ exited 1 in 0ms:
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'typescript' imported from /home/user/Terminal-L1-L2/worktrees/compression-breakout/[eval1]
+Did you mean to import "typescript/lib/typescript.js"?
+    at Object.getPackageJSONURL (node:internal/modules/package_json_reader:314:9)
+    at packageResolve (node:internal/modules/esm/resolve:767:81)
+    at moduleResolve (node:internal/modules/esm/resolve:853:18)
+    at defaultResolve (node:internal/modules/esm/resolve:983:11)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:731:20)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:708:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:310:38)
+    at ModuleJob._link (node:internal/modules/esm/module_job:182:49)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  code: 'ERR_MODULE_NOT_FOUND'
+}
+
+Node.js v22.22.0
+
+exec
+/bin/bash -lc "cat apps/web/vite.config.ts; sed -n '1,110p' apps/web/src/lib/indicators/compression-breakout/tests/comparators.ts; git diff main...build/compression-breakout -- apps/web/src/lib/indicators/relative-volume/tests/relativeVolume.test.ts apps/web/src/lib/indicators/relative-volume/tests/validation/rules.test.ts" in /home/user/Terminal-L1-L2/worktrees/compression-breakout
+ succeeded in 0ms:
+import { fileURLToPath } from 'node:url'
+import { defineConfig } from 'vitest/config'
+import { loadEnv } from 'vite'
+import react from '@vitejs/plugin-react'
+import { mergeProxyEnvironments, proxySettingsForEnv } from './proxy-config.ts'
+
+export const REPOSITORY_ROOT = fileURLToPath(new URL('../..', import.meta.url))
+export const TERMINAL_D_ENV_PREFIXES = ['VITE_', 'TT_LIVE_PROXY_URL', 'TT_ARCHIVE_PROXY_URL']
+type EnvLoader = (mode: string, envDir: string, prefixes: string | string[]) => Record<string, string>
+
+export function proxyEnvForMode(
+  mode: string,
+  load: EnvLoader = loadEnv,
+  inherited: NodeJS.ProcessEnv = process.env,
+): NodeJS.ProcessEnv {
+  return mergeProxyEnvironments(
+    load(mode, REPOSITORY_ROOT, TERMINAL_D_ENV_PREFIXES),
+    {},
+    inherited,
+  )
+}
+
+export function configForEnv(env: NodeJS.ProcessEnv) {
+  const { allowedHosts, liveOrigin, archiveOrigin, liveWebSocketOrigin } = proxySettingsForEnv(env)
+  const served = {
+    host: '127.0.0.1',
+    port: 8000,
+    strictPort: true,
+    allowedHosts,
+    proxy: {
+      '/ws': {
+        target: liveWebSocketOrigin,
+        ws: true,
+      },
+      '/health': {
+        target: liveOrigin,
+        changeOrigin: true,
+      },
+      '/archive': {
+        target: archiveOrigin,
+        changeOrigin: true,
+      },
+      '/heatmap': {
+        target: liveOrigin,
+        changeOrigin: true,
+      },
+    },
+  }
+  return {
+    plugins: [react()],
+    envDir: REPOSITORY_ROOT,
+    build: {
+      rolldownOptions: {
+        output: {
+          codeSplitting: {
+            groups: [
+              { name: 'react', test: /node_modules[\\/](react|react-dom|scheduler)[\\/]/, priority: 3 },
+              { name: 'charts', test: /node_modules[\\/](lightweight-charts|fancy-canvas)[\\/]/, priority: 2 },
+              { name: 'vendor', test: /node_modules[\\/]/, priority: 1 },
+              { name: 'indicators', test: /src[\\/]lib[\\/]indicators[\\/]/, priority: 1 },
+            ],
+          },
+        },
+      },
+    },
+    server: served,
+    preview: served,
+    test: {
+      // Tests run in Node unless a file asks for a browser with
+      // `// @vitest-environment jsdom`: a page's DOM costs set-up on every file.
+      environment: 'node',
+      setupFiles: ['./src/test/setup.ts'],
+      testTimeout: 20_000,
+    },
+  }
+}
+
+export default defineConfig(({ mode }) => configForEnv(proxyEnvForMode(mode)))
+import type { LineOutputSpec, RuntimeIndicatorDef } from "../../../chart/indicatorTypes";
+import { ta } from "../../../chart/ta";
+import type { Stream } from "../../../chart/ta/stream";
+import { CB_BEAR_COLOR, CB_BULL_COLOR, CB_WARN_COLOR, withAlpha, type CompressionBreakoutSettings } from "../compressionBreakout";
+import { createCompressionBreakoutEngine, type CompressionBreakoutEngine, type Qualifier, type Reading } from "../compressionBreakoutMath";
+
+/**
+ * The test-only comparator defs of the brief, each with the same output seams
+ * the scoring reads (`breakDir`, `breakGrade`, `failed`, `heldOutside`,
+ * `activeHigh`, `activeLow`) declared as lines so the harness records them.
+ *
+ * - `plainFrozenRangeBaseline`: the product's establishment, grading and
+ *   outcome rules with no width qualifier at all (every ready window opens a
+ *   range), amendment 8's "does compression selection discriminate" baseline.
+ * - `squeezeQualifiedVariant`: the squeeze qualifier (Bollinger inside a
+ *   Keltner-style channel over the committed window) on this machine, not the
+ *   round-2 state machine with its pause and release rules: the comparison
+ *   isolates the qualifier the v2 clause asks about (code review ruling 4).
+ * - `ttmReleaseComparator`: the library's TTM Squeeze releasing after at least
+ *   six squeezed bars; direction from the momentum sign. Timing and density
+ *   only: it has no level and no outcome.
+ * - `bollingerCrossingComparator`: the first close outside a Bollinger band
+ *   after an inside close. Timing and density only.
+ */
+
+const SEAMS = ["breakDir", "breakGrade", "gradeBasis", "failed", "heldOutside", "activeHigh", "activeLow"] as const;
+
+interface EngineState {
+  engine: CompressionBreakoutEngine;
+  reading: Reading | null;
+}
+
+function engineDef(id: string, qualifier: Qualifier): RuntimeIndicatorDef<EngineState, CompressionBreakoutSettings> {
+  return {
+    kind: "runtime",
+    id,
+    label: id,
+    category: "technical",
+    defaultSettings: {
+      rangeLength: 20,
+      minCompressionBars: 6,
+      confirmMultiple: 1.5,
+      widthMultiple: 2,
+      failBars: 5,
+      holdBars: 40,
+      trendFast: 50,
+      trendSlow: 200,
+      showMarkers: true,
+      showRanges: true,
+    },
+    lines: SEAMS.map((key) => ({ key })) as readonly LineOutputSpec<EngineState>[],
+    placement: { kind: "overlay" },
+    createState: (settings) => ({ engine: createCompressionBreakoutEngine({ ...settings, qualifier }), reading: null }),
+    onBar: (ctx) => {
+      const reading = ctx.state.engine.onBar(ctx.bar);
+      ctx.state.reading = reading;
+      const d = reading.decision;
+      if (d.kind === "break" && d.grade >= 1) {
+        const base = d.dir > 0 ? CB_BULL_COLOR : CB_BEAR_COLOR;
+        ctx.markers.plotshape({ shape: d.dir > 0 ? "arrowUp" : "arrowDown", position: d.dir > 0 ? "belowBar" : "aboveBar", color: d.grade === 3 ? base : withAlpha(base, 0.65), size: 1 });
+      } else if (d.kind === "failed" && d.grade >= 1) {
+        ctx.markers.plotshape({ shape: "circle", position: "inBar", color: CB_WARN_COLOR, size: 1 });
+      }
+    },
+    readOutput: (state) => {
+      const r = state.reading;
+      if (r === null) return { breakDir: 0, breakGrade: 0, gradeBasis: 0, failed: 0, heldOutside: 0, activeHigh: null, activeLow: null };
+      const isBreak = r.decision.kind === "break";
+      return {
+        breakDir: isBreak ? r.decision.dir : 0,
+        breakGrade: isBreak ? r.decision.grade : 0,
+        gradeBasis: isBreak ? r.decision.basis : 0,
+        failed: r.decision.kind === "failed" ? 1 : 0,
+        heldOutside: r.decision.kind === "heldOutside" ? 1 : 0,
+        activeHigh: r.rangeHigh,
+        activeLow: r.rangeLow,
+      };
+    },
+  };
+}
+
+export const plainFrozenRangeBaseline = engineDef("plainFrozenRangeBaseline", "always");
+export const squeezeQualifiedVariant = engineDef("squeezeQualifiedVariant", "squeeze");
+
+interface TtmState {
+  stream: Stream<{ high: number; low: number; close: number }, { isSqueezed: boolean; momentum: number }>;
+  committedRun: number;
+  pendingSqueezed: boolean | null;
+  breakDir: number;
+}
+
+/** TTM Squeeze release: the first bar `isSqueezed` is false after at least `minSqueezedBars` consecutive true bars. */
+export const ttmReleaseComparator: RuntimeIndicatorDef<TtmState, { minSqueezedBars: number }> = {
+  kind: "runtime",
+  id: "ttmReleaseComparator",
+  label: "ttmReleaseComparator",
+  category: "technical",
+  defaultSettings: { minSqueezedBars: 6 },
+  lines: [{ key: "breakDir" }],
+  placement: { kind: "overlay" },
+  createState: () => ({ stream: ta.ttmSqueeze(20, 2, 20, 1.5), committedRun: 0, pendingSqueezed: null, breakDir: 0 }),
+  onBar: (ctx) => {
+    const { bar, state, settings, replace } = ctx;
+    if (!replace && state.pendingSqueezed !== null) state.committedRun = state.pendingSqueezed ? state.committedRun + 1 : 0;
+    const result = state.stream.push({ high: bar.high, low: bar.low, close: bar.close }, replace);
+    state.pendingSqueezed = result === null ? null : result.isSqueezed;
+    state.breakDir = 0;
+    if (result !== null && !result.isSqueezed && state.committedRun >= settings.minSqueezedBars) {
+      state.breakDir = Math.sign(result.momentum);
+      if (state.breakDir !== 0) ctx.markers.plotshape({ shape: state.breakDir > 0 ? "arrowUp" : "arrowDown", position: state.breakDir > 0 ? "belowBar" : "aboveBar", color: state.breakDir > 0 ? CB_BULL_COLOR : CB_BEAR_COLOR, size: 1 });
+diff --git a/apps/web/src/lib/indicators/relative-volume/tests/relativeVolume.test.ts b/apps/web/src/lib/indicators/relative-volume/tests/relativeVolume.test.ts
+index fabfc5b..7d9c422 100644
+--- a/apps/web/src/lib/indicators/relative-volume/tests/relativeVolume.test.ts
++++ b/apps/web/src/lib/indicators/relative-volume/tests/relativeVolume.test.ts
+@@ -80,7 +80,8 @@ const reading = (overrides: Partial<RvolReading>): RvolReading => ({
+ 
+ describe("relativeVolume -- identity, registry and Historical Mode policy", () => {
+   it("is registered last with the brief's identity and an honest candle-only policy", () => {
+-    expect(INDICATOR_REGISTRY[INDICATOR_REGISTRY.length - 1].id).toBe("relativeVolume");
++    // Appended at its build; every later indicator appends after it (Compression Breakout did), so the check is registration, not last place.
++    expect(INDICATOR_REGISTRY.map((def) => def.id)).toContain("relativeVolume");
+     expect(relativeVolumeIndicator.label).toBe("Relative Volume (Time of Day)");
+     expect(relativeVolumeIndicator.category).toBe("technical");
+     expect(relativeVolumeIndicator.placement).toEqual({ kind: "ownPane", priceLines: [1, 2, 3], autoscaleRange: { min: 0, max: 4 } });
+diff --git a/apps/web/src/lib/indicators/relative-volume/tests/validation/rules.test.ts b/apps/web/src/lib/indicators/relative-volume/tests/validation/rules.test.ts
+index 5cdc1d5..7f81e80 100644
+--- a/apps/web/src/lib/indicators/relative-volume/tests/validation/rules.test.ts
++++ b/apps/web/src/lib/indicators/relative-volume/tests/validation/rules.test.ts
+@@ -178,7 +178,8 @@ describe("equity unsided volume (check 9) and Historical Mode policy (check 10)"
+   });
+ 
+   it("OHLCV_POLICY row, appended last in the registry, and a candle-only replay with no extras yields real ratios on every archived instrument", () => {
+-    expect(INDICATOR_REGISTRY[INDICATOR_REGISTRY.length - 1].id).toBe("relativeVolume");
++    // Appended at its build; every later indicator appends after it (Compression Breakout did), so the check is registration, not last place.
++    expect(INDICATOR_REGISTRY.map((def) => def.id)).toContain("relativeVolume");
+     expect(HISTORICAL_INDICATOR_POLICIES.relativeVolume).toEqual({ requiredCapabilities: ["ohlcv"] });
+     for (const provider of ["BINANCE", "DXFEED", "DATABENTO"] as const) {
+       expect(historicalIndicatorAvailability("relativeVolume", new Set(["ohlcv"]), provider)).toEqual({ available: true, reason: null });
+
+exec
+/bin/bash -lc "node --input-type=module <<'JS'
+import fs from 'node:fs';
+import ts from '/home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk/node_modules/typescript/lib/typescript.js';
+const js=ts.transpileModule(fs.readFileSync('apps/web/src/lib/indicators/compression-breakout/compressionBreakoutMath.ts','utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022}}).outputText;
+const {createCompressionBreakoutEngine}=await import('data:text/javascript;base64,'+Buffer.from(js).toString('base64'));
+const settings={rangeLength:20,widthMultiple:2,minCompressionBars:6,confirmMultiple:1.5,failBars:5,holdBars:40,trendFast:50,trendSlow:200};
+const engine=createCompressionBreakoutEngine(settings);
+for(let i=0;i<=52;i++) {
+ let b={ts_open:i*60000,interval_ms:60000,closed:true,open:100,high:110,low:90,close:100,volume:100};
+ if(i===46)b={...b,high:160,close:150,volume:300};
+ if(i>46&&i<51)b={...b,open:150,high:160,low:140,close:150};
+ if(i===51)b={...b,high:NaN};
+ const r=engine.onBar(b);
+ if(i>=46) console.log(i,r.decision.kind,r.pendingBars);
+}
+// Finite prices whose span overflows after a fully populated finite history.
+const e=createCompressionBreakoutEngine(settings);
+for(let i=0;i<=80;i++) {
+ const b={ts_open:i*60000,interval_ms:60000,closed:true,open:0,high:10,low:-10,close:0,volume:100};
+ if(i===40){b.high=1e308;b.low=-1e308;}
+ const r=e.onBar(b);
+ if([40,59,60,79,80].includes(i))console.log('overflow-history',i, {tr:r.trueRange,qualified:r.qualified,width:r.widthRatio});
+}
+JS" in /home/user/Terminal-L1-L2/worktrees/compression-breakout
+ exited 1 in 0ms:
+node:internal/modules/esm/resolve:274
+    throw new ERR_MODULE_NOT_FOUND(
+          ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk/node_modules/typescript/lib/typescript.js' imported from /home/user/Terminal-L1-L2/worktrees/compression-breakout/[eval1]
+    at finalizeResolution (node:internal/modules/esm/resolve:274:11)
+    at moduleResolve (node:internal/modules/esm/resolve:859:10)
+    at defaultResolve (node:internal/modules/esm/resolve:983:11)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:731:20)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:708:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:310:38)
+    at ModuleJob._link (node:internal/modules/esm/module_job:182:49)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk/node_modules/typescript/lib/typescript.js'
+}
+
+Node.js v22.22.0
+
+exec
+/bin/bash -lc 'ls node_modules; ls /usr/local/bin; command -v node24; command -v tsx; ls /opt' in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 38ms:
+@asamuzakjp
+@babel
+@bcoe
+@bramus
+@csstools
+@dxfeed
+@eslint
+@eslint-community
+@exodus
+@humanfs
+@humanwhocodes
+@isaacs
+@istanbuljs
+@jest
+@jridgewell
+@oxc-project
+@oxlint
+@pkgjs
+@pkgr
+@polka
+@rolldown
+@sinclair
+@sinonjs
+@standard-schema
+@terminal-l1-l2
+@types
+@ungap
+@unrs
+@vitest
+acorn
+acorn-jsx
+ajv
+ansi-escapes
+ansi-regex
+ansi-styles
+anymatch
+argparse
+assertion-error
+ast-v8-to-istanbul
+babel-jest
+babel-plugin-istanbul
+babel-plugin-jest-hoist
+babel-preset-current-node-syntax
+babel-preset-jest
+balanced-match
+baseline-browser-mapping
+better-sqlite3
+bidi-js
+brace-expansion
+browserslist
+bser
+buffer-from
+callsites
+camelcase
+caniuse-lite
+chai
+chalk
+char-regex
+ci-info
+cjs-module-lexer
+cliui
+co
+collect-v8-coverage
+color-convert
+color-name
+concat-map
+convert-source-map
+cross-spawn
+css-tree
+data-urls
+debug
+decimal.js
+dedent
+deep-is
+deepmerge
+detect-libc
+detect-newline
+eastasianwidth
+electron-to-chromium
+emittery
+emoji-regex
+entities
+error-ex
+es-module-lexer
+escalade
+escape-string-regexp
+eslint
+eslint-scope
+eslint-visitor-keys
+espree
+esprima
+esquery
+esrecurse
+estraverse
+estree-walker
+esutils
+execa
+exit-x
+expect
+expect-type
+fast-check
+fast-deep-equal
+fast-json-stable-stringify
+fast-levenshtein
+fb-watchman
+fdir
+fflate
+file-entry-cache
+find-up
+flat-cache
+flatted
+foreground-child
+fs.realpath
+gensync
+get-caller-file
+get-package-type
+get-stream
+glob
+glob-parent
+globals
+graceful-fs
+has-flag
+html-encoding-sniffer
+html-escaper
+human-signals
+ignore
+import-fresh
+import-local
+imurmurhash
+inflight
+inherits
+is-arrayish
+is-extglob
+is-fullwidth-code-point
+is-generator-fn
+is-glob
+is-potential-custom-element-name
+is-stream
+isexe
+istanbul-lib-coverage
+istanbul-lib-instrument
+istanbul-lib-report
+istanbul-lib-source-maps
+istanbul-reports
+jackspeak
+jest
+jest-changed-files
+jest-circus
+jest-cli
+jest-config
+jest-diff
+jest-docblock
+jest-each
+jest-environment-node
+jest-haste-map
+jest-leak-detector
+jest-matcher-utils
+jest-message-util
+jest-mock
+jest-pnp-resolver
+jest-regex-util
+jest-resolve
+jest-resolve-dependencies
+jest-runner
+jest-runtime
+jest-snapshot
+jest-util
+jest-validate
+jest-watcher
+jest-worker
+js-tokens
+js-yaml
+jsdom
+jsesc
+json-buffer
+json-parse-even-better-errors
+json-schema-traverse
+json-stable-stringify-without-jsonify
+json5
+keyv
+leven
+levn
+lightningcss
+lightningcss-linux-x64-gnu
+lightningcss-linux-x64-musl
+lines-and-columns
+locate-path
+lodash.merge
+lru-cache
+magic-string
+magicast
+make-dir
+makeerror
+mdn-data
+merge-stream
+mimic-fn
+minimatch
+minipass
+mrmime
+ms
+nanoid
+napi-postinstall
+natural-compare
+node-addon-api
+node-int64
+node-releases
+normalize-path
+npm-run-path
+obug
+once
+onetime
+optionator
+p-limit
+p-locate
+p-try
+package-json-from-dist
+parent-module
+parse-json
+parse5
+path-exists
+path-is-absolute
+path-key
+path-scurry
+pathe
+picocolors
+picomatch
+pirates
+pkg-dir
+postcss
+prelude-ls
+pretty-format
+punycode
+pure-rand
+react-is-18
+react-is-19
+require-directory
+require-from-string
+resolve-cwd
+resolve-from
+rolldown
+saxes
+semver
+shebang-command
+shebang-regex
+siginfo
+signal-exit
+sirv
+slash
+source-map
+source-map-js
+source-map-support
+sprintf-js
+stack-utils
+stackback
+std-env
+string-length
+string-width
+string-width-cjs
+strip-ansi
+strip-ansi-cjs
+strip-bom
+strip-final-newline
+strip-json-comments
+supports-color
+symbol-tree
+synckit
+tardis-dev
+test-exclude
+tinybench
+tinyexec
+tinyglobby
+tinyrainbow
+tldts
+tldts-core
+tmpl
+totalist
+tough-cookie
+tr46
+trading-signals
+type-check
+type-detect
+type-fest
+undici
+undici-types
+unrs-resolver
+update-browserslist-db
+uri-js
+v8-to-istanbul
+vite
+vitest
+w3c-xmlserializer
+walker
+web
+webidl-conversions
+whatwg-mimetype
+whatwg-url
+which
+why-is-node-running
+word-wrap
+wrap-ansi
+wrap-ansi-cjs
+wrappy
+write-file-atomic
+ws
+xml-name-validator
+xmlchars
+y18n
+yallist
+yargs
+yargs-parser
+yocto-queue
+bq
+bun
+bundle
+bunx
+cffi-gen-src
+check-tools
+composer
+create-venv-py3.11
+create-venv-py3.12
+create-venv-py3.13
+cu-desktop
+dotenv
+dumppdf.py
+environment-manager
+f2py
+gcloud
+gem
+gh
+golangci-lint
+gsutil
+httpx2
+idna
+irb
+jsonschema
+magika
+markdownify
+markitdown
+mcp
+nix
+node
+normalizer
+npm
+npx
+numpy-config
+onnxruntime_test
+pdf2txt.py
+pdfplumber
+pypdfium2
+ruby
+use-node-20
+use-node-21
+use-node-22
+use-php-8.3
+use-python
+use-ruby-3.1.6
+use-ruby-3.2.6
+use-ruby-3.3.6
+uvicorn
+vba_extract.py
+apache-maven-3.9.11
+claude-code
+cu-desktop
+env-runner
+google-cloud-sdk
+gradle
+gradle-8.14.3
+maven
+node-tools
+node20
+node21
+node22
+nvm
+pw-browsers
+rbenv
+rclone
+rclone-attach
+ruby-3.1.6
+ruby-3.2.6
+ruby-3.3.6
+
+exec
+/bin/bash -lc "nl -ba apps/web/src/lib/indicators/compression-breakout/compressionBreakoutMath.ts | sed -n '405,475p'; sed -n '1,180p' apps/web/src/lib/indicators/compression-breakout/tests/compressionBreakoutLive.test.ts" in /home/user/Terminal-L1-L2/worktrees/compression-breakout
+ succeeded in 0ms:
+   405	        widthRatio = provisional.widthRatio;
+   406	      }
+   407	    }
+   408	
+   409	    // Trend, from committed closes only; the tail's close is compared with them.
+   410	    let trendStatus: TrendStatus = "warming";
+   411	    let trend: -1 | 0 | 1 | null = null;
+   412	    if (settings.trendFast >= settings.trendSlow) {
+   413	      trendStatus = "fastGeSlow";
+   414	    } else if (P.validCount >= settings.trendSlow + 5 && P.closes.length >= settings.trendSlow && P.fastHistory.length >= SLOPE_HISTORY) {
+   415	      trendStatus = "ready";
+   416	      if (priceValid) {
+   417	        const slowMa = tailMean(P.closes, settings.trendSlow);
+   418	        const slope = P.fastHistory[P.fastHistory.length - 1] - P.fastHistory[0];
+   419	        if (slowMa !== null && Number.isFinite(slope)) trend = bar.close > slowMa && slope > 0 ? 1 : bar.close < slowMa && slope < 0 ? -1 : 0;
+   420	      }
+   421	    }
+   422	
+   423	    // Decision, exactly one per bar, read against W.
+   424	    const index = P.committedIndex;
+   425	    let decision: Decision = { kind: "none", dir: 0, grade: 0, basis: gradeBasis, rangePassed: false, volumePassed: false };
+   426	    if (!priceValid) {
+   427	      decision = { ...decision, kind: "invalidPrice" };
+   428	    } else if (active !== null && active.broken !== null) {
+   429	      const inside = bar.close <= active.hi && bar.close >= active.lo;
+   430	      const opposite = active.broken.dir > 0 ? bar.close < active.lo : bar.close > active.hi;
+   431	      if (inside || opposite) decision = { ...decision, kind: "failed", dir: active.broken.dir, grade: active.broken.grade, basis: active.broken.basis };
+   432	      else if (index - active.broken.index >= settings.failBars)
+   433	        decision = { ...decision, kind: "heldOutside", dir: active.broken.dir, grade: active.broken.grade, basis: active.broken.basis };
+   434	      else decision = { ...decision, kind: "pending", dir: active.broken.dir, grade: active.broken.grade, basis: active.broken.basis };
+   435	    } else if (active !== null) {
+   436	      const dir: Direction | 0 = bar.close > active.hi ? 1 : bar.close < active.lo ? -1 : 0;
+   437	      if (dir !== 0) {
+   438	        if (active.age >= settings.minCompressionBars) {
+   439	          const rangePassed = rangeTestable && (trueRange as number) >= settings.confirmMultiple * (avgRange as number);
+   440	          const volumePassed = volumeTestable && bar.volume >= settings.confirmMultiple * (avgVolume as number);
+   441	          const grade: BreakGrade = rangePassed && volumePassed ? 3 : rangePassed ? 1 : volumePassed ? 2 : 0;
+   442	          decision = { kind: "break", dir, grade, basis: gradeBasis, rangePassed, volumePassed };
+   443	        } else {
+   444	          decision = { ...decision, kind: "abandoned", dir };
+   445	        }
+   446	      } else if (index - active.openedAt >= RANGE_LIFETIME) {
+   447	        decision = { ...decision, kind: "expired" };
+   448	      }
+   449	    }
+   450	
+   451	    // Readiness counts committed valid-price bars plus this bar when its price is valid; the rings themselves are capped.
+   452	    const validThroughThisBar = P.validCount + (priceValid ? 1 : 0);
+   453	    return {
+   454	      tsOpen: bar.ts_open,
+   455	      intervalMs: bar.interval_ms,
+   456	      confirmed: bar.closed === true,
+   457	      priceValid,
+   458	      volumeValid,
+   459	      gap,
+   460	      trueRange,
+   461	      warmupCount: Math.min(validThroughThisBar, readinessCount),
+   462	      warmupNeeded: readinessCount,
+   463	      rangeReady: validThroughThisBar >= readinessCount,
+   464	      active,
+   465	      rangeHigh: active?.hi ?? null,
+   466	      rangeLow: active?.lo ?? null,
+   467	      rangeAge: active?.age ?? null,
+   468	      pending: active !== null && active.broken !== null ? 1 : 0,
+   469	      pendingBars: active !== null && active.broken !== null ? index - active.broken.index : 0,
+   470	      qualified,
+   471	      widthRatio,
+   472	      trend,
+   473	      trendStatus,
+   474	      closesCount: Math.min(P.validCount, settings.trendSlow + 5),
+   475	      avgRange,
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
+import type { BarFrame } from "../../../../types/frames";
+import { resetDrawOwnerScopeForTests } from "../../../chart/draw/creationScope";
+import { resetDrawRegistryForTests } from "../../../chart/draw/registry";
+import { resampleBars } from "../../../chart/resampleBars";
+import { diffMarkers, diffOutputs, markerBudgetOf, openLiveSession, replayCapture, type Outputs } from "../../../chart/validation";
+import { COMPRESSION_BREAKOUT_DEFAULT_SETTINGS, compressionBreakoutIndicator } from "../compressionBreakout";
+import { bollingerCrossingComparator, plainFrozenRangeBaseline, squeezeQualifiedVariant, ttmReleaseComparator } from "./comparators";
+import { compressionBreakoutSeamDef } from "./seamDef";
+
+afterEach(() => {
+  resetDrawRegistryForTests();
+  resetDrawOwnerScopeForTests();
+});
+
+/**
+ * The live observation run of the brief: real Binance spot candles recorded
+ * from the REST transport (snapshot of 10,080 one-minute bars, then every bar
+ * frame for thirty minutes) are driven through the real runtime the way the
+ * chart receives them, then compared with a clean replay of the retained
+ * series. Density, honesty and replay only: there is no label. Set
+ * CB_LIVE_DIR to the directory holding `btc-usdt.json` and `eth-usdt.json`
+ * (the recorder is `record-live.cjs`); the report goes to CB_LIVE_OUT.
+ */
+
+interface Recording {
+  symbol: string;
+  startedAt: string;
+  endedAt: string;
+  snapshotBars: BarFrame[];
+  barFrames: (BarFrame & { receivedAt: number })[];
+  counts: Record<string, number>;
+}
+
+const DIR = process.env.CB_LIVE_DIR ?? "";
+const FILES = ["btc-usdt.json", "eth-usdt.json"].map((name) => join(DIR, name));
+const available = DIR !== "" && FILES.every((file) => existsSync(file));
+
+function eventsOf(outputs: Outputs, bars: readonly BarFrame[]): string[] {
+  const lines: string[] = [];
+  bars.forEach((bar, index) => {
+    const when = new Date(bar.ts_open).toISOString().slice(5, 16).replace("T", " ");
+    const dir = outputs.breakDir?.[index] ?? 0;
+    if (dir !== 0) lines.push(outputs.breakGrade === undefined ? `${when} event ${dir > 0 ? "↑" : "↓"}` : `${when} break ${dir > 0 ? "↑" : "↓"} grade ${outputs.breakGrade[index]} basis ${outputs.gradeBasis?.[index]}`);
+    if ((outputs.failed?.[index] ?? 0) === 1) lines.push(`${when} failed`);
+    if ((outputs.heldOutside?.[index] ?? 0) === 1) lines.push(`${when} held outside`);
+    if ((outputs.expired?.[index] ?? 0) === 1) lines.push(`${when} expired`);
+  });
+  return lines;
+}
+
+describe.skipIf(!available)("compressionBreakout -- live observation on BTC-USDT and ETH-USDT spot candles (REST transport)", () => {
+  const report: string[] = ["# Compression Breakout live observation run", ""];
+
+  it("live equals the replay of the retained series, nothing faults, and the marker density is under 40 per 1,000 on 1m and on resampled 5m", () => {
+    for (const file of FILES) {
+      const recording = JSON.parse(readFileSync(file, "utf8")) as Recording;
+      const frames = recording.barFrames.map(({ receivedAt: _receivedAt, ...bar }) => bar as BarFrame);
+      expect(recording.snapshotBars.length).toBeGreaterThan(1_000);
+      // The chart's path: the snapshot is replayed on activation, then every bar frame is dispatched as it arrived.
+      const session = openLiveSession(compressionBreakoutSeamDef, COMPRESSION_BREAKOUT_DEFAULT_SETTINGS, {}, recording.snapshotBars);
+      let live;
+      let retained: BarFrame[];
+      let mutations: string[];
+      try {
+        for (const frame of frames) session.dispatch({ bar: frame });
+        live = session.capture();
+        retained = [...session.bars];
+        mutations = [...session.mutations];
+      } finally {
+        session.close();
+      }
+      expect(live.faulted).toBe(false);
+      const replay = replayCapture(compressionBreakoutSeamDef, retained, COMPRESSION_BREAKOUT_DEFAULT_SETTINGS);
+      // Amendment 1: the rollover dropped the oldest bars the live instance saw, so the replay starts cold; equality is
+      // required from the first retained bar at which the live instance holds no active and no held range once the
+      // denominators and the trend window lie inside retention. Differences before it are reported, not judged.
+      const warm = Math.max(2 * COMPRESSION_BREAKOUT_DEFAULT_SETTINGS.rangeLength, 20, COMPRESSION_BREAKOUT_DEFAULT_SETTINGS.trendSlow + 5);
+      let quiet = -1;
+      for (let index = warm; index < retained.length; index += 1) {
+        if (live.outputs.activeHigh[index] === null && live.outputs.heldCount[index] === 0) {
+          quiet = index;
+          break;
+        }
+      }
+      const allDiffs = diffOutputs(live.outputs, replay.outputs);
+      const preQuiet = allDiffs.filter((diff) => quiet === -1 || diff.index < quiet).length;
+      const outputDiffs = quiet === -1 ? allDiffs : allDiffs.filter((diff) => diff.index >= quiet);
+      const firstDiff = outputDiffs.length === 0 ? -1 : Math.min(...outputDiffs.map((diff) => diff.index));
+      const productLive = (() => {
+        const s = openLiveSession(compressionBreakoutIndicator, COMPRESSION_BREAKOUT_DEFAULT_SETTINGS, {}, recording.snapshotBars);
+        try {
+          for (const frame of frames) s.dispatch({ bar: frame });
+          return s.capture();
+        } finally {
+          s.close();
+        }
+      })();
+      const productReplay = replayCapture(compressionBreakoutIndicator, retained, COMPRESSION_BREAKOUT_DEFAULT_SETTINGS);
+      const confirmedLive = productLive.markers.filter((call) => !call.color.startsWith("rgba("));
+      const confirmedReplay = productReplay.markers.filter((call) => !call.color.startsWith("rgba("));
+      const quietTime = quiet === -1 ? -Infinity : retained[quiet].ts_open;
+      const markerDiff = diffMarkers(confirmedLive.filter((call) => call.time >= quietTime), confirmedReplay.filter((call) => call.time >= quietTime));
+      const budget1m = markerBudgetOf(confirmedReplay, retained.length, productReplay.faulted);
+      const fiveMinute = resampleBars(retained, 5 * 60_000);
+      const replay5m = replayCapture(compressionBreakoutIndicator, fiveMinute, COMPRESSION_BREAKOUT_DEFAULT_SETTINGS);
+      const budget5m = markerBudgetOf(replay5m.markers.filter((call) => !call.color.startsWith("rgba(")), fiveMinute.length, replay5m.faulted);
+      const plain = replayCapture(plainFrozenRangeBaseline, retained, plainFrozenRangeBaseline.defaultSettings);
+      // Ruling 5: every comparator over the same recording, offline.
+      const comparators = [
+        { name: "Plain frozen range (no width qualifier)", capture: plain },
+        { name: "Squeeze-qualified variant (the squeeze qualifier on this machine)", capture: replayCapture(squeezeQualifiedVariant, retained, squeezeQualifiedVariant.defaultSettings) },
+        { name: "TTM release (timing and density only)", capture: replayCapture(ttmReleaseComparator, retained, ttmReleaseComparator.defaultSettings) },
+        { name: "Bollinger crossing (timing and density only)", capture: replayCapture(bollingerCrossingComparator, retained, bollingerCrossingComparator.defaultSettings) },
+      ];
+      const comparators5m = [
+        { name: "Plain frozen range (no width qualifier)", capture: replayCapture(plainFrozenRangeBaseline, fiveMinute, plainFrozenRangeBaseline.defaultSettings) },
+        { name: "Squeeze-qualified variant (the squeeze qualifier on this machine)", capture: replayCapture(squeezeQualifiedVariant, fiveMinute, squeezeQualifiedVariant.defaultSettings) },
+        { name: "TTM release (timing and density only)", capture: replayCapture(ttmReleaseComparator, fiveMinute, ttmReleaseComparator.defaultSettings) },
+        { name: "Bollinger crossing (timing and density only)", capture: replayCapture(bollingerCrossingComparator, fiveMinute, bollingerCrossingComparator.defaultSettings) },
+      ];
+      const rangesOpened = replay.outputs.rangeAge.filter((age) => age === 0).length;
+      const closes = frames.filter((frame) => frame.closed).length;
+      report.push(
+        `## ${recording.symbol}`,
+        "",
+        `Recorded ${recording.startedAt} to ${recording.endedAt}: snapshot ${recording.snapshotBars.length} bars, ${frames.length} bar frames (${closes} closes, ${new Set(frames.map((frame) => frame.ts_open)).size} distinct open times), mutations ${JSON.stringify(Object.fromEntries([...new Set(mutations)].map((kind) => [kind, mutations.filter((m) => m === kind).length])))}.`,
+        "",
+        `Live versus replay of the ${retained.length} retained bars (the rollover dropped ${recording.snapshotBars.length + closes - retained.length} older bars the live instance had seen): first quiet bar at retained index ${quiet} (${quiet === -1 ? "none" : new Date(retained[quiet].ts_open).toISOString()}), ${retained.length - Math.max(quiet, 0)} bars compared after it with ${outputDiffs.length} seam disagreements${firstDiff >= 0 ? ` (first at index ${firstDiff})` : ""}; ${preQuiet} seam cells differ before the quiet bar (the replay starts cold); confirmed markers after the quiet bar live-only ${markerDiff.leftOnly.length}, replay-only ${markerDiff.rightOnly.length}; later snapshot re-sends during the run: ${(recording as Recording & { laterSnapshots?: unknown[] }).laterSnapshots?.length ?? 0}; faulted: ${live.faulted || replay.faulted}.`,
+        "",
+        `Ranges opened over the retained series: ${rangesOpened}. Markers: ${budget1m.total} on 1m (${budget1m.per1000Bars.toFixed(1)} per 1,000, max ${budget1m.maxPerBar} per bar); ${budget5m.total} on resampled 5m over ${fiveMinute.length} bars (${budget5m.per1000Bars.toFixed(1)} per 1,000).`,
+        "",
+        "Density of every def on the same bars (confirmed markers; the two timing comparators mark every event):",
+        "",
+        "| Def | Events on 1m | Markers on 1m | per 1,000 | Markers on 5m | per 1,000 |",
+        "|---|---|---|---|---|---|",
+      );
+      const productEvents = eventsOf(replay.outputs, retained);
+      report.push(`| Product (width ≤ 2×, min 6) | ${productEvents.length} | ${budget1m.total} | ${budget1m.per1000Bars.toFixed(1)} | ${budget5m.total} | ${budget5m.per1000Bars.toFixed(1)} |`);
+      const eventLists: { name: string; events: string[] }[] = [{ name: "Product", events: productEvents }];
+      comparators.forEach((comparator, position) => {
+        const events = eventsOf(comparator.capture.outputs, retained);
+        const b1 = markerBudgetOf(comparator.capture.markers, retained.length, comparator.capture.faulted);
+        const b5 = markerBudgetOf(comparators5m[position].capture.markers, fiveMinute.length, comparators5m[position].capture.faulted);
+        expect(comparator.capture.faulted).toBe(false);
+        report.push(`| ${comparator.name} | ${events.length} | ${b1.total} | ${b1.per1000Bars.toFixed(1)} | ${b5.total} | ${b5.per1000Bars.toFixed(1)} |`);
+        eventLists.push({ name: comparator.name, events });
+      });
+      report.push("");
+      for (const list of eventLists) {
+        report.push(`### ${recording.symbol}: ${list.name} (${list.events.length} events)`, "");
+        if (list.events.length === 0) report.push("(none)");
+        for (const line of list.events) report.push(`- ${line}`);
+        report.push("");
+      }
+      expect(quiet).toBeGreaterThan(-1);
+      expect(retained.length - quiet).toBeGreaterThan(0);
+      expect(outputDiffs).toEqual([]);
+      expect(markerDiff.leftOnly).toEqual([]);
+      expect(markerDiff.rightOnly).toEqual([]);
+      expect(budget1m.per1000Bars).toBeLessThanOrEqual(40);
+      expect(budget5m.per1000Bars).toBeLessThanOrEqual(40);
+      expect(budget1m.maxPerBar).toBeLessThanOrEqual(1);
+    }
+    const text = report.join("\n");
+    console.log(text);
+    if (process.env.CB_LIVE_OUT) {
+      mkdirSync(dirname(process.env.CB_LIVE_OUT), { recursive: true });
+      writeFileSync(process.env.CB_LIVE_OUT, `${text}\n`);
+    }
+  }, 600_000);
+});
+
+exec
+/bin/bash -lc "bun -e '
+import { createCompressionBreakoutEngine } from \"./apps/web/src/lib/indicators/compression-breakout/compressionBreakoutMath.ts\";
+const s={rangeLength:20,widthMultiple:2,minCompressionBars:6,confirmMultiple:1.5,failBars:5,holdBars:40,trendFast:50,trendSlow:200};
+const e=createCompressionBreakoutEngine(s);
+for(let i=0;i<=52;i++) {
+ let b:any={ts_open:i*60000,interval_ms:60000,closed:true,open:100,high:110,low:90,close:100,volume:100};
+ if(i===46)b={...b,high:160,close:150,volume:300};
+ if(i>46&&i<51)b={...b,open:150,high:160,low:140,close:150};
+ if(i===51)b={...b,high:NaN};
+ const r=e.onBar(b); if(i>=46) console.log(i,r.decision.kind,r.pendingBars);
+}
+'" in /home/user/Terminal-L1-L2/worktrees/compression-breakout
+ succeeded in 414ms:
+46 break 0
+47 pending 1
+48 pending 2
+49 pending 3
+50 pending 4
+51 invalidPrice 5
+52 failed 6
+
+codex
+I reproduced a failure-window bug: when the fifth bar after a break has invalid prices, a return inside on bar six is reported as a failed break, beyond the five-bar window. The live test also filters out faded confirmed arrows when checking marker equality and density.
+
+Vitest could not start because Vite tried to write a config bundle in the read-only workspace. I reproduced the timing bug directly with the math module.
+exec
+/bin/bash -lc "sed -n '1,190p' apps/web/src/lib/chart/draw/table.ts; sed -n '1,150p' apps/web/src/lib/indicators/compression-breakout/tests/compressionBreakoutPerf.test.ts; sed -n '1,120p' apps/web/src/lib/indicators/compression-breakout/tests/compressionBreakoutEvaluation.test.ts" in /home/user/Terminal-L1-L2/worktrees/compression-breakout
+ succeeded in 0ms:
+import { create, remove, tablesForOwners, update } from "./registry";
+
+export type TablePosition = "top-right" | "bottom-right";
+
+export interface TableOptions {
+  position?: TablePosition;
+}
+
+export interface TableCellOptions {
+  text: string;
+  bgColor?: string;
+  textColor?: string;
+}
+
+export interface TableCell {
+  text: string;
+  bgColor: string;
+  textColor: string;
+}
+
+export interface TableData {
+  position: TablePosition;
+  pendingGrid: Record<string, TableCell>;
+  committedGrid: Record<string, TableCell>;
+}
+
+export interface TableHandle {
+  cell(row: number, col: number, options: TableCellOptions): void;
+  delete(): void;
+}
+
+export const DEFAULT_TABLE_CELL_BG = "transparent";
+export const DEFAULT_TABLE_CELL_TEXT_COLOR = "#d1d4dc";
+
+function cellKey(row: number, col: number): string {
+  return `${row},${col}`;
+}
+
+export function createTable(ownerId: string, options: TableOptions = {}): TableHandle {
+  const handleId = create<TableData>(ownerId, "table", { position: options.position ?? "top-right", pendingGrid: {}, committedGrid: {} });
+
+  return {
+    cell(row, col, options) {
+      update<TableData>(handleId, (data) => ({
+        ...data,
+        pendingGrid: {
+          ...data.pendingGrid,
+          [cellKey(row, col)]: {
+            text: options.text,
+            bgColor: options.bgColor ?? DEFAULT_TABLE_CELL_BG,
+            textColor: options.textColor ?? DEFAULT_TABLE_CELL_TEXT_COLOR,
+          },
+        },
+      }));
+    },
+    delete() {
+      remove(handleId);
+    },
+  };
+}
+
+/**
+ * Flips every table object owned by `ownerId` from its buffered pending grid
+ * to the committed grid actually read for rendering -- called once per bar
+ * transition (never per `.cell()` call) so a table's on-screen content only
+ * ever changes once per bar, matching plotshape/plotchar's own discipline.
+ */
+export function flushTableCells(ownerId: string): void {
+  for (const record of tablesForOwners([ownerId])) {
+    update<TableData>(record.handleId, (data) => ({ ...data, committedGrid: data.pendingGrid }));
+  }
+}
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
+import type { BarFrame } from "../../../../types/frames";
+import { MAX_RETAINED_SOURCE_BARS } from "../../../chart/candleLifecycle";
+import { resetDrawOwnerScopeForTests } from "../../../chart/draw/creationScope";
+import { resetDrawRegistryForTests } from "../../../chart/draw/registry";
+import {
+  constantWidthBars,
+  formatPooledReplayProbe,
+  formatReplayProbe,
+  formatRolloverProbe,
+  openLiveSession,
+  percentilesOf,
+  probeReplay,
+  probeReplayPooled,
+  probeRollover,
+  relativeVolumeCryptoFixture,
+  timedDef,
+} from "../../../chart/validation";
+import { COMPRESSION_BREAKOUT_DEFAULT_SETTINGS, compressionBreakoutIndicator } from "../compressionBreakout";
+
+afterEach(() => {
+  resetDrawRegistryForTests();
+  resetDrawOwnerScopeForTests();
+});
+
+/**
+ * Success criterion 3 and protocol check 6, measured the frozen way: three
+ * untimed warm-up replays, five timed replays of the first 10,080 crypto
+ * bars, per-bar `onBar` plus `readOutput` pooled (the per-bar snapshot copy
+ * is inside the timed region), p99 by nearest rank. The forming-bar probe
+ * warms a range on 10,080 constant-width bars, then revises the next bar 500
+ * times alternating a breaking close and an inside close, so the break
+ * marker appears and disappears on every revision. Set CB_PERF_OUT=<file>
+ * to keep the JSON.
+ */
+
+const P99_CEILING_MS = 0.05;
+const FORMING_REVISIONS = 500;
+
+describe("compressionBreakout -- performance", () => {
+  const { bars, labels } = relativeVolumeCryptoFixture();
+  const timing = bars.slice(labels.timingIndices.first, labels.timingIndices.last + 1);
+
+  it("pooled onBar plus readOutput p99 under 0.05 ms over 10,080 bars; forming revisions under 1 ms; bounded state after the rollover", () => {
+    expect(timing).toHaveLength(10_080);
+    const pooled = probeReplayPooled(compressionBreakoutIndicator, timing, COMPRESSION_BREAKOUT_DEFAULT_SETTINGS, { warmupRuns: 3, timedRuns: 5 });
+    const replay = probeReplay(compressionBreakoutIndicator, timing, COMPRESSION_BREAKOUT_DEFAULT_SETTINGS);
+    const rollover = probeRollover(compressionBreakoutIndicator, timing, COMPRESSION_BREAKOUT_DEFAULT_SETTINGS, { extraBars: 1_000 });
+
+    const warm = constantWidthBars({ count: 10_081 }).bars;
+    const { def: timed, samples } = timedDef(compressionBreakoutIndicator);
+    const session = openLiveSession(timed, COMPRESSION_BREAKOUT_DEFAULT_SETTINGS, {}, warm.slice(0, 10_080));
+    const next = warm[10_080];
+    let marked = 0;
+    let formingWallMs = 0;
+    try {
+      samples.length = 0;
+      const started = performance.now();
+      for (let revision = 0; revision < FORMING_REVISIONS; revision += 1) {
+        const breaking = revision % 2 === 0;
+        const frame = { ...next, open: 60_050, high: breaking ? 60_305 : 60_055, low: 60_045, close: breaking ? 60_300 : 60_050, volume: 200, closed: revision === FORMING_REVISIONS - 1 } as BarFrame;
+        session.dispatch({ bar: frame });
+        if (session.runtime.getMarkers(timed.id)!.some((call) => call.time === next.ts_open)) marked += 1;
+      }
+      formingWallMs = performance.now() - started;
+      expect(session.capture().faulted).toBe(false);
+    } finally {
+      session.close();
+    }
+    const forming = percentilesOf(samples);
+    expect(forming.count).toBe(FORMING_REVISIONS);
+    expect(marked).toBe(FORMING_REVISIONS / 2);
+
+    const lines = [
+      formatPooledReplayProbe(pooled),
+      formatReplayProbe(replay),
+      `compressionBreakout forming bar, range warmed on 10,080 bars, ${FORMING_REVISIONS} revisions crossing the edge each time (${marked} marked): onBar p50 ${forming.p50.toFixed(4)} ms p99 ${forming.p99.toFixed(4)} ms max ${forming.max.toFixed(3)} ms; wall ${formingWallMs.toFixed(0)} ms`,
+      formatRolloverProbe(rollover),
+    ];
+    console.log(lines.join("\n"));
+    if (process.env.CB_PERF_OUT) {
+      mkdirSync(dirname(process.env.CB_PERF_OUT), { recursive: true });
+      writeFileSync(process.env.CB_PERF_OUT, `${JSON.stringify({ node: process.version, pooled, replay, rollover, forming: { revisions: FORMING_REVISIONS, marked, onBar: forming, wallMs: formingWallMs } }, null, 2)}\n`);
+    }
+    expect(pooled.faulted).toBe(false);
+    expect(pooled.pooled.count).toBe(10_080 * 5);
+    expect(pooled.pooled.p99).toBeLessThan(P99_CEILING_MS);
+    expect(replay.faulted).toBe(false);
+    expect(replay.onBar.p99).toBeLessThanOrEqual(0.5);
+    expect(replay.wallMs).toBeLessThanOrEqual(2_000);
+    expect(forming.p99).toBeLessThanOrEqual(1);
+    expect(rollover.faulted).toBe(false);
+    expect(rollover.retainedBars).toBe(MAX_RETAINED_SOURCE_BARS);
+    expect(rollover.outputLengths).toEqual({ rangeHigh: MAX_RETAINED_SOURCE_BARS, rangeLow: MAX_RETAINED_SOURCE_BARS });
+    expect(rollover.markersBeforeRetention).toBe(0);
+  }, 600_000);
+});
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
+import { resetDrawOwnerScopeForTests } from "../../../chart/draw/creationScope";
+import { resetDrawRegistryForTests } from "../../../chart/draw/registry";
+import { formatTable, tableFor } from "./compressionBreakoutBaseline.test";
+
+afterEach(() => {
+  resetDrawRegistryForTests();
+  resetDrawOwnerScopeForTests();
+});
+
+/**
+ * Amendment 8: evaluation seeds 17..21, both directions, with the criteria
+ * frozen before any run and the numbers reported as they come. No parameter
+ * or rule was chosen on these seeds; the design seeds 7..16 are regression
+ * evidence only. Criteria: hits ≥ 9 of 10 with level valid on every hit,
+ * filtered early events ≤ 2 in total, no wrong-direction event inside a
+ * matched window, failure and hold fixtures ≥ 4 of 5 in each direction.
+ */
+describe("compressionBreakout -- evaluation seeds 17..21 (frozen criteria, run once)", () => {
+  const rows = tableFor([17, 18, 19, 20, 21]);
+  const text = formatTable("Evaluation seeds 17..21", rows, 10);
+  console.log(text);
+  if (process.env.CB_TABLE_OUT) {
+    mkdirSync(dirname(process.env.CB_TABLE_OUT), { recursive: true });
+    writeFileSync(process.env.CB_TABLE_OUT, `${text}\n\n${JSON.stringify(rows, null, 2)}\n`);
+  }
+  const product = rows["Product (width ≤ 2×, min 6)"];
+
+  it("meets the frozen criteria", () => {
+    expect(product.hits).toBeGreaterThanOrEqual(9);
+    expect(product.levelValid).toBe(product.levelChecked);
+    expect(product.levelChecked).toBe(product.hits);
+    expect(product.earlyFiltered).toBeLessThanOrEqual(2);
+    expect(product.wrongDirection).toBe(0);
+    // The outcome fixtures run in both directions: 5 seeds each; the criterion is at least 4 of 5 per direction, so at least 8 of 10 in all.
+    expect(product.failures).toBeGreaterThanOrEqual(8);
+    expect(product.holds).toBeGreaterThanOrEqual(8);
+  });
+});
+
+exec
+/bin/bash -lc "nl -ba apps/web/src/lib/indicators/compression-breakout/tests/compressionBreakoutLive.test.ts | sed -n '101,124p'; rg -n 'ruling 4|comparator|releaseBars' pm/cycle2/*compression* pm/log/codex/*code-build-compression* 2>/dev/null" in /home/user/Terminal-L1-L2/worktrees/compression-breakout
+ exited 2 in 0ms:
+   101	      const productReplay = replayCapture(compressionBreakoutIndicator, retained, COMPRESSION_BREAKOUT_DEFAULT_SETTINGS);
+   102	      const confirmedLive = productLive.markers.filter((call) => !call.color.startsWith("rgba("));
+   103	      const confirmedReplay = productReplay.markers.filter((call) => !call.color.startsWith("rgba("));
+   104	      const quietTime = quiet === -1 ? -Infinity : retained[quiet].ts_open;
+   105	      const markerDiff = diffMarkers(confirmedLive.filter((call) => call.time >= quietTime), confirmedReplay.filter((call) => call.time >= quietTime));
+   106	      const budget1m = markerBudgetOf(confirmedReplay, retained.length, productReplay.faulted);
+   107	      const fiveMinute = resampleBars(retained, 5 * 60_000);
+   108	      const replay5m = replayCapture(compressionBreakoutIndicator, fiveMinute, COMPRESSION_BREAKOUT_DEFAULT_SETTINGS);
+   109	      const budget5m = markerBudgetOf(replay5m.markers.filter((call) => !call.color.startsWith("rgba(")), fiveMinute.length, replay5m.faulted);
+   110	      const plain = replayCapture(plainFrozenRangeBaseline, retained, plainFrozenRangeBaseline.defaultSettings);
+   111	      // Ruling 5: every comparator over the same recording, offline.
+   112	      const comparators = [
+   113	        { name: "Plain frozen range (no width qualifier)", capture: plain },
+   114	        { name: "Squeeze-qualified variant (the squeeze qualifier on this machine)", capture: replayCapture(squeezeQualifiedVariant, retained, squeezeQualifiedVariant.defaultSettings) },
+   115	        { name: "TTM release (timing and density only)", capture: replayCapture(ttmReleaseComparator, retained, ttmReleaseComparator.defaultSettings) },
+   116	        { name: "Bollinger crossing (timing and density only)", capture: replayCapture(bollingerCrossingComparator, retained, bollingerCrossingComparator.defaultSettings) },
+   117	      ];
+   118	      const comparators5m = [
+   119	        { name: "Plain frozen range (no width qualifier)", capture: replayCapture(plainFrozenRangeBaseline, fiveMinute, plainFrozenRangeBaseline.defaultSettings) },
+   120	        { name: "Squeeze-qualified variant (the squeeze qualifier on this machine)", capture: replayCapture(squeezeQualifiedVariant, fiveMinute, squeezeQualifiedVariant.defaultSettings) },
+   121	        { name: "TTM release (timing and density only)", capture: replayCapture(ttmReleaseComparator, fiveMinute, ttmReleaseComparator.defaultSettings) },
+   122	        { name: "Bollinger crossing (timing and density only)", capture: replayCapture(bollingerCrossingComparator, fiveMinute, bollingerCrossingComparator.defaultSettings) },
+   123	      ];
+   124	      const rangesOpened = replay.outputs.rangeAge.filter((age) => age === 0).length;
+pm/cycle2/brief-compression-breakout.md:198:rules. `releaseBars` is removed (see Round 3 pivot, item 7).
+pm/cycle2/brief-compression-breakout.md:254:   range) over own finite-window rings, `minSqueezeBars` 6, `releaseBars` 3;
+pm/cycle2/brief-compression-breakout.md:285:rolling re-check variant (`releaseBars` 3) was tried and rejected: 16/20 hits,
+pm/cycle2/brief-compression-breakout.md:430:   design-seed numbers for all four defs (ruling 4).
+pm/cycle2/brief-compression-breakout.md:432:7. **Deviation flagged for the PM**: `releaseBars` is removed rather than
+pm/cycle2/brief-compression-breakout.md:436:   `releaseBars` misses, was simulated and drops the product to 16/20 hits and
+pm/cycle2/brief-compression-breakout.md:444:Pivot accepted as rewritten. `releaseBars` removed: a frozen range ends only
+pm/cycle2/brief-compression-breakout.md:502:   and density comparators only. Add a plain frozen-range baseline with no
+
+exec
+/bin/bash -lc 'bun node_modules/vitest/vitest.mjs run --configLoader runner --root apps/web src/lib/indicators/compression-breakout/tests/compressionBreakoutMath.test.ts src/lib/indicators/compression-breakout/tests/compressionBreakoutTimeline.test.ts src/lib/chart/validation/tests/compressionFixtures.test.ts' in /home/user/Terminal-L1-L2/worktrees/compression-breakout
+exec
+/bin/bash -lc "nl -ba apps/web/src/lib/indicators/compression-breakout/tests/compressionBreakoutEvaluation.test.ts | tail -20; rg -n 'draw|ranges|snapshot' apps/web/src/lib/indicators/compression-breakout/tests/compressionBreakoutValidation.test.ts" in /home/user/Terminal-L1-L2/worktrees/compression-breakout
+ succeeded in 0ms:
+    22	  const rows = tableFor([17, 18, 19, 20, 21]);
+    23	  const text = formatTable("Evaluation seeds 17..21", rows, 10);
+    24	  console.log(text);
+    25	  if (process.env.CB_TABLE_OUT) {
+    26	    mkdirSync(dirname(process.env.CB_TABLE_OUT), { recursive: true });
+    27	    writeFileSync(process.env.CB_TABLE_OUT, `${text}\n\n${JSON.stringify(rows, null, 2)}\n`);
+    28	  }
+    29	  const product = rows["Product (width ≤ 2×, min 6)"];
+    30	
+    31	  it("meets the frozen criteria", () => {
+    32	    expect(product.hits).toBeGreaterThanOrEqual(9);
+    33	    expect(product.levelValid).toBe(product.levelChecked);
+    34	    expect(product.levelChecked).toBe(product.hits);
+    35	    expect(product.earlyFiltered).toBeLessThanOrEqual(2);
+    36	    expect(product.wrongDirection).toBe(0);
+    37	    // The outcome fixtures run in both directions: 5 seeds each; the criterion is at least 4 of 5 per direction, so at least 8 of 10 in all.
+    38	    expect(product.failures).toBeGreaterThanOrEqual(8);
+    39	    expect(product.holds).toBeGreaterThanOrEqual(8);
+    40	  });
+    41	});
+6:import { resetDrawOwnerScopeForTests } from "../../../chart/draw/creationScope";
+7:import { resetDrawRegistryForTests } from "../../../chart/draw/registry";
+
+exec
+/bin/bash -lc "rg -n 'pendingGrid|flushTableCells' apps/web/src/lib/chart; sed -n '265,305p' apps/web/src/lib/indicators/compression-breakout/tests/compressionBreakoutValidation.test.ts; rg -n 'hint|warm|clear|table' apps/web/src/lib/indicators/compression-breakout/tests/compressionBreakout.test.ts" in /home/user/Terminal-L1-L2/worktrees/compression-breakout
+ succeeded in 0ms:
+apps/web/src/lib/chart/tests/replayWrites.test.ts:8:import { createTable, flushTableCells } from "../draw/table";
+apps/web/src/lib/chart/tests/replayWrites.test.ts:73:    flushTableCells("owner");
+apps/web/src/lib/chart/indicatorRuntime.ts:24:import { flushTableCells } from "./draw/table";
+apps/web/src/lib/chart/indicatorRuntime.ts:228:  flushTableCells(record.drawOwnerId);
+apps/web/src/lib/chart/draw/tests/table.test.ts:2:import { createTable, flushTableCells, type TableData } from "../table";
+apps/web/src/lib/chart/draw/tests/table.test.ts:14:    expect(record.data).toEqual({ position: "top-right", pendingGrid: {}, committedGrid: {} });
+apps/web/src/lib/chart/draw/tests/table.test.ts:24:    expect(data.pendingGrid["0,0"]).toMatchObject({ text: "VPIN" });
+apps/web/src/lib/chart/draw/tests/table.test.ts:33:    flushTableCells("statsPanel");
+apps/web/src/lib/chart/draw/tests/table.test.ts:47:    flushTableCells("statsPanel");
+apps/web/src/lib/chart/draw/tests/table.test.ts:56:    flushTableCells("statsPanel");
+apps/web/src/lib/chart/draw/tests/table.test.ts:62:    expect(() => flushTableCells("nobody")).not.toThrow();
+apps/web/src/lib/chart/draw/tests/table.test.ts:69:    flushTableCells("a");
+apps/web/src/lib/chart/draw/table.ts:23:  pendingGrid: Record<string, TableCell>;
+apps/web/src/lib/chart/draw/table.ts:40:  const handleId = create<TableData>(ownerId, "table", { position: options.position ?? "top-right", pendingGrid: {}, committedGrid: {} });
+apps/web/src/lib/chart/draw/table.ts:46:        pendingGrid: {
+apps/web/src/lib/chart/draw/table.ts:47:          ...data.pendingGrid,
+apps/web/src/lib/chart/draw/table.ts:68:export function flushTableCells(ownerId: string): void {
+apps/web/src/lib/chart/draw/table.ts:70:    update<TableData>(record.handleId, (data) => ({ ...data, committedGrid: data.pendingGrid }));
+apps/web/src/lib/chart/draw/tests/kernelPrimitive.test.ts:443:        data: { pendingGrid: {}, committedGrid: {} },
+    console.log(lines.join("\n"));
+  }, 120_000);
+});
+
+describe("compressionBreakout -- Historical Mode policy is honest (protocol check 10)", () => {
+  it("declares OHLCV_POLICY, is available wherever candles are, and a candle-only replay produces real values", () => {
+    expect(HISTORICAL_INDICATOR_POLICIES.compressionBreakout).toEqual({ requiredCapabilities: ["ohlcv"] });
+    expect(historicalIndicatorAvailability("compressionBreakout", new Set(["ohlcv"]))).toEqual({ available: true, reason: null });
+    expect(historicalIndicatorAvailability("compressionBreakout", new Set([])).available).toBe(false);
+    const capture = replayCapture(compressionBreakoutSeamDef, SEED7.bars, SETTINGS);
+    expect(capture.outputs.breakDir[220]).toBe(1);
+    expect(capture.markers.length).toBeGreaterThan(0);
+  });
+});
+
+describe("compressionBreakout -- replay policy (amendment 1)", () => {
+  function compareFromQuiet(bars: readonly BarFrame[], offset: number, label: string): number {
+    const live = replayCapture(compressionBreakoutSeamDef, bars, SETTINGS);
+    const rebuilt = replayCapture(compressionBreakoutSeamDef, bars.slice(offset), SETTINGS);
+    const quiet = quietBarIndex(live.outputs, offset, SETTINGS);
+    expect(quiet).toBeGreaterThan(-1);
+    let compared = 0;
+    for (let index = quiet; index < bars.length; index += 1) {
+      for (const key of SEAM_KEYS) expect(rebuilt.outputs[key][index - offset]).toBe(live.outputs[key][index]);
+      compared += 1;
+    }
+    const liveMarkers = live.markers.filter((call) => call.time >= bars[quiet].ts_open).map((call) => JSON.stringify(call));
+    const rebuiltMarkers = rebuilt.markers.filter((call) => call.time >= bars[quiet].ts_open).map((call) => JSON.stringify(call));
+    expect(rebuiltMarkers).toEqual(liveMarkers);
+    console.log(`${label}: quiet bar ${quiet}, ${compared} bars compared equal after it`);
+    return compared;
+  }
+
+  it("outputs, events and markers are equal from the first quiet bar on the breakout and control fixtures, with a non-zero compared count", () => {
+    expect(compareFromQuiet(compressionBreakoutBars({ seed: 7, count: 1_000 }).bars, 60, "breakout seed 7, offset 60")).toBeGreaterThan(0);
+    expect(compareFromQuiet(trendBars({ seed: 7, count: 1_200 }).bars, 100, "trend control, offset 100")).toBeGreaterThan(0);
+    expect(compareFromQuiet(rangeBars({ seed: 8, count: 1_500 }).bars, 137, "range control, offset 137")).toBeGreaterThan(0);
+  }, 120_000);
+
+  it("before any quiet bar the difference is the range phase, pinned on the constant-width fixture at offsets 0, 137 and 500", () => {
+    const { bars, labels } = constantWidthBars();
+18:  tableRows,
+35:describe("compressionBreakout -- table strings (UX string table, every string at most 30 characters)", () => {
+40:    return tableRows(readings[index], SETTINGS).map((row) => row.text);
+43:  it("warm-up writes one row only, then four", () => {
+44:    expect(tableRows(null, SETTINGS)).toEqual([{ text: "Warming up · 0 of 40 bars", color: "#d1d4dc" }]);
+53:      for (const row of tableRows(reading, SETTINGS)) {
+60:    expect(forms).toContain("Trend warming · n of n");
+75:    const rows = tableRows(readings[breakIndex], SETTINGS);
+78:    const failed = tableRows(readings[breakIndex + 1], SETTINGS);
+82:    const after = tableRows(readings[breakIndex + 2], SETTINGS);
+91:    expect(tableRows(r[b + 2], SETTINGS)[2].text).toBe("Holding · 2 of 5 bars");
+92:    expect(tableRows(r[b + 5], SETTINGS)[2].text).toBe("Held outside · 5 bars");
+93:    expect(tableRows(r[b + 6], SETTINGS)[3].text).toMatch(/^Last held ↑ \d\d:\d\d · 5 bars$/);
+189:  it("creates a pool of eight boxes and one table; the active box and held boxes carry their coordinates", () => {
+197:      expect(records.filter((record) => record.kind === "table")).toHaveLength(1);
+
+exec
+/bin/bash -lc "git status --short; nl -ba apps/web/src/lib/indicators/compression-breakout/tests/compressionBreakoutBaseline.test.ts | sed -n '55,125p'" in /home/user/Terminal-L1-L2/worktrees/compression-breakout
+ succeeded in 0ms:
+?? apps/runtime/node_modules
+?? node_modules
+    55	  { name: "Plain frozen range (no width qualifier)", def: plainFrozenRangeBaseline, settings: plainFrozenRangeBaseline.defaultSettings, outcomes: true },
+    56	  { name: "Squeeze-qualified variant", def: squeezeQualifiedVariant, settings: squeezeQualifiedVariant.defaultSettings, outcomes: true },
+    57	  { name: "TTM release (timing and density only)", def: ttmReleaseComparator, settings: ttmReleaseComparator.defaultSettings, outcomes: false },
+    58	  { name: "Bollinger crossing (timing and density only)", def: bollingerCrossingComparator, settings: bollingerCrossingComparator.defaultSettings, outcomes: false },
+    59	];
+    60	
+    61	export function tableFor(seeds: readonly number[]): Record<string, Row> {
+    62	  const rows: Record<string, Row> = {};
+    63	  for (const { name, def, settings, outcomes } of DEFS) {
+    64	    const total: Record<string, number> = {};
+    65	    const filtered: Record<string, number> = {};
+    66	    let failures = 0;
+    67	    let holds = 0;
+    68	    for (const direction of [1, -1] as const) {
+    69	      for (const seed of seeds) {
+    70	        const fixture = compressionBreakoutBars({ seed, direction });
+    71	        const flags = activityFlags(fixture.bars);
+    72	        const outputs = replayCapture(def, fixture.bars, settings).outputs;
+    73	        addScores(total, scoreBreakout(fixture.bars, outputs, fixture.labels));
+    74	        addScores(filtered, scoreBreakout(fixture.bars, outputs, fixture.labels, flags));
+    75	        if (outcomes) {
+    76	          const failed = compressionFailedBreakBars({ seed, direction });
+    77	          if (outcomeHit(replayCapture(def, failed.bars, settings).outputs, failed.labels.breakoutIndex, failed.labels.failIndex, "failed")) failures += 1;
+    78	          const held = compressionContinuationBars({ seed, direction });
+    79	          if (outcomeHit(replayCapture(def, held.bars, settings).outputs, held.labels.breakoutIndex, held.labels.heldIndex, "heldOutside")) holds += 1;
+    80	        }
+    81	      }
+    82	    }
+    83	    let rangeMarkers = 0;
+    84	    let trendMarkers = 0;
+    85	    let maxPerBar = 0;
+    86	    for (let seed = 7; seed <= 11; seed += 1) {
+    87	      const range = countMarkers(def, rangeBars({ seed, count: 1_000 }).bars, settings);
+    88	      const trend = countMarkers(def, trendBars({ seed, count: 1_000 }).bars, settings);
+    89	      rangeMarkers += range.total;
+    90	      trendMarkers += trend.total;
+    91	      maxPerBar = Math.max(maxPerBar, range.maxPerBar, trend.maxPerBar);
+    92	    }
+    93	    rows[name] = {
+    94	      hits: total.hit ?? 0,
+    95	      wrongDirection: total.wrongDirection ?? 0,
+    96	      earlyAll: total.early ?? 0,
+    97	      earlyLead: total.earlyLead ?? 0,
+    98	      earlyFiltered: filtered.early ?? 0,
+    99	      unmatched: total.unmatched ?? 0,
+   100	      missed: total.missed ?? 0,
+   101	      levelValid: total.levelValid ?? 0,
+   102	      levelChecked: total.levelChecked ?? 0,
+   103	      failures,
+   104	      holds,
+   105	      rangeMarkersPer1000: rangeMarkers / 5,
+   106	      trendMarkersPer1000: trendMarkers / 5,
+   107	      maxPerBar,
+   108	    };
+   109	  }
+   110	  return rows;
+   111	}
+   112	
+   113	export function formatTable(title: string, rows: Record<string, Row>, runs: number): string {
+   114	  const lines = [
+   115	    `${title} (${runs} seed-directions; outcome fixtures ${runs} each)`,
+   116	    "| Def | Hits | Wrong dir | Early all (lead) | Early filtered | Level valid | Missed | Unmatched | Failure fixture | Hold fixture | Range control markers/1,000 | Trend control markers/1,000 | Max per bar |",
+   117	    "|---|---|---|---|---|---|---|---|---|---|---|---|---|",
+   118	  ];
+   119	  for (const [name, r] of Object.entries(rows)) {
+   120	    const level = r.levelChecked === 0 ? "n/a" : `${r.levelValid}/${r.levelChecked}`;
+   121	    const outcomes = name.includes("timing") ? ["none", "none"] : [`${r.failures}/${runs}`, `${r.holds}/${runs}`];
+   122	    lines.push(`| ${name} | ${r.hits}/${runs} | ${r.wrongDirection} | ${r.earlyAll} (${r.earlyLead}) | ${r.earlyFiltered} | ${level} | ${r.missed} | ${r.unmatched} | ${outcomes[0]} | ${outcomes[1]} | ${r.rangeMarkersPer1000.toFixed(1)} | ${r.trendMarkersPer1000.toFixed(1)} | ${r.maxPerBar} |`);
+   123	  }
+   124	  lines.push("", "The squeeze-qualified variant is the squeeze qualifier on this machine, not the round-2 state machine with pause and release; the plain frozen range shares the machine by design, to isolate the width qualifier.");
+   125	  return lines.join("\n");
+
+exec
+/bin/bash -lc "ps -eo pid,ppid,args | rg 'vitest|tinypool'" in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+      1       0 codex-linux-sandbox --sandbox-policy-cwd /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk --command-cwd /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk --permission-profile {"type":"managed","file_system":{"type":"restricted","entries":[{"path":{"type":"special","value":{"kind":"root"}},"access":"read"}]},"network":"restricted"} --apply-seccomp-then-exec -- /bin/bash -c __CODEX_SNAPSHOT_OVERRIDE_SET_0="${CODEX_APPLY_PATCH_PRESERVE_LINE_ENDINGS+x}" __CODEX_SNAPSHOT_OVERRIDE_0="${CODEX_APPLY_PATCH_PRESERVE_LINE_ENDINGS-}" __CODEX_SNAPSHOT_OVERRIDE_SET_1="${CODEX_PERMISSION_PROFILE+x}" __CODEX_SNAPSHOT_OVERRIDE_1="${CODEX_PERMISSION_PROFILE-}" __CODEX_SNAPSHOT_OVERRIDE_SET_2="${CODEX_PLUGIN_METRICS_OUTPUT+x}" __CODEX_SNAPSHOT_OVERRIDE_2="${CODEX_PLUGIN_METRICS_OUTPUT-}" __CODEX_SNAPSHOT_OVERRIDE_SET_3="${CODEX_SESSION_ID+x}" __CODEX_SNAPSHOT_OVERRIDE_3="${CODEX_SESSION_ID-}" __CODEX_SNAPSHOT_OVERRIDE_SET_4="${CODEX_THREAD_ID+x}" __CODEX_SNAPSHOT_OVERRIDE_4="${CODEX_THREAD_ID-}" __CODEX_SNAPSHOT_OVERRIDE_SET_5="${CODEX_TOOL_CALL_ID+x}" __CODEX_SNAPSHOT_OVERRIDE_5="${CODEX_TOOL_CALL_ID-}" __CODEX_SNAPSHOT_OVERRIDE_SET_6="${CODEX_VERSION+x}" __CODEX_SNAPSHOT_OVERRIDE_6="${CODEX_VERSION-}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_0="${ALL_PROXY+x}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_0="${ALL_PROXY-}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_1="${BUNDLE_HTTPS_PROXY+x}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_1="${BUNDLE_HTTPS_PROXY-}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_2="${BUNDLE_HTTP_PROXY+x}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_2="${BUNDLE_HTTP_PROXY-}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_3="${BUNDLE_NO_PROXY+x}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_3="${BUNDLE_NO_PROXY-}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_4="${BUNDLE_SSL_CA_CERT+x}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_4="${BUNDLE_SSL_CA_CERT-}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_5="${CARGO_HTTP_CAINFO+x}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_5="${CARGO_HTTP_CAINFO-}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_6="${CODEX_CA_CERTIFICATE+x}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_6="${CODEX_CA_CERTIFICATE-}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_7="${CODEX_NETWORK_ALLOW_LOCAL_BINDING+x}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_7="${CODEX_NETWORK_ALLOW_LOCAL_BINDING-}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_8="${CODEX_NETWORK_PROXY_ACTIVE+x}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_8="${CODEX_NETWORK_PROXY_ACTIVE-}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_9="${CODEX_NETWORK_PROXY_ATTRIBUTION+x}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_9="${CODEX_NETWORK_PROXY_ATTRIBUTION-}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_10="${CODEX_NETWORK_PROXY_BROKERED_CREDENTIALS+x}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_10="${CODEX_NETWORK_PROXY_BROKERED_CREDENTIALS-}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_11="${CODEX_NETWORK_PROXY_CREDENTIAL_BROKER_ACTIVE+x}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_11="${CODEX_NETWORK_PROXY_CREDENTIAL_BROKER_ACTIVE-}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_12="${CURL_CA_BUNDLE+x}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_12="${CURL_CA_BUNDLE-}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_13="${DOCKER_HTTPS_PROXY+x}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_13="${DOCKER_HTTPS_PROXY-}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_14="${DOCKER_HTTP_PROXY+x}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_14="${DOCKER_HTTP_PROXY-}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_15="${ELECTRON_GET_USE_PROXY+x}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_15="${ELECTRON_GET_USE_PROXY-}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_16="${FTP_PROXY+x}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_16="${FTP_PROXY-}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_17="${GIT_SSL_CAINFO+x}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_17="${GIT_SSL_CAINFO-}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_18="${HTTPS_PROXY+x}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_18="${HTTPS_PROXY-}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_19="${HTTP_PROXY+x}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_19="${HTTP_PROXY-}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_20="${NODE_EXTRA_CA_CERTS+x}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_20="${NODE_EXTRA_CA_CERTS-}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_21="${NODE_USE_ENV_PROXY+x}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_21="${NODE_USE_ENV_PROXY-}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_22="${NO_PROXY+x}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_22="${NO_PROXY-}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_23="${NPM_CONFIG_CAFILE+x}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_23="${NPM_CONFIG_CAFILE-}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_24="${NPM_CONFIG_HTTPS_PROXY+x}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_24="${NPM_CONFIG_HTTPS_PROXY-}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_25="${NPM_CONFIG_HTTP_PROXY+x}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_25="${NPM_CONFIG_HTTP_PROXY-}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_26="${NPM_CONFIG_NOPROXY+x}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_26="${NPM_CONFIG_NOPROXY-}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_27="${NPM_CONFIG_PROXY+x}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_27="${NPM_CONFIG_PROXY-}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_28="${PIP_CERT+x}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_28="${PIP_CERT-}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_29="${PIP_PROXY+x}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_29="${PIP_PROXY-}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_30="${REQUESTS_CA_BUNDLE+x}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_30="${REQUESTS_CA_BUNDLE-}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_31="${SSL_CERT_FILE+x}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_31="${SSL_CERT_FILE-}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_32="${WSS_PROXY+x}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_32="${WSS_PROXY-}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_33="${WS_PROXY+x}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_33="${WS_PROXY-}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_34="${YARN_HTTPS_PROXY+x}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_34="${YARN_HTTPS_PROXY-}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_35="${YARN_HTTP_PROXY+x}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_35="${YARN_HTTP_PROXY-}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_36="${YARN_NO_PROXY+x}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_36="${YARN_NO_PROXY-}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_37="${all_proxy+x}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_37="${all_proxy-}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_38="${ftp_proxy+x}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_38="${ftp_proxy-}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_39="${http_proxy+x}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_39="${http_proxy-}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_40="${https_proxy+x}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_40="${https_proxy-}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_41="${no_proxy+x}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_41="${no_proxy-}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_42="${npm_config_cafile+x}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_42="${npm_config_cafile-}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_43="${npm_config_http_proxy+x}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_43="${npm_config_http_proxy-}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_44="${npm_config_https_proxy+x}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_44="${npm_config_https_proxy-}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_45="${npm_config_noproxy+x}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_45="${npm_config_noproxy-}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_46="${npm_config_proxy+x}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_46="${npm_config_proxy-}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_47="${ws_proxy+x}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_47="${ws_proxy-}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_48="${wss_proxy+x}" __CODEX_SNAPSHOT_PROXY_OVERRIDE_48="${wss_proxy-}" __CODEX_SNAPSHOT_PROXY_ENV_SET="${CODEX_NETWORK_PROXY_ACTIVE+x}"  if . '/root/.codex/shell_snapshots/01a1795f-6ce9-7621-9974-a5d33b8c4d68.1793037660684674641.sh' >/dev/null 2>&1; then :; fi  if [ -n "${__CODEX_SNAPSHOT_OVERRIDE_SET_0}" ]; then   if [ -z "${CODEX_APPLY_PATCH_PRESERVE_LINE_ENDINGS+x}" ] || [ "${CODEX_APPLY_PATCH_PRESERVE_LINE_ENDINGS-}" != "${__CODEX_SNAPSHOT_OVERRIDE_0}" ]; then export CODEX_APPLY_PATCH_PRESERVE_LINE_ENDINGS="${__CODEX_SNAPSHOT_OVERRIDE_0}"; else export CODEX_APPLY_PATCH_PRESERVE_LINE_ENDINGS; fi else builtin unset CODEX_APPLY_PATCH_PRESERVE_LINE_ENDINGS 2>/dev/null || command unset CODEX_APPLY_PATCH_PRESERVE_LINE_ENDINGS; fi builtin unset __CODEX_SNAPSHOT_OVERRIDE_SET_0 __CODEX_SNAPSHOT_OVERRIDE_0 2>/dev/null || command unset __CODEX_SNAPSHOT_OVERRIDE_SET_0 __CODEX_SNAPSHOT_OVERRIDE_0 if [ -n "${__CODEX_SNAPSHOT_OVERRIDE_SET_1}" ]; then   if [ -z "${CODEX_PERMISSION_PROFILE+x}" ] || [ "${CODEX_PERMISSION_PROFILE-}" != "${__CODEX_SNAPSHOT_OVERRIDE_1}" ]; then export CODEX_PERMISSION_PROFILE="${__CODEX_SNAPSHOT_OVERRIDE_1}"; else export CODEX_PERMISSION_PROFILE; fi else builtin unset CODEX_PERMISSION_PROFILE 2>/dev/null || command unset CODEX_PERMISSION_PROFILE; fi builtin unset __CODEX_SNAPSHOT_OVERRIDE_SET_1 __CODEX_SNAPSHOT_OVERRIDE_1 2>/dev/null || command unset __CODEX_SNAPSHOT_OVERRIDE_SET_1 __CODEX_SNAPSHOT_OVERRIDE_1 if [ -n "${__CODEX_SNAPSHOT_OVERRIDE_SET_2}" ]; then   if [ -z "${CODEX_PLUGIN_METRICS_OUTPUT+x}" ] || [ "${CODEX_PLUGIN_METRICS_OUTPUT-}" != "${__CODEX_SNAPSHOT_OVERRIDE_2}" ]; then export CODEX_PLUGIN_METRICS_OUTPUT="${__CODEX_SNAPSHOT_OVERRIDE_2}"; else export CODEX_PLUGIN_METRICS_OUTPUT; fi else builtin unset CODEX_PLUGIN_METRICS_OUTPUT 2>/dev/null || command unset CODEX_PLUGIN_METRICS_OUTPUT; fi builtin unset __CODEX_SNAPSHOT_OVERRIDE_SET_2 __CODEX_SNAPSHOT_OVERRIDE_2 2>/dev/null || command unset __CODEX_SNAPSHOT_OVERRIDE_SET_2 __CODEX_SNAPSHOT_OVERRIDE_2 if [ -n "${__CODEX_SNAPSHOT_OVERRIDE_SET_3}" ]; then   if [ -z "${CODEX_SESSION_ID+x}" ] || [ "${CODEX_SESSION_ID-}" != "${__CODEX_SNAPSHOT_OVERRIDE_3}" ]; then export CODEX_SESSION_ID="${__CODEX_SNAPSHOT_OVERRIDE_3}"; else export CODEX_SESSION_ID; fi else builtin unset CODEX_SESSION_ID 2>/dev/null || command unset CODEX_SESSION_ID; fi builtin unset __CODEX_SNAPSHOT_OVERRIDE_SET_3 __CODEX_SNAPSHOT_OVERRIDE_3 2>/dev/null || command unset __CODEX_SNAPSHOT_OVERRIDE_SET_3 __CODEX_SNAPSHOT_OVERRIDE_3 if [ -n "${__CODEX_SNAPSHOT_OVERRIDE_SET_4}" ]; then   if [ -z "${CODEX_THREAD_ID+x}" ] || [ "${CODEX_THREAD_ID-}" != "${__CODEX_SNAPSHOT_OVERRIDE_4}" ]; then export CODEX_THREAD_ID="${__CODEX_SNAPSHOT_OVERRIDE_4}"; else export CODEX_THREAD_ID; fi else builtin unset CODEX_THREAD_ID 2>/dev/null || command unset CODEX_THREAD_ID; fi builtin unset __CODEX_SNAPSHOT_OVERRIDE_SET_4 __CODEX_SNAPSHOT_OVERRIDE_4 2>/dev/null || command unset __CODEX_SNAPSHOT_OVERRIDE_SET_4 __CODEX_SNAPSHOT_OVERRIDE_4 if [ -n "${__CODEX_SNAPSHOT_OVERRIDE_SET_5}" ]; then   if [ -z "${CODEX_TOOL_CALL_ID+x}" ] || [ "${CODEX_TOOL_CALL_ID-}" != "${__CODEX_SNAPSHOT_OVERRIDE_5}" ]; then export CODEX_TOOL_CALL_ID="${__CODEX_SNAPSHOT_OVERRIDE_5}"; else export CODEX_TOOL_CALL_ID; fi else builtin unset CODEX_TOOL_CALL_ID 2>/dev/null || command unset CODEX_TOOL_CALL_ID; fi builtin unset __CODEX_SNAPSHOT_OVERRIDE_SET_5 __CODEX_SNAPSHOT_OVERRIDE_5 2>/dev/null || command unset __CODEX_SNAPSHOT_OVERRIDE_SET_5 __CODEX_SNAPSHOT_OVERRIDE_5 if [ -n "${__CODEX_SNAPSHOT_OVERRIDE_SET_6}" ]; then   if [ -z "${CODEX_VERSION+x}" ] || [ "${CODEX_VERSION-}" != "${__CODEX_SNAPSHOT_OVERRIDE_6}" ]; then export CODEX_VERSION="${__CODEX_SNAPSHOT_OVERRIDE_6}"; else export CODEX_VERSION; fi else builtin unset CODEX_VERSION 2>/dev/null || command unset CODEX_VERSION; fi builtin unset __CODEX_SNAPSHOT_OVERRIDE_SET_6 __CODEX_SNAPSHOT_OVERRIDE_6 2>/dev/null || command unset __CODEX_SNAPSHOT_OVERRIDE_SET_6 __CODEX_SNAPSHOT_OVERRIDE_6 if [ -n "$__CODEX_SNAPSHOT_PROXY_ENV_SET" ] || [ -n "${CODEX_NETWORK_PROXY_ACTIVE+x}" ]; then if [ -n "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_0}" ]; then   if [ -z "${ALL_PROXY+x}" ] || [ "${ALL_PROXY-}" != "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_0}" ]; then export ALL_PROXY="${__CODEX_SNAPSHOT_PROXY_OVERRIDE_0}"; else export ALL_PROXY; fi else builtin unset ALL_PROXY 2>/dev/null || command unset ALL_PROXY; fi builtin unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_0 __CODEX_SNAPSHOT_PROXY_OVERRIDE_0 2>/dev/null || command unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_0 __CODEX_SNAPSHOT_PROXY_OVERRIDE_0 if [ -n "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_1}" ]; then   if [ -z "${BUNDLE_HTTPS_PROXY+x}" ] || [ "${BUNDLE_HTTPS_PROXY-}" != "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_1}" ]; then export BUNDLE_HTTPS_PROXY="${__CODEX_SNAPSHOT_PROXY_OVERRIDE_1}"; else export BUNDLE_HTTPS_PROXY; fi else builtin unset BUNDLE_HTTPS_PROXY 2>/dev/null || command unset BUNDLE_HTTPS_PROXY; fi builtin unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_1 __CODEX_SNAPSHOT_PROXY_OVERRIDE_1 2>/dev/null || command unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_1 __CODEX_SNAPSHOT_PROXY_OVERRIDE_1 if [ -n "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_2}" ]; then   if [ -z "${BUNDLE_HTTP_PROXY+x}" ] || [ "${BUNDLE_HTTP_PROXY-}" != "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_2}" ]; then export BUNDLE_HTTP_PROXY="${__CODEX_SNAPSHOT_PROXY_OVERRIDE_2}"; else export BUNDLE_HTTP_PROXY; fi else builtin unset BUNDLE_HTTP_PROXY 2>/dev/null || command unset BUNDLE_HTTP_PROXY; fi builtin unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_2 __CODEX_SNAPSHOT_PROXY_OVERRIDE_2 2>/dev/null || command unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_2 __CODEX_SNAPSHOT_PROXY_OVERRIDE_2 if [ -n "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_3}" ]; then   if [ -z "${BUNDLE_NO_PROXY+x}" ] || [ "${BUNDLE_NO_PROXY-}" != "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_3}" ]; then export BUNDLE_NO_PROXY="${__CODEX_SNAPSHOT_PROXY_OVERRIDE_3}"; else export BUNDLE_NO_PROXY; fi else builtin unset BUNDLE_NO_PROXY 2>/dev/null || command unset BUNDLE_NO_PROXY; fi builtin unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_3 __CODEX_SNAPSHOT_PROXY_OVERRIDE_3 2>/dev/null || command unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_3 __CODEX_SNAPSHOT_PROXY_OVERRIDE_3 if [ -n "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_4}" ]; then   if [ -z "${BUNDLE_SSL_CA_CERT+x}" ] || [ "${BUNDLE_SSL_CA_CERT-}" != "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_4}" ]; then export BUNDLE_SSL_CA_CERT="${__CODEX_SNAPSHOT_PROXY_OVERRIDE_4}"; else export BUNDLE_SSL_CA_CERT; fi else builtin unset BUNDLE_SSL_CA_CERT 2>/dev/null || command unset BUNDLE_SSL_CA_CERT; fi builtin unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_4 __CODEX_SNAPSHOT_PROXY_OVERRIDE_4 2>/dev/null || command unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_4 __CODEX_SNAPSHOT_PROXY_OVERRIDE_4 if [ -n "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_5}" ]; then   if [ -z "${CARGO_HTTP_CAINFO+x}" ] || [ "${CARGO_HTTP_CAINFO-}" != "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_5}" ]; then export CARGO_HTTP_CAINFO="${__CODEX_SNAPSHOT_PROXY_OVERRIDE_5}"; else export CARGO_HTTP_CAINFO; fi else builtin unset CARGO_HTTP_CAINFO 2>/dev/null || command unset CARGO_HTTP_CAINFO; fi builtin unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_5 __CODEX_SNAPSHOT_PROXY_OVERRIDE_5 2>/dev/null || command unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_5 __CODEX_SNAPSHOT_PROXY_OVERRIDE_5 if [ -n "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_6}" ]; then   if [ -z "${CODEX_CA_CERTIFICATE+x}" ] || [ "${CODEX_CA_CERTIFICATE-}" != "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_6}" ]; then export CODEX_CA_CERTIFICATE="${__CODEX_SNAPSHOT_PROXY_OVERRIDE_6}"; else export CODEX_CA_CERTIFICATE; fi else builtin unset CODEX_CA_CERTIFICATE 2>/dev/null || command unset CODEX_CA_CERTIFICATE; fi builtin unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_6 __CODEX_SNAPSHOT_PROXY_OVERRIDE_6 2>/dev/null || command unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_6 __CODEX_SNAPSHOT_PROXY_OVERRIDE_6 if [ -n "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_7}" ]; then   if [ -z "${CODEX_NETWORK_ALLOW_LOCAL_BINDING+x}" ] || [ "${CODEX_NETWORK_ALLOW_LOCAL_BINDING-}" != "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_7}" ]; then export CODEX_NETWORK_ALLOW_LOCAL_BINDING="${__CODEX_SNAPSHOT_PROXY_OVERRIDE_7}"; else export CODEX_NETWORK_ALLOW_LOCAL_BINDING; fi else builtin unset CODEX_NETWORK_ALLOW_LOCAL_BINDING 2>/dev/null || command unset CODEX_NETWORK_ALLOW_LOCAL_BINDING; fi builtin unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_7 __CODEX_SNAPSHOT_PROXY_OVERRIDE_7 2>/dev/null || command unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_7 __CODEX_SNAPSHOT_PROXY_OVERRIDE_7 if [ -n "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_8}" ]; then   if [ -z "${CODEX_NETWORK_PROXY_ACTIVE+x}" ] || [ "${CODEX_NETWORK_PROXY_ACTIVE-}" != "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_8}" ]; then export CODEX_NETWORK_PROXY_ACTIVE="${__CODEX_SNAPSHOT_PROXY_OVERRIDE_8}"; else export CODEX_NETWORK_PROXY_ACTIVE; fi else builtin unset CODEX_NETWORK_PROXY_ACTIVE 2>/dev/null || command unset CODEX_NETWORK_PROXY_ACTIVE; fi builtin unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_8 __CODEX_SNAPSHOT_PROXY_OVERRIDE_8 2>/dev/null || command unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_8 __CODEX_SNAPSHOT_PROXY_OVERRIDE_8 if [ -n "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_9}" ]; then   if [ -z "${CODEX_NETWORK_PROXY_ATTRIBUTION+x}" ] || [ "${CODEX_NETWORK_PROXY_ATTRIBUTION-}" != "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_9}" ]; then export CODEX_NETWORK_PROXY_ATTRIBUTION="${__CODEX_SNAPSHOT_PROXY_OVERRIDE_9}"; else export CODEX_NETWORK_PROXY_ATTRIBUTION; fi else builtin unset CODEX_NETWORK_PROXY_ATTRIBUTION 2>/dev/null || command unset CODEX_NETWORK_PROXY_ATTRIBUTION; fi builtin unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_9 __CODEX_SNAPSHOT_PROXY_OVERRIDE_9 2>/dev/null || command unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_9 __CODEX_SNAPSHOT_PROXY_OVERRIDE_9 if [ -n "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_10}" ]; then   if [ -z "${CODEX_NETWORK_PROXY_BROKERED_CREDENTIALS+x}" ] || [ "${CODEX_NETWORK_PROXY_BROKERED_CREDENTIALS-}" != "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_10}" ]; then export CODEX_NETWORK_PROXY_BROKERED_CREDENTIALS="${__CODEX_SNAPSHOT_PROXY_OVERRIDE_10}"; else export CODEX_NETWORK_PROXY_BROKERED_CREDENTIALS; fi else builtin unset CODEX_NETWORK_PROXY_BROKERED_CREDENTIALS 2>/dev/null || command unset CODEX_NETWORK_PROXY_BROKERED_CREDENTIALS; fi builtin unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_10 __CODEX_SNAPSHOT_PROXY_OVERRIDE_10 2>/dev/null || command unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_10 __CODEX_SNAPSHOT_PROXY_OVERRIDE_10 if [ -n "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_11}" ]; then   if [ -z "${CODEX_NETWORK_PROXY_CREDENTIAL_BROKER_ACTIVE+x}" ] || [ "${CODEX_NETWORK_PROXY_CREDENTIAL_BROKER_ACTIVE-}" != "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_11}" ]; then export CODEX_NETWORK_PROXY_CREDENTIAL_BROKER_ACTIVE="${__CODEX_SNAPSHOT_PROXY_OVERRIDE_11}"; else export CODEX_NETWORK_PROXY_CREDENTIAL_BROKER_ACTIVE; fi else builtin unset CODEX_NETWORK_PROXY_CREDENTIAL_BROKER_ACTIVE 2>/dev/null || command unset CODEX_NETWORK_PROXY_CREDENTIAL_BROKER_ACTIVE; fi builtin unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_11 __CODEX_SNAPSHOT_PROXY_OVERRIDE_11 2>/dev/null || command unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_11 __CODEX_SNAPSHOT_PROXY_OVERRIDE_11 if [ -n "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_12}" ]; then   if [ -z "${CURL_CA_BUNDLE+x}" ] || [ "${CURL_CA_BUNDLE-}" != "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_12}" ]; then export CURL_CA_BUNDLE="${__CODEX_SNAPSHOT_PROXY_OVERRIDE_12}"; else export CURL_CA_BUNDLE; fi else builtin unset CURL_CA_BUNDLE 2>/dev/null || command unset CURL_CA_BUNDLE; fi builtin unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_12 __CODEX_SNAPSHOT_PROXY_OVERRIDE_12 2>/dev/null || command unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_12 __CODEX_SNAPSHOT_PROXY_OVERRIDE_12 if [ -n "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_13}" ]; then   if [ -z "${DOCKER_HTTPS_PROXY+x}" ] || [ "${DOCKER_HTTPS_PROXY-}" != "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_13}" ]; then export DOCKER_HTTPS_PROXY="${__CODEX_SNAPSHOT_PROXY_OVERRIDE_13}"; else export DOCKER_HTTPS_PROXY; fi else builtin unset DOCKER_HTTPS_PROXY 2>/dev/null || command unset DOCKER_HTTPS_PROXY; fi builtin unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_13 __CODEX_SNAPSHOT_PROXY_OVERRIDE_13 2>/dev/null || command unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_13 __CODEX_SNAPSHOT_PROXY_OVERRIDE_13 if [ -n "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_14}" ]; then   if [ -z "${DOCKER_HTTP_PROXY+x}" ] || [ "${DOCKER_HTTP_PROXY-}" != "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_14}" ]; then export DOCKER_HTTP_PROXY="${__CODEX_SNAPSHOT_PROXY_OVERRIDE_14}"; else export DOCKER_HTTP_PROXY; fi else builtin unset DOCKER_HTTP_PROXY 2>/dev/null || command unset DOCKER_HTTP_PROXY; fi builtin unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_14 __CODEX_SNAPSHOT_PROXY_OVERRIDE_14 2>/dev/null || command unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_14 __CODEX_SNAPSHOT_PROXY_OVERRIDE_14 if [ -n "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_15}" ]; then   if [ -z "${ELECTRON_GET_USE_PROXY+x}" ] || [ "${ELECTRON_GET_USE_PROXY-}" != "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_15}" ]; then export ELECTRON_GET_USE_PROXY="${__CODEX_SNAPSHOT_PROXY_OVERRIDE_15}"; else export ELECTRON_GET_USE_PROXY; fi else builtin unset ELECTRON_GET_USE_PROXY 2>/dev/null || command unset ELECTRON_GET_USE_PROXY; fi builtin unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_15 __CODEX_SNAPSHOT_PROXY_OVERRIDE_15 2>/dev/null || command unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_15 __CODEX_SNAPSHOT_PROXY_OVERRIDE_15 if [ -n "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_16}" ]; then   if [ -z "${FTP_PROXY+x}" ] || [ "${FTP_PROXY-}" != "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_16}" ]; then export FTP_PROXY="${__CODEX_SNAPSHOT_PROXY_OVERRIDE_16}"; else export FTP_PROXY; fi else builtin unset FTP_PROXY 2>/dev/null || command unset FTP_PROXY; fi builtin unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_16 __CODEX_SNAPSHOT_PROXY_OVERRIDE_16 2>/dev/null || command unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_16 __CODEX_SNAPSHOT_PROXY_OVERRIDE_16 if [ -n "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_17}" ]; then   if [ -z "${GIT_SSL_CAINFO+x}" ] || [ "${GIT_SSL_CAINFO-}" != "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_17}" ]; then export GIT_SSL_CAINFO="${__CODEX_SNAPSHOT_PROXY_OVERRIDE_17}"; else export GIT_SSL_CAINFO; fi else builtin unset GIT_SSL_CAINFO 2>/dev/null || command unset GIT_SSL_CAINFO; fi builtin unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_17 __CODEX_SNAPSHOT_PROXY_OVERRIDE_17 2>/dev/null || command unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_17 __CODEX_SNAPSHOT_PROXY_OVERRIDE_17 if [ -n "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_18}" ]; then   if [ -z "${HTTPS_PROXY+x}" ] || [ "${HTTPS_PROXY-}" != "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_18}" ]; then export HTTPS_PROXY="${__CODEX_SNAPSHOT_PROXY_OVERRIDE_18}"; else export HTTPS_PROXY; fi else builtin unset HTTPS_PROXY 2>/dev/null || command unset HTTPS_PROXY; fi builtin unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_18 __CODEX_SNAPSHOT_PROXY_OVERRIDE_18 2>/dev/null || command unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_18 __CODEX_SNAPSHOT_PROXY_OVERRIDE_18 if [ -n "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_19}" ]; then   if [ -z "${HTTP_PROXY+x}" ] || [ "${HTTP_PROXY-}" != "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_19}" ]; then export HTTP_PROXY="${__CODEX_SNAPSHOT_PROXY_OVERRIDE_19}"; else export HTTP_PROXY; fi else builtin unset HTTP_PROXY 2>/dev/null || command unset HTTP_PROXY; fi builtin unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_19 __CODEX_SNAPSHOT_PROXY_OVERRIDE_19 2>/dev/null || command unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_19 __CODEX_SNAPSHOT_PROXY_OVERRIDE_19 if [ -n "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_20}" ]; then   if [ -z "${NODE_EXTRA_CA_CERTS+x}" ] || [ "${NODE_EXTRA_CA_CERTS-}" != "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_20}" ]; then export NODE_EXTRA_CA_CERTS="${__CODEX_SNAPSHOT_PROXY_OVERRIDE_20}"; else export NODE_EXTRA_CA_CERTS; fi else builtin unset NODE_EXTRA_CA_CERTS 2>/dev/null || command unset NODE_EXTRA_CA_CERTS; fi builtin unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_20 __CODEX_SNAPSHOT_PROXY_OVERRIDE_20 2>/dev/null || command unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_20 __CODEX_SNAPSHOT_PROXY_OVERRIDE_20 if [ -n "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_21}" ]; then   if [ -z "${NODE_USE_ENV_PROXY+x}" ] || [ "${NODE_USE_ENV_PROXY-}" != "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_21}" ]; then export NODE_USE_ENV_PROXY="${__CODEX_SNAPSHOT_PROXY_OVERRIDE_21}"; else export NODE_USE_ENV_PROXY; fi else builtin unset NODE_USE_ENV_PROXY 2>/dev/null || command unset NODE_USE_ENV_PROXY; fi builtin unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_21 __CODEX_SNAPSHOT_PROXY_OVERRIDE_21 2>/dev/null || command unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_21 __CODEX_SNAPSHOT_PROXY_OVERRIDE_21 if [ -n "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_22}" ]; then   if [ -z "${NO_PROXY+x}" ] || [ "${NO_PROXY-}" != "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_22}" ]; then export NO_PROXY="${__CODEX_SNAPSHOT_PROXY_OVERRIDE_22}"; else export NO_PROXY; fi else builtin unset NO_PROXY 2>/dev/null || command unset NO_PROXY; fi builtin unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_22 __CODEX_SNAPSHOT_PROXY_OVERRIDE_22 2>/dev/null || command unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_22 __CODEX_SNAPSHOT_PROXY_OVERRIDE_22 if [ -n "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_23}" ]; then   if [ -z "${NPM_CONFIG_CAFILE+x}" ] || [ "${NPM_CONFIG_CAFILE-}" != "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_23}" ]; then export NPM_CONFIG_CAFILE="${__CODEX_SNAPSHOT_PROXY_OVERRIDE_23}"; else export NPM_CONFIG_CAFILE; fi else builtin unset NPM_CONFIG_CAFILE 2>/dev/null || command unset NPM_CONFIG_CAFILE; fi builtin unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_23 __CODEX_SNAPSHOT_PROXY_OVERRIDE_23 2>/dev/null || command unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_23 __CODEX_SNAPSHOT_PROXY_OVERRIDE_23 if [ -n "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_24}" ]; then   if [ -z "${NPM_CONFIG_HTTPS_PROXY+x}" ] || [ "${NPM_CONFIG_HTTPS_PROXY-}" != "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_24}" ]; then export NPM_CONFIG_HTTPS_PROXY="${__CODEX_SNAPSHOT_PROXY_OVERRIDE_24}"; else export NPM_CONFIG_HTTPS_PROXY; fi else builtin unset NPM_CONFIG_HTTPS_PROXY 2>/dev/null || command unset NPM_CONFIG_HTTPS_PROXY; fi builtin unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_24 __CODEX_SNAPSHOT_PROXY_OVERRIDE_24 2>/dev/null || command unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_24 __CODEX_SNAPSHOT_PROXY_OVERRIDE_24 if [ -n "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_25}" ]; then   if [ -z "${NPM_CONFIG_HTTP_PROXY+x}" ] || [ "${NPM_CONFIG_HTTP_PROXY-}" != "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_25}" ]; then export NPM_CONFIG_HTTP_PROXY="${__CODEX_SNAPSHOT_PROXY_OVERRIDE_25}"; else export NPM_CONFIG_HTTP_PROXY; fi else builtin unset NPM_CONFIG_HTTP_PROXY 2>/dev/null || command unset NPM_CONFIG_HTTP_PROXY; fi builtin unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_25 __CODEX_SNAPSHOT_PROXY_OVERRIDE_25 2>/dev/null || command unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_25 __CODEX_SNAPSHOT_PROXY_OVERRIDE_25 if [ -n "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_26}" ]; then   if [ -z "${NPM_CONFIG_NOPROXY+x}" ] || [ "${NPM_CONFIG_NOPROXY-}" != "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_26}" ]; then export NPM_CONFIG_NOPROXY="${__CODEX_SNAPSHOT_PROXY_OVERRIDE_26}"; else export NPM_CONFIG_NOPROXY; fi else builtin unset NPM_CONFIG_NOPROXY 2>/dev/null || command unset NPM_CONFIG_NOPROXY; fi builtin unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_26 __CODEX_SNAPSHOT_PROXY_OVERRIDE_26 2>/dev/null || command unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_26 __CODEX_SNAPSHOT_PROXY_OVERRIDE_26 if [ -n "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_27}" ]; then   if [ -z "${NPM_CONFIG_PROXY+x}" ] || [ "${NPM_CONFIG_PROXY-}" != "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_27}" ]; then export NPM_CONFIG_PROXY="${__CODEX_SNAPSHOT_PROXY_OVERRIDE_27}"; else export NPM_CONFIG_PROXY; fi else builtin unset NPM_CONFIG_PROXY 2>/dev/null || command unset NPM_CONFIG_PROXY; fi builtin unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_27 __CODEX_SNAPSHOT_PROXY_OVERRIDE_27 2>/dev/null || command unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_27 __CODEX_SNAPSHOT_PROXY_OVERRIDE_27 if [ -n "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_28}" ]; then   if [ -z "${PIP_CERT+x}" ] || [ "${PIP_CERT-}" != "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_28}" ]; then export PIP_CERT="${__CODEX_SNAPSHOT_PROXY_OVERRIDE_28}"; else export PIP_CERT; fi else builtin unset PIP_CERT 2>/dev/null || command unset PIP_CERT; fi builtin unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_28 __CODEX_SNAPSHOT_PROXY_OVERRIDE_28 2>/dev/null || command unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_28 __CODEX_SNAPSHOT_PROXY_OVERRIDE_28 if [ -n "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_29}" ]; then   if [ -z "${PIP_PROXY+x}" ] || [ "${PIP_PROXY-}" != "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_29}" ]; then export PIP_PROXY="${__CODEX_SNAPSHOT_PROXY_OVERRIDE_29}"; else export PIP_PROXY; fi else builtin unset PIP_PROXY 2>/dev/null || command unset PIP_PROXY; fi builtin unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_29 __CODEX_SNAPSHOT_PROXY_OVERRIDE_29 2>/dev/null || command unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_29 __CODEX_SNAPSHOT_PROXY_OVERRIDE_29 if [ -n "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_30}" ]; then   if [ -z "${REQUESTS_CA_BUNDLE+x}" ] || [ "${REQUESTS_CA_BUNDLE-}" != "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_30}" ]; then export REQUESTS_CA_BUNDLE="${__CODEX_SNAPSHOT_PROXY_OVERRIDE_30}"; else export REQUESTS_CA_BUNDLE; fi else builtin unset REQUESTS_CA_BUNDLE 2>/dev/null || command unset REQUESTS_CA_BUNDLE; fi builtin unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_30 __CODEX_SNAPSHOT_PROXY_OVERRIDE_30 2>/dev/null || command unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_30 __CODEX_SNAPSHOT_PROXY_OVERRIDE_30 if [ -n "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_31}" ]; then   if [ -z "${SSL_CERT_FILE+x}" ] || [ "${SSL_CERT_FILE-}" != "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_31}" ]; then export SSL_CERT_FILE="${__CODEX_SNAPSHOT_PROXY_OVERRIDE_31}"; else export SSL_CERT_FILE; fi else builtin unset SSL_CERT_FILE 2>/dev/null || command unset SSL_CERT_FILE; fi builtin unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_31 __CODEX_SNAPSHOT_PROXY_OVERRIDE_31 2>/dev/null || command unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_31 __CODEX_SNAPSHOT_PROXY_OVERRIDE_31 if [ -n "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_32}" ]; then   if [ -z "${WSS_PROXY+x}" ] || [ "${WSS_PROXY-}" != "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_32}" ]; then export WSS_PROXY="${__CODEX_SNAPSHOT_PROXY_OVERRIDE_32}"; else export WSS_PROXY; fi else builtin unset WSS_PROXY 2>/dev/null || command unset WSS_PROXY; fi builtin unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_32 __CODEX_SNAPSHOT_PROXY_OVERRIDE_32 2>/dev/null || command unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_32 __CODEX_SNAPSHOT_PROXY_OVERRIDE_32 if [ -n "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_33}" ]; then   if [ -z "${WS_PROXY+x}" ] || [ "${WS_PROXY-}" != "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_33}" ]; then export WS_PROXY="${__CODEX_SNAPSHOT_PROXY_OVERRIDE_33}"; else export WS_PROXY; fi else builtin unset WS_PROXY 2>/dev/null || command unset WS_PROXY; fi builtin unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_33 __CODEX_SNAPSHOT_PROXY_OVERRIDE_33 2>/dev/null || command unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_33 __CODEX_SNAPSHOT_PROXY_OVERRIDE_33 if [ -n "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_34}" ]; then   if [ -z "${YARN_HTTPS_PROXY+x}" ] || [ "${YARN_HTTPS_PROXY-}" != "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_34}" ]; then export YARN_HTTPS_PROXY="${__CODEX_SNAPSHOT_PROXY_OVERRIDE_34}"; else export YARN_HTTPS_PROXY; fi else builtin unset YARN_HTTPS_PROXY 2>/dev/null || command unset YARN_HTTPS_PROXY; fi builtin unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_34 __CODEX_SNAPSHOT_PROXY_OVERRIDE_34 2>/dev/null || command unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_34 __CODEX_SNAPSHOT_PROXY_OVERRIDE_34 if [ -n "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_35}" ]; then   if [ -z "${YARN_HTTP_PROXY+x}" ] || [ "${YARN_HTTP_PROXY-}" != "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_35}" ]; then export YARN_HTTP_PROXY="${__CODEX_SNAPSHOT_PROXY_OVERRIDE_35}"; else export YARN_HTTP_PROXY; fi else builtin unset YARN_HTTP_PROXY 2>/dev/null || command unset YARN_HTTP_PROXY; fi builtin unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_35 __CODEX_SNAPSHOT_PROXY_OVERRIDE_35 2>/dev/null || command unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_35 __CODEX_SNAPSHOT_PROXY_OVERRIDE_35 if [ -n "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_36}" ]; then   if [ -z "${YARN_NO_PROXY+x}" ] || [ "${YARN_NO_PROXY-}" != "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_36}" ]; then export YARN_NO_PROXY="${__CODEX_SNAPSHOT_PROXY_OVERRIDE_36}"; else export YARN_NO_PROXY; fi else builtin unset YARN_NO_PROXY 2>/dev/null || command unset YARN_NO_PROXY; fi builtin unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_36 __CODEX_SNAPSHOT_PROXY_OVERRIDE_36 2>/dev/null || command unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_36 __CODEX_SNAPSHOT_PROXY_OVERRIDE_36 if [ -n "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_37}" ]; then   if [ -z "${all_proxy+x}" ] || [ "${all_proxy-}" != "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_37}" ]; then export all_proxy="${__CODEX_SNAPSHOT_PROXY_OVERRIDE_37}"; else export all_proxy; fi else builtin unset all_proxy 2>/dev/null || command unset all_proxy; fi builtin unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_37 __CODEX_SNAPSHOT_PROXY_OVERRIDE_37 2>/dev/null || command unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_37 __CODEX_SNAPSHOT_PROXY_OVERRIDE_37 if [ -n "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_38}" ]; then   if [ -z "${ftp_proxy+x}" ] || [ "${ftp_proxy-}" != "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_38}" ]; then export ftp_proxy="${__CODEX_SNAPSHOT_PROXY_OVERRIDE_38}"; else export ftp_proxy; fi else builtin unset ftp_proxy 2>/dev/null || command unset ftp_proxy; fi builtin unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_38 __CODEX_SNAPSHOT_PROXY_OVERRIDE_38 2>/dev/null || command unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_38 __CODEX_SNAPSHOT_PROXY_OVERRIDE_38 if [ -n "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_39}" ]; then   if [ -z "${http_proxy+x}" ] || [ "${http_proxy-}" != "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_39}" ]; then export http_proxy="${__CODEX_SNAPSHOT_PROXY_OVERRIDE_39}"; else export http_proxy; fi else builtin unset http_proxy 2>/dev/null || command unset http_proxy; fi builtin unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_39 __CODEX_SNAPSHOT_PROXY_OVERRIDE_39 2>/dev/null || command unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_39 __CODEX_SNAPSHOT_PROXY_OVERRIDE_39 if [ -n "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_40}" ]; then   if [ -z "${https_proxy+x}" ] || [ "${https_proxy-}" != "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_40}" ]; then export https_proxy="${__CODEX_SNAPSHOT_PROXY_OVERRIDE_40}"; else export https_proxy; fi else builtin unset https_proxy 2>/dev/null || command unset https_proxy; fi builtin unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_40 __CODEX_SNAPSHOT_PROXY_OVERRIDE_40 2>/dev/null || command unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_40 __CODEX_SNAPSHOT_PROXY_OVERRIDE_40 if [ -n "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_41}" ]; then   if [ -z "${no_proxy+x}" ] || [ "${no_proxy-}" != "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_41}" ]; then export no_proxy="${__CODEX_SNAPSHOT_PROXY_OVERRIDE_41}"; else export no_proxy; fi else builtin unset no_proxy 2>/dev/null || command unset no_proxy; fi builtin unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_41 __CODEX_SNAPSHOT_PROXY_OVERRIDE_41 2>/dev/null || command unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_41 __CODEX_SNAPSHOT_PROXY_OVERRIDE_41 if [ -n "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_42}" ]; then   if [ -z "${npm_config_cafile+x}" ] || [ "${npm_config_cafile-}" != "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_42}" ]; then export npm_config_cafile="${__CODEX_SNAPSHOT_PROXY_OVERRIDE_42}"; else export npm_config_cafile; fi else builtin unset npm_config_cafile 2>/dev/null || command unset npm_config_cafile; fi builtin unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_42 __CODEX_SNAPSHOT_PROXY_OVERRIDE_42 2>/dev/null || command unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_42 __CODEX_SNAPSHOT_PROXY_OVERRIDE_42 if [ -n "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_43}" ]; then   if [ -z "${npm_config_http_proxy+x}" ] || [ "${npm_config_http_proxy-}" != "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_43}" ]; then export npm_config_http_proxy="${__CODEX_SNAPSHOT_PROXY_OVERRIDE_43}"; else export npm_config_http_proxy; fi else builtin unset npm_config_http_proxy 2>/dev/null || command unset npm_config_http_proxy; fi builtin unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_43 __CODEX_SNAPSHOT_PROXY_OVERRIDE_43 2>/dev/null || command unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_43 __CODEX_SNAPSHOT_PROXY_OVERRIDE_43 if [ -n "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_44}" ]; then   if [ -z "${npm_config_https_proxy+x}" ] || [ "${npm_config_https_proxy-}" != "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_44}" ]; then export npm_config_https_proxy="${__CODEX_SNAPSHOT_PROXY_OVERRIDE_44}"; else export npm_config_https_proxy; fi else builtin unset npm_config_https_proxy 2>/dev/null || command unset npm_config_https_proxy; fi builtin unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_44 __CODEX_SNAPSHOT_PROXY_OVERRIDE_44 2>/dev/null || command unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_44 __CODEX_SNAPSHOT_PROXY_OVERRIDE_44 if [ -n "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_45}" ]; then   if [ -z "${npm_config_noproxy+x}" ] || [ "${npm_config_noproxy-}" != "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_45}" ]; then export npm_config_noproxy="${__CODEX_SNAPSHOT_PROXY_OVERRIDE_45}"; else export npm_config_noproxy; fi else builtin unset npm_config_noproxy 2>/dev/null || command unset npm_config_noproxy; fi builtin unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_45 __CODEX_SNAPSHOT_PROXY_OVERRIDE_45 2>/dev/null || command unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_45 __CODEX_SNAPSHOT_PROXY_OVERRIDE_45 if [ -n "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_46}" ]; then   if [ -z "${npm_config_proxy+x}" ] || [ "${npm_config_proxy-}" != "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_46}" ]; then export npm_config_proxy="${__CODEX_SNAPSHOT_PROXY_OVERRIDE_46}"; else export npm_config_proxy; fi else builtin unset npm_config_proxy 2>/dev/null || command unset npm_config_proxy; fi builtin unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_46 __CODEX_SNAPSHOT_PROXY_OVERRIDE_46 2>/dev/null || command unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_46 __CODEX_SNAPSHOT_PROXY_OVERRIDE_46 if [ -n "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_47}" ]; then   if [ -z "${ws_proxy+x}" ] || [ "${ws_proxy-}" != "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_47}" ]; then export ws_proxy="${__CODEX_SNAPSHOT_PROXY_OVERRIDE_47}"; else export ws_proxy; fi else builtin unset ws_proxy 2>/dev/null || command unset ws_proxy; fi builtin unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_47 __CODEX_SNAPSHOT_PROXY_OVERRIDE_47 2>/dev/null || command unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_47 __CODEX_SNAPSHOT_PROXY_OVERRIDE_47 if [ -n "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_48}" ]; then   if [ -z "${wss_proxy+x}" ] || [ "${wss_proxy-}" != "${__CODEX_SNAPSHOT_PROXY_OVERRIDE_48}" ]; then export wss_proxy="${__CODEX_SNAPSHOT_PROXY_OVERRIDE_48}"; else export wss_proxy; fi else builtin unset wss_proxy 2>/dev/null || command unset wss_proxy; fi builtin unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_48 __CODEX_SNAPSHOT_PROXY_OVERRIDE_48 2>/dev/null || command unset __CODEX_SNAPSHOT_PROXY_OVERRIDE_SET_48 __CODEX_SNAPSHOT_PROXY_OVERRIDE_48 fi if [ -n "${PATH:-}" ]; then export PATH='/root/.nvm/versions/node/v24.21.0/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/codex-path':"$PATH"; else export PATH='/root/.nvm/versions/node/v24.21.0/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/codex-path'; fi  exec '/bin/bash' -c 'ps -eo pid,ppid,args | rg '"'"'vitest|tinypool'"'"''
+      2       1 /bin/bash -c ps -eo pid,ppid,args | rg 'vitest|tinypool'
+      4       2 rg vitest|tinypool
+
+ exited 130 in 32646ms:
+
+ RUN  v4.1.11 /home/user/Terminal-L1-L2/worktrees/compression-breakout/apps/web
+
+
+codex
+1. **WARNING — [compressionBreakoutMath.ts](/home/user/Terminal-L1-L2/worktrees/compression-breakout/apps/web/src/lib/indicators/compression-breakout/compressionBreakoutMath.ts:428), lines 428–434:** Failure detection extends beyond `failBars` when the deadline bar has invalid prices. Reproduced: break at 46, invalid bar at 51, return inside at 52 produces `failed` with `pendingBars = 6`. **Fix:** permit failure only when elapsed bars ≤ `failBars`; after the deadline, resolve the expired window before testing the current close. Add a regression covering an invalid deadline bar.
+
+2. **WARNING — [compressionBreakoutLive.test.ts](/home/user/Terminal-L1-L2/worktrees/compression-breakout/apps/web/src/lib/indicators/compression-breakout/tests/compressionBreakoutLive.test.ts:102), lines 102–109:** Filtering out every `rgba(...)` marker also removes confirmed grade-1 and grade-2 arrows, which deliberately use alpha. Marker equality can therefore miss disagreements, and reported density undercounts valid signals. **Fix:** identify confirmed markers using their source bar’s `closed` status; include faded confirmed arrows in equality and density checks, then regenerate the documented results.
+
+3. **WARNING — [compressionBreakoutEvaluation.test.ts](/home/user/Terminal-L1-L2/worktrees/compression-breakout/apps/web/src/lib/indicators/compression-breakout/tests/compressionBreakoutEvaluation.test.ts:37), lines 37–39:** Aggregate outcome assertions do not enforce the stated ≥4/5 requirement per direction. A 5/5 upward result and 3/5 downward result passes the current ≥8/10 check. **Fix:** retain direction-specific failure and hold totals and assert each independently.
+
+Ran the requested diff. The timing reproduction succeeded directly against the math module. Vitest verification did not complete: the default loader hit the read-only filesystem restriction, and the alternative runner stalled.
+
+VERDICT: REVISE
+tokens used
+86,365
+1. **WARNING — [compressionBreakoutMath.ts](/home/user/Terminal-L1-L2/worktrees/compression-breakout/apps/web/src/lib/indicators/compression-breakout/compressionBreakoutMath.ts:428), lines 428–434:** Failure detection extends beyond `failBars` when the deadline bar has invalid prices. Reproduced: break at 46, invalid bar at 51, return inside at 52 produces `failed` with `pendingBars = 6`. **Fix:** permit failure only when elapsed bars ≤ `failBars`; after the deadline, resolve the expired window before testing the current close. Add a regression covering an invalid deadline bar.
+
+2. **WARNING — [compressionBreakoutLive.test.ts](/home/user/Terminal-L1-L2/worktrees/compression-breakout/apps/web/src/lib/indicators/compression-breakout/tests/compressionBreakoutLive.test.ts:102), lines 102–109:** Filtering out every `rgba(...)` marker also removes confirmed grade-1 and grade-2 arrows, which deliberately use alpha. Marker equality can therefore miss disagreements, and reported density undercounts valid signals. **Fix:** identify confirmed markers using their source bar’s `closed` status; include faded confirmed arrows in equality and density checks, then regenerate the documented results.
+
+3. **WARNING — [compressionBreakoutEvaluation.test.ts](/home/user/Terminal-L1-L2/worktrees/compression-breakout/apps/web/src/lib/indicators/compression-breakout/tests/compressionBreakoutEvaluation.test.ts:37), lines 37–39:** Aggregate outcome assertions do not enforce the stated ≥4/5 requirement per direction. A 5/5 upward result and 3/5 downward result passes the current ≥8/10 check. **Fix:** retain direction-specific failure and hold totals and assert each independently.
+
+Ran the requested diff. The timing reproduction succeeded directly against the math module. Vitest verification did not complete: the default loader hit the read-only filesystem restriction, and the alternative runner stalled.
+
+VERDICT: REVISE
+--- last message saved to /home/user/Terminal-L1-L2/PM/log/codex/20261026T180059Z-code-build-compression-breakout.last.md
+VERDICT: REVISE
+exit 0

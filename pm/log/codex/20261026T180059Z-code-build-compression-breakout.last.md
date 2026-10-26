@@ -1,0 +1,9 @@
+1. **WARNING — [compressionBreakoutMath.ts](/home/user/Terminal-L1-L2/worktrees/compression-breakout/apps/web/src/lib/indicators/compression-breakout/compressionBreakoutMath.ts:428), lines 428–434:** Failure detection extends beyond `failBars` when the deadline bar has invalid prices. Reproduced: break at 46, invalid bar at 51, return inside at 52 produces `failed` with `pendingBars = 6`. **Fix:** permit failure only when elapsed bars ≤ `failBars`; after the deadline, resolve the expired window before testing the current close. Add a regression covering an invalid deadline bar.
+
+2. **WARNING — [compressionBreakoutLive.test.ts](/home/user/Terminal-L1-L2/worktrees/compression-breakout/apps/web/src/lib/indicators/compression-breakout/tests/compressionBreakoutLive.test.ts:102), lines 102–109:** Filtering out every `rgba(...)` marker also removes confirmed grade-1 and grade-2 arrows, which deliberately use alpha. Marker equality can therefore miss disagreements, and reported density undercounts valid signals. **Fix:** identify confirmed markers using their source bar’s `closed` status; include faded confirmed arrows in equality and density checks, then regenerate the documented results.
+
+3. **WARNING — [compressionBreakoutEvaluation.test.ts](/home/user/Terminal-L1-L2/worktrees/compression-breakout/apps/web/src/lib/indicators/compression-breakout/tests/compressionBreakoutEvaluation.test.ts:37), lines 37–39:** Aggregate outcome assertions do not enforce the stated ≥4/5 requirement per direction. A 5/5 upward result and 3/5 downward result passes the current ≥8/10 check. **Fix:** retain direction-specific failure and hold totals and assert each independently.
+
+Ran the requested diff. The timing reproduction succeeded directly against the math module. Vitest verification did not complete: the default loader hit the read-only filesystem restriction, and the alternative runner stalled.
+
+VERDICT: REVISE

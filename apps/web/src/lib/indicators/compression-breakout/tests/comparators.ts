@@ -56,7 +56,7 @@ function engineDef(id: string, qualifier: Qualifier): RuntimeIndicatorDef<Engine
       const d = reading.decision;
       if (d.kind === "break" && d.grade >= 1) {
         const base = d.dir > 0 ? CB_BULL_COLOR : CB_BEAR_COLOR;
-        ctx.markers.plotshape({ shape: d.dir > 0 ? "arrowUp" : "arrowDown", position: d.dir > 0 ? "belowBar" : "aboveBar", color: d.grade === 3 ? base : withAlpha(base, 0.5), size: 1 });
+        ctx.markers.plotshape({ shape: d.dir > 0 ? "arrowUp" : "arrowDown", position: d.dir > 0 ? "belowBar" : "aboveBar", color: d.grade === 3 ? base : withAlpha(base, 0.65), size: 1 });
       } else if (d.kind === "failed" && d.grade >= 1) {
         ctx.markers.plotshape({ shape: "circle", position: "inBar", color: CB_WARN_COLOR, size: 1 });
       }

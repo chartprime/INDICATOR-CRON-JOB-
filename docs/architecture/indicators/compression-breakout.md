@@ -215,11 +215,22 @@ validity are what the qualifier buys.
 
 Evaluation seeds 17..21 (frozen criteria, run once; `tests/compressionBreakoutEvaluation.test.ts`):
 
-EVALUATION_TABLE
+| Def | Hits | Wrong dir | Early all (lead) | Early filtered | Level valid | Missed | Unmatched | Failure fixture | Hold fixture | Range control markers/1,000 | Trend control markers/1,000 | Max per bar |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Product (width ≤ 2×, min 6) | 10/10 | 0 | 0 (0) | 0 | 10/10 | 0 | 0 | 10/10 | 10/10 | 0.0 | 0.0 | 0 |
+| Plain frozen range (no width qualifier) | 10/10 | 0 | 22 (12) | 4 | 6/10 | 0 | 0 | 10/10 | 10/10 | 4.6 | 0.0 | 1 |
+| Squeeze-qualified variant | 10/10 | 0 | 16 (12) | 2 | 10/10 | 0 | 0 | 10/10 | 10/10 | 5.0 | 0.0 | 1 |
+| TTM release (timing and density only) | 10/10 | 0 | 10 (10) | 0 | n/a | 0 | 0 | none | none | 12.6 | 0.0 | 1 |
+| Bollinger crossing (timing and density only) | 10/10 | 0 | 56 (38) | 14 | n/a | 0 | 0 | none | none | 47.6 | 0.0 | 1 |
+
+The product meets the frozen criteria (hits ≥ 9 of 10 with level valid on every hit, filtered early ≤ 2, no wrong-direction event, failure and hold fixtures ≥ 4 of 5 per direction) with 10/10, 0, 0, 10/10 and 10/10.
 
 Performance (this container, Node 24, `tests/compressionBreakoutPerf.test.ts`):
 
-PERF_LINES
+- Pooled replay of 10,080 one-minute bars, five timed runs after three warm-ups, `onBar` plus `readOutput` with the per-bar snapshot copy inside the timed region: p50 0.0042 ms, p99 0.0240 ms, max 9.761 ms (ceiling 0.05 ms at p99).
+- Real activation replay: p99 0.0205 ms, wall 80 ms (ceilings 0.5 ms and 2 s).
+- Forming bar with a range warmed on 10,080 bars, 500 revisions alternating a breaking and an inside close (250 marked): p99 0.0904 ms (ceiling 1 ms).
+- Rollover of 1,000 bars past retention: 10080 bars retained, outputs {"rangeHigh": 10080, "rangeLow": 10080}, 0 stale markers, 462 B per extra bar (within 3× the harness floor of about 370 B).
 
 Live observation on real Binance spot candles through the REST transport
 (`data-api.binance.vision`), density and replay only, no label:

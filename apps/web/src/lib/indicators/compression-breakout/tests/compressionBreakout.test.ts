@@ -161,7 +161,7 @@ describe("compressionBreakout -- outputs, markers and the box pool through the r
     });
     const faded = replayCapture(compressionBreakoutIndicator, base, SETTINGS);
     expect(faded.markers).toHaveLength(1);
-    expect(faded.markers[0].color).toBe(withAlpha(CB_BULL_COLOR, 0.5));
+    expect(faded.markers[0].color).toBe(withAlpha(CB_BULL_COLOR, 0.65));
     const unconfirmed = base.map((bar, index) => (index === 46 ? ({ ...bar, high: 60_070, close: 60_060 } as BarFrame) : bar));
     expect(replayCapture(compressionBreakoutIndicator, unconfirmed, SETTINGS).markers).toEqual([]);
   });

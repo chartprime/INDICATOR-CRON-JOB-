@@ -56,6 +56,8 @@ export const CB_WARN_COLOR = "#b07a1e";
 export const CB_TABLE_TEXT_COLOR = "#d1d4dc";
 export const CB_UNAVAILABLE = "—";
 export const CB_PROVISIONAL_ALPHA = 0.5;
+/** A break with one activity test passed: faded, but still visible on the cream chart at the zoomed-out level (UX finding 11). */
+export const CB_FADED_MARKER_ALPHA = 0.65;
 export const CB_FILL_ESTABLISHED_ALPHA = 0.14;
 export const CB_FILL_FORMING_ALPHA = 0.08;
 export const CB_FILL_HELD_ALPHA = 0.06;
@@ -266,7 +268,7 @@ function plotMarkers(ctx: IndicatorBarCtx<CompressionBreakoutState, CompressionB
   const d = reading.decision;
   if (d.kind === "break" && d.grade >= 1) {
     const base = d.dir > 0 ? CB_BULL_COLOR : CB_BEAR_COLOR;
-    const alpha = (d.grade === 3 ? 1 : CB_PROVISIONAL_ALPHA) * (reading.confirmed ? 1 : CB_PROVISIONAL_ALPHA);
+    const alpha = (d.grade === 3 ? 1 : CB_FADED_MARKER_ALPHA) * (reading.confirmed ? 1 : CB_PROVISIONAL_ALPHA);
     ctx.markers.plotshape({
       shape: d.dir > 0 ? "arrowUp" : "arrowDown",
       position: d.dir > 0 ? "belowBar" : "aboveBar",

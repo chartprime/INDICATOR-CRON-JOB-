@@ -1,0 +1,67 @@
+{
+  "mutations": [
+    {
+      "id": "l2-book-map.coarse-not-clipped-at-fine-start",
+      "file": "apps/web/src/lib/indicators/l2-book-map/l2BookMapPrimitive.ts",
+      "find": "      addColumn(column, feed.deepColumnMs, fineStart);",
+      "replace": "      addColumn(column, feed.deepColumnMs, Number.POSITIVE_INFINITY);",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/l2-book-map/tests/l2BookMapPrimitive.test.ts"],
+      "mustFail": ["spreads a coarse column across its interval and clips it where fine history begins"]
+    },
+    {
+      "id": "l2-book-map.bucket-cut-at-contiguous-candle",
+      "file": "apps/web/src/lib/indicators/l2-book-map/l2BookMapPrimitive.ts",
+      "find": "(contiguous ? 2 : 1)",
+      "replace": "1",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/l2-book-map/tests/l2BookMapPrimitive.test.ts"],
+      "mustFail": ["draws a time bucket across two contiguous candle slots"]
+    },
+    {
+      "id": "l2-book-map.hover-ignores-vertical-range",
+      "file": "apps/web/src/lib/indicators/l2-book-map/l2BookMapPrimitive.ts",
+      "find": "      if (bounds && (cell.priceHi < bounds.low || cell.priceLo > bounds.high)) continue;",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/l2-book-map/tests/l2BookMapPrimitive.test.ts"],
+      "mustFail": ["does not offer hover for cells excluded by the vertical range"]
+    },
+    {
+      "id": "l2-book-map.heat-scaled-by-offscreen-cells",
+      "file": "apps/web/src/lib/indicators/l2-book-map/l2BookMapPrimitive.ts",
+      "find": "    const visible = cells.slice(from, to);",
+      "replace": "    const visible = cells;",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/l2-book-map/tests/l2BookMapPrimitive.test.ts"],
+      "mustFail": ["does not scan the full retained cell history on every canvas repaint"]
+    },
+    {
+      "id": "l2-book-map.cell-cap-silent",
+      "file": "apps/web/src/lib/indicators/l2-book-map/l2BookMapPrimitive.ts",
+      "find": "    this.truncated = cells.length > MAX_L2_BOOK_MAP_CELLS;",
+      "replace": "    this.truncated = false;",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/l2-book-map/tests/l2BookMapPrimitive.test.ts"],
+      "mustFail": ["marks the map partial once retained cells pass the cap, dropping the oldest first"]
+    },
+    {
+      "id": "l2-book-map.cell-cap-drops-newest",
+      "file": "apps/web/src/lib/indicators/l2-book-map/l2BookMapPrimitive.ts",
+      "find": "        ? cells.slice(-MAX_L2_BOOK_MAP_CELLS)",
+      "replace": "        ? cells.slice(0, MAX_L2_BOOK_MAP_CELLS)",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/l2-book-map/tests/l2BookMapPrimitive.test.ts"],
+      "mustFail": ["marks the map partial once retained cells pass the cap, dropping the oldest first"]
+    },
+    {
+      "id": "index-liquidity.zero-column-reference-used-as-wall",
+      "file": "apps/web/src/lib/indicators/passive-liquidity/indexLiquidityStyle.ts",
+      "find": "  return column.reference !== undefined && column.reference > 0 ? column.reference : reference;",
+      "replace": "  return column.reference ?? reference;",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/passive-liquidity/tests/liquidityStyle.test.ts"],
+      "mustFail": ["tops the colour out at the column's ceiling, the biggest row near price smoothed over half an hour, never under the server's wall threshold; a fixed scale is the trader's size"]
+    }
+  ]
+}

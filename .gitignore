@@ -1,0 +1,52 @@
+# Local Python reference used to cross-check the JavaScript connection
+# layer. It is not part of the shipped workspace or repository history.
+apps/runtime-python-reference/
+
+# Node
+node_modules/
+dist/
+.vite/
+.vite-temp/
+coverage/
+/scratch/
+
+# Local environment and secret-bearing overrides
+.env
+.env.*
+!.env.example
+!.env.operator.example
+.tardis-identity.json
+
+# Captured market data — regenerated live, never committed
+apps/runtime/data/
+
+# Local runner logs — regenerated live, never committed
+apps/runtime/logs/
+
+# Local dev stand-in for systemd's RuntimeDirectory=terminal-l1-l2 (/run) — ephemeral, never committed
+apps/runtime/run/
+
+# Local daily SQLite online backups — regenerated live, never committed
+apps/runtime/backups/
+
+# Python (if any Python tooling remains after Phase 1)
+__pycache__/
+.pytest_cache/
+*.pyc
+.venv
+.coverage
+.coverage.*
+
+# Local-only credential handoff (e.g. ttconvert AWS key en route to the host) — never committed
+.secrets/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+
+
+# Mutation runs: originals of files under mutation, restored by the next run after a crash
+.mutation-inflight/
+# The ledger's lock while a run writes it, and its rewrite before the rename
+benchmarks/mutation-ledger.jsonl.lock
+benchmarks/mutation-ledger.jsonl.*.tmp

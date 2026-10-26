@@ -1,0 +1,2172 @@
+{
+  "mutations": [
+    {
+      "id": "initiative.chart.shown-by-candle",
+      "file": "apps/web/src/lib/indicators/initiative/initiativeSettings.ts",
+      "find": "  return bands.filter((band) => band.candleMs === candleMs && (days === 0 ? band.origin === \"runtime\" : band.frozenTs >= from) && band.score >= minScore && legReachAtr(band) >= minLegAtr);",
+      "replace": "  return bands.filter((band) => (days === 0 ? band.origin === \"runtime\" : band.frozenTs >= from) && band.score >= minScore && legReachAtr(band) >= minLegAtr);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativeSettings.test.ts"
+      ],
+      "mustFail": [
+        "shown bands are the chart candle's, at or above the score floor"
+      ]
+    },
+    {
+      "id": "initiative.chart.shown-live-is-the-runtimes-own",
+      "file": "apps/web/src/lib/indicators/initiative/initiativeSettings.ts",
+      "find": "  return bands.filter((band) => band.candleMs === candleMs && (days === 0 ? band.origin === \"runtime\" : band.frozenTs >= from) && band.score >= minScore && legReachAtr(band) >= minLegAtr);",
+      "replace": "  return bands.filter((band) => band.candleMs === candleMs && (days === 0 ? true : band.frozenTs >= from) && band.score >= minScore && legReachAtr(band) >= minLegAtr);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativeSettings.test.ts"
+      ],
+      "mustFail": [
+        "shown bands are the chart candle's, at or above the score floor"
+      ]
+    },
+    {
+      "id": "initiative.chart.shown-by-frozen-time",
+      "file": "apps/web/src/lib/indicators/initiative/initiativeSettings.ts",
+      "find": "  return bands.filter((band) => band.candleMs === candleMs && (days === 0 ? band.origin === \"runtime\" : band.frozenTs >= from) && band.score >= minScore && legReachAtr(band) >= minLegAtr);",
+      "replace": "  return bands.filter((band) => band.candleMs === candleMs && (days === 0 ? band.origin === \"runtime\" : band.pivotTs >= from) && band.score >= minScore && legReachAtr(band) >= minLegAtr);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativeSettings.test.ts"
+      ],
+      "mustFail": [
+        "shown bands are the chart candle's, at or above the score floor"
+      ]
+    },
+    {
+      "id": "initiative.chart.shown-by-score-floor",
+      "file": "apps/web/src/lib/indicators/initiative/initiativeSettings.ts",
+      "find": "  return bands.filter((band) => band.candleMs === candleMs && (days === 0 ? band.origin === \"runtime\" : band.frozenTs >= from) && band.score >= minScore && legReachAtr(band) >= minLegAtr);",
+      "replace": "  return bands.filter((band) => band.candleMs === candleMs && (days === 0 ? band.origin === \"runtime\" : band.frozenTs >= from) && band.score > minScore && legReachAtr(band) >= minLegAtr);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativeSettings.test.ts"
+      ],
+      "mustFail": [
+        "shown bands are the chart candle's, at or above the score floor"
+      ]
+    },
+    {
+      "id": "initiative.chart.min-score-clamped",
+      "file": "apps/web/src/lib/indicators/initiative/initiativeSettings.ts",
+      "find": "  return Math.round(within(settings?.minScore, SCORE_RANGE, DEFAULT_MIN_SCORE));",
+      "replace": "  return Math.round(within(settings?.minScore, [0, 9], DEFAULT_MIN_SCORE));",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativeSettings.test.ts"
+      ],
+      "mustFail": [
+        "× defaults: a day of history, buyers green and sellers red, "
+      ]
+    },
+    {
+      "id": "initiative.chart.default-min-score",
+      "file": "apps/web/src/lib/indicators/initiative/initiativeSettings.ts",
+      "find": "export const DEFAULT_MIN_SCORE = 4;",
+      "replace": "export const DEFAULT_MIN_SCORE = 3;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativeSettings.test.ts"
+      ],
+      "mustFail": [
+        "× defaults: a day of history, buyers green and sellers red, "
+      ]
+    },
+    {
+      "id": "initiative.chart.colour-by-dominant",
+      "file": "apps/web/src/lib/indicators/initiative/initiativeSettings.ts",
+      "find": "  const chosen = dominant === \"buyers\" ? settings?.buyerColor : settings?.sellerColor;",
+      "replace": "  const chosen = dominant === \"buyers\" ? settings?.sellerColor : settings?.buyerColor;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativeSettings.test.ts"
+      ],
+      "mustFail": [
+        "× colours follow the dominant side and fall back to green fo"
+      ]
+    },
+    {
+      "id": "initiative.chart.opacity-clamped",
+      "file": "apps/web/src/lib/indicators/initiative/initiativeSettings.ts",
+      "find": "  return typeof opacity === \"number\" && Number.isFinite(opacity) ? Math.min(1, Math.max(0, opacity)) : DEFAULT_INITIATIVE_SETTINGS.opacity;",
+      "replace": "  return typeof opacity === \"number\" ? Math.min(1, Math.max(0, opacity)) : DEFAULT_INITIATIVE_SETTINGS.opacity;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativeSettings.test.ts"
+      ],
+      "mustFail": [
+        "× colours follow the dominant side and fall back to green fo"
+      ]
+    },
+    {
+      "id": "initiative.chart.history-off",
+      "file": "apps/web/src/lib/indicators/initiative/initiativeSettings.ts",
+      "find": "  if (settings?.historyDays === 0) return 0;",
+      "replace": "  if (settings?.historyDays === -1) return 0;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativeSettings.test.ts"
+      ],
+      "mustFail": [
+        "× defaults: a day of history, buyers green and sellers red, "
+      ]
+    },
+    {
+      "id": "initiative.chart.status-waiting",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "  if (book === null) return \"INITIATIVE · WAITING FOR THE RUNTIME\";",
+      "replace": "  if (book === null) return null;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "says when the runtime has not answered, when the book is untrusted"
+      ]
+    },
+    {
+      "id": "initiative.chart.status-untrusted",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "  if (!book.trusted()) return \"INITIATIVE · UNTRUSTED UNTIL THE NEXT PAGE\";",
+      "replace": "  if (false) return \"INITIATIVE · UNTRUSTED UNTIL THE NEXT PAGE\";",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "says when the runtime has not answered, when the book is untrusted"
+      ]
+    },
+    {
+      "id": "initiative.chart.status-loading",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "  if (loading !== null) return `INITIATIVE · LOADING ${loading.toUpperCase()}`;",
+      "replace": "  if (false) return `INITIATIVE · LOADING ${loading.toUpperCase()}`;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "says when the runtime has not answered, when the book is untrusted"
+      ]
+    },
+    {
+      "id": "initiative.chart.filter-once-per-version",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "    if (key !== this._shownKey || book !== this._shownBook || this.settings !== this._shownSettings) {",
+      "replace": "    if (true) {",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "asks the chart to repaint on a change and filters the book once"
+      ]
+    },
+    {
+      "id": "initiative.chart.filter-per-settings",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "    if (key !== this._shownKey || book !== this._shownBook || this.settings !== this._shownSettings) {",
+      "replace": "    if (key !== this._shownKey || book !== this._shownBook) {",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "asks the chart to repaint on a change and filters the book once"
+      ]
+    },
+    {
+      "id": "initiative.chart.modal-score-floor",
+      "file": "apps/web/src/lib/indicators/initiative/InitiativeSettingsModal.tsx",
+      "find": "              <input type=\"range\" aria-label=\"Minimum score\" min={SCORE_RANGE[0]} max={SCORE_RANGE[1]} step={1} value={initiativeMinScoreOf(settings)} onChange={(event) => update({ minScore: Number(event.target.value) })} />",
+      "replace": "              <input type=\"range\" aria-label=\"Minimum score\" min={SCORE_RANGE[0]} max={SCORE_RANGE[1]} step={1} value={initiativeMinScoreOf(settings)} onChange={() => {}} />",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/InitiativeSettingsModal.test.tsx"
+      ],
+      "mustFail": [
+        "opens on Inputs with the score floor at 3 of 5"
+      ]
+    },
+    {
+      "id": "initiative.chart.modal-history",
+      "file": "apps/web/src/lib/indicators/initiative/InitiativeSettingsModal.tsx",
+      "find": "                    <input type=\"radio\" name=\"initiative-history-days\" checked={initiativeHistoryDaysOf(settings) === days} onChange={() => update({ historyDays: days })} />",
+      "replace": "                    <input type=\"radio\" name=\"initiative-history-days\" checked={initiativeHistoryDaysOf(settings) === days} onChange={() => {}} />",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/InitiativeSettingsModal.test.tsx"
+      ],
+      "mustFail": [
+        "opens on Inputs with the score floor at 3 of 5"
+      ]
+    },
+    {
+      "id": "initiative.chart.modal-buyers-colour",
+      "file": "apps/web/src/lib/indicators/initiative/InitiativeSettingsModal.tsx",
+      "find": "              <input type=\"color\" aria-label=\"Buyers colour\" value={initiativeColorOf(settings, \"buyers\")} onChange={(event) => update({ buyerColor: event.target.value })} />",
+      "replace": "              <input type=\"color\" aria-label=\"Buyers colour\" value={initiativeColorOf(settings, \"buyers\")} onChange={(event) => update({ sellerColor: event.target.value })} />",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/InitiativeSettingsModal.test.tsx"
+      ],
+      "mustFail": [
+        "× the Visibility tab holds the shade and chip switches, bot"
+      ]
+    },
+    {
+      "id": "initiative.chart.modal-opacity",
+      "file": "apps/web/src/lib/indicators/initiative/InitiativeSettingsModal.tsx",
+      "find": "              <input type=\"range\" aria-label=\"Opacity\" min={0.15} max={1} step={0.05} value={initiativeOpacityOf(settings)} onChange={(event) => update({ opacity: Number(event.target.value) })} />",
+      "replace": "              <input type=\"range\" aria-label=\"Opacity\" min={0.15} max={1} step={0.05} value={initiativeOpacityOf(settings)} onChange={() => {}} />",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/InitiativeSettingsModal.test.tsx"
+      ],
+      "mustFail": [
+        "× the Visibility tab holds the shade and chip switches, bot"
+      ]
+    },
+    {
+      "id": "initiative.chart.tooltip-under-whale-and-absorption",
+      "file": "apps/web/src/components/chart/tooltipPriority.ts",
+      "find": "    initiative: present.initiative && !present.whale && !present.absorption,",
+      "replace": "    initiative: present.initiative,",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/components/chart/tests/tooltipPriority.test.ts"
+      ],
+      "mustFail": [
+        "shows an initiative band's card under a whale or an absorption sphere"
+      ]
+    },
+    {
+      "id": "initiative.chart.main-asks-once-live",
+      "file": "apps/web/src/components/chart/MainPanel.tsx",
+      "find": "    if (!favorites.has(\"initiative\") || initiativeHistoryDays === 0 || status !== \"open\" || initiativeLiveSince === null || !requestInitiativeHistory) return;",
+      "replace": "    if (!favorites.has(\"initiative\") || initiativeHistoryDays === 0 || initiativeLiveSince === null || !requestInitiativeHistory) return;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/components/chart/tests/MainPanel.test.tsx",
+        "-t",
+        "Initiative Continuation"
+      ],
+      "mustFail": [
+        "asks the runtime for the history span the setting names once the indicator is on"
+      ]
+    },
+    {
+      "id": "initiative.chart.main-asks-the-span",
+      "file": "apps/web/src/components/chart/MainPanel.tsx",
+      "find": "    requestInitiativeHistory(Date.now() - initiativeHistoryDays * 86_400_000);",
+      "replace": "    requestInitiativeHistory(Date.now());",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/components/chart/tests/MainPanel.test.tsx",
+        "-t",
+        "Initiative Continuation"
+      ],
+      "mustFail": [
+        "asks the runtime for the history span the setting names once the indicator is on"
+      ]
+    },
+    {
+      "id": "initiative.chart.main-candle-length",
+      "file": "apps/web/src/components/chart/MainPanel.tsx",
+      "find": "  const initiativeCandleMs = initiativeCandleMsOf(intervalMs, instrumentIdentity.assetClass);",
+      "replace": "  const initiativeCandleMs = initiativeCandleMsOf(intervalMs);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/components/chart/tests/MainPanel.test.tsx",
+        "-t",
+        "Initiative Continuation"
+      ],
+      "mustFail": [
+        "hands the chart the candle length the runtime's engine runs on, null where there is none and above 30m"
+      ]
+    },
+    {
+      "id": "initiative.chart.main-legend-count",
+      "file": "apps/web/src/components/chart/MainPanel.tsx",
+      "find": "                            : `${shownBands(initiatives.list(), initiativeSettings, initiativeCandleMs, Date.now()).length} shown",
+      "replace": "                            : `${initiatives.list().length} shown",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/components/chart/tests/MainPanel.test.tsx",
+        "-t",
+        "Initiative Continuation"
+      ],
+      "mustFail": [
+        "the legend counts the bands the chart draws"
+      ]
+    },
+    {
+      "id": "initiative.chart.chart-hover-sets-the-layer",
+      "file": "apps/web/src/components/chart/ChartPanel.tsx",
+      "find": "        initiativePrimitiveRef.current?.setHover(initiativeBox?.id ?? null);",
+      "replace": "        void initiativeBox;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/components/chart/tests/ChartPanel.lifecycle.test.tsx",
+        "-t",
+        "initiative"
+      ],
+      "mustFail": [
+        "a pointer on a band shows its line, a click pins the card"
+      ]
+    },
+    {
+      "id": "initiative.chart.chart-pin-on-click",
+      "file": "apps/web/src/components/chart/ChartPanel.tsx",
+      "find": "          setInitiativePinned(initiativeHit === null ? null : { id: initiativeHit.id, x: point.x, y: point.y });",
+      "replace": "          void initiativeHit;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/components/chart/tests/ChartPanel.lifecycle.test.tsx",
+        "-t",
+        "initiative"
+      ],
+      "mustFail": [
+        "a pointer on a band shows its line, a click pins the card"
+      ]
+    },
+    {
+      "id": "initiative.chart.chart-hidden-clears",
+      "file": "apps/web/src/components/chart/ChartPanel.tsx",
+      "find": "      initiativePrimitiveRef.current?.setShown(showInitiative);",
+      "replace": "      initiativePrimitiveRef.current?.setShown(true);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/components/chart/tests/ChartPanel.lifecycle.test.tsx",
+        "-t",
+        "initiative"
+      ],
+      "mustFail": [
+        "a pointer on a band shows its line, a click pins the card"
+      ]
+    },
+    {
+      "id": "initiative.chart.chart-rebuild-keeps-settings",
+      "file": "apps/web/src/components/chart/ChartPanel.tsx",
+      "find": "      if (latestInitiativeSettingsRef.current !== null) initiativePrimitive.setSettings(latestInitiativeSettingsRef.current);",
+      "replace": "      void latestInitiativeSettingsRef;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/components/chart/tests/ChartPanel.lifecycle.test.tsx",
+        "-t",
+        "initiative"
+      ],
+      "mustFail": [
+        "a chart rebuilt for a new colour scheme hands its initiative layer"
+      ]
+    },
+    {
+      "id": "initiative.chart.chart-rebuild-keeps-candle",
+      "file": "apps/web/src/components/chart/ChartPanel.tsx",
+      "find": "      initiativePrimitive.setCandleMs(latestInitiativeCandleRef.current);",
+      "replace": "      void latestInitiativeCandleRef;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/components/chart/tests/ChartPanel.lifecycle.test.tsx",
+        "-t",
+        "initiative"
+      ],
+      "mustFail": [
+        "a chart rebuilt for a new colour scheme hands its initiative layer"
+      ]
+    },
+    {
+      "id": "initiative.chart.extras-saved-per-instrument",
+      "file": "apps/web/src/lib/chart/liveIndicatorExtras.ts",
+      "find": "    initiativeByInstrument: keyedEntries(raw.initiativeByInstrument, DEFAULT_INITIATIVE_SETTINGS),",
+      "replace": "    initiativeByInstrument: {},",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/chart/tests/liveIndicatorExtras.test.ts"
+      ],
+      "mustFail": [
+        "brings every custom indicator setting back after a reload"
+      ]
+    },
+    {
+      "id": "initiative.chart.registry-no-archive-replay",
+      "file": "apps/web/src/lib/chart/indicatorRegistry.ts",
+      "find": "  initiative: {\n    unavailableReason:\n      \"Requires the runtime's live Initiative Continuation engine and its band history, which candle archives do not contain.\",\n  },\n",
+      "replace": "  initiative: {},\n",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/archive/historicalL2Qualification.test.ts"
+      ],
+      "mustFail": [
+        "the Iceberg Detector, Exhaustion and Initiative Continuation say why not"
+      ]
+    },
+    {
+      "id": "initiative.chart.chart-cards-over-the-band-win-the-click",
+      "file": "apps/web/src/components/chart/ChartPanel.tsx",
+      "find": "          const initiativeHit = cardOverBand ? null : initiativeBox;",
+      "replace": "          const initiativeHit = initiativeBox;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/components/chart/tests/ChartPanel.lifecycle.test.tsx",
+        "-t",
+        "initiative"
+      ],
+      "mustFail": [
+        "one click pins one card: the initiative card"
+      ]
+    },
+    {
+      "id": "initiative.chart.chart-band-wins-over-the-whale-wall",
+      "file": "apps/web/src/components/chart/ChartPanel.tsx",
+      "find": "          const pinnedHit = exhaustionHit !== null || initiativeHit !== null ? null : (whalePrimitiveRef.current?.hitAt(point.x, point.y) ?? null);",
+      "replace": "          const pinnedHit = exhaustionHit !== null ? null : (whalePrimitiveRef.current?.hitAt(point.x, point.y) ?? null);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/components/chart/tests/ChartPanel.lifecycle.test.tsx",
+        "-t",
+        "initiative"
+      ],
+      "mustFail": [
+        "one click pins one card: the initiative card"
+      ]
+    },
+    {
+      "id": "initiative.chart.chart-shade-wins-over-the-band",
+      "file": "apps/web/src/components/chart/ChartPanel.tsx",
+      "find": "          const initiativeBox = exhaustionHit !== null ? null : (initiativePrimitiveRef.current?.boxAt(point.x, point.y) ?? null);",
+      "replace": "          const initiativeBox = initiativePrimitiveRef.current?.boxAt(point.x, point.y) ?? null;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/components/chart/tests/ChartPanel.lifecycle.test.tsx",
+        "-t",
+        "initiative"
+      ],
+      "mustFail": [
+        "one click pins one card: the initiative card"
+      ]
+    },
+    {
+      "id": "initiative.chart.shown-by-leg-floor",
+      "file": "apps/web/src/lib/indicators/initiative/initiativeSettings.ts",
+      "find": " && band.score >= minScore && legReachAtr(band) >= minLegAtr);",
+      "replace": " && band.score >= minScore);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativeSettings.test.ts"
+      ],
+      "mustFail": [
+        "shown bands are the chart candle's, at or above the score floor"
+      ]
+    },
+    {
+      "id": "initiative.chart.leg-floor-inclusive",
+      "file": "apps/web/src/lib/indicators/initiative/initiativeSettings.ts",
+      "find": "legReachAtr(band) >= minLegAtr);",
+      "replace": "legReachAtr(band) > minLegAtr);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativeSettings.test.ts"
+      ],
+      "mustFail": [
+        "shown bands are the chart candle's, at or above the score floor"
+      ]
+    },
+    {
+      "id": "initiative.chart.leg-reach-absolute",
+      "file": "apps/web/src/lib/indicators/initiative/initiativeSettings.ts",
+      "find": "  return Math.abs(band.legExtremePrice - band.pivotPrice) / band.atr;",
+      "replace": "  return (band.legExtremePrice - band.pivotPrice) / band.atr;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativeSettings.test.ts"
+      ],
+      "mustFail": [
+        "× defaults: a day of history, buyers green and sellers red, "
+      ]
+    },
+    {
+      "id": "initiative.chart.min-leg-clamped",
+      "file": "apps/web/src/lib/indicators/initiative/initiativeSettings.ts",
+      "find": "  return Math.round(within(settings?.minLegAtr, MIN_LEG_ATR_RANGE, DEFAULT_MIN_LEG_ATR) * 2) / 2;",
+      "replace": "  return Math.round(within(settings?.minLegAtr, [0, 99], DEFAULT_MIN_LEG_ATR) * 2) / 2;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativeSettings.test.ts"
+      ],
+      "mustFail": [
+        "× defaults: a day of history, buyers green and sellers red, "
+      ]
+    },
+    {
+      "id": "initiative.chart.min-leg-in-halves",
+      "file": "apps/web/src/lib/indicators/initiative/initiativeSettings.ts",
+      "find": "  return Math.round(within(settings?.minLegAtr, MIN_LEG_ATR_RANGE, DEFAULT_MIN_LEG_ATR) * 2) / 2;",
+      "replace": "  return within(settings?.minLegAtr, MIN_LEG_ATR_RANGE, DEFAULT_MIN_LEG_ATR);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativeSettings.test.ts"
+      ],
+      "mustFail": [
+        "× defaults: a day of history, buyers green and sellers red, "
+      ]
+    },
+    {
+      "id": "initiative.chart.default-min-leg",
+      "file": "apps/web/src/lib/indicators/initiative/initiativeSettings.ts",
+      "find": "export const DEFAULT_MIN_LEG_ATR = 7.5;",
+      "replace": "export const DEFAULT_MIN_LEG_ATR = 5;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativeSettings.test.ts"
+      ],
+      "mustFail": [
+        "× defaults: a day of history, buyers green and sellers red, "
+      ]
+    },
+    {
+      "id": "initiative.chart.schema-min-leg-step",
+      "file": "apps/web/src/lib/indicators/initiative/initiativeSettings.ts",
+      "find": "key: \"minLegAtr\", label: \"Minimum leg size\", min: MIN_LEG_ATR_RANGE[0], max: MIN_LEG_ATR_RANGE[1], step: 0.5, clampOnRestore: true",
+      "replace": "key: \"minLegAtr\", label: \"Minimum leg size\", min: MIN_LEG_ATR_RANGE[0], max: MIN_LEG_ATR_RANGE[1], step: 1, clampOnRestore: true",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativeSettings.test.ts"
+      ],
+      "mustFail": [
+        "the schema is the score floor, the leg floor"
+      ]
+    },
+    {
+      "id": "initiative.chart.modal-leg-floor",
+      "file": "apps/web/src/lib/indicators/initiative/InitiativeSettingsModal.tsx",
+      "find": "value={initiativeMinLegAtrOf(settings)} onChange={(event) => update({ minLegAtr: Number(event.target.value) })} />",
+      "replace": "value={initiativeMinLegAtrOf(settings)} onChange={() => {}} />",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/InitiativeSettingsModal.test.tsx"
+      ],
+      "mustFail": [
+        "opens on Inputs with the score floor at 3 of 5"
+      ]
+    },
+    {
+      "id": "initiative.chart.modal-leg-floor-text",
+      "file": "apps/web/src/lib/indicators/initiative/InitiativeSettingsModal.tsx",
+      "find": "<span>Leg at least {initiativeMinLegAtrOf(settings)} ATR</span>",
+      "replace": "<span>Leg at least {MIN_LEG_ATR_RANGE[0]} ATR</span>",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/InitiativeSettingsModal.test.tsx"
+      ],
+      "mustFail": [
+        "opens on Inputs with the score floor at 3 of 5"
+      ]
+    },
+    {
+      "id": "initiative.chart.default-colours",
+      "file": "apps/web/src/lib/indicators/initiative/initiativeSettings.ts",
+      "find": "export const DEFAULT_BUYER_COLOR = \"#22c55e\";",
+      "replace": "export const DEFAULT_BUYER_COLOR = \"#0e9a66\";",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativeSettings.test.ts"
+      ],
+      "mustFail": [
+        "defaults: a day of history, buyers green and sellers red"
+      ]
+    },
+    {
+      "id": "initiative.chart.colour-fallback-by-side",
+      "file": "apps/web/src/lib/indicators/initiative/initiativeSettings.ts",
+      "find": "  return dominant === \"buyers\" ? DEFAULT_BUYER_COLOR : DEFAULT_SELLER_COLOR;",
+      "replace": "  return DEFAULT_BUYER_COLOR;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativeSettings.test.ts"
+      ],
+      "mustFail": [
+        "colours follow the dominant side and fall back to green"
+      ]
+    },
+    {
+      "id": "initiative.chart.default-show-shade",
+      "file": "apps/web/src/lib/indicators/initiative/initiativeSettings.ts",
+      "find": "  showShade: true,\n  showLabels: true,",
+      "replace": "  showShade: false,\n  showLabels: true,",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativeSettings.test.ts"
+      ],
+      "mustFail": [
+        "defaults: a day of history, buyers green and sellers red"
+      ]
+    },
+    {
+      "id": "initiative.chart.schema-shade-switch",
+      "file": "apps/web/src/lib/indicators/initiative/initiativeSettings.ts",
+      "find": "  { kind: \"boolean\", key: \"showShade\", label: \"Show shade\", affects: \"cosmetic\" },",
+      "replace": "  { kind: \"boolean\", key: \"showShade\", label: \"Show shade\", affects: \"recompute\" },",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativeSettings.test.ts"
+      ],
+      "mustFail": [
+        "the schema is the score floor, the leg floor, the history, the shade and chip switches"
+      ]
+    },
+    {
+      "id": "initiative.chart.modal-shade-switch",
+      "file": "apps/web/src/lib/indicators/initiative/InitiativeSettingsModal.tsx",
+      "find": "<input type=\"checkbox\" aria-label=\"Show shade\" checked={settings.showShade !== false} onChange={(event) => update({ showShade: event.target.checked })} />",
+      "replace": "<input type=\"checkbox\" aria-label=\"Show shade\" checked={settings.showShade !== false} onChange={() => {}} />",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/InitiativeSettingsModal.test.tsx"
+      ],
+      "mustFail": [
+        "the Visibility tab holds the shade and chip switches"
+      ]
+    },
+    {
+      "id": "initiative.chart.modal-chip-switch",
+      "file": "apps/web/src/lib/indicators/initiative/InitiativeSettingsModal.tsx",
+      "find": "<input type=\"checkbox\" aria-label=\"Show chip\" checked={settings.showLabels !== false} onChange={(event) => update({ showLabels: event.target.checked })} />",
+      "replace": "<input type=\"checkbox\" aria-label=\"Show chip\" checked={settings.showLabels !== false} onChange={() => {}} />",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/InitiativeSettingsModal.test.tsx"
+      ],
+      "mustFail": [
+        "the Visibility tab holds the shade and chip switches"
+      ]
+    },
+    {
+      "id": "initiative.chart.layout-left-is-the-pivot-open",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "    const start = geometry.xOf(band.pivotTs);",
+      "replace": "    const start = geometry.xOf(band.pivotTs + band.candleMs);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "shades exactly the window"
+      ]
+    },
+    {
+      "id": "initiative.chart.layout-right-is-the-flip-close",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "    const end = geometry.xOf(band.frozenTs + band.candleMs);",
+      "replace": "    const end = geometry.xOf(band.frozenTs);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "shades exactly the window"
+      ]
+    },
+    {
+      "id": "initiative.chart.layout-high-takes-the-candles",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "      high = Math.max(high, candle.high);",
+      "replace": "      high = Math.max(high, candle.low);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "shades exactly the window"
+      ]
+    },
+    {
+      "id": "initiative.chart.layout-low-takes-the-candles",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "      low = Math.min(low, candle.low);",
+      "replace": "      low = Math.min(low, candle.high);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "shades exactly the window"
+      ]
+    },
+    {
+      "id": "initiative.chart.layout-shade-fade",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "top, bottom, fade: Math.min(SHADE_FADE, (bottom - top) / 2) };",
+      "replace": "top, bottom, fade: SHADE_FADE };",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "shades exactly the window"
+      ]
+    },
+    {
+      "id": "initiative.chart.layout-off-pane-sideways",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "    if (shade.right < 0 || shade.left > geometry.width || shade.bottom < 0 || shade.top > geometry.height) continue;",
+      "replace": "    if (shade.bottom < 0 || shade.top > geometry.height) continue;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "a band off the pane or before the chart's reach is left out"
+      ]
+    },
+    {
+      "id": "initiative.chart.layout-off-pane-vertically",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "    if (shade.right < 0 || shade.left > geometry.width || shade.bottom < 0 || shade.top > geometry.height) continue;",
+      "replace": "    if (shade.right < 0 || shade.left > geometry.width) continue;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "a band off the pane or before the chart's reach is left out"
+      ]
+    },
+    {
+      "id": "initiative.chart.layout-chip-only-when-asked",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "    if (showChip) {",
+      "replace": "    if (true) {",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "two chips that would touch are stacked away"
+      ]
+    },
+    {
+      "id": "initiative.chart.layout-leader-beyond-the-candles",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "      const anchor = { x: cx, y: up ? bottom + LEADER_GAP : top - LEADER_GAP };",
+      "replace": "      const anchor = { x: cx, y: up ? top - LEADER_GAP : bottom + LEADER_GAP };",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "the chip hangs below an up leg's shade"
+      ]
+    },
+    {
+      "id": "initiative.chart.layout-leader-gap",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "      const anchor = { x: cx, y: up ? bottom + LEADER_GAP : top - LEADER_GAP };",
+      "replace": "      const anchor = { x: cx, y: up ? bottom : top };",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "the chip hangs below an up leg's shade"
+      ]
+    },
+    {
+      "id": "initiative.chart.layout-chip-inside-the-pane",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "      const leftEdge = Math.min(Math.max(cx - chipWidth / 2, CHIP_EDGE), Math.max(CHIP_EDGE, geometry.width - chipWidth - CHIP_EDGE));",
+      "replace": "      const leftEdge = cx - chipWidth / 2;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "the chip hangs below an up leg's shade"
+      ]
+    },
+    {
+      "id": "initiative.chart.layout-chip-a-leader-away",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "top: up ? anchor.y + LEADER_LENGTH : anchor.y - LEADER_LENGTH - CHIP.height,",
+      "replace": "top: up ? anchor.y : anchor.y - CHIP.height,",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "the chip hangs below an up leg's shade"
+      ]
+    },
+    {
+      "id": "initiative.chart.layout-chips-stack",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "        placed.top = up ? touching.top + touching.height + CHIP_GAP : touching.top - CHIP.height - CHIP_GAP;",
+      "replace": "        break;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "two chips that would touch are stacked away"
+      ]
+    },
+    {
+      "id": "initiative.chart.layout-chips-stack-up-for-a-fall",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "        placed.top = up ? touching.top + touching.height + CHIP_GAP : touching.top - CHIP.height - CHIP_GAP;",
+      "replace": "        placed.top = touching.top + touching.height + CHIP_GAP;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "two chips that would touch are stacked away"
+      ]
+    },
+    {
+      "id": "initiative.chart.layout-leader-inside-the-chip",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "      const x = Math.min(Math.max(anchor.x, placed.left + CHIP.radius), placed.left + placed.width - CHIP.radius);",
+      "replace": "      const x = anchor.x;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "the chip hangs below an up leg's shade"
+      ]
+    },
+    {
+      "id": "initiative.chart.layout-leader-to-the-chip-edge",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "to: { x, y: up ? placed.top : placed.top + placed.height } } };",
+      "replace": "to: { x, y: placed.top } } };",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "the chip hangs below an up leg's shade"
+      ]
+    },
+    {
+      "id": "initiative.chart.layout-show-shade",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "    marks.push({ shade, showShade, chip, alpha: opacity,",
+      "replace": "    marks.push({ shade, showShade: true, chip, alpha: opacity,",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "two chips that would touch are stacked away"
+      ]
+    },
+    {
+      "id": "initiative.chart.layout-hovered",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "hovered: band.id === hoveredId, band });",
+      "replace": "hovered: hoveredId !== null, band });",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "a band off the pane or before the chart's reach is left out"
+      ]
+    },
+    {
+      "id": "initiative.chart.chip-width-fits-both-lines",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "  return CHIP.padX * 2 + Math.max(title, value);",
+      "replace": "  return CHIP.padX * 2 + title;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "the chip hangs below an up leg's shade"
+      ]
+    },
+    {
+      "id": "initiative.chart.shade-area",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "  return (shade.right - shade.left) * (shade.bottom - shade.top);",
+      "replace": "  return shade.right - shade.left;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "× shades exactly the window: from the pivot candle's open to"
+      ]
+    },
+    {
+      "id": "initiative.chart.hit-chip-first",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "  if (mark.chip !== null && insideChip(point, mark.chip, CHIP_HIT_SLACK)) return \"chip\";",
+      "replace": "  if (mark.chip !== null && insideChip(point, mark.chip, CHIP_HIT_SLACK)) return \"shade\";",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "× answers inside the shade and inside the chip, the chip fir"
+      ]
+    },
+    {
+      "id": "initiative.chart.hit-shade-only-when-shown",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "  if (mark.showShade && insideShade(point, mark.shade)) return \"shade\";",
+      "replace": "  if (insideShade(point, mark.shade)) return \"shade\";",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "× answers inside the shade and inside the chip, the chip fir"
+      ]
+    },
+    {
+      "id": "initiative.chart.hit-shade-sides",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "  return point.x >= shade.left && point.x <= shade.right && point.y >= shade.top && point.y <= shade.bottom;",
+      "replace": "  return point.y >= shade.top && point.y <= shade.bottom;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "answers inside the shade and inside the chip"
+      ]
+    },
+    {
+      "id": "initiative.chart.hit-shade-below",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "  return point.x >= shade.left && point.x <= shade.right && point.y >= shade.top && point.y <= shade.bottom;",
+      "replace": "  return point.x >= shade.left && point.x <= shade.right && point.y >= shade.top;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "answers inside the shade and inside the chip"
+      ]
+    },
+    {
+      "id": "initiative.chart.draw-shade-only-when-shown",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "      if (!mark.showShade) continue;\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "a band's shade is one fill over the window only"
+      ]
+    },
+    {
+      "id": "initiative.chart.draw-shade-core-alpha",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "      const core = mark.alpha * SHADE_CORE * (mark.hovered ? SHADE_HOVER_BOOST : 1);",
+      "replace": "      const core = mark.alpha * (mark.hovered ? SHADE_HOVER_BOOST : 1);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "a band's shade is one fill over the window only"
+      ]
+    },
+    {
+      "id": "initiative.chart.draw-shade-hover-boost",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "      const core = mark.alpha * SHADE_CORE * (mark.hovered ? SHADE_HOVER_BOOST : 1);",
+      "replace": "      const core = mark.alpha * SHADE_CORE;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "a band's shade is one fill over the window only"
+      ]
+    },
+    {
+      "id": "initiative.chart.draw-shade-clear-above",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "      gradient.addColorStop(0, css(tone, 0));",
+      "replace": "      gradient.addColorStop(0, css(tone, core));",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "a band's shade is one fill over the window only"
+      ]
+    },
+    {
+      "id": "initiative.chart.draw-shade-clear-below",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "      gradient.addColorStop(1, css(tone, 0));",
+      "replace": "      gradient.addColorStop(1, css(tone, core));",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "a band's shade is one fill over the window only"
+      ]
+    },
+    {
+      "id": "initiative.chart.draw-shade-core-past-the-fade",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "      gradient.addColorStop(fade / span, css(tone, core));",
+      "replace": "      gradient.addColorStop(0.5, css(tone, core));",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "a band's shade is one fill over the window only"
+      ]
+    },
+    {
+      "id": "initiative.chart.draw-shade-colour-by-side",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "      if (!mark.showShade) continue;\n      const colour = initiativeSideColorOf(settings, mark.band.side);",
+      "replace": "      if (!mark.showShade) continue;\n      const colour = initiativeSideColorOf(settings, \"up\");",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "a band's shade is one fill over the window only"
+      ]
+    },
+    {
+      "id": "initiative.chart.draw-marks-colour-by-side",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "      if (chip === null) continue;\n      const colour = initiativeSideColorOf(settings, mark.band.side);",
+      "replace": "      if (chip === null) continue;\n      const colour = initiativeSideColorOf(settings, \"up\");",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "a down leg's chip arrow points down and its leader"
+      ]
+    },
+    {
+      "id": "initiative.chart.draw-leader-alpha",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "      context.strokeStyle = css(tone, mark.alpha);\n      context.lineWidth = LEADER_WIDTH;",
+      "replace": "      context.strokeStyle = css(tone, 1);\n      context.lineWidth = LEADER_WIDTH;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "a band's chip is its leader at the opacity's alpha"
+      ]
+    },
+    {
+      "id": "initiative.chart.draw-chip-rim-full-when-hovered",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "      context.strokeStyle = css(tone, mark.hovered ? 1 : CHIP_RIM_ALPHA);",
+      "replace": "      context.strokeStyle = css(tone, CHIP_RIM_ALPHA);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "a down leg's chip arrow points down"
+      ]
+    },
+    {
+      "id": "initiative.chart.draw-chip-arrow-by-side",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "chip.top + CHIP.arrowMid, up);",
+      "replace": "chip.top + CHIP.arrowMid, true);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "a down leg's chip arrow points down"
+      ]
+    },
+    {
+      "id": "initiative.chart.draw-chip-detail-after-the-value",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "      context.fillText(chip.detail, chip.left + CHIP.padX + chipTextWidth(chip.value, CHIP.valuePx) + CHIP.detailGap, chip.top + CHIP.valueBaseline);",
+      "replace": "      context.fillText(chip.detail, chip.left + CHIP.padX, chip.top + CHIP.valueBaseline);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "a band's chip is its leader at the opacity's alpha"
+      ]
+    },
+    {
+      "id": "initiative.chart.box-at-smallest-shade",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "(on === foundOn && shadeArea(mark.shade) < shadeArea(found.shade))",
+      "replace": "(on === foundOn && shadeArea(mark.shade) > shadeArea(found.shade))",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "where shades overlap, the smaller answers the cursor"
+      ]
+    },
+    {
+      "id": "initiative.chart.box-at-chip-beats-shade",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "(on === \"chip\" && foundOn === \"shade\") || ",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "where shades overlap, the smaller answers the cursor"
+      ]
+    },
+    {
+      "id": "initiative.chart.candles-by-open",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "    if (ts > toTs) break;",
+      "replace": "    if (ts >= toTs) break;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "reads the chart's candles between two times by their open"
+      ]
+    },
+    {
+      "id": "initiative.chart.views-need-shown",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "    if (!chart || !series || !this.shown || book === null) return;",
+      "replace": "    if (!chart || !series || book === null) return;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "draws the book's bands of the chart's candle length through the settings' filter, the shades behind"
+      ]
+    },
+    {
+      "id": "initiative.chart.views-pass-the-switches",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "this.hovered, this.settings.showShade !== false, this.settings.showLabels !== false);",
+      "replace": "this.hovered);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "draws the book's bands of the chart's candle length through the settings' filter, the shades behind"
+      ]
+    },
+    {
+      "id": "initiative.chart.shade-view-at-the-bottom",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "      new InitiativePaneView(new InitiativeShadeRenderer(this), \"bottom\"),",
+      "replace": "      new InitiativePaneView(new InitiativeShadeRenderer(this), \"top\"),",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "draws the book's bands of the chart's candle length through the settings' filter, the shades behind"
+      ]
+    },
+    {
+      "id": "initiative.chart.shade-renderer-draws-shades",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "target.useMediaCoordinateSpace(({ context }) => drawInitiativeShades(context, marks, settings));",
+      "replace": "target.useMediaCoordinateSpace(({ context }) => drawInitiativeMarks(context, marks, settings));",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "draws the book's bands of the chart's candle length through the settings' filter, the shades behind"
+      ]
+    },
+    {
+      "id": "initiative.chart.mark-renderer-draws-marks",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "target.useMediaCoordinateSpace(({ context }) => drawInitiativeMarks(context, marks, settings));",
+      "replace": "target.useMediaCoordinateSpace(({ context }) => drawInitiativeShades(context, marks, settings));",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "draws the book's bands of the chart's candle length through the settings' filter, the shades behind"
+      ]
+    },
+    {
+      "id": "initiative.chart.settings-side-colour",
+      "file": "apps/web/src/lib/indicators/initiative/initiativeSettings.ts",
+      "find": "  return initiativeColorOf(settings, pushersOf(side));",
+      "replace": "  return initiativeColorOf(settings, \"buyers\");",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativeSettings.test.ts"
+      ],
+      "mustFail": [
+        "colours follow the dominant side and fall back to green"
+      ]
+    },
+    {
+      "id": "initiative.chart.layout-chip-word-by-side",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "      const text = { title: CHIP_TITLE, value: scoreLabel(band), detail: pushersOf(band.side) };",
+      "replace": "      const text = { title: CHIP_TITLE, value: scoreLabel(band), detail: band.dominant };",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "a down leg's chip arrow points down and its leader"
+      ]
+    },
+    {
+      "id": "initiative.chart.words-pushers-by-side",
+      "file": "apps/web/src/lib/indicators/initiative/initiativeWords.ts",
+      "find": "  return side === \"up\" ? \"buyers\" : \"sellers\";",
+      "replace": "  return \"buyers\";",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativeWords.test.ts"
+      ],
+      "mustFail": [
+        "an up leg is the buyers', a down leg the sellers'"
+      ]
+    },
+    {
+      "id": "initiative.chart.strength-very-strong",
+      "file": "apps/web/src/lib/indicators/initiative/initiativeWords.ts",
+      "find": "score >= 5 ? \"Very strong\"",
+      "replace": "score > 5 ? \"Very strong\"",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativeWords.test.ts"
+      ],
+      "mustFail": [
+        "the score reads as a strength"
+      ]
+    },
+    {
+      "id": "initiative.chart.strength-strong",
+      "file": "apps/web/src/lib/indicators/initiative/initiativeWords.ts",
+      "find": "score === 4 ? \"Strong\"",
+      "replace": "score === 5 ? \"Strong\"",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativeWords.test.ts"
+      ],
+      "mustFail": [
+        "the score reads as a strength"
+      ]
+    },
+    {
+      "id": "initiative.chart.strength-moderate",
+      "file": "apps/web/src/lib/indicators/initiative/initiativeWords.ts",
+      "find": "score === 3 ? \"Moderate\"",
+      "replace": "score === 2 ? \"Moderate\"",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativeWords.test.ts"
+      ],
+      "mustFail": [
+        "the score reads as a strength"
+      ]
+    },
+    {
+      "id": "initiative.chart.percent-whole",
+      "file": "apps/web/src/lib/indicators/initiative/initiativeWords.ts",
+      "find": "  return `${Math.round(share * 100)}%`;",
+      "replace": "  return `${share * 100}%`;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativeWords.test.ts"
+      ],
+      "mustFail": [
+        "a share is a whole percent and a ratio one decimal"
+      ]
+    },
+    {
+      "id": "initiative.chart.times-one-decimal",
+      "file": "apps/web/src/lib/indicators/initiative/initiativeWords.ts",
+      "find": "  return `${ratio.toFixed(1)}×`;",
+      "replace": "  return `${ratio.toFixed(2)}×`;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativeWords.test.ts"
+      ],
+      "mustFail": [
+        "a share is a whole percent and a ratio one decimal"
+      ]
+    },
+    {
+      "id": "initiative.chart.hover-pushers-by-side",
+      "file": "apps/web/src/lib/indicators/initiative/initiativeHover.ts",
+      "find": "    pushers: pushersOf(band.side),",
+      "replace": "    pushers: band.dominant,",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativeHover.test.ts"
+      ],
+      "mustFail": [
+        "the hover line and the card's title are the side's start"
+      ]
+    },
+    {
+      "id": "initiative.chart.hover-short-by-side",
+      "file": "apps/web/src/lib/indicators/initiative/initiativeHover.ts",
+      "find": "    short: `${up ? \"Buy\" : \"Sell\"} start",
+      "replace": "    short: `${\"Buy\"} start",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativeHover.test.ts"
+      ],
+      "mustFail": [
+        "the hover line and the card's title are the side's start"
+      ]
+    },
+    {
+      "id": "initiative.chart.hover-title-by-side",
+      "file": "apps/web/src/lib/indicators/initiative/initiativeHover.ts",
+      "find": "    title: `${up ? \"▲ BUY\" : \"▼ SELL\"} START",
+      "replace": "    title: `${\"▲ BUY\"} START",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativeHover.test.ts"
+      ],
+      "mustFail": [
+        "the hover line and the card's title are the side's start"
+      ]
+    },
+    {
+      "id": "initiative.chart.hover-title-strength-upper",
+      "file": "apps/web/src/lib/indicators/initiative/initiativeHover.ts",
+      "find": "START · ${strength.toUpperCase()} (",
+      "replace": "START · ${strength} (",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativeHover.test.ts"
+      ],
+      "mustFail": [
+        "the hover line and the card's title are the side's start"
+      ]
+    },
+    {
+      "id": "initiative.chart.hover-strength-from-score",
+      "file": "apps/web/src/lib/indicators/initiative/initiativeHover.ts",
+      "find": "  const strength = strengthOf(band.score);",
+      "replace": "  const strength = strengthOf(4);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativeHover.test.ts"
+      ],
+      "mustFail": [
+        "the hover line and the card's title are the side's start"
+      ]
+    },
+    {
+      "id": "initiative.chart.hover-lines-counted",
+      "file": "apps/web/src/lib/indicators/initiative/initiativeHover.ts",
+      "find": "counted: band.facts[key].yes })),",
+      "replace": "counted: true })),",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativeHover.test.ts"
+      ],
+      "mustFail": [
+        "a down leg speaks of sellers, lows and sells"
+      ]
+    },
+    {
+      "id": "initiative.chart.efficiency-null",
+      "file": "apps/web/src/lib/indicators/initiative/initiativeHover.ts",
+      "find": "facts.efficiency.value === null ? \"price barely moved\" : ",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativeHover.test.ts"
+      ],
+      "mustFail": [
+        "a fact the engine could not read says so in words"
+      ]
+    },
+    {
+      "id": "initiative.chart.efficiency-yes",
+      "file": "apps/web/src/lib/indicators/initiative/initiativeHover.ts",
+      "find": "facts.efficiency.yes ? \"price went mostly one way\" : \"price went back and forth\"",
+      "replace": "\"price went mostly one way\"",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativeHover.test.ts"
+      ],
+      "mustFail": [
+        "a down leg speaks of sellers, lows and sells"
+      ]
+    },
+    {
+      "id": "initiative.chart.closes-edge-by-side",
+      "file": "apps/web/src/lib/indicators/initiative/initiativeHover.ts",
+      "find": "      const edge = up ? \"high\" : \"low\";",
+      "replace": "      const edge = \"high\";",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativeHover.test.ts"
+      ],
+      "mustFail": [
+        "a down leg speaks of sellers, lows and sells"
+      ]
+    },
+    {
+      "id": "initiative.chart.closes-none",
+      "file": "apps/web/src/lib/indicators/initiative/initiativeHover.ts",
+      "find": "facts.closes.value === 0 ? \"none\" : ",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativeHover.test.ts"
+      ],
+      "mustFail": [
+        "a down leg speaks of sellers, lows and sells"
+      ]
+    },
+    {
+      "id": "initiative.chart.closes-only",
+      "file": "apps/web/src/lib/indicators/initiative/initiativeHover.ts",
+      "find": "facts.closes.yes ? `${facts.closes.value}` : `only ${facts.closes.value}`",
+      "replace": "`${facts.closes.value}`",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativeHover.test.ts"
+      ],
+      "mustFail": [
+        "a down leg speaks of sellers, lows and sells"
+      ]
+    },
+    {
+      "id": "initiative.chart.burst-null",
+      "file": "apps/web/src/lib/indicators/initiative/initiativeHover.ts",
+      "find": "facts.burst.value === null ? \"volume not measured\" : ",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativeHover.test.ts"
+      ],
+      "mustFail": [
+        "a fact the engine could not read says so in words"
+      ]
+    },
+    {
+      "id": "initiative.chart.burst-only",
+      "file": "apps/web/src/lib/indicators/initiative/initiativeHover.ts",
+      "find": "${facts.burst.yes ? \"\" : \"only \"}",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativeHover.test.ts"
+      ],
+      "mustFail": [
+        "a down leg speaks of sellers, lows and sells"
+      ]
+    },
+    {
+      "id": "initiative.chart.delta-label-by-side",
+      "file": "apps/web/src/lib/indicators/initiative/initiativeHover.ts",
+      "find": "label: `${up ? \"Buyers\" : \"Sellers\"} in charge`",
+      "replace": "label: `Buyers in charge`",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativeHover.test.ts"
+      ],
+      "mustFail": [
+        "a down leg speaks of sellers, lows and sells"
+      ]
+    },
+    {
+      "id": "initiative.chart.delta-null",
+      "file": "apps/web/src/lib/indicators/initiative/initiativeHover.ts",
+      "find": "facts.delta.share === null ? \"orders not measured\" : ",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativeHover.test.ts"
+      ],
+      "mustFail": [
+        "a fact the engine could not read says so in words"
+      ]
+    },
+    {
+      "id": "initiative.chart.delta-unusual",
+      "file": "apps/web/src/lib/indicators/initiative/initiativeHover.ts",
+      "find": "${facts.delta.yes ? \"unusually high\" : \"not unusual\"}",
+      "replace": "${\"unusually high\"}",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativeHover.test.ts"
+      ],
+      "mustFail": [
+        "a down leg speaks of sellers, lows and sells"
+      ]
+    },
+    {
+      "id": "initiative.chart.trades-by-side",
+      "file": "apps/web/src/lib/indicators/initiative/initiativeHover.ts",
+      "find": "  const trades = up ? \"buy\" : \"sell\";",
+      "replace": "  const trades = \"buy\";",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativeHover.test.ts"
+      ],
+      "mustFail": [
+        "a down leg speaks of sellers, lows and sells"
+      ]
+    },
+    {
+      "id": "initiative.chart.prints-label-by-side",
+      "file": "apps/web/src/lib/indicators/initiative/initiativeHover.ts",
+      "find": "label: `Big ${pushersOf(band.side)}`",
+      "replace": "label: `Big buyers`",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativeHover.test.ts"
+      ],
+      "mustFail": [
+        "a down leg speaks of sellers, lows and sells"
+      ]
+    },
+    {
+      "id": "initiative.chart.prints-null",
+      "file": "apps/web/src/lib/indicators/initiative/initiativeHover.ts",
+      "find": "facts.prints.perCandle === null ? \"large trades not measured\" : ",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativeHover.test.ts"
+      ],
+      "mustFail": [
+        "a fact the engine could not read says so in words"
+      ]
+    },
+    {
+      "id": "initiative.chart.prints-more",
+      "file": "apps/web/src/lib/indicators/initiative/initiativeHover.ts",
+      "find": "facts.prints.yes ? `more large ${trades} trades than usual` : ",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativeHover.test.ts"
+      ],
+      "mustFail": [
+        "a down leg speaks of sellers, lows and sells"
+      ]
+    },
+    {
+      "id": "initiative.chart.prints-none",
+      "file": "apps/web/src/lib/indicators/initiative/initiativeHover.ts",
+      "find": "facts.prints.perCandle === 0 ? `no large ${trades} trades` : ",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativeHover.test.ts"
+      ],
+      "mustFail": [
+        "a down leg speaks of sellers, lows and sells"
+      ]
+    },
+    {
+      "id": "initiative.chart.score-label",
+      "file": "apps/web/src/lib/indicators/initiative/initiativeHover.ts",
+      "find": "  return `${band.score}/${MAX_SCORE}`;",
+      "replace": "  return `${band.score} of ${MAX_SCORE}`;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativeHover.test.ts"
+      ],
+      "mustFail": [
+        "the score label reads the score over five"
+      ]
+    },
+    {
+      "id": "initiative.chart.card-colour-by-side",
+      "file": "apps/web/src/lib/indicators/initiative/InitiativeCard.tsx",
+      "find": "    <div className={`whale-tooltip initiative ${hover.pushers === \"buyers\" ? \"buy\" : \"sell\"}${y < WHALE_CARD_FLIP_BELOW_PX ? \" below\" : \"\"}`} style={{ left: x, top: y }}>",
+      "replace": "    <div className={`whale-tooltip initiative buy${y < WHALE_CARD_FLIP_BELOW_PX ? \" below\" : \"\"}`} style={{ left: x, top: y }}>",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/InitiativeCard.test.tsx"
+      ],
+      "mustFail": [
+        "a down leg takes the sell colour whatever its flow"
+      ]
+    },
+    {
+      "id": "initiative.chart.card-mark-colour",
+      "file": "apps/web/src/lib/indicators/initiative/InitiativeCard.tsx",
+      "find": "<span style={{ color: line.counted ? COUNTED_COLOR : UNCOUNTED_COLOR }}>",
+      "replace": "<span style={{ color: COUNTED_COLOR }}>",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/InitiativeCard.test.tsx"
+      ],
+      "mustFail": [
+        "is the title, then the five facts one per line"
+      ]
+    },
+    {
+      "id": "initiative.chart.card-mark",
+      "file": "apps/web/src/lib/indicators/initiative/InitiativeCard.tsx",
+      "find": "{line.counted ? COUNTED_MARK : UNCOUNTED_MARK}",
+      "replace": "{COUNTED_MARK}",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/InitiativeCard.test.tsx"
+      ],
+      "mustFail": [
+        "is the title, then the five facts one per line"
+      ]
+    },
+    {
+      "id": "initiative.chart.card-reason",
+      "file": "apps/web/src/lib/indicators/initiative/InitiativeCard.tsx",
+      "find": "          <span>{line.value}</span>",
+      "replace": "          <span>{line.label}</span>",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/InitiativeCard.test.tsx"
+      ],
+      "mustFail": [
+        "is the title, then the five facts one per line"
+      ]
+    },
+    {
+      "id": "initiative.chart.layout-shade-exact-left",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "    const shade: InitiativeShade = { left: start, right: end, top, bottom, fade: Math.min(SHADE_FADE, (bottom - top) / 2) };",
+      "replace": "    const shade: InitiativeShade = { left: start - 20, right: end, top, bottom, fade: Math.min(SHADE_FADE, (bottom - top) / 2) };",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "shades exactly the window"
+      ]
+    },
+    {
+      "id": "initiative.chart.layout-shade-exact-right",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "    const shade: InitiativeShade = { left: start, right: end, top, bottom, fade: Math.min(SHADE_FADE, (bottom - top) / 2) };",
+      "replace": "    const shade: InitiativeShade = { left: start, right: end + 20, top, bottom, fade: Math.min(SHADE_FADE, (bottom - top) / 2) };",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "shades exactly the window"
+      ]
+    },
+    {
+      "id": "initiative.chart.layout-shade-fade-capped",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "fade: Math.min(SHADE_FADE, (bottom - top) / 2) };",
+      "replace": "fade: (bottom - top) / 2 };",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "shades exactly the window"
+      ]
+    },
+    {
+      "id": "initiative.chart.layout-cull-bottom-edge",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "    if (shade.right < 0 || shade.left > geometry.width || shade.bottom < 0 || shade.top > geometry.height) continue;",
+      "replace": "    if (shade.right < 0 || shade.left > geometry.width || shade.bottom <= 0 || shade.top > geometry.height) continue;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "a band off the pane or before the chart's reach is left out"
+      ]
+    },
+    {
+      "id": "initiative.chart.draw-shade-span-guard",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "      const span = Math.max(1, bottom - top);",
+      "replace": "      const span = bottom - top;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "a band's shade is one fill over the window only"
+      ]
+    },
+    {
+      "id": "initiative.chart.draw-shade-from-the-top",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "      const gradient = context.createLinearGradient(0, top, 0, top + span);",
+      "replace": "      const gradient = context.createLinearGradient(0, top - 40, 0, top + span + 40);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "a band's shade is one fill over the window only"
+      ]
+    },
+    {
+      "id": "initiative.chart.draw-shade-rect-is-the-window",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "      context.fillRect(left, top, right - left, span);",
+      "replace": "      context.fillRect(left, top - 40, right - left, span + 80);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "a band's shade is one fill over the window only"
+      ]
+    },
+    {
+      "id": "initiative.chart.layout-cull-top-edge",
+      "file": "apps/web/src/lib/indicators/initiative/initiativePrimitive.ts",
+      "find": "    if (shade.right < 0 || shade.left > geometry.width || shade.bottom < 0 || shade.top > geometry.height) continue;",
+      "replace": "    if (shade.right < 0 || shade.left > geometry.width || shade.bottom < 0 || shade.top >= geometry.height) continue;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/initiative/tests/initiativePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "a band off the pane or before the chart's reach is left out"
+      ]
+    }
+  ]
+}

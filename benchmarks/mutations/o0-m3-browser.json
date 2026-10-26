@@ -1,0 +1,215 @@
+{
+  "mutations": [
+    {
+      "id": "o0-m3.browser.unshown-selection-still-passes",
+      "file": "apps/runtime/scripts/bench/browser-load.js",
+      "find": "      (manifest.scenario !== \"selection-change\" || result.timing.firstAfterSelectionAtMs !== null) &&",
+      "replace": "      true &&",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/scripts/bench/browser-load.test.js"
+      ],
+      "mustFail": [
+        "a selection the page never showed fails the run"
+      ]
+    },
+    {
+      "id": "o0-m3.browser.page-errors-not-an-invariant",
+      "file": "apps/runtime/scripts/bench/browser-load.js",
+      "find": "noPageErrors: result.pageErrors.length === 0,",
+      "replace": "noPageErrors: true,",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/scripts/bench/browser-load.test.js"
+      ],
+      "mustFail": [
+        "page errors, an unbounded tape or lost trades are visible in the invariants"
+      ]
+    },
+    {
+      "id": "o0-m3.browser.lost-trades-not-an-invariant",
+      "file": "apps/runtime/scripts/bench/browser-load.js",
+      "find": "latestPublishedTradeReachedTheDom: result.newestCommittedId === result.sent,",
+      "replace": "latestPublishedTradeReachedTheDom: true,",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/scripts/bench/browser-load.test.js"
+      ],
+      "mustFail": [
+        "page errors, an unbounded tape or lost trades are visible in the invariants"
+      ]
+    },
+    {
+      "id": "o0-m3.browser.invalid-manifest-starts-the-browser",
+      "file": "apps/runtime/scripts/bench/browser-load.js",
+      "find": "  validateBrowserManifest(manifest);\n  const startedAtUtc = new Date().toISOString();",
+      "replace": "  const startedAtUtc = new Date().toISOString();",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/scripts/bench/browser-load.test.js"
+      ],
+      "mustFail": [
+        "an invalid manifest fails before the browser is started"
+      ]
+    },
+    {
+      "id": "o0-m3.browser.dist-digest-ignores-file-names",
+      "file": "apps/runtime/scripts/bench/browser-load.js",
+      "find": "digest.update(`${file.relative}\\0${crypto.createHash(\"sha256\").update(file.bytes).digest(\"hex\")}\\n`);",
+      "replace": "digest.update(`${crypto.createHash(\"sha256\").update(file.bytes).digest(\"hex\")}\\n`);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/scripts/bench/browser-load.test.js"
+      ],
+      "mustFail": [
+        "changing a byte or renaming a file changes the digest",
+        "the same contents under a different name digest differently"
+      ]
+    },
+    {
+      "id": "o0-m3.browser.dist-digest-depends-on-listing-order",
+      "file": "apps/runtime/scripts/bench/browser-load.js",
+      "find": "const files = [...unsortedFiles].sort((left, right) => left.relative < right.relative ? -1 : left.relative > right.relative ? 1 : 0);",
+      "replace": "const files = [...unsortedFiles];",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/scripts/bench/browser-load.test.js"
+      ],
+      "mustFail": [
+        "digesting is independent of the order the files are listed in"
+      ]
+    },
+    {
+      "id": "o0-m3.browser.chrome-env-path-not-checked",
+      "file": "apps/runtime/scripts/bench/browser-load.js",
+      "find": "if (!exists(configured)) throw new Error(",
+      "replace": "if (false) throw new Error(",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/scripts/bench/browser-load.test.js"
+      ],
+      "mustFail": [
+        "the environment variable wins and must point at a real file"
+      ]
+    },
+    {
+      "id": "o0-m3.browser.windows-search-order-reversed",
+      "file": "apps/runtime/scripts/bench/browser-load.js",
+      "find": "return [env.ProgramFiles, env[\"ProgramFiles(x86)\"], env.LOCALAPPDATA]",
+      "replace": "return [env.LOCALAPPDATA, env[\"ProgramFiles(x86)\"], env.ProgramFiles]",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/scripts/bench/browser-load.test.js"
+      ],
+      "mustFail": [
+        "on Windows it tries Program Files, Program Files (x86) and the local app data directory in order"
+      ]
+    },
+    {
+      "id": "o0-m3.browser.missing-timestamp-becomes-a-number",
+      "file": "apps/runtime/scripts/bench/browser-load.js",
+      "find": "return Number.isFinite(later) && Number.isFinite(earlier) ? later - earlier : null;",
+      "replace": "return later - earlier;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/scripts/bench/browser-load.test.js"
+      ],
+      "mustFail": [
+        "reports null rather than a fabricated interval when an endpoint was never observed"
+      ]
+    },
+    {
+      "id": "o0-m3.browser.selection-interval-always-reported",
+      "file": "apps/runtime/scripts/bench/browser-load.js",
+      "find": "...(timing.selectionSentAtMs === null ? {} : {",
+      "replace": "...(false ? {} : {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/scripts/bench/browser-load.test.js"
+      ],
+      "mustFail": [
+        "computes the intervals the scenarios report"
+      ]
+    },
+    {
+      "id": "o0-m3.browser.trade-rate-bound-removed",
+      "file": "apps/runtime/scripts/qualify/qualify-day3-browser.js",
+      "find": "tradesPerPulse > 400",
+      "replace": "tradesPerPulse > 400000",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/scripts/bench/browser-load.test.js"
+      ],
+      "mustFail": [
+        "rejects too many trades per pulse before starting anything"
+      ]
+    },
+    {
+      "id": "o0-m3.browser.pulse-lower-bound-removed",
+      "file": "apps/runtime/scripts/qualify/qualify-day3-browser.js",
+      "find": "pulseMs < 5",
+      "replace": "pulseMs < 0",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/scripts/bench/browser-load.test.js"
+      ],
+      "mustFail": [
+        "rejects a too-fast pulse before starting anything"
+      ]
+    },
+    {
+      "id": "o0-m3.browser.selection-may-land-at-the-end-of-the-run",
+      "file": "apps/runtime/scripts/qualify/qualify-day3-browser.js",
+      "find": "selectionChangeAtSeconds >= durationSeconds",
+      "replace": "selectionChangeAtSeconds > durationSeconds",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/scripts/bench/browser-load.test.js"
+      ],
+      "mustFail": [
+        "rejects a selection change at the end of the run before starting anything"
+      ]
+    },
+    {
+      "id": "o0-m3.browser.manifest-may-request-extra-settings",
+      "file": "apps/runtime/scripts/bench/browser-load.js",
+      "find": "const allowed = [\"version\", \"kind\", \"name\", \"scenario\", \"durationSeconds\", \"upstream\", \"selectionChangeAtSeconds\", \"observability\"];",
+      "replace": "const allowed = [\"version\", \"kind\", \"name\", \"scenario\", \"durationSeconds\", \"upstream\", \"selectionChangeAtSeconds\", \"observability\", \"paint\"];",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/scripts/bench/browser-load.test.js"
+      ],
+      "mustFail": [
+        "rejects a paint setting, which belongs to a later phase"
+      ]
+    }
+  ]
+}

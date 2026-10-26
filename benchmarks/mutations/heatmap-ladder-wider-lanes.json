@@ -1,0 +1,100 @@
+{
+ "mutations": [
+  {
+   "id": "ladder.wider-lanes-ignored",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatmapLayout.ts",
+   "find": "    const lane = wider.find((entry) => Math.floor(last / entry.factor) >= entry.latest.lo && Math.floor(first / entry.factor) <= entry.latest.hi);",
+   "replace": "    const lane = undefined;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityLanes.test.ts"
+   ],
+   "mustFail": [
+    "carries the ladder past lane 0's window on the wider lanes' live columns: a band outside the finest book reads the finest lane that holds it, by the lane's rows when a band is thinner than one"
+   ]
+  },
+  {
+   "id": "ladder.lane-0-window-ignored",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatmapLayout.ts",
+   "find": "    if (last >= latest.lo && first <= latest.hi) {",
+   "replace": "    if (true) {",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityLanes.test.ts"
+   ],
+   "mustFail": [
+    "carries the ladder past lane 0's window on the wider lanes' live columns: a band outside the finest book reads the finest lane that holds it, by the lane's rows when a band is thinner than one"
+   ]
+  },
+  {
+   "id": "ladder.aligned-band-read-at-fine-rows",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatmapLayout.ts",
+   "find": "      const { bid, ask } = style.bandSizes(lane.latest, band.row, rows / lane.factor);",
+   "replace": "      const { bid, ask } = style.bandSizes(lane.latest, band.row, rows);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityLanes.test.ts"
+   ],
+   "mustFail": [
+    "carries the ladder past lane 0's window on the wider lanes' live columns: a band outside the finest book reads the finest lane that holds it, by the lane's rows when a band is thinner than one"
+   ]
+  },
+  {
+   "id": "ladder.thin-band-reads-every-lane-row-twice",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatmapLayout.ts",
+   "find": "      if (seen.has(key)) continue;\n",
+   "replace": "",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityLanes.test.ts"
+   ],
+   "mustFail": [
+    "carries the ladder past lane 0's window on the wider lanes' live columns: a band outside the finest book reads the finest lane that holds it, by the lane's rows when a band is thinner than one"
+   ]
+  },
+  {
+   "id": "ladder.lane-row-not-clipped-to-the-view",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatmapLayout.ts",
+   "find": "      push(Math.max(yMin, yTop), Math.min(yMax, yBottom), bid, ask);",
+   "replace": "      push(yTop, yBottom, bid, ask);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityLanes.test.ts"
+   ],
+   "mustFail": [
+    "carries the ladder past lane 0's window on the wider lanes' live columns: a band outside the finest book reads the finest lane that holds it, by the lane's rows when a band is thinner than one"
+   ]
+  },
+  {
+   "id": "ladder.lane-rows-not-a-multiple",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatmapLayout.ts",
+   "find": "    if (factor < 2 || Math.abs(laneGrid.rowWidth - factor * grid.rowWidth) > 1e-9 * grid.rowWidth) continue;",
+   "replace": "    if (factor < 2) continue;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityLanes.test.ts"
+   ],
+   "mustFail": [
+    "carries the ladder past lane 0's window on the wider lanes' live columns: a band outside the finest book reads the finest lane that holds it, by the lane's rows when a band is thinner than one"
+   ]
+  }
+ ]
+}

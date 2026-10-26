@@ -1,0 +1,79 @@
+{
+  "mutations": [
+    {
+      "id": "audit-stale.duplicates-pass",
+      "file": "apps/runtime/scripts/verify/mutation-stale.js",
+      "find": "      if (count === 1) continue;",
+      "replace": "      if (count >= 1) continue;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/scripts/verify/mutation-stale.test.js"
+      ],
+      "mustFail": [
+        "lists every mutant whose find text does not occur exactly once"
+      ]
+    },
+    {
+      "id": "audit-stale.pre-existing-blocks",
+      "file": "apps/runtime/scripts/verify/mutation-stale.js",
+      "find": "  const blocking = stale.filter((entry) => entry.cause !== \"pre-existing\");",
+      "replace": "  const blocking = stale;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/scripts/verify/mutation-stale.test.js"
+      ],
+      "mustFail": [
+        "blocks only what the branch broke or added stale"
+      ]
+    },
+    {
+      "id": "audit-stale.retarget-not-new",
+      "file": "apps/runtime/scripts/verify/mutation-stale.js",
+      "find": "        if (before === undefined || before.file !== mutant.file || before.find !== mutant.find) entry.cause = \"new-stale\";",
+      "replace": "        if (before === undefined) entry.cause = \"new-stale\";",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/scripts/verify/mutation-stale.test.js"
+      ],
+      "mustFail": [
+        "a mutant retargeted to text that does not match is new-stale"
+      ]
+    },
+    {
+      "id": "audit-stale.crlf-ignored",
+      "file": "apps/runtime/scripts/verify/mutation-stale.js",
+      "find": "  const variants = text.includes(\"\\r\\n\") && !find.includes(\"\\r\\n\") ? [find, find.replace(/\\n/g, \"\\r\\n\")] : [find];",
+      "replace": "  const variants = [find];",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/scripts/verify/mutation-stale.test.js"
+      ],
+      "mustFail": [
+        "counts a multi-line find against a CRLF file"
+      ]
+    },
+    {
+      "id": "audit-stale.bad-base-accepted",
+      "file": "apps/runtime/scripts/verify/mutation-stale.js",
+      "find": "    throw new Error(`mutation-stale: cannot compare with ${base}`);\n  }\n",
+      "replace": "  }\n",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/scripts/verify/mutation-stale.test.js"
+      ],
+      "mustFail": [
+        "refuses a base it cannot resolve"
+      ]
+    }
+  ]
+}

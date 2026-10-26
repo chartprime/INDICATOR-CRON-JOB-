@@ -1,0 +1,209 @@
+{
+  "version": 2,
+  "mutations": [
+    {
+      "id": "prime-hist.rules-never-handed",
+      "file": "apps/web/src/components/historical/HistoricalL2Settings.tsx",
+      "find": "    chartRef.current?.setAbsorptionRules(absorptionRules);",
+      "replace": "    chartRef.current?.setAbsorptionRules(null);",
+      "mustFail": [
+        "hands the chart the detector's rules while it is on and shown, read off this instrument's heatmap, and takes them away when it is not"
+      ],
+      "command": [
+        "node",
+        "../../node_modules/vitest/vitest.mjs",
+        "run",
+        "src/components/historical/HistoricalL2Settings.test.tsx"
+      ],
+      "cwd": "apps/web",
+      "timeoutMs": 120000
+    },
+    {
+      "id": "prime-hist.rules-while-hidden",
+      "file": "apps/web/src/components/historical/HistoricalL2Settings.tsx",
+      "find": "    () => (absorptionOn && isAggressiveTimeframeSupported(intervalMs) ? absorptionRulesFor(identity, absorption, intervalMs, liquidity) : null),",
+      "replace": "    () => (isAggressiveTimeframeSupported(intervalMs) ? absorptionRulesFor(identity, absorption, intervalMs, liquidity) : null),",
+      "mustFail": [
+        "hands the chart the detector's rules while it is on and shown, read off this instrument's heatmap, and takes them away when it is not"
+      ],
+      "command": [
+        "node",
+        "../../node_modules/vitest/vitest.mjs",
+        "run",
+        "src/components/historical/HistoricalL2Settings.test.tsx"
+      ],
+      "cwd": "apps/web",
+      "timeoutMs": 120000
+    },
+    {
+      "id": "prime-hist.rules-on-any-timeframe",
+      "file": "apps/web/src/components/historical/HistoricalL2Settings.tsx",
+      "find": "    () => (absorptionOn && isAggressiveTimeframeSupported(intervalMs) ? absorptionRulesFor(identity, absorption, intervalMs, liquidity) : null),",
+      "replace": "    () => (absorptionOn ? absorptionRulesFor(identity, absorption, intervalMs, liquidity) : null),",
+      "mustFail": [
+        "gives no rules on a timeframe the detector does not run on, as on the live chart"
+      ],
+      "command": [
+        "node",
+        "../../node_modules/vitest/vitest.mjs",
+        "run",
+        "src/components/historical/HistoricalL2Settings.test.tsx"
+      ],
+      "cwd": "apps/web",
+      "timeoutMs": 120000
+    },
+    {
+      "id": "prime-hist.panel-never-turns-it-on",
+      "file": "apps/web/src/components/historical/HistoricalModePanel.tsx",
+      "find": "absorptionOn={favorites.has(\"absorptionDetector\") && visibility.absorptionDetector !== false}",
+      "replace": "absorptionOn={false}",
+      "command": [
+        "node",
+        "../../node_modules/vitest/vitest.mjs",
+        "run",
+        "src/components/historical/HistoricalModePanel.test.tsx"
+      ],
+      "mustFail": [
+        "gives the absorption detector its rules on an intraday ES chart while it is shown, and none once it is hidden"
+      ],
+      "cwd": "apps/web",
+      "timeoutMs": 120000
+    },
+    {
+      "id": "prime-hist.databento-reads-crypto-shares",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionSettings.ts",
+      "find": "  return isIndexProvider(identity.provider) ? THIN_BOOK_SHARES : CRYPTO_SHARES;",
+      "replace": "  return identity.provider === \"DXFEED\" ? THIN_BOOK_SHARES : CRYPTO_SHARES;",
+      "command": [
+        "node",
+        "../../node_modules/vitest/vitest.mjs",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionSettings.test.ts"
+      ],
+      "mustFail": [
+        "is a quarter of the wall on crypto and twice the wall on the index and stock books"
+      ],
+      "cwd": "apps/web",
+      "timeoutMs": 120000
+    },
+    {
+      "id": "prime-hist.panel-ignores-hidden",
+      "file": "apps/web/src/components/historical/HistoricalModePanel.tsx",
+      "find": "absorptionOn={favorites.has(\"absorptionDetector\") && visibility.absorptionDetector !== false}",
+      "replace": "absorptionOn={favorites.has(\"absorptionDetector\")}",
+      "cwd": "apps/web",
+      "command": [
+        "node",
+        "../../node_modules/vitest/vitest.mjs",
+        "run",
+        "src/components/historical/HistoricalModePanel.test.tsx"
+      ],
+      "mustFail": [
+        "gives the absorption detector its rules on an intraday ES chart while it is shown, and none once it is hidden"
+      ],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "prime-review.pagehide-not-heard",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionPrimitive.ts",
+      "find": "    if (typeof window !== \"undefined\") window.addEventListener(\"pagehide\", this._onPageHide);\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": [
+        "node",
+        "../../node_modules/vitest/vitest.mjs",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionPrimitive.test.ts"
+      ],
+      "mustFail": [
+        "writes what its store holds when the page closes or reloads while it is on the chart, and stops listening once taken off"
+      ],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "prime-review.pagehide-heard-after-detach",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionPrimitive.ts",
+      "find": "    if (typeof window !== \"undefined\") window.removeEventListener(\"pagehide\", this._onPageHide);\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": [
+        "node",
+        "../../node_modules/vitest/vitest.mjs",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionPrimitive.test.ts"
+      ],
+      "mustFail": [
+        "writes what its store holds when the page closes or reloads while it is on the chart, and stops listening once taken off"
+      ],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "prime-walls.filed-under-the-instrument",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionPrimitive.ts",
+      "find": "      this._kept = historical ? records : this._store.add(this._walls, records, now);",
+      "replace": "      this._kept = historical ? records : this._store.add(rules.instrument, records, now);",
+      "mustFail": [
+        "files its records under the walls they were read with"
+      ],
+      "command": [
+        "node",
+        "../../node_modules/vitest/vitest.mjs",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionPrimitive.test.ts"
+      ],
+      "cwd": "apps/web",
+      "timeoutMs": 120000
+    },
+    {
+      "id": "prime-walls.loaded-by-the-instrument",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionPrimitive.ts",
+      "find": "    this._kept = rules === null || this._grid?.provider === \"DATABENTO\" ? [] : this._store.load(this._walls);",
+      "replace": "    this._kept = rules === null || this._grid?.provider === \"DATABENTO\" ? [] : this._store.load(rules.instrument);",
+      "mustFail": [
+        "files its records under the walls they were read with"
+      ],
+      "command": [
+        "node",
+        "../../node_modules/vitest/vitest.mjs",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionPrimitive.test.ts"
+      ],
+      "cwd": "apps/web",
+      "timeoutMs": 120000
+    },
+    {
+      "id": "prime-walls.rules-change-keeps-the-last-set",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionPrimitive.ts",
+      "find": "    this._rules = rules;\n    this._reload();\n",
+      "replace": "    this._rules = rules;\n",
+      "mustFail": [
+        "files its records under the walls they were read with"
+      ],
+      "command": [
+        "node",
+        "../../node_modules/vitest/vitest.mjs",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionPrimitive.test.ts"
+      ],
+      "cwd": "apps/web",
+      "timeoutMs": 120000
+    },
+    {
+      "id": "prime-walls.key-without-the-row-width",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionEngine.ts",
+      "find": "  return JSON.stringify([rules.instrument, rules.bandRows, rules.wallKey, rules.quietMs, rowWidth]);",
+      "replace": "  return JSON.stringify([rules.instrument, rules.bandRows, rules.wallKey, rules.quietMs]);",
+      "mustFail": [
+        "files its records under the walls they were read with"
+      ],
+      "command": [
+        "node",
+        "../../node_modules/vitest/vitest.mjs",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionPrimitive.test.ts"
+      ],
+      "cwd": "apps/web",
+      "timeoutMs": 120000
+    }
+  ]
+}

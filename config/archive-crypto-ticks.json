@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "tradeWindow": { "from": "2025-09-06T00:00:00.000Z", "toExclusive": "2026-09-01T00:00:00.000Z" },
+  "instruments": [
+    { "dataset": "BINANCE.SPOT", "marketKind": "SPOT", "symbol": "BTCUSDT", "tickSize": "0.01" },
+    { "dataset": "BINANCE.SPOT", "marketKind": "SPOT", "symbol": "ETHUSDT", "tickSize": "0.01" },
+    { "dataset": "BINANCE.UM", "marketKind": "PERPETUAL", "symbol": "BTCUSDT", "tickSize": "0.1" },
+    { "dataset": "BINANCE.UM", "marketKind": "PERPETUAL", "symbol": "ETHUSDT", "tickSize": "0.01" }
+  ]
+}

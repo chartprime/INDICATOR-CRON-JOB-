@@ -1,0 +1,40 @@
+{
+  "mutations": [
+    {
+      "id": "pr16.pool-admits-below-coverage-floor",
+      "file": "apps/runtime/src/server/aggressive-pool.js",
+      "find": "    if (trade.size < Math.max(floor, coverageFloor)) return false;",
+      "replace": "    if (trade.size < floor) return false;",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "--runInBand", "test/server/aggressive-pool.test.js"],
+      "mustFail": ["over the count cap retention and snapshot stay bounded with a truthful floor"]
+    },
+    {
+      "id": "pr16.liquidity-cap-claims-partial-tie-complete",
+      "file": "apps/runtime/src/indicators/passive_liquidity/bounded-prints.js",
+      "find": "    return { prints: [], floor: Math.max(floor, floorAbove(maxSize)) };",
+      "replace": "    return { prints: ranked.slice(-maxPrints), floor: Math.max(floor, maxSize) };",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "--runInBand", "test/indicators/passive_liquidity/column-flow.test.js", "test/indicators/passive_liquidity/liquidity-history.test.js"],
+      "mustFail": ["an oversized equal-size group is omitted", "the deep folder does not claim complete print coverage"]
+    },
+    {
+      "id": "pr16.pulled-wall-falsely-mitigated",
+      "file": "apps/web/src/lib/indicators/institutional-order-blocks-v2/bandTracker.ts",
+      "find": "if (wall.endReason !== \"closed\" && isThrough(wall, closeRow)) wall.endReason = \"invalidated\";",
+      "replace": "if (wall.endReason !== \"closed\" && isThrough(wall, closeRow)) wall.endReason = \"closed\";",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/institutional-order-blocks-v2/tests/bandTracker.test.ts"],
+      "mustFail": ["does not come back to a level a bar closed through while its wall was already gone"]
+    },
+    {
+      "id": "pr16.closed-bars-lost-before-book",
+      "file": "apps/web/src/lib/indicators/institutional-order-blocks-v2/institutionalOrderBlocksV2.ts",
+      "find": "    if (bar.closed) rememberClose(state, bar.ts_open, bar.ts_open + bar.interval_ms, bar.close, bar.low, bar.high, state.rowWidth);",
+      "replace": "    if (bar.closed && liquidity) rememberClose(state, bar.ts_open, bar.ts_open + bar.interval_ms, bar.close, bar.low, bar.high, state.rowWidth);",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/institutional-order-blocks-v2/tests/institutionalOrderBlocksV2.test.ts"],
+      "mustFail": ["retains closed bars while liquidity is unavailable"]
+    }
+  ]
+}

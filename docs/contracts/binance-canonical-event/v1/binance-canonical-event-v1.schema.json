@@ -1,0 +1,204 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://terminal-l1-l2/contracts/binance-canonical-event/v1",
+  "title": "Binance Canonical Event v1",
+  "oneOf": [
+    { "$ref": "#/$defs/envelope" },
+    { "$ref": "#/$defs/degradedEnvelope" }
+  ],
+  "$defs": {
+    "marketKind": { "enum": ["SPOT", "PERPETUAL"] },
+    "eventType": { "enum": ["TRADE", "BOOK_TICKER", "KLINE", "DEPTH"] },
+    "recoveryState": { "enum": ["READY", "RECOVERING", "UNAVAILABLE"] },
+    "decimalString": { "type": "string", "maxLength": 1024, "pattern": "^\\d+(\\.\\d+)?$" },
+    "positiveDecimalString": { "type": "string", "maxLength": 1024, "pattern": "^(?=.*[1-9])\\d+(\\.\\d+)?$" },
+    "priceLevel": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "prefixItems": [
+        { "$ref": "#/$defs/positiveDecimalString" },
+        { "$ref": "#/$defs/decimalString" }
+      ]
+    },
+    "envelope": {
+      "type": "object",
+      "required": [
+        "provider", "venue", "marketKind", "providerSymbol", "eventType",
+        "eventTime", "receivedAt", "timingClass", "stale", "recoveryState", "payload"
+      ],
+      "properties": {
+        "provider": { "const": "BINANCE" },
+        "venue": { "const": "BINANCE" },
+        "marketKind": { "$ref": "#/$defs/marketKind" },
+        "providerSymbol": { "enum": ["BTCUSDT", "ETHUSDT"] },
+        "eventType": { "$ref": "#/$defs/eventType" },
+        "eventTime": { "type": "string", "format": "date-time" },
+        "receivedAt": { "type": "string", "format": "date-time" },
+        "timingClass": { "const": "REALTIME" },
+        "stale": { "type": "boolean" },
+        "recoveryState": { "$ref": "#/$defs/recoveryState" },
+        "payload": {
+          "oneOf": [
+            { "$ref": "#/$defs/tradePayload" },
+            { "$ref": "#/$defs/bookTickerPayload" },
+            { "$ref": "#/$defs/klinePayload" },
+            { "$ref": "#/$defs/depthPayload" }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": { "recoveryState": { "enum": ["RECOVERING", "UNAVAILABLE"] } },
+            "required": ["recoveryState"]
+          },
+          "then": { "properties": { "stale": { "const": true } } }
+        },
+        {
+          "if": { "properties": { "eventType": { "const": "TRADE" } }, "required": ["eventType"] },
+          "then": { "properties": { "payload": { "$ref": "#/$defs/tradePayload" } } }
+        },
+        {
+          "if": { "properties": { "eventType": { "const": "BOOK_TICKER" } }, "required": ["eventType"] },
+          "then": { "properties": { "payload": { "$ref": "#/$defs/bookTickerPayload" } } }
+        },
+        {
+          "if": { "properties": { "eventType": { "const": "KLINE" } }, "required": ["eventType"] },
+          "then": { "properties": { "payload": { "$ref": "#/$defs/klinePayload" } } }
+        },
+        {
+          "if": { "properties": { "eventType": { "const": "DEPTH" } }, "required": ["eventType"] },
+          "then": { "properties": { "payload": { "$ref": "#/$defs/depthPayload" } } }
+        },
+        {
+          "if": {
+            "properties": { "eventType": { "const": "DEPTH" }, "marketKind": { "const": "SPOT" } },
+            "required": ["eventType", "marketKind"]
+          },
+          "then": { "properties": { "payload": { "properties": { "previousUpdateId": { "type": "null" } } } } }
+        },
+        {
+          "if": {
+            "properties": { "eventType": { "const": "DEPTH" }, "marketKind": { "const": "PERPETUAL" } },
+            "required": ["eventType", "marketKind"]
+          },
+          "then": { "properties": { "payload": { "properties": { "previousUpdateId": { "type": "integer" } } } } }
+        }
+      ]
+    },
+    "tradePayload": {
+      "type": "object",
+      "required": ["tradeId", "price", "quantity", "isBuyerMaker"],
+      "properties": {
+        "tradeId": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+        "price": { "$ref": "#/$defs/positiveDecimalString" },
+        "quantity": { "$ref": "#/$defs/positiveDecimalString" },
+        "isBuyerMaker": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "bookTickerPayload": {
+      "type": "object",
+      "required": ["updateId", "bestBidPrice", "bestBidQuantity", "bestAskPrice", "bestAskQuantity"],
+      "properties": {
+        "updateId": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+        "bestBidPrice": { "$ref": "#/$defs/positiveDecimalString" },
+        "bestBidQuantity": { "$ref": "#/$defs/decimalString" },
+        "bestAskPrice": { "$ref": "#/$defs/positiveDecimalString" },
+        "bestAskQuantity": { "$ref": "#/$defs/decimalString" }
+      },
+      "additionalProperties": false
+    },
+    "klinePayload": {
+      "type": "object",
+      "required": [
+        "interval", "openTime", "closeTime", "open", "close", "high", "low",
+        "baseVolume", "quoteVolume", "takerBuyBaseVolume", "takerBuyQuoteVolume",
+        "numberOfTrades", "isClosed"
+      ],
+      "properties": {
+        "interval": { "enum": ["1m", "5m", "15m", "1h", "4h", "1d"] },
+        "openTime": { "type": "integer", "minimum": 1, "maximum": 8640000000000000 },
+        "closeTime": { "type": "integer", "minimum": 1, "maximum": 8640000000000000 },
+        "open": { "$ref": "#/$defs/positiveDecimalString" },
+        "close": { "$ref": "#/$defs/positiveDecimalString" },
+        "high": { "$ref": "#/$defs/positiveDecimalString" },
+        "low": { "$ref": "#/$defs/positiveDecimalString" },
+        "baseVolume": { "$ref": "#/$defs/decimalString" },
+        "quoteVolume": { "$ref": "#/$defs/decimalString" },
+        "takerBuyBaseVolume": { "$ref": "#/$defs/decimalString" },
+        "takerBuyQuoteVolume": { "$ref": "#/$defs/decimalString" },
+        "numberOfTrades": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+        "isClosed": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "depthPayload": {
+      "type": "object",
+      "required": ["firstUpdateId", "lastUpdateId", "previousUpdateId", "bids", "asks"],
+      "properties": {
+        "firstUpdateId": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+        "lastUpdateId": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+        "previousUpdateId": {
+          "oneOf": [
+            { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+            { "type": "null" }
+          ]
+        },
+        "bids": { "type": "array", "maxItems": 5000, "items": { "$ref": "#/$defs/priceLevel" } },
+        "asks": { "type": "array", "maxItems": 5000, "items": { "$ref": "#/$defs/priceLevel" } }
+      },
+      "additionalProperties": false
+    },
+    "degradedEnvelope": {
+      "type": "object",
+      "required": [
+        "provider", "venue", "marketKind", "providerSymbol", "eventType",
+        "receivedAt", "timingClass", "stale", "recoveryState", "state", "reason", "missingFields"
+      ],
+      "properties": {
+        "provider": { "const": "BINANCE" },
+        "venue": { "const": "BINANCE" },
+        "marketKind": { "$ref": "#/$defs/marketKind" },
+        "providerSymbol": { "enum": ["BTCUSDT", "ETHUSDT"] },
+        "eventType": { "$ref": "#/$defs/eventType" },
+        "receivedAt": { "type": "string", "format": "date-time" },
+        "timingClass": { "const": "REALTIME" },
+        "stale": { "type": "boolean" },
+        "recoveryState": { "$ref": "#/$defs/recoveryState" },
+        "state": { "const": "UNAVAILABLE" },
+        "reason": {
+          "enum": [
+            "MALFORMED_RAW_MESSAGE",
+            "STREAM_SYMBOL_MISMATCH",
+            "PROVIDER_EVENT_TYPE_MISMATCH",
+            "INTERVAL_MISMATCH",
+            "MISSING_OR_INVALID_REQUIRED_FIELD",
+            "EVENT_TIME_TOO_FAR_IN_FUTURE",
+            "EVENT_TIME_INVALID",
+            "UPDATE_ID_RANGE_INVALID",
+            "KLINE_TIME_RANGE_INVALID",
+            "KLINE_OHLC_RANGE_INVALID",
+            "KLINE_VOLUME_RANGE_INVALID"
+          ]
+        },
+        "missingFields": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": { "recoveryState": { "enum": ["RECOVERING", "UNAVAILABLE"] } },
+            "required": ["recoveryState"]
+          },
+          "then": { "properties": { "stale": { "const": true } } }
+        }
+      ]
+    }
+  }
+}

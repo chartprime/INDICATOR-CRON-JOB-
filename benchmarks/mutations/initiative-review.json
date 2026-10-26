@@ -1,0 +1,199 @@
+{
+  "mutations": [
+    {
+      "id": "initiative.review.warmup.windows-never-kept",
+      "file": "apps/runtime/src/indicators/l2-memory/pyramid/pyramid-warmup.js",
+      "find": "      if (outcome.reason === null) for (const window of page.windows) if (window.state === WINDOW_STATES.COVERED) keepWindow(windowKey(ask, window.ts), window);\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/pyramid-warmup.test.js"
+      ],
+      "mustFail": [
+        "an hour read once answers the next asks from memory"
+      ]
+    },
+    {
+      "id": "initiative.review.warmup.key-without-the-rows",
+      "file": "apps/runtime/src/indicators/l2-memory/pyramid/pyramid-warmup.js",
+      "find": "    return `${keyOf(marketKind, symbol)}:${geometry.rowWidth}:${geometry.tickSize}:${geometry.clusterTicks}:${ts}`;",
+      "replace": "    return `${keyOf(marketKind, symbol)}:${ts}`;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/pyramid-warmup.test.js"
+      ],
+      "mustFail": [
+        "the rows are part of the key"
+      ]
+    },
+    {
+      "id": "initiative.review.warmup.kept-window-never-expires",
+      "file": "apps/runtime/src/indicators/l2-memory/pyramid/pyramid-warmup.js",
+      "find": "    if (entry.pending === null && now() - entry.at >= cacheTtlMs) {",
+      "replace": "    if (false) {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/pyramid-warmup.test.js"
+      ],
+      "mustFail": [
+        "a kept window expires after the time limit, and the memory holds at most the byte budget"
+      ]
+    },
+    {
+      "id": "initiative.review.warmup.budget-ignored",
+      "file": "apps/runtime/src/indicators/l2-memory/pyramid/pyramid-warmup.js",
+      "find": "      if (keptBytes <= cacheBytes) break;",
+      "replace": "      break;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/pyramid-warmup.test.js"
+      ],
+      "mustFail": [
+        "a kept window expires after the time limit, and the memory holds at most the byte budget"
+      ]
+    },
+    {
+      "id": "initiative.review.warmup.in-flight-read-not-shared",
+      "file": "apps/runtime/src/indicators/l2-memory/pyramid/pyramid-warmup.js",
+      "find": "      else if (entry.pending !== null) shared.push([ts, entry.pending]);",
+      "replace": "      else if (entry.pending !== null) missing.push(ts);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/pyramid-warmup.test.js"
+      ],
+      "mustFail": [
+        "asks for the same windows while a read is in flight share that read"
+      ]
+    },
+    {
+      "id": "initiative.review.warmup.memory-columns-outside-the-ask-kept",
+      "file": "apps/runtime/src/indicators/l2-memory/pyramid/pyramid-warmup.js",
+      "find": "      for (const column of windowColumns) if (column.ts >= fromTs && column.ts < toTs) columns.push(column);",
+      "replace": "      for (const column of windowColumns) columns.push(column);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/pyramid-warmup.test.js"
+      ],
+      "mustFail": [
+        "an hour read once answers the next asks from memory"
+      ]
+    },
+    {
+      "id": "initiative.review.warmup.host-asked-for-the-whole-span",
+      "file": "apps/runtime/src/indicators/l2-memory/pyramid/pyramid-warmup.js",
+      "find": "        page = await pageWindows({ ...ask, fromTs: Math.max(ask.fromTs, missing[0]), toTs: Math.min(ask.toTs, missing[missing.length - 1] + WINDOW_MS) });",
+      "replace": "        page = await pageWindows(ask);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/pyramid-warmup.test.js"
+      ],
+      "mustFail": [
+        "an hour read once answers the next asks from memory"
+      ]
+    },
+    {
+      "id": "initiative.review.warmup.failure-hidden-from-the-waiting-asks",
+      "file": "apps/runtime/src/indicators/l2-memory/pyramid/pyramid-warmup.js",
+      "find": "      settle(outcome);",
+      "replace": "      settle({ reason: null, decoded: outcome.decoded });",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/pyramid-warmup.test.js"
+      ],
+      "mustFail": [
+        "a read that fails answers every ask waiting on it with the reason and keeps nothing"
+      ]
+    },
+    {
+      "id": "initiative.review.warmup.pending-entries-never-cleared",
+      "file": "apps/runtime/src/indicators/l2-memory/pyramid/pyramid-warmup.js",
+      "find": "        if (entry !== undefined && entry.pending === pending) kept.delete(key);\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/pyramid-warmup.test.js"
+      ],
+      "mustFail": [
+        "a read that fails answers every ask waiting on it with the reason and keeps nothing"
+      ]
+    },
+    {
+      "id": "initiative.review.warmup.memory-ask-takes-a-slot",
+      "file": "apps/runtime/src/indicators/l2-memory/pyramid/pyramid-warmup.js",
+      "find": "    if (missing.length > 0) {\n      const outcome = await readMissing(ask, missing);",
+      "replace": "    await acquire();\n    release();\n    if (missing.length > 0) {\n      const outcome = await readMissing(ask, missing);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/pyramid-warmup.test.js"
+      ],
+      "mustFail": [
+        "an ask answered from memory does not wait for the two host slots"
+      ]
+    },
+    {
+      "id": "initiative.review.warmup.shared-windows-not-counted",
+      "file": "apps/runtime/src/indicators/l2-memory/pyramid/pyramid-warmup.js",
+      "find": "      counters.sharedWindows += 1;\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/pyramid-warmup.test.js"
+      ],
+      "mustFail": [
+        "asks for the same windows while a read is in flight share that read"
+      ]
+    },
+    {
+      "id": "initiative.review.warmup.partial-windows-kept",
+      "file": "apps/runtime/src/indicators/l2-memory/pyramid/pyramid-warmup.js",
+      "find": "if (window.state === WINDOW_STATES.COVERED) keepWindow(windowKey(ask, window.ts), window);",
+      "replace": "keepWindow(windowKey(ask, window.ts), window);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/pyramid-warmup.test.js"
+      ],
+      "mustFail": [
+        "only a COVERED window is kept"
+      ]
+    },
+    {
+      "id": "initiative.review.warmup.covered-windows-not-kept",
+      "file": "apps/runtime/src/indicators/l2-memory/pyramid/pyramid-warmup.js",
+      "find": "if (window.state === WINDOW_STATES.COVERED) keepWindow(",
+      "replace": "if (window.state === WINDOW_STATES.PARTIAL) keepWindow(",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/pyramid-warmup.test.js"
+      ],
+      "mustFail": [
+        "an hour read once answers the next asks from memory"
+      ]
+    }
+  ]
+}

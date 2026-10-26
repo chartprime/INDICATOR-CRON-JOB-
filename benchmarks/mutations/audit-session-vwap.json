@@ -1,0 +1,196 @@
+{
+  "mutations": [
+    {
+      "id": "audit-svwap.typical-price-close-only",
+      "file": "apps/web/src/lib/indicators/session-vwap/sessionVwap.ts",
+      "find": "  return (bar.high + bar.low + bar.close) / 3;",
+      "replace": "  return bar.close;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/session-vwap"
+      ],
+      "mustFail": [
+        "weights a candle by its own volume at its typical price"
+      ]
+    },
+    {
+      "id": "audit-svwap.deviation-not-centred",
+      "file": "apps/web/src/lib/indicators/session-vwap/sessionVwap.ts",
+      "find": "  const variance = sums.priceSquaredVolume / sums.volume - mean * mean;",
+      "replace": "  const variance = sums.priceSquaredVolume / sums.volume;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/session-vwap"
+      ],
+      "mustFail": [
+        "resizes the bands on a sigma change without losing the average"
+      ]
+    },
+    {
+      "id": "audit-svwap.sigmas-not-ordered",
+      "file": "apps/web/src/lib/indicators/session-vwap/sessionVwap.ts",
+      "find": "  return { inner: Math.min(first, second), outer: Math.max(first, second) };",
+      "replace": "  return { inner: first, outer: second };",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/session-vwap"
+      ],
+      "mustFail": [
+        "orders the two band widths so the inner band is never outside the outer one"
+      ]
+    },
+    {
+      "id": "audit-svwap.sigma-not-clamped",
+      "file": "apps/web/src/lib/indicators/session-vwap/sessionVwap.ts",
+      "find": "      Math.max(finiteOr(value, fallback), SESSION_VWAP_MIN_SIGMA),",
+      "replace": "      finiteOr(value, fallback),",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/session-vwap"
+      ],
+      "mustFail": [
+        "clamps each band width into the range the settings offer"
+      ]
+    },
+    {
+      "id": "audit-svwap.session-not-floored",
+      "file": "apps/web/src/lib/indicators/session-vwap/sessionVwap.ts",
+      "find": "  return Math.floor(tsOpen / period) * period;",
+      "replace": "  return tsOpen;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/session-vwap"
+      ],
+      "mustFail": [
+        "keeps a hidden session join hidden through cosmetic edits and band toggles"
+      ]
+    },
+    {
+      "id": "audit-svwap.retained-one-more",
+      "file": "apps/web/src/lib/indicators/session-vwap/sessionVwap.ts",
+      "find": "    latestSessionStartTs - (clampSessionCount(SESSION_VWAP_RETAINED_SESSIONS) - 1) * period;",
+      "replace": "    latestSessionStartTs - clampSessionCount(SESSION_VWAP_RETAINED_SESSIONS) * period;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/session-vwap"
+      ],
+      "mustFail": [
+        "keeps a bounded set of session accumulators"
+      ]
+    },
+    {
+      "id": "audit-svwap.last-bar-not-hidden",
+      "file": "apps/web/src/lib/indicators/session-vwap/sessionVwap.ts",
+      "find": "      bar.ts_open + bar.interval_ms >= sessionStartTs + periodMs;",
+      "replace": "      bar.ts_open + bar.interval_ms > sessionStartTs + periodMs;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/session-vwap"
+      ],
+      "mustFail": [
+        "keeps a hidden session join hidden through cosmetic edits and band toggles"
+      ]
+    },
+    {
+      "id": "audit-svwap.long-bar-hides",
+      "file": "apps/web/src/lib/indicators/session-vwap/sessionVwap.ts",
+      "find": "      bar.interval_ms <= periodMs &&\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/session-vwap"
+      ],
+      "mustFail": [
+        "leaves a bar alone when it is longer than the session itself"
+      ]
+    },
+    {
+      "id": "audit-svwap.replaced-bar-counted-twice",
+      "file": "apps/web/src/lib/indicators/session-vwap/sessionVwap.ts",
+      "find": "      if (state.bar.tsOpen === bar.ts_open) removeVwapSample(sums, state.bar);",
+      "replace": "      void 0;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/session-vwap"
+      ],
+      "mustFail": [
+        "keeps the hidden join while that bar develops"
+      ]
+    },
+    {
+      "id": "audit-svwap.replaced-other-bar-removed",
+      "file": "apps/web/src/lib/indicators/session-vwap/sessionVwap.ts",
+      "find": "      if (state.bar.tsOpen === bar.ts_open) removeVwapSample(sums, state.bar);",
+      "replace": "      removeVwapSample(sums, state.bar);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/session-vwap"
+      ],
+      "mustFail": [
+        "a bar that opened with no volume and then trades takes nothing of the bar before it back out"
+      ]
+    },
+    {
+      "id": "audit-svwap.session-lookback-hides",
+      "file": "apps/web/src/lib/indicators/session-vwap/sessionVwap.ts",
+      "find": "      !lookback &&\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/session-vwap"
+      ],
+      "mustFail": [
+        "hides no session join, because a lookback window is not a session"
+      ]
+    },
+    {
+      "id": "audit-svwap.lower-band-plus",
+      "file": "apps/web/src/lib/indicators/session-vwap/sessionVwap.ts",
+      "find": "    lower1: vwap - innerOffset,",
+      "replace": "    lower1: vwap + innerOffset,",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/session-vwap"
+      ],
+      "mustFail": [
+        "computes the volume-weighted average and deviation from the running sums"
+      ]
+    }
+  ]
+}

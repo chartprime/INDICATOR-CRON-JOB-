@@ -1,0 +1,2 @@
+# These artifacts run on the Linux host; keep LF regardless of the checkout OS.
+* text eol=lf

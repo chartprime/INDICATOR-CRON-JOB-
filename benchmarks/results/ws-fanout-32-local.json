@@ -1,0 +1,1086 @@
+{
+  "contractVersion": 1,
+  "kind": "ws-fanout",
+  "name": "o0-ws-fanout-32-clients-500-trades-per-second",
+  "source": {
+    "git": {
+      "commit": "f127ea4f44a274ad43c3fb5b6639d02c18d8a6f0",
+      "dirty": true,
+      "trackedChanges": 26,
+      "untrackedFiles": 57,
+      "trackedDiffSha256": "48ff14d5846e2773ce2e6a771f4d5dc88474e25b8990267464b011144545ac4a"
+    },
+    "scriptSha256": "3ba4799c2cdd9603147913fe55ab087b07edd1d3c205cd919faa5e50c0de5687",
+    "manifestSha256": "f15dbe18ba195dcacfce4d9bffaa7ec6b8d31c143de61fae36d300f736154d8d",
+    "nodeVersion": "v25.2.1",
+    "wsVersion": "8.21.3"
+  },
+  "startedAtUtc": "2026-09-20T03:39:06.992Z",
+  "settings": {
+    "clients": 32,
+    "warmupMs": 6000,
+    "durationMs": 20000,
+    "sampleEveryMs": 250,
+    "upstream": {
+      "tradesPerPulse": 10,
+      "pulseMs": 20
+    },
+    "slowClients": null,
+    "server": null
+  },
+  "wallMs": 26348.094,
+  "measuredWallMs": 20015.02,
+  "sent": {
+    "total": 12997,
+    "measured": 10006,
+    "nominalTradesPerSecond": 500,
+    "achievedTradesPerSecond": 500,
+    "pulseIntervalMs": {
+      "samples": 848,
+      "p50": 23.443099999998594,
+      "p95": 26.811400000000503,
+      "p99": 31.750099999999293,
+      "max": 34.59720000000016
+    }
+  },
+  "latencyMs": {
+    "healthy": {
+      "samples": 320192,
+      "p50": 21,
+      "p95": 24,
+      "p99": 25,
+      "max": 35
+    }
+  },
+  "timelineClient0": [
+    {
+      "second": 0,
+      "trades": 489,
+      "latencyMs": {
+        "samples": 489,
+        "p50": 21,
+        "p95": 23,
+        "p99": 24,
+        "max": 24
+      },
+      "frames": {}
+    },
+    {
+      "second": 1,
+      "trades": 506,
+      "latencyMs": {
+        "samples": 506,
+        "p50": 21,
+        "p95": 23,
+        "p99": 25,
+        "max": 25
+      },
+      "frames": {
+        "marker": 1
+      }
+    },
+    {
+      "second": 2,
+      "trades": 504,
+      "latencyMs": {
+        "samples": 504,
+        "p50": 8,
+        "p95": 24,
+        "p99": 24,
+        "max": 24
+      },
+      "frames": {}
+    },
+    {
+      "second": 3,
+      "trades": 505,
+      "latencyMs": {
+        "samples": 505,
+        "p50": 9,
+        "p95": 24,
+        "p99": 24,
+        "max": 24
+      },
+      "frames": {
+        "health": 2,
+        "marker": 1
+      }
+    },
+    {
+      "second": 4,
+      "trades": 497,
+      "latencyMs": {
+        "samples": 497,
+        "p50": 8,
+        "p95": 24,
+        "p99": 24,
+        "max": 24
+      },
+      "frames": {
+        "marker": 1
+      }
+    },
+    {
+      "second": 5,
+      "trades": 495,
+      "latencyMs": {
+        "samples": 495,
+        "p50": 8,
+        "p95": 23,
+        "p99": 24,
+        "max": 24
+      },
+      "frames": {}
+    },
+    {
+      "second": 6,
+      "trades": 504,
+      "latencyMs": {
+        "samples": 504,
+        "p50": 20,
+        "p95": 23,
+        "p99": 23,
+        "max": 23
+      },
+      "frames": {}
+    },
+    {
+      "second": 7,
+      "trades": 503,
+      "latencyMs": {
+        "samples": 503,
+        "p50": 20,
+        "p95": 23,
+        "p99": 23,
+        "max": 23
+      },
+      "frames": {}
+    },
+    {
+      "second": 8,
+      "trades": 498,
+      "latencyMs": {
+        "samples": 498,
+        "p50": 14,
+        "p95": 23,
+        "p99": 24,
+        "max": 24
+      },
+      "frames": {}
+    },
+    {
+      "second": 9,
+      "trades": 503,
+      "latencyMs": {
+        "samples": 503,
+        "p50": 21,
+        "p95": 23,
+        "p99": 24,
+        "max": 24
+      },
+      "frames": {
+        "marker": 1
+      }
+    },
+    {
+      "second": 10,
+      "trades": 483,
+      "latencyMs": {
+        "samples": 483,
+        "p50": 21,
+        "p95": 23,
+        "p99": 23,
+        "max": 23
+      },
+      "frames": {}
+    },
+    {
+      "second": 11,
+      "trades": 512,
+      "latencyMs": {
+        "samples": 512,
+        "p50": 21,
+        "p95": 23,
+        "p99": 23,
+        "max": 23
+      },
+      "frames": {}
+    },
+    {
+      "second": 12,
+      "trades": 503,
+      "latencyMs": {
+        "samples": 503,
+        "p50": 20,
+        "p95": 23,
+        "p99": 25,
+        "max": 33
+      },
+      "frames": {}
+    },
+    {
+      "second": 13,
+      "trades": 487,
+      "latencyMs": {
+        "samples": 487,
+        "p50": 21,
+        "p95": 23,
+        "p99": 23,
+        "max": 23
+      },
+      "frames": {
+        "health": 2
+      }
+    },
+    {
+      "second": 14,
+      "trades": 510,
+      "latencyMs": {
+        "samples": 510,
+        "p50": 21,
+        "p95": 23,
+        "p99": 23,
+        "max": 23
+      },
+      "frames": {}
+    },
+    {
+      "second": 15,
+      "trades": 491,
+      "latencyMs": {
+        "samples": 491,
+        "p50": 19,
+        "p95": 24,
+        "p99": 25,
+        "max": 25
+      },
+      "frames": {}
+    },
+    {
+      "second": 16,
+      "trades": 506,
+      "latencyMs": {
+        "samples": 506,
+        "p50": 21,
+        "p95": 24,
+        "p99": 24,
+        "max": 24
+      },
+      "frames": {}
+    },
+    {
+      "second": 17,
+      "trades": 499,
+      "latencyMs": {
+        "samples": 499,
+        "p50": 21,
+        "p95": 23,
+        "p99": 24,
+        "max": 24
+      },
+      "frames": {}
+    },
+    {
+      "second": 18,
+      "trades": 497,
+      "latencyMs": {
+        "samples": 497,
+        "p50": 21,
+        "p95": 23,
+        "p99": 24,
+        "max": 24
+      },
+      "frames": {}
+    },
+    {
+      "second": 19,
+      "trades": 501,
+      "latencyMs": {
+        "samples": 501,
+        "p50": 21,
+        "p95": 23,
+        "p99": 23,
+        "max": 23
+      },
+      "frames": {}
+    },
+    {
+      "second": 20,
+      "trades": 13,
+      "latencyMs": {
+        "samples": 13,
+        "p50": 21,
+        "p95": 21,
+        "p99": 21,
+        "max": 21
+      },
+      "frames": {}
+    }
+  ],
+  "invariants": {
+    "producerKeptUp": true,
+    "healthyClientsReceivedEverySentTrade": true,
+    "resumedSlowClientsReceivedEverySentTrade": null,
+    "healthyClientsMinReceived": 10006,
+    "healthyClientsMaxReceived": 10006,
+    "duplicatesOrReordered": 0,
+    "gapsOnHealthyClients": 0,
+    "slowClients": 0,
+    "slowClientsEvictedByServer": 0,
+    "serverCloseCodes": {},
+    "incidents": 0
+  },
+  "server": {
+    "maxHealthyBufferedBytes": 0,
+    "maxSlowBufferedBytes": 0,
+    "rssBytes": {
+      "start": 139825152,
+      "max": 143769600,
+      "end": 140009472
+    },
+    "eventLoopDelayMs": {
+      "p50": 21.069823,
+      "p99": 25.575423,
+      "max": 27.426815
+    },
+    "incidents": []
+  },
+  "clients": [
+    {
+      "index": 0,
+      "slow": false,
+      "received": 10006,
+      "frameCounts": {
+        "trade": 10006,
+        "marker": 4,
+        "health": 4
+      },
+      "duplicatesOrReordered": 0,
+      "gaps": 0,
+      "latencyMs": {
+        "samples": 10006,
+        "p50": 20,
+        "p95": 23,
+        "p99": 24,
+        "max": 33
+      },
+      "maxBufferedBytes": 0,
+      "serverClose": null,
+      "serverTerminatedAtMs": null,
+      "clientClosed": null
+    },
+    {
+      "index": 1,
+      "slow": false,
+      "received": 10006,
+      "frameCounts": {
+        "trade": 10006,
+        "marker": 4,
+        "health": 4
+      },
+      "duplicatesOrReordered": 0,
+      "gaps": 0,
+      "latencyMs": {
+        "samples": 10006,
+        "p50": 21,
+        "p95": 23,
+        "p99": 24,
+        "max": 33
+      },
+      "maxBufferedBytes": 0,
+      "serverClose": null,
+      "serverTerminatedAtMs": null,
+      "clientClosed": null
+    },
+    {
+      "index": 2,
+      "slow": false,
+      "received": 10006,
+      "frameCounts": {
+        "trade": 10006,
+        "marker": 4,
+        "health": 4
+      },
+      "duplicatesOrReordered": 0,
+      "gaps": 0,
+      "latencyMs": {
+        "samples": 10006,
+        "p50": 21,
+        "p95": 23,
+        "p99": 24,
+        "max": 33
+      },
+      "maxBufferedBytes": 0,
+      "serverClose": null,
+      "serverTerminatedAtMs": null,
+      "clientClosed": null
+    },
+    {
+      "index": 3,
+      "slow": false,
+      "received": 10006,
+      "frameCounts": {
+        "trade": 10006,
+        "marker": 4,
+        "health": 4
+      },
+      "duplicatesOrReordered": 0,
+      "gaps": 0,
+      "latencyMs": {
+        "samples": 10006,
+        "p50": 21,
+        "p95": 23,
+        "p99": 24,
+        "max": 34
+      },
+      "maxBufferedBytes": 0,
+      "serverClose": null,
+      "serverTerminatedAtMs": null,
+      "clientClosed": null
+    },
+    {
+      "index": 4,
+      "slow": false,
+      "received": 10006,
+      "frameCounts": {
+        "trade": 10006,
+        "marker": 4,
+        "health": 4
+      },
+      "duplicatesOrReordered": 0,
+      "gaps": 0,
+      "latencyMs": {
+        "samples": 10006,
+        "p50": 21,
+        "p95": 23,
+        "p99": 24,
+        "max": 34
+      },
+      "maxBufferedBytes": 0,
+      "serverClose": null,
+      "serverTerminatedAtMs": null,
+      "clientClosed": null
+    },
+    {
+      "index": 5,
+      "slow": false,
+      "received": 10006,
+      "frameCounts": {
+        "trade": 10006,
+        "marker": 4,
+        "health": 4
+      },
+      "duplicatesOrReordered": 0,
+      "gaps": 0,
+      "latencyMs": {
+        "samples": 10006,
+        "p50": 21,
+        "p95": 23,
+        "p99": 24,
+        "max": 34
+      },
+      "maxBufferedBytes": 0,
+      "serverClose": null,
+      "serverTerminatedAtMs": null,
+      "clientClosed": null
+    },
+    {
+      "index": 6,
+      "slow": false,
+      "received": 10006,
+      "frameCounts": {
+        "trade": 10006,
+        "marker": 4,
+        "health": 4
+      },
+      "duplicatesOrReordered": 0,
+      "gaps": 0,
+      "latencyMs": {
+        "samples": 10006,
+        "p50": 21,
+        "p95": 23,
+        "p99": 24,
+        "max": 34
+      },
+      "maxBufferedBytes": 0,
+      "serverClose": null,
+      "serverTerminatedAtMs": null,
+      "clientClosed": null
+    },
+    {
+      "index": 7,
+      "slow": false,
+      "received": 10006,
+      "frameCounts": {
+        "trade": 10006,
+        "marker": 4,
+        "health": 4
+      },
+      "duplicatesOrReordered": 0,
+      "gaps": 0,
+      "latencyMs": {
+        "samples": 10006,
+        "p50": 21,
+        "p95": 24,
+        "p99": 24,
+        "max": 34
+      },
+      "maxBufferedBytes": 0,
+      "serverClose": null,
+      "serverTerminatedAtMs": null,
+      "clientClosed": null
+    },
+    {
+      "index": 8,
+      "slow": false,
+      "received": 10006,
+      "frameCounts": {
+        "trade": 10006,
+        "marker": 4,
+        "health": 4
+      },
+      "duplicatesOrReordered": 0,
+      "gaps": 0,
+      "latencyMs": {
+        "samples": 10006,
+        "p50": 21,
+        "p95": 24,
+        "p99": 24,
+        "max": 34
+      },
+      "maxBufferedBytes": 0,
+      "serverClose": null,
+      "serverTerminatedAtMs": null,
+      "clientClosed": null
+    },
+    {
+      "index": 9,
+      "slow": false,
+      "received": 10006,
+      "frameCounts": {
+        "trade": 10006,
+        "marker": 4,
+        "health": 4
+      },
+      "duplicatesOrReordered": 0,
+      "gaps": 0,
+      "latencyMs": {
+        "samples": 10006,
+        "p50": 21,
+        "p95": 24,
+        "p99": 24,
+        "max": 34
+      },
+      "maxBufferedBytes": 0,
+      "serverClose": null,
+      "serverTerminatedAtMs": null,
+      "clientClosed": null
+    },
+    {
+      "index": 10,
+      "slow": false,
+      "received": 10006,
+      "frameCounts": {
+        "trade": 10006,
+        "marker": 4,
+        "health": 4
+      },
+      "duplicatesOrReordered": 0,
+      "gaps": 0,
+      "latencyMs": {
+        "samples": 10006,
+        "p50": 21,
+        "p95": 24,
+        "p99": 24,
+        "max": 34
+      },
+      "maxBufferedBytes": 0,
+      "serverClose": null,
+      "serverTerminatedAtMs": null,
+      "clientClosed": null
+    },
+    {
+      "index": 11,
+      "slow": false,
+      "received": 10006,
+      "frameCounts": {
+        "trade": 10006,
+        "marker": 4,
+        "health": 4
+      },
+      "duplicatesOrReordered": 0,
+      "gaps": 0,
+      "latencyMs": {
+        "samples": 10006,
+        "p50": 21,
+        "p95": 24,
+        "p99": 24,
+        "max": 34
+      },
+      "maxBufferedBytes": 0,
+      "serverClose": null,
+      "serverTerminatedAtMs": null,
+      "clientClosed": null
+    },
+    {
+      "index": 12,
+      "slow": false,
+      "received": 10006,
+      "frameCounts": {
+        "trade": 10006,
+        "marker": 4,
+        "health": 4
+      },
+      "duplicatesOrReordered": 0,
+      "gaps": 0,
+      "latencyMs": {
+        "samples": 10006,
+        "p50": 21,
+        "p95": 24,
+        "p99": 25,
+        "max": 34
+      },
+      "maxBufferedBytes": 0,
+      "serverClose": null,
+      "serverTerminatedAtMs": null,
+      "clientClosed": null
+    },
+    {
+      "index": 13,
+      "slow": false,
+      "received": 10006,
+      "frameCounts": {
+        "trade": 10006,
+        "marker": 4,
+        "health": 4
+      },
+      "duplicatesOrReordered": 0,
+      "gaps": 0,
+      "latencyMs": {
+        "samples": 10006,
+        "p50": 21,
+        "p95": 24,
+        "p99": 25,
+        "max": 34
+      },
+      "maxBufferedBytes": 0,
+      "serverClose": null,
+      "serverTerminatedAtMs": null,
+      "clientClosed": null
+    },
+    {
+      "index": 14,
+      "slow": false,
+      "received": 10006,
+      "frameCounts": {
+        "trade": 10006,
+        "marker": 4,
+        "health": 4
+      },
+      "duplicatesOrReordered": 0,
+      "gaps": 0,
+      "latencyMs": {
+        "samples": 10006,
+        "p50": 21,
+        "p95": 24,
+        "p99": 25,
+        "max": 34
+      },
+      "maxBufferedBytes": 0,
+      "serverClose": null,
+      "serverTerminatedAtMs": null,
+      "clientClosed": null
+    },
+    {
+      "index": 15,
+      "slow": false,
+      "received": 10006,
+      "frameCounts": {
+        "trade": 10006,
+        "marker": 4,
+        "health": 4
+      },
+      "duplicatesOrReordered": 0,
+      "gaps": 0,
+      "latencyMs": {
+        "samples": 10006,
+        "p50": 21,
+        "p95": 24,
+        "p99": 25,
+        "max": 34
+      },
+      "maxBufferedBytes": 0,
+      "serverClose": null,
+      "serverTerminatedAtMs": null,
+      "clientClosed": null
+    },
+    {
+      "index": 16,
+      "slow": false,
+      "received": 10006,
+      "frameCounts": {
+        "trade": 10006,
+        "marker": 4,
+        "health": 4
+      },
+      "duplicatesOrReordered": 0,
+      "gaps": 0,
+      "latencyMs": {
+        "samples": 10006,
+        "p50": 21,
+        "p95": 24,
+        "p99": 25,
+        "max": 34
+      },
+      "maxBufferedBytes": 0,
+      "serverClose": null,
+      "serverTerminatedAtMs": null,
+      "clientClosed": null
+    },
+    {
+      "index": 17,
+      "slow": false,
+      "received": 10006,
+      "frameCounts": {
+        "trade": 10006,
+        "marker": 4,
+        "health": 4
+      },
+      "duplicatesOrReordered": 0,
+      "gaps": 0,
+      "latencyMs": {
+        "samples": 10006,
+        "p50": 21,
+        "p95": 24,
+        "p99": 25,
+        "max": 34
+      },
+      "maxBufferedBytes": 0,
+      "serverClose": null,
+      "serverTerminatedAtMs": null,
+      "clientClosed": null
+    },
+    {
+      "index": 18,
+      "slow": false,
+      "received": 10006,
+      "frameCounts": {
+        "trade": 10006,
+        "marker": 4,
+        "health": 4
+      },
+      "duplicatesOrReordered": 0,
+      "gaps": 0,
+      "latencyMs": {
+        "samples": 10006,
+        "p50": 21,
+        "p95": 24,
+        "p99": 25,
+        "max": 34
+      },
+      "maxBufferedBytes": 0,
+      "serverClose": null,
+      "serverTerminatedAtMs": null,
+      "clientClosed": null
+    },
+    {
+      "index": 19,
+      "slow": false,
+      "received": 10006,
+      "frameCounts": {
+        "trade": 10006,
+        "marker": 4,
+        "health": 4
+      },
+      "duplicatesOrReordered": 0,
+      "gaps": 0,
+      "latencyMs": {
+        "samples": 10006,
+        "p50": 21,
+        "p95": 24,
+        "p99": 25,
+        "max": 34
+      },
+      "maxBufferedBytes": 0,
+      "serverClose": null,
+      "serverTerminatedAtMs": null,
+      "clientClosed": null
+    },
+    {
+      "index": 20,
+      "slow": false,
+      "received": 10006,
+      "frameCounts": {
+        "trade": 10006,
+        "marker": 4,
+        "health": 4
+      },
+      "duplicatesOrReordered": 0,
+      "gaps": 0,
+      "latencyMs": {
+        "samples": 10006,
+        "p50": 21,
+        "p95": 24,
+        "p99": 25,
+        "max": 34
+      },
+      "maxBufferedBytes": 0,
+      "serverClose": null,
+      "serverTerminatedAtMs": null,
+      "clientClosed": null
+    },
+    {
+      "index": 21,
+      "slow": false,
+      "received": 10006,
+      "frameCounts": {
+        "trade": 10006,
+        "marker": 4,
+        "health": 4
+      },
+      "duplicatesOrReordered": 0,
+      "gaps": 0,
+      "latencyMs": {
+        "samples": 10006,
+        "p50": 21,
+        "p95": 24,
+        "p99": 25,
+        "max": 34
+      },
+      "maxBufferedBytes": 0,
+      "serverClose": null,
+      "serverTerminatedAtMs": null,
+      "clientClosed": null
+    },
+    {
+      "index": 22,
+      "slow": false,
+      "received": 10006,
+      "frameCounts": {
+        "trade": 10006,
+        "marker": 4,
+        "health": 4
+      },
+      "duplicatesOrReordered": 0,
+      "gaps": 0,
+      "latencyMs": {
+        "samples": 10006,
+        "p50": 21,
+        "p95": 24,
+        "p99": 25,
+        "max": 34
+      },
+      "maxBufferedBytes": 0,
+      "serverClose": null,
+      "serverTerminatedAtMs": null,
+      "clientClosed": null
+    },
+    {
+      "index": 23,
+      "slow": false,
+      "received": 10006,
+      "frameCounts": {
+        "trade": 10006,
+        "marker": 4,
+        "health": 4
+      },
+      "duplicatesOrReordered": 0,
+      "gaps": 0,
+      "latencyMs": {
+        "samples": 10006,
+        "p50": 21,
+        "p95": 24,
+        "p99": 25,
+        "max": 34
+      },
+      "maxBufferedBytes": 0,
+      "serverClose": null,
+      "serverTerminatedAtMs": null,
+      "clientClosed": null
+    },
+    {
+      "index": 24,
+      "slow": false,
+      "received": 10006,
+      "frameCounts": {
+        "trade": 10006,
+        "marker": 4,
+        "health": 4
+      },
+      "duplicatesOrReordered": 0,
+      "gaps": 0,
+      "latencyMs": {
+        "samples": 10006,
+        "p50": 21,
+        "p95": 24,
+        "p99": 25,
+        "max": 34
+      },
+      "maxBufferedBytes": 0,
+      "serverClose": null,
+      "serverTerminatedAtMs": null,
+      "clientClosed": null
+    },
+    {
+      "index": 25,
+      "slow": false,
+      "received": 10006,
+      "frameCounts": {
+        "trade": 10006,
+        "marker": 4,
+        "health": 4
+      },
+      "duplicatesOrReordered": 0,
+      "gaps": 0,
+      "latencyMs": {
+        "samples": 10006,
+        "p50": 21,
+        "p95": 24,
+        "p99": 25,
+        "max": 34
+      },
+      "maxBufferedBytes": 0,
+      "serverClose": null,
+      "serverTerminatedAtMs": null,
+      "clientClosed": null
+    },
+    {
+      "index": 26,
+      "slow": false,
+      "received": 10006,
+      "frameCounts": {
+        "trade": 10006,
+        "marker": 4,
+        "health": 4
+      },
+      "duplicatesOrReordered": 0,
+      "gaps": 0,
+      "latencyMs": {
+        "samples": 10006,
+        "p50": 22,
+        "p95": 24,
+        "p99": 26,
+        "max": 34
+      },
+      "maxBufferedBytes": 0,
+      "serverClose": null,
+      "serverTerminatedAtMs": null,
+      "clientClosed": null
+    },
+    {
+      "index": 27,
+      "slow": false,
+      "received": 10006,
+      "frameCounts": {
+        "trade": 10006,
+        "marker": 4,
+        "health": 4
+      },
+      "duplicatesOrReordered": 0,
+      "gaps": 0,
+      "latencyMs": {
+        "samples": 10006,
+        "p50": 22,
+        "p95": 24,
+        "p99": 26,
+        "max": 34
+      },
+      "maxBufferedBytes": 0,
+      "serverClose": null,
+      "serverTerminatedAtMs": null,
+      "clientClosed": null
+    },
+    {
+      "index": 28,
+      "slow": false,
+      "received": 10006,
+      "frameCounts": {
+        "trade": 10006,
+        "marker": 4,
+        "health": 4
+      },
+      "duplicatesOrReordered": 0,
+      "gaps": 0,
+      "latencyMs": {
+        "samples": 10006,
+        "p50": 22,
+        "p95": 25,
+        "p99": 26,
+        "max": 34
+      },
+      "maxBufferedBytes": 0,
+      "serverClose": null,
+      "serverTerminatedAtMs": null,
+      "clientClosed": null
+    },
+    {
+      "index": 29,
+      "slow": false,
+      "received": 10006,
+      "frameCounts": {
+        "trade": 10006,
+        "marker": 4,
+        "health": 4
+      },
+      "duplicatesOrReordered": 0,
+      "gaps": 0,
+      "latencyMs": {
+        "samples": 10006,
+        "p50": 22,
+        "p95": 25,
+        "p99": 26,
+        "max": 35
+      },
+      "maxBufferedBytes": 0,
+      "serverClose": null,
+      "serverTerminatedAtMs": null,
+      "clientClosed": null
+    },
+    {
+      "index": 30,
+      "slow": false,
+      "received": 10006,
+      "frameCounts": {
+        "trade": 10006,
+        "marker": 4,
+        "health": 4
+      },
+      "duplicatesOrReordered": 0,
+      "gaps": 0,
+      "latencyMs": {
+        "samples": 10006,
+        "p50": 22,
+        "p95": 25,
+        "p99": 26,
+        "max": 35
+      },
+      "maxBufferedBytes": 0,
+      "serverClose": null,
+      "serverTerminatedAtMs": null,
+      "clientClosed": null
+    },
+    {
+      "index": 31,
+      "slow": false,
+      "received": 10006,
+      "frameCounts": {
+        "trade": 10006,
+        "marker": 4,
+        "health": 4
+      },
+      "duplicatesOrReordered": 0,
+      "gaps": 0,
+      "latencyMs": {
+        "samples": 10006,
+        "p50": 22,
+        "p95": 25,
+        "p99": 26,
+        "max": 35
+      },
+      "maxBufferedBytes": 0,
+      "serverClose": null,
+      "serverTerminatedAtMs": null,
+      "clientClosed": null
+    }
+  ]
+}

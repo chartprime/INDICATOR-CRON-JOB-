@@ -1,0 +1,114 @@
+{
+  "mutations": [
+    {
+      "id": "p4c-owner.repin-ignores-window-setting",
+      "file": "apps/runtime/src/indicators/l2-memory/pyramid/pyramid-builder.js",
+      "find": "\"rowBp\", \"windowBp\", \"referenceBp\"]",
+      "replace": "\"rowBp\", \"referenceBp\"]",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/pyramid.test.js"],
+      "mustFail": ["re-pins only when the price moved"],
+      "timeoutMs": 30000
+    },
+    {
+      "id": "p4c-owner.settled-hole-never-revisited",
+      "file": "apps/runtime/src/indicators/l2-memory/pyramid/pyramid-builder.js",
+      "find": "if (record.reason === \"AWAITING_CAPTURE\") return !(Number.isFinite(captured) && captured >= record.ts + WINDOW_MS + captureMarginMs);",
+      "replace": "if (record.reason === \"AWAITING_CAPTURE\") return true;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/pyramid.test.js"],
+      "mustFail": ["a settled hole is revisited once capture passes it"],
+      "timeoutMs": 30000
+    },
+    {
+      "id": "p4c-owner.browser-never-refreshes-settled-hole",
+      "file": "apps/web/src/lib/indicators/passive-liquidity/heatmapHistory.ts",
+      "find": "if (held !== undefined && recheck === undefined) continue;",
+      "replace": "if (held !== undefined) continue;",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/passive-liquidity/tests/heatmapHistory.test.ts"],
+      "mustFail": ["rechecks a settled empty window"],
+      "timeoutMs": 30000
+    },
+    {
+      "id": "p4c-owner.pager-accepts-stalled-cursor",
+      "file": "apps/runtime/src/indicators/l2-memory/pyramid/pyramid-warmup.js",
+      "find": "if (page.next !== null && (!Number.isSafeInteger(page.next) || page.next <= cursor || page.next > toTs)) {",
+      "replace": "if (false) {",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/pyramid-warmup.test.js"],
+      "mustFail": ["a page cap or stalled cursor"],
+      "timeoutMs": 30000
+    },
+    {
+      "id": "p4c-owner.pager-accepts-incomplete-cap",
+      "file": "apps/runtime/src/indicators/l2-memory/pyramid/pyramid-warmup.js",
+      "find": "if (cursor !== null && cursor < toTs) {",
+      "replace": "if (false) {",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/pyramid-warmup.test.js"],
+      "mustFail": ["a page cap or stalled cursor"],
+      "timeoutMs": 30000
+    },
+    {
+      "id": "p4c-owner.pin-keeps-old-generation",
+      "file": "apps/runtime/src/indicators/l2-memory/pyramid/pyramid-store.js",
+      "find": "    writes.setMeta.run(\"generation\", crypto.randomUUID());",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/pyramid.test.js"],
+      "mustFail": ["pinning the same geometry keeps the windows"],
+      "timeoutMs": 30000
+    },
+    {
+      "id": "p4c-owner.browser-mixes-generation",
+      "file": "apps/web/src/lib/indicators/passive-liquidity/heatmapHistory.ts",
+      "find": "if (this._generation !== null && this._generation !== page.generation) {",
+      "replace": "if (false) {",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/passive-liquidity/tests/heatmapHistory.test.ts"],
+      "mustFail": ["refreshes an old covered view"],
+      "timeoutMs": 30000
+    },
+    {
+      "id": "p4c-owner.pagination-evades-budget",
+      "file": "apps/web/src/lib/indicators/passive-liquidity/heatmapHistory.ts",
+      "find": "if (this._budgetLeft(at)) this._send(request.levelMs, request.rowFactor, page.next, request.toTs, at);",
+      "replace": "if (true) this._send(request.levelMs, request.rowFactor, page.next, request.toTs, at);",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/passive-liquidity/tests/heatmapHistory.test.ts"],
+      "mustFail": ["pagination also obeys the per-minute budget"],
+      "timeoutMs": 30000
+    },
+    {
+      "id": "p4c-owner.exhausted-budget-never-wakes",
+      "file": "apps/web/src/lib/indicators/passive-liquidity/heatmapHistory.ts",
+      "find": "    const rateSpent = this._requestTimes.length >= this._maxPerMinute;",
+      "replace": "    const rateSpent = false;",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/passive-liquidity/tests/heatmapHistory.test.ts"],
+      "mustFail": ["wakes a stationary chart when a spent page budget becomes available"],
+      "timeoutMs": 30000
+    },
+    {
+      "id": "p4c-owner-review.evicted-window-keeps-recheck",
+      "file": "apps/web/src/lib/indicators/passive-liquidity/heatmapHistory.ts",
+      "find": "      slot.recheckAt.delete(candidate.ts);\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/passive-liquidity/tests/heatmapHistory.test.ts"],
+      "mustFail": ["a covered window dropped for the byte budget is asked for again"],
+      "timeoutMs": 30000
+    },
+    {
+      "id": "p4c-owner-review.capture-clock-read-after-replay",
+      "file": "apps/runtime/src/indicators/l2-memory/pyramid/pyramid-builder.js",
+      "find": "!(Number.isFinite(capturedAt) && capturedAt >= windowTs",
+      "replace": "!(Number.isFinite(captureLatestTs()) && captureLatestTs() >= windowTs",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/pyramid.test.js"],
+      "mustFail": ["capture that catches up while a window replays"],
+      "timeoutMs": 30000
+    }
+  ]
+}

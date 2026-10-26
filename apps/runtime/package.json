@@ -1,0 +1,62 @@
+{
+  "name": "@terminal-l1-l2/runtime",
+  "private": true,
+  "version": "0.0.0",
+  "type": "commonjs",
+  "engines": {
+    "node": "24.21.0"
+  },
+  "scripts": {
+    "bench:live-storage": "node scripts/bench/live-storage-load.js",
+    "bench:live-storage:compare": "node scripts/bench/compare-live-storage-reports.js",
+    "bench:o2": "node scripts/bench/o2-campaign.js",
+    "verify:mutation": "node scripts/verify/mutation-check.js",
+    "pretest": "node ../../scripts/verify-node-version.cjs",
+    "start": "node ../../scripts/node-launcher.cjs scripts/serve/run-ws-server.js 8001 BTCUSDT",
+    "dev": "node ../../scripts/node-launcher.cjs --watch scripts/serve/run-ws-server.js 8001 BTCUSDT",
+    "dev:dxfeed:live": "node ../../scripts/node-launcher.cjs scripts/serve/run-ws-server.js 8001 BTCUSDT --dxfeed-eager",
+    "collector": "node scripts/collect/run-collector.js",
+    "stack": "node scripts/serve/run-stack.js",
+    "backfill:databento:live": "node --env-file=../../.env scripts/collect/historical/ingest-databento-backfill.js",
+    "backfill:tardis:live": "node --env-file=../../.env scripts/collect/historical/ingest-tardis-backfill.js",
+    "backfill:dxfeed-candles:live": "node --env-file=../../.env scripts/collect/run-with-dxfeed-token.js -- node scripts/collect/historical/backfill-dxfeed-native-candles.js",
+    "migrate:storage-schema": "node scripts/migrate/migrate-storage-schema.js",
+    "verify:storage-integrity": "node scripts/verify/verify-storage-integrity.js",
+    "verify:databento-entitlement:live": "node --env-file=../../.env scripts/verify/databento/verify-databento-entitlement.js",
+    "verify:databento-content:live": "node --env-file=../../.env scripts/verify/databento/verify-databento-content.js",
+    "verify:databento-s3-inventory": "node scripts/verify/databento/verify-databento-s3-inventory.js",
+    "verify:tardis-s3-inventory": "node scripts/verify/tardis/verify-tardis-s3-inventory.js",
+    "verify:tardis-content:live": "node --env-file=../../.env scripts/verify/tardis/verify-tardis-content.js",
+    "verify:tardis-subscription:live": "node --env-file=../../.env scripts/verify/tardis/verify-tardis-subscription.js",
+    "maintain:storage": "node scripts/maintain/maintain-storage.js",
+    "rebuild:dxfeed-candles": "node scripts/maintain/rebuild-dxfeed-candles.js",
+    "migrate:dxfeed-storage-schema": "node scripts/migrate/migrate-dxfeed-storage-schema.js",
+    "verify:dxfeed-storage-integrity": "node scripts/verify/dxfeed/verify-dxfeed-storage-integrity.js",
+    "audit:dxfeed-order-book-continuity": "node scripts/maintain/audit-dxfeed-order-book-continuity.js",
+    "qualify:dxfeed-storage": "node scripts/qualify/qualify-dxfeed-storage.js",
+    "qualify:collector-storage": "node scripts/qualify/qualify-collector-storage.js",
+    "qualify:server-live": "node scripts/qualify/qualify-live-server.js",
+    "backup:manual": "node scripts/maintain/backup-to-drive.js",
+    "collector:dxfeed:live": "node --env-file=../../.env scripts/collect/run-with-dxfeed-token.js --rotate-on-exit-75 -- node scripts/collect/run-dxfeed-collector.js",
+    "verify:dxfeed-auth:live": "node --env-file=../../.env scripts/collect/run-with-dxfeed-token.js -- node scripts/verify/dxfeed/verify-dxfeed-auth.js",
+    "verify:dxfeed-capability-probe:live": "node --env-file=../../.env scripts/collect/run-with-dxfeed-token.js -- node scripts/verify/dxfeed/verify-dxfeed-capability-probe.js",
+    "verify:dxfeed-extended-probe:live": "node --env-file=../../.env scripts/collect/run-with-dxfeed-token.js -- node scripts/verify/dxfeed/verify-dxfeed-extended-probe.js",
+    "verify:dxfeed-order-book-feasibility-probe:live": "node --env-file=../../.env scripts/collect/run-with-dxfeed-token.js -- node scripts/verify/dxfeed/verify-dxfeed-order-book-feasibility-probe.js",
+    "verify:dxfeed-storage-capture:live": "node --env-file=../../.env scripts/collect/run-with-dxfeed-token.js -- node scripts/verify/dxfeed/verify-dxfeed-storage-capture.js",
+    "l2-memory:test": "jest test/indicators/l2-memory",
+    "l2-memory:live": "node scripts/serve/run-l2-memory-demo.js",
+    "test": "jest",
+    "audit:storage-continuity": "node scripts/maintain/audit-storage-continuity.js"
+  },
+  "devDependencies": {
+    "fast-check": "4.10.2",
+    "jest": "^30.0.0"
+  },
+  "dependencies": {
+    "@dxfeed/dxlink-core": "^0.9.0",
+    "@dxfeed/dxlink-websocket-client": "^0.9.0",
+    "better-sqlite3": "^13.0.3",
+    "tardis-dev": "^18.2.0",
+    "ws": "^8.21.3"
+  }
+}

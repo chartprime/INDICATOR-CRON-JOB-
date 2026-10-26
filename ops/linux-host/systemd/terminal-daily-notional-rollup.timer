@@ -1,0 +1,8 @@
+[Unit]
+Description=Run the daily-notional VPIN rollup maintenance every 15 minutes
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=15min
+Unit=terminal-daily-notional-rollup.service
+[Install]
+WantedBy=timers.target

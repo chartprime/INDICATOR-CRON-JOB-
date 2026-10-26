@@ -1,0 +1,56 @@
+# dxFeed collector via the token launcher. COMPLIANCE: dev/test only,
+# monitored by dxFeed/CME. Deliberately no [Install] block -- this unit must
+# never auto-start at boot, only via terminal-dxfeed-collector-start.timer /
+# -stop.timer (Mon-Fri UTC). A bounded restart envelope covers a mid-week
+# crash that isn't the launcher's own planned rotation, but RestartSec is
+# wider than terminal-collector.service's: each restart requests a fresh
+# token from the broker, and its rate limit is real (a live HTTP 429 hit
+# on 2026-09-17). The launcher still owns rotation (exit 75) and its
+# single 120s reconnect retry (exit 76) internally.
+[Unit]
+Description=Terminal-L1-L2 dxFeed collector (weekday-scheduled, bounded restart)
+Wants=network-online.target
+After=network-online.target time-sync.target
+RequiresMountsFor=/srv/terminal-data
+StartLimitIntervalSec=900
+StartLimitBurst=5
+OnFailure=terminal-alert@%n.service
+
+[Service]
+Type=simple
+User=ttcollect
+Group=ttcollect
+Slice=terminal.slice
+WorkingDirectory=/opt/terminal-l1-l2/current/apps/runtime
+Environment=TT_DATA_ROOT=/srv/terminal-data/capture
+Environment=TT_LOG_DIR=/var/log/terminal-l1-l2/collect
+EnvironmentFile=/etc/terminal-l1-l2/collect/service.env
+LogsDirectory=terminal-l1-l2/collect
+ExecStartPre=/usr/bin/mountpoint -q /srv/terminal-data
+ExecStartPre=+/opt/terminal-l1-l2/ops/scripts/check-service-env.sh /etc/terminal-l1-l2/collect/service.env dxfeed
+ExecStart=/opt/terminal-l1-l2/node-v24.21.0-linux-x64/bin/node /opt/terminal-l1-l2/current/apps/runtime/scripts/collect/run-with-dxfeed-token.js --rotate-on-exit-75 -- /opt/terminal-l1-l2/node-v24.21.0-linux-x64/bin/node /opt/terminal-l1-l2/current/apps/runtime/scripts/collect/run-dxfeed-collector.js
+Restart=on-failure
+RestartSec=150
+RestartPreventExitStatus=78
+# The token wrapper deliberately translates an operator/systemd SIGTERM into
+# shell status 143 after forwarding it to the collector. The Saturday timer is
+# therefore a successful scheduled stop, not a crash or an OnFailure alert.
+SuccessExitStatus=143
+KillMode=mixed
+TimeoutStopSec=120
+UMask=0077
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+ReadWritePaths=/srv/terminal-data/capture /var/lib/terminal-l1-l2/collect
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=terminal-dxfeed-collector

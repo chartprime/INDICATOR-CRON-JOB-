@@ -1,0 +1,198 @@
+{
+ "mutations": [
+  {
+   "id": "sens.dialog-round-sizes",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/LiquidityHeatmapSettingsModal.tsx",
+   "find": "  const sensitivity = sensitivityStops(sensitivitySizes(anchor, market));",
+   "replace": "  const sensitivity = sensitivityStops(sliderSizes(anchor, market));",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "steps one contract at a time through the two-digit sizes on an index, whole sizes of two significant digits elsewhere, and reaches no minimum"
+   ]
+  },
+  {
+   "id": "sens.crypto-too",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquiditySettings.ts",
+   "find": "  if (market !== \"index\") return sliderSizes(anchor, market);",
+   "replace": "",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquiditySettings.test.ts",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "give an index's sensitivity every whole size of two significant digits, one contract at a time from 10 to 99; crypto keeps the round sizes",
+    "keeps the round sizes on crypto's sensitivity"
+   ]
+  },
+  {
+   "id": "sens.step-ten-in-two-digits",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquiditySettings.ts",
+   "find": "  const step = whole < 100 ? 1 : 10 ** (Math.floor(Math.log10(whole)) - 1);",
+   "replace": "  const step = whole < 10 ? 1 : 10 ** (Math.floor(Math.log10(whole)) - 1) * 10;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquiditySettings.test.ts"
+   ],
+   "mustFail": [
+    "give an index's sensitivity every whole size of two significant digits, one contract at a time from 10 to 99; crypto keeps the round sizes"
+   ]
+  },
+  {
+   "id": "sens.three-digits",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquiditySettings.ts",
+   "find": "  const step = whole < 100 ? 1 : 10 ** (Math.floor(Math.log10(whole)) - 1);",
+   "replace": "  const step = whole < 1000 ? 1 : 10 ** (Math.floor(Math.log10(whole)) - 2);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquiditySettings.test.ts"
+   ],
+   "mustFail": [
+    "give an index's sensitivity every whole size of two significant digits, one contract at a time from 10 to 99; crypto keeps the round sizes"
+   ]
+  },
+  {
+   "id": "sens.start-not-rounded-up",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquiditySettings.ts",
+   "find": "  const whole = Math.max(1, Math.ceil(size));",
+   "replace": "  const whole = Math.max(1, Math.floor(size));",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquiditySettings.test.ts"
+   ],
+   "mustFail": [
+    "give an index's sensitivity every whole size of two significant digits, one contract at a time from 10 to 99; crypto keeps the round sizes"
+   ]
+  },
+  {
+   "id": "sens.anchor-dropped",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquiditySettings.ts",
+   "find": "  const sizes = new Set<number>([anchor]);",
+   "replace": "  const sizes = new Set<number>();",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquiditySettings.test.ts"
+   ],
+   "mustFail": [
+    "give an index's sensitivity every whole size of two significant digits, one contract at a time from 10 to 99; crypto keeps the round sizes"
+   ]
+  },
+  {
+   "id": "sens.dialog-market-ignored",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/LiquidityHeatmapSettingsModal.tsx",
+   "find": "  const sensitivity = sensitivityStops(sensitivitySizes(anchor, market));",
+   "replace": "  const sensitivity = sensitivityStops(sensitivitySizes(anchor, \"index\"));",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "keeps the round sizes on crypto's sensitivity"
+   ]
+  },
+  {
+   "id": "sens.top-size-dropped",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquiditySettings.ts",
+   "find": "size <= hi; size = nextTwoDigitSize(size + 1)) sizes.add(size);",
+   "replace": "size < hi; size = nextTwoDigitSize(size + 1)) sizes.add(size);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquiditySettings.test.ts"
+   ],
+   "mustFail": [
+    "give an index's sensitivity every whole size of two significant digits, one contract at a time from 10 to 99; crypto keeps the round sizes"
+   ]
+  },
+  {
+   "id": "sens.span-short",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquiditySettings.ts",
+   "find": "  const hi = anchor * SIZE_SLIDER_ABOVE;",
+   "replace": "  const hi = (anchor * SIZE_SLIDER_ABOVE) / 2;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquiditySettings.test.ts"
+   ],
+   "mustFail": [
+    "give an index's sensitivity every whole size of two significant digits, one contract at a time from 10 to 99; crypto keeps the round sizes"
+   ]
+  },
+  {
+   "id": "sens.start-off-grid",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquiditySettings.ts",
+   "find": "  for (let size = nextTwoDigitSize(anchor / SIZE_SLIDER_BELOW); size <= hi;",
+   "replace": "  for (let size = anchor / SIZE_SLIDER_BELOW; size <= hi;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquiditySettings.test.ts"
+   ],
+   "mustFail": [
+    "give an index's sensitivity every whole size of two significant digits, one contract at a time from 10 to 99; crypto keeps the round sizes"
+   ]
+  },
+  {
+   "id": "sens.sizes-unsorted",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquiditySettings.ts",
+   "find": "  return [...sizes].sort((a, b) => a - b);",
+   "replace": "  return [...sizes];",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquiditySettings.test.ts"
+   ],
+   "mustFail": [
+    "give an index's sensitivity every whole size of two significant digits, one contract at a time from 10 to 99; crypto keeps the round sizes"
+   ]
+  },
+  {
+   "id": "sens.not-rounded-to-step",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquiditySettings.ts",
+   "find": "  return Math.ceil(whole / step) * step;",
+   "replace": "  return whole;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquiditySettings.test.ts"
+   ],
+   "mustFail": [
+    "give an index's sensitivity every whole size of two significant digits, one contract at a time from 10 to 99; crypto keeps the round sizes"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "name": "o2-replay-binance-4h-complete-2026-09-21",
+  "serverDelta": true,
+  "users": 1,
+  "rounds": 1,
+  "requests": [{
+    "route": "replay-page",
+    "body": { "symbol": "BTCUSDT", "marketKind": "SPOT", "options": { "fromTs": 1789675200000, "toTs": 1789689600000, "tickSize": 0.01, "clusterTicks": 50, "rowClusters": 8, "windowRows": 1023, "cursor": null, "bookMode": "sparse" } },
+    "paginate": { "maxPages": 512 }
+  }]
+}

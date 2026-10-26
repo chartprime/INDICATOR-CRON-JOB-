@@ -1,0 +1,1431 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://terminal-l1-l2/contracts/ws-frame-contract/v1",
+  "title": "WS Frame Contract v1",
+  "description": "Every frame the market-data server broadcasts to a browser client. Symbols are deliberately NOT an enum: the contract's own 'Symbol / asset-class validation' section states that the governed instrument catalog (config/market-instruments.json), not this contract, decides which instruments exist, so a schema enum here would have to be edited every time an instrument is added. The numeric and length bounds in this file ARE authoritative: apps/runtime/src/server/frames.js and apps/web/src/types/frames.ts each enforce them independently, and apps/runtime/test/contracts/ws-frame-contract-limits.test.js asserts all three agree.",
+  "$ref": "#/$defs/serverFrame",
+  "$defs": {
+    "serverFrame": {
+      "oneOf": [
+        { "$ref": "#/$defs/tradeFrame" },
+        { "$ref": "#/$defs/markerFrame" },
+        { "$ref": "#/$defs/barFrame" },
+        { "$ref": "#/$defs/snapshotFrame" },
+        { "$ref": "#/$defs/healthFrame" },
+        { "$ref": "#/$defs/bookFrame" },
+        { "$ref": "#/$defs/selectionFrame" },
+        { "$ref": "#/$defs/profileFrame" },
+        { "$ref": "#/$defs/vpinFrame" },
+        { "$ref": "#/$defs/analyticsStatusFrame" },
+        { "$ref": "#/$defs/liquidityFrame" },
+        { "$ref": "#/$defs/aggressiveHistoryFrame" },
+        { "$ref": "#/$defs/deltaProfileFrame" },
+        { "$ref": "#/$defs/bandHistoryFrame" },
+        { "$ref": "#/$defs/markerHistoryFrame" },
+        { "$ref": "#/$defs/l2ViewFrame" },
+        { "$ref": "#/$defs/l2WallsFrame" },
+        { "$ref": "#/$defs/l2EventsFrame" },
+        { "$ref": "#/$defs/l2LadderFrame" },
+        { "$ref": "#/$defs/icebergOrdersFrame" },
+        { "$ref": "#/$defs/exhaustionShadesFrame" },
+        { "$ref": "#/$defs/initiativeBandsFrame" },
+        { "$ref": "#/$defs/candleMonitorFrame" }
+      ]
+    },
+
+    "analyticsStatusFrame": {
+      "allOf": [{ "$ref": "#/$defs/frameIdentity" }],
+      "type": "object",
+      "required": ["type", "symbol", "indicator", "status"],
+      "properties": {
+        "type": { "const": "analytics_status" },
+        "symbol": { "$ref": "#/$defs/symbol" },
+        "indicator": { "enum": ["PROFILE", "VPIN"] },
+        "status": {
+          "enum": ["READY", "UNAVAILABLE", "WARMING", "EMPTY", "CLOSED"]
+        },
+        "provider": true,
+        "marketKind": true,
+        "assetClass": true
+      },
+      "additionalProperties": false
+    },
+    "symbol": { "type": "string", "minLength": 1, "maxLength": 32 },
+    "side": { "enum": ["buy", "sell"] },
+    "epochMs": { "type": "integer", "minimum": 0, "maximum": 8640000000000000 },
+    "wireMagnitude": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 10000000
+    },
+    "equityTradeSize": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 1000000000000
+    },
+    "tradeSizeIdentityBound": {
+      "if": {
+        "required": ["provider", "assetClass"],
+        "properties": {
+          "provider": { "const": "DXFEED" },
+          "assetClass": { "const": "EQUITY" }
+        }
+      },
+      "then": {
+        "properties": { "size": { "$ref": "#/$defs/equityTradeSize" } }
+      },
+      "else": { "properties": { "size": { "$ref": "#/$defs/wireMagnitude" } } }
+    },
+    "nonNegativeMagnitude": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 10000000
+    },
+    "sizeAmount": {
+      "description": "A size or volume in the frame's base unit (shares, contracts, coins). Its bound depends on the frame's identity: a dxFeed EQUITY frame allows up to equityTradeSize (1,000,000,000,000), every other frame up to 10,000,000. This schema states the wider bound; the builders and the parser apply the identity's. Added 2026-09-30 after an NVDA closing cross of 12,281,274 shares was refused.",
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1000000000000
+    },
+    "barVolume": { "type": "number", "minimum": 0, "maximum": 1000000000000 },
+    "profileVolume": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1000000000000
+    },
+    "tradeId": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "reason": { "type": "string", "maxLength": 256 },
+
+    "binanceIdentity": {
+      "type": "object",
+      "required": ["provider", "marketKind"],
+      "properties": {
+        "provider": { "const": "BINANCE" },
+        "marketKind": { "enum": ["SPOT", "PERPETUAL"] },
+        "assetClass": false
+      }
+    },
+    "dxfeedIdentity": {
+      "type": "object",
+      "required": ["provider", "assetClass"],
+      "properties": {
+        "provider": { "const": "DXFEED" },
+        "assetClass": { "enum": ["FUTURE", "EQUITY"] },
+        "marketKind": false
+      }
+    },
+    "frameIdentity": {
+      "oneOf": [
+        { "$ref": "#/$defs/binanceIdentity" },
+        { "$ref": "#/$defs/dxfeedIdentity" }
+      ]
+    },
+
+    "tradeFrame": {
+      "allOf": [
+        { "$ref": "#/$defs/frameIdentity" },
+        { "$ref": "#/$defs/tradeSizeIdentityBound" }
+      ],
+      "type": "object",
+      "required": [
+        "type",
+        "symbol",
+        "ts_exchange",
+        "price",
+        "size",
+        "side",
+        "trade_id"
+      ],
+      "properties": {
+        "type": { "const": "trade" },
+        "symbol": { "$ref": "#/$defs/symbol" },
+        "ts_exchange": { "$ref": "#/$defs/epochMs" },
+        "price": { "$ref": "#/$defs/wireMagnitude" },
+        "size": { "$ref": "#/$defs/equityTradeSize" },
+        "side": { "$ref": "#/$defs/side" },
+        "trade_id": { "$ref": "#/$defs/tradeId" },
+        "auction": {
+          "const": true,
+          "description": "dxFeed equity auction/cross print; retained on the tape and in bars but excluded from large-trade visuals."
+        },
+        "provider": true,
+        "marketKind": true,
+        "assetClass": true
+      },
+      "dependentSchemas": {
+        "auction": { "properties": { "provider": { "const": "DXFEED" } } }
+      },
+      "additionalProperties": false
+    },
+
+    "markerFrame": {
+      "description": "Derived from a trade, with its own dedup id, and always broadcast after the trade it derives from. Unlike trade/bar it carries no lower-bound age check: a marker is a permanent historical record, so an arbitrarily old one still parses. baseline_log_median/baseline_log_mad were added in v2 (2026-08-29) and deprecated 2026-09-02 when the statistical detector was removed; no server emits them, parsers still accept them so stored captures and older clients keep working.",
+      "allOf": [
+        { "$ref": "#/$defs/frameIdentity" },
+        { "$ref": "#/$defs/tradeSizeIdentityBound" }
+      ],
+      "type": "object",
+      "required": [
+        "type",
+        "symbol",
+        "ts_exchange",
+        "price",
+        "size",
+        "side",
+        "trade_id"
+      ],
+      "properties": {
+        "type": { "const": "marker" },
+        "symbol": { "$ref": "#/$defs/symbol" },
+        "ts_exchange": { "$ref": "#/$defs/epochMs" },
+        "price": { "$ref": "#/$defs/wireMagnitude" },
+        "size": { "$ref": "#/$defs/equityTradeSize" },
+        "side": { "$ref": "#/$defs/side" },
+        "trade_id": { "$ref": "#/$defs/tradeId" },
+        "baseline_log_median": { "type": "number", "deprecated": true },
+        "baseline_log_mad": {
+          "type": "number",
+          "minimum": 0,
+          "deprecated": true
+        },
+        "provider": true,
+        "marketKind": true,
+        "assetClass": true
+      },
+      "additionalProperties": false
+    },
+
+    "barFrame": {
+      "description": "buy_volume is omitted when any included print lacked a safe side classification. sell_volume (optional, 2026-09-22) is the explicitly classified sell side; when it is absent a consumer reads the sell side as volume minus buy_volume, which is exact only where every print carries a side. Native dxFeed candles and Historical Mode's archive-study bar_flow may provide both sides while retaining any unsided remainder in total volume. reconstructed (optional, Binance only, 2026-08-28) marks a bar sourced from REST kline backfill rather than genuinely captured.",
+      "allOf": [{ "$ref": "#/$defs/frameIdentity" }],
+      "type": "object",
+      "required": [
+        "type",
+        "symbol",
+        "interval_ms",
+        "ts_open",
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume",
+        "trade_count",
+        "closed"
+      ],
+      "properties": {
+        "type": { "const": "bar" },
+        "symbol": { "$ref": "#/$defs/symbol" },
+        "interval_ms": { "type": "integer", "exclusiveMinimum": 0 },
+        "ts_open": { "$ref": "#/$defs/epochMs" },
+        "open": { "$ref": "#/$defs/wireMagnitude" },
+        "high": { "$ref": "#/$defs/wireMagnitude" },
+        "low": { "$ref": "#/$defs/wireMagnitude" },
+        "close": { "$ref": "#/$defs/wireMagnitude" },
+        "volume": { "$ref": "#/$defs/barVolume" },
+        "buy_volume": { "$ref": "#/$defs/barVolume" },
+        "sell_volume": { "$ref": "#/$defs/barVolume" },
+        "trade_count": { "type": "integer", "minimum": 0 },
+        "closed": { "type": "boolean" },
+        "reconstructed": { "type": "boolean" },
+        "provider": true,
+        "marketKind": true,
+        "assetClass": true
+      },
+      "additionalProperties": false
+    },
+
+    "barHistory": {
+      "type": "object",
+      "required": [
+        "availability",
+        "requestedStartTsOpen",
+        "coverage",
+        "interpretation"
+      ],
+      "properties": {
+        "availability": { "enum": ["AVAILABLE", "UNAVAILABLE"] },
+        "requestedStartTsOpen": { "$ref": "#/$defs/epochMs" },
+        "earliestObservedTsOpen": { "$ref": "#/$defs/epochMs" },
+        "coverage": {
+          "enum": ["START_COVERED", "START_NOT_COVERED", "NO_ROWS"]
+        },
+        "interpretation": { "const": "OBSERVED_NONEMPTY_BARS_ONLY" }
+      },
+      "additionalProperties": false
+    },
+
+    "snapshotFrame": {
+      "description": "Sent once per pair switch. Every nested item's identity must match the snapshot's own provider/pair tag, or the whole snapshot is rejected.",
+      "allOf": [{ "$ref": "#/$defs/frameIdentity" }],
+      "type": "object",
+      "required": ["type", "symbol", "bars", "trades", "markers"],
+      "properties": {
+        "type": { "const": "snapshot" },
+        "symbol": { "$ref": "#/$defs/symbol" },
+        "bars": {
+          "type": "array",
+          "maxItems": 10080,
+          "items": { "$ref": "#/$defs/barFrame" }
+        },
+        "trades": {
+          "type": "array",
+          "maxItems": 100,
+          "items": { "$ref": "#/$defs/tradeFrame" }
+        },
+        "markers": {
+          "description": "The newest retained markers, capped so the snapshot stays one bounded message; when the pair holds more, the whole retained set follows as marker_history frames.",
+          "type": "array",
+          "maxItems": 5000,
+          "items": { "$ref": "#/$defs/markerFrame" }
+        },
+        "bar_history": { "$ref": "#/$defs/barHistory" },
+        "vpin_readings": {
+          "type": "array",
+          "maxItems": 5000,
+          "items": { "$ref": "#/$defs/vpinReading" }
+        },
+        "vpin_status": {
+          "enum": ["DISABLED", "IDLE", "WARMING", "READY", "UNAVAILABLE"]
+        },
+        "aggressive_prints": {
+          "type": "array",
+          "maxItems": 20000,
+          "items": { "$ref": "#/$defs/tradeFrame" }
+        },
+        "aggressive_prints_floor": { "type": "number", "minimum": 0 },
+        "aggressive_prints_from": { "$ref": "#/$defs/epochMs" },
+        "provider": true,
+        "marketKind": true,
+        "assetClass": true
+      },
+      "additionalProperties": false
+    },
+
+    "healthFrame": {
+      "description": "RECOVERING and UNAVAILABLE always imply stale: true. dxFeed frames may also carry printsQuiet (2026-08-26), distinguishing a quiet market from a broken connection.",
+      "allOf": [{ "$ref": "#/$defs/frameIdentity" }],
+      "type": "object",
+      "required": ["type", "symbol", "recoveryState", "stale"],
+      "properties": {
+        "type": { "const": "health" },
+        "symbol": { "$ref": "#/$defs/symbol" },
+        "recoveryState": { "enum": ["READY", "RECOVERING", "UNAVAILABLE"] },
+        "stale": { "type": "boolean" },
+        "printsQuiet": { "type": "boolean" },
+        "recordingStale": {
+          "type": "boolean",
+          "description": "Binance only (2026-09-15): the collector's newest trade for this pair is over 120 s old, or the recording cannot be read."
+        },
+        "recordingLatestTs": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Binance only: exchange time in ms of the collector's newest trade for this pair; only ever present beside recordingStale."
+        },
+        "reason": { "$ref": "#/$defs/reason" },
+        "provider": true,
+        "marketKind": true,
+        "assetClass": true
+      },
+      "additionalProperties": false
+    },
+
+    "bookLevel": {
+      "type": "object",
+      "required": ["price", "size"],
+      "properties": {
+        "price": { "$ref": "#/$defs/wireMagnitude" },
+        "size": { "$ref": "#/$defs/sizeAmount" }
+      },
+      "additionalProperties": false
+    },
+
+    "bookFrame": {
+      "description": "Binance and dxFeed use the same bounded shape; a dxFeed READY book requires a complete source-specific indexed snapshot.",
+      "allOf": [{ "$ref": "#/$defs/frameIdentity" }],
+      "type": "object",
+      "required": ["type", "symbol", "status"],
+      "properties": {
+        "type": { "const": "book" },
+        "symbol": { "$ref": "#/$defs/symbol" },
+        "status": { "enum": ["READY", "UNAVAILABLE"] },
+        "reason": { "$ref": "#/$defs/reason" },
+        "bids": {
+          "type": "array",
+          "maxItems": 20,
+          "items": { "$ref": "#/$defs/bookLevel" }
+        },
+        "asks": {
+          "type": "array",
+          "maxItems": 20,
+          "items": { "$ref": "#/$defs/bookLevel" }
+        },
+        "lastUpdateId": { "type": "integer", "minimum": 0 },
+        "stale": { "type": "boolean" },
+        "provider": true,
+        "marketKind": true,
+        "assetClass": true
+      },
+      "additionalProperties": false
+    },
+
+    "selectionFrame": {
+      "description": "The server's confirmation of the active pair for this provider. The frame carries one pair because a frame describes one pair; it is not a statement that the server holds one selection globally -- selection is shared across connected clients, which is the server's own semantics, not this frame's.",
+      "allOf": [{ "$ref": "#/$defs/frameIdentity" }],
+      "type": "object",
+      "required": ["type", "symbol"],
+      "properties": {
+        "type": { "const": "selection" },
+        "symbol": { "$ref": "#/$defs/symbol" },
+        "provider": true,
+        "marketKind": true,
+        "assetClass": true
+      },
+      "additionalProperties": false
+    },
+
+    "profileBucket": {
+      "type": "object",
+      "required": [
+        "price",
+        "volume",
+        "buy_volume",
+        "sell_volume",
+        "single_print"
+      ],
+      "properties": {
+        "price": { "$ref": "#/$defs/wireMagnitude" },
+        "volume": { "$ref": "#/$defs/profileVolume" },
+        "buy_volume": { "$ref": "#/$defs/profileVolume" },
+        "sell_volume": { "$ref": "#/$defs/profileVolume" },
+        "single_print": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+
+    "profileFrame": {
+      "allOf": [
+        { "$ref": "#/$defs/frameIdentity" },
+        {
+          "if": {
+            "properties": { "delivery_scope": { "const": "HISTORICAL" } }
+          },
+          "then": {
+            "properties": {
+              "history_request_id": { "type": "integer", "minimum": 1 }
+            }
+          },
+          "else": { "properties": { "history_request_id": { "type": "null" } } }
+        }
+      ],
+      "type": "object",
+      "required": [
+        "type",
+        "symbol",
+        "mode",
+        "delivery_scope",
+        "history_request_id",
+        "period_start_ts",
+        "period_end_ts",
+        "row_width",
+        "buckets",
+        "poc_price",
+        "vah_price",
+        "val_price"
+      ],
+      "properties": {
+        "type": { "const": "profile" },
+        "symbol": { "$ref": "#/$defs/symbol" },
+        "mode": { "enum": ["continuous", "per_candle", "fixed_range"] },
+        "delivery_scope": { "enum": ["LIVE", "HISTORICAL", "FIXED_RANGE"] },
+        "history_request_id": {
+          "oneOf": [{ "type": "integer", "minimum": 1 }, { "type": "null" }]
+        },
+        "period_start_ts": { "$ref": "#/$defs/epochMs" },
+        "period_end_ts": {
+          "oneOf": [{ "$ref": "#/$defs/epochMs" }, { "type": "null" }]
+        },
+        "row_width": { "type": "number", "exclusiveMinimum": 0 },
+        "buckets": {
+          "type": "array",
+          "maxItems": 4000,
+          "items": { "$ref": "#/$defs/profileBucket" }
+        },
+        "poc_price": { "$ref": "#/$defs/wireMagnitude" },
+        "vah_price": { "$ref": "#/$defs/wireMagnitude" },
+        "val_price": { "$ref": "#/$defs/wireMagnitude" },
+        "provider": true,
+        "marketKind": true,
+        "assetClass": true
+      },
+      "additionalProperties": false
+    },
+
+    "vpinReading": {
+      "type": "object",
+      "required": [
+        "seal_ts",
+        "active",
+        "direction",
+        "strength",
+        "z_vpin",
+        "z_velocity",
+        "z_acceleration",
+        "activated_at_ts"
+      ],
+      "properties": {
+        "seal_ts": { "$ref": "#/$defs/epochMs" },
+        "active": { "type": "boolean" },
+        "direction": { "enum": ["buy", "sell", null] },
+        "strength": { "type": "number", "minimum": 0, "maximum": 1 },
+        "z_vpin": { "oneOf": [{ "type": "number" }, { "type": "null" }] },
+        "z_velocity": { "oneOf": [{ "type": "number" }, { "type": "null" }] },
+        "z_acceleration": {
+          "oneOf": [{ "type": "number" }, { "type": "null" }]
+        },
+        "activated_at_ts": {
+          "oneOf": [{ "$ref": "#/$defs/epochMs" }, { "type": "null" }]
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "vpinFrame": {
+      "allOf": [
+        { "$ref": "#/$defs/frameIdentity" },
+        { "$ref": "#/$defs/vpinReading" }
+      ],
+      "type": "object",
+      "required": ["type", "symbol"],
+      "properties": {
+        "type": { "const": "vpin" },
+        "symbol": { "$ref": "#/$defs/symbol" },
+        "seal_ts": true,
+        "active": true,
+        "direction": true,
+        "strength": true,
+        "z_vpin": true,
+        "z_velocity": true,
+        "z_acceleration": true,
+        "activated_at_ts": true,
+        "provider": true,
+        "marketKind": true,
+        "assetClass": true
+      },
+      "additionalProperties": false
+    },
+    "liquidityEntry": {
+      "description": "[offset, size]: the row `lo + offset` now holds `size` (0 = emptied).",
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "prefixItems": [
+        { "type": "integer", "minimum": 0 },
+        { "$ref": "#/$defs/sizeAmount" }
+      ],
+      "items": false
+    },
+    "liquidityColumn": {
+      "description": "One heatmap column: resting size per price row (price = row * row_width) inside the window lo..hi at ts. bid/ask list only the rows that differ from the previous column; a row that was inside the previous window and is outside this one is implicitly zero. The first column after a reset lists every non-zero row. Optional flow (2026-09-14): buy/sell list aggressive volume per row from the second ending at ts, plus prints from the preceding second that reached the runtime after its column was taken (the whole flow, never a delta; older prints are dropped and counted). The prints list contains complete size groups at or above prints_floor within that covered print window, at most 64; the floor rises when a count cap excludes a size group. On a deep column, volume is summed and print groups are selected again over its window at the highest floor seen. Prose: ws-frame-contract/v1/ws-frame-contract-v1.md (the liquidity section).",
+      "type": "object",
+      "required": ["ts", "lo", "hi", "bid", "ask"],
+      "properties": {
+        "ts": { "$ref": "#/$defs/epochMs" },
+        "lo": { "type": "integer", "minimum": 0 },
+        "hi": { "type": "integer", "minimum": 0 },
+        "bid": {
+          "type": "array",
+          "maxItems": 2048,
+          "items": { "$ref": "#/$defs/liquidityEntry" }
+        },
+        "ask": {
+          "type": "array",
+          "maxItems": 2048,
+          "items": { "$ref": "#/$defs/liquidityEntry" }
+        },
+        "buy": {
+          "type": "array",
+          "maxItems": 2048,
+          "items": { "$ref": "#/$defs/liquidityEntry" }
+        },
+        "sell": {
+          "type": "array",
+          "maxItems": 2048,
+          "items": { "$ref": "#/$defs/liquidityEntry" }
+        },
+        "prints": {
+          "type": "array",
+          "maxItems": 64,
+          "items": { "$ref": "#/$defs/liquidityPrint" }
+        },
+        "prints_floor": { "type": "number", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "liquidityPrint": {
+      "description": "One aggressive print a column kept: among the biggest of its second (of its window, on a deep column), at or above the column's prints_floor. Same ts, price, size, side and id as the live trade frame, so the browser dedupes it against prints it already holds.",
+      "type": "object",
+      "required": ["ts", "price", "size", "side", "id"],
+      "properties": {
+        "ts": { "$ref": "#/$defs/epochMs" },
+        "price": { "$ref": "#/$defs/nonNegativeMagnitude" },
+        "size": { "$ref": "#/$defs/sizeAmount" },
+        "side": { "enum": ["buy", "sell"] },
+        "id": { "type": ["string", "null"], "maxLength": 128 }
+      },
+      "additionalProperties": false
+    },
+    "liquidityLevel": {
+      "description": "A wall: a cluster of `span` adjacent rows from `row` upward whose resting size is large for this book (a multiple of the typical row, and above a notional floor). Tracked from start_ts until it fell under half its entry threshold (end_ts), when the ledger's traded vs cancelled growth decides ended_by: filled (price ate it), hit (price reached it and it left without that much trading), pulled (withdrawn before price got there) or moved (pulled and re-placed within seconds: the successor shares its chain). chain is the id of the first wall of that trace, 0 when the wall never moved. Active walls carry end_ts null and ended_by null.",
+      "type": "object",
+      "required": [
+        "side",
+        "row",
+        "span",
+        "start_ts",
+        "end_ts",
+        "size",
+        "peak",
+        "ended_by",
+        "ratio",
+        "chain",
+        "fill",
+        "eaten",
+        "absorbing"
+      ],
+      "properties": {
+        "side": { "enum": ["bid", "ask"] },
+        "row": { "type": "integer", "minimum": 0 },
+        "span": { "type": "integer", "minimum": 1 },
+        "start_ts": { "$ref": "#/$defs/epochMs" },
+        "end_ts": {
+          "oneOf": [{ "$ref": "#/$defs/epochMs" }, { "type": "null" }]
+        },
+        "size": { "$ref": "#/$defs/sizeAmount" },
+        "peak": { "$ref": "#/$defs/sizeAmount" },
+        "ended_by": {
+          "enum": ["filled", "partial", "hit", "pulled", "moved", null]
+        },
+        "ratio": { "$ref": "#/$defs/nonNegativeMagnitude" },
+        "chain": { "type": "integer", "minimum": 0 },
+        "fill": { "type": "number", "minimum": 0, "maximum": 1 },
+        "eaten": { "type": "number", "minimum": 0, "maximum": 1 },
+        "absorbing": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "liquidityAggressive": {
+      "description": "An aggressive-order cluster: same-side market volume that printed on one price level (`span` adjacent rows from `row`) within a short gap of the previous print. side buy = market buyers lifting asks, sell = market sellers hitting bids. volume is the cluster's aggressive volume so far in the frame's base unit, peak the most it printed within one column, floor the server's reporting floor when the cluster first qualified. end_ts is null while the cluster is still printing. Nothing is inferred from it: no absorption, no outcome.",
+      "type": "object",
+      "required": [
+        "side",
+        "row",
+        "span",
+        "start_ts",
+        "end_ts",
+        "volume",
+        "peak",
+        "floor"
+      ],
+      "properties": {
+        "side": { "enum": ["buy", "sell"] },
+        "row": { "type": "integer", "minimum": 0 },
+        "span": { "type": "integer", "minimum": 1 },
+        "start_ts": { "$ref": "#/$defs/epochMs" },
+        "end_ts": {
+          "oneOf": [{ "$ref": "#/$defs/epochMs" }, { "type": "null" }]
+        },
+        "volume": { "$ref": "#/$defs/sizeAmount" },
+        "peak": { "$ref": "#/$defs/sizeAmount" },
+        "floor": { "$ref": "#/$defs/sizeAmount" }
+      },
+      "additionalProperties": false
+    },
+    "liquidityBackfill": {
+      "description": "Present once a pair's history backfill has started; absent before then. status RUNNING means the recent-window replay is still in flight (live columns keep arriving meanwhile; only history behind them is still filling in) -- COMPLETE means the pass finished, successfully or with nothing to backfill (reason carries why, for example NO_DATABASE for an instrument with no local recording; null when it found and applied real history) -- FAILED means the pass itself errored (reason WORKER_ERROR) and this instrument is running on live data only. Absent from a frame is not the same as COMPLETE: it means backfill has not started sampling yet.",
+      "type": "object",
+      "required": ["status", "reason"],
+      "properties": {
+        "status": { "enum": ["RUNNING", "COMPLETE", "FAILED"] },
+        "reason": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "liquidityFrame": {
+      "description": "L2 Passive Liquidity heatmap for the active pair (Binance and dxFeed both): one column per column_ms of resting size per price row, delta-encoded against the previous column. reset starts a fresh history (the retained history is replayed in reset-first chunks on connect and pair switch; an empty reset clears the chart). seq counts columns ever sent for the pair: a frame with N columns covers seq-N .. seq-1, so a client can verify continuity.",
+      "allOf": [{ "$ref": "#/$defs/frameIdentity" }],
+      "type": "object",
+      "required": [
+        "type",
+        "symbol",
+        "ts",
+        "seq",
+        "reset",
+        "row_width",
+        "column_ms",
+        "columns"
+      ],
+      "properties": {
+        "type": { "const": "liquidity" },
+        "symbol": { "$ref": "#/$defs/symbol" },
+        "ts": { "$ref": "#/$defs/epochMs" },
+        "seq": { "type": "integer", "minimum": 0 },
+        "reset": { "type": "boolean" },
+        "row_width": { "$ref": "#/$defs/wireMagnitude" },
+        "column_ms": { "type": "integer", "minimum": 1 },
+        "columns": {
+          "type": "array",
+          "maxItems": 120,
+          "items": { "$ref": "#/$defs/liquidityColumn" }
+        },
+        "levels": {
+          "type": "array",
+          "maxItems": 400,
+          "items": { "$ref": "#/$defs/liquidityLevel" }
+        },
+        "aggressive": {
+          "type": "array",
+          "maxItems": 200,
+          "items": { "$ref": "#/$defs/liquidityAggressive" }
+        },
+        "backfill": { "$ref": "#/$defs/liquidityBackfill" },
+        "provider": true,
+        "marketKind": true,
+        "assetClass": true
+      },
+      "additionalProperties": false
+    },
+
+    "aggressiveHistoryFrame": {
+      "description": "The answer to a client aggressive_history request: the collector recorded prints for the instrument in [from_ts, to_ts) at least min_size big, as trade frames oldest first with the same ids the live path gives them. complete is false when the reply is not the whole window and reason says why: CAP_REACHED (10000 rows hit; return next_cursor unchanged in the next request), STORAGE_UNAVAILABLE (the collector database is missing or cannot be opened), READ_FAILED (the read errored), CONVERSION_INCOMPLETE (recorded rows the server could not turn into trade frames; do not treat the window as covered), OVERLOADED (the server refused or timed out the request under load; retry later with backoff). reason is null when complete is true. next_cursor is opaque and only present for CAP_REACHED. retry_after_ms is a server-directed delay only for an OVERLOADED rate-limit response.",
+      "allOf": [{ "$ref": "#/$defs/frameIdentity" }],
+      "type": "object",
+      "required": [
+        "type",
+        "symbol",
+        "request_id",
+        "from_ts",
+        "to_ts",
+        "min_size",
+        "complete",
+        "reason",
+        "next_cursor",
+        "retry_after_ms",
+        "trades"
+      ],
+      "allOf": [
+        {
+          "if": { "properties": { "complete": { "const": true } } },
+          "then": {
+            "properties": {
+              "reason": { "type": "null" },
+              "next_cursor": { "type": "null" },
+              "retry_after_ms": { "type": "null" }
+            }
+          },
+          "else": { "properties": { "reason": { "type": "string" } } }
+        },
+        {
+          "if": { "properties": { "reason": { "const": "CAP_REACHED" } } },
+          "then": {
+            "properties": {
+              "next_cursor": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512,
+                "pattern": "^[A-Za-z0-9_-]+$"
+              }
+            }
+          },
+          "else": { "properties": { "next_cursor": { "type": "null" } } }
+        },
+        {
+          "if": { "properties": { "reason": { "const": "OVERLOADED" } } },
+          "then": {
+            "properties": {
+              "retry_after_ms": {
+                "type": ["integer", "null"],
+                "minimum": 1,
+                "maximum": 86400000
+              }
+            }
+          },
+          "else": { "properties": { "retry_after_ms": { "type": "null" } } }
+        }
+      ],
+      "properties": {
+        "type": { "const": "aggressive_history" },
+        "symbol": { "$ref": "#/$defs/symbol" },
+        "request_id": { "type": "integer", "minimum": 0 },
+        "from_ts": { "$ref": "#/$defs/epochMs" },
+        "to_ts": { "$ref": "#/$defs/epochMs" },
+        "min_size": { "type": "number", "minimum": 0 },
+        "complete": { "type": "boolean" },
+        "reason": {
+          "enum": [
+            "CAP_REACHED",
+            "STORAGE_UNAVAILABLE",
+            "READ_FAILED",
+            "CONVERSION_INCOMPLETE",
+            "OVERLOADED",
+            null
+          ]
+        },
+        "next_cursor": { "type": ["string", "null"] },
+        "retry_after_ms": { "type": ["integer", "null"] },
+        "trades": {
+          "type": "array",
+          "maxItems": 10000,
+          "items": { "$ref": "#/$defs/tradeFrame" }
+        },
+        "provider": true,
+        "marketKind": true,
+        "assetClass": true
+      },
+      "additionalProperties": false
+    },
+    "deltaProfileRow": {
+      "description": "One price row of a delta_profile piece: [price, buy, sell]. price is the bottom of the row on the absolute grid (an integer multiple of row_width); buy and sell are the volume that printed in the row against resting asks and resting bids over the piece.",
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "prefixItems": [
+        { "type": "number", "exclusiveMinimum": 0 },
+        { "$ref": "#/$defs/profileVolume" },
+        { "$ref": "#/$defs/profileVolume" }
+      ],
+      "items": false
+    },
+    "deltaProfileFrame": {
+      "description": "One piece of the answer to a client delta_profile request: the traded volume by aggressor side per price row over [from_ts, to_ts), a sub-window of the request cut on two-hour boundaries, sent newest piece first. rows are ascending by price. pending is how many pieces the server still intends to send for the request after this one; 0 on the last. complete is false when the piece could not be read and reason says why: ROWS_CAPPED (more than 8192 rows at this row_width; ask with a wider row), STORAGE_UNAVAILABLE (the recording is missing or cannot be opened), READ_FAILED (the read errored), OVERLOADED (the server refused the request under load, or the recording did not answer in time; retry later with backoff, after retry_after_ms when supplied), BAD_REQUEST (the request was malformed; the piece echoes its request_id, from_ts, to_ts and row_width, pending is 0, and a request whose fields cannot be echoed gets no answer). An incomplete piece carries no rows and ends the request. reason is null when complete is true.",
+      "allOf": [{ "$ref": "#/$defs/frameIdentity" }],
+      "type": "object",
+      "required": ["type", "symbol", "request_id", "from_ts", "to_ts", "row_width", "complete", "reason", "retry_after_ms", "pending", "rows"],
+      "allOf": [
+        {
+          "if": { "properties": { "complete": { "const": true } } },
+          "then": { "properties": { "reason": { "type": "null" }, "retry_after_ms": { "type": "null" } } },
+          "else": { "properties": { "reason": { "type": "string" }, "rows": { "maxItems": 0 } } }
+        },
+        {
+          "if": { "properties": { "reason": { "const": "OVERLOADED" } } },
+          "then": { "properties": { "retry_after_ms": { "type": ["integer", "null"], "minimum": 1, "maximum": 86400000 } } },
+          "else": { "properties": { "retry_after_ms": { "type": "null" } } }
+        }
+      ],
+      "properties": {
+        "type": { "const": "delta_profile" },
+        "symbol": { "$ref": "#/$defs/symbol" },
+        "request_id": { "type": "integer", "minimum": 0 },
+        "from_ts": { "$ref": "#/$defs/epochMs" },
+        "to_ts": { "$ref": "#/$defs/epochMs" },
+        "row_width": { "type": "number", "exclusiveMinimum": 0 },
+        "complete": { "type": "boolean" },
+        "reason": { "enum": ["ROWS_CAPPED", "STORAGE_UNAVAILABLE", "READ_FAILED", "OVERLOADED", "BAD_REQUEST", null] },
+        "retry_after_ms": { "type": ["integer", "null"] },
+        "pending": { "type": "integer", "minimum": 0 },
+        "rows": { "type": "array", "maxItems": 8192, "items": { "$ref": "#/$defs/deltaProfileRow" } },
+        "provider": true, "marketKind": true, "assetClass": true
+      },
+      "additionalProperties": false
+    },
+    "bandHistoryColumn": {
+      "description": "One column of a band_history reply: the book and the flow at every row of the band between the previous column and ts. bid/ask are the resting size per row (row_lo first), buy/sell the aggressive volume that printed on that row since the previous column. All four arrays are exactly row_hi - row_lo + 1 long.",
+      "type": "object",
+      "required": ["ts", "bid", "ask", "buy", "sell"],
+      "properties": {
+        "ts": { "$ref": "#/$defs/epochMs" },
+        "bid": {
+          "type": "array",
+          "maxItems": 256,
+          "items": { "$ref": "#/$defs/sizeAmount" }
+        },
+        "ask": {
+          "type": "array",
+          "maxItems": 256,
+          "items": { "$ref": "#/$defs/sizeAmount" }
+        },
+        "buy": {
+          "type": "array",
+          "maxItems": 256,
+          "items": { "$ref": "#/$defs/sizeAmount" }
+        },
+        "sell": {
+          "type": "array",
+          "maxItems": 256,
+          "items": { "$ref": "#/$defs/sizeAmount" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "bandHistoryFrame": {
+      "description": "The answer to a client band_history request: the book and the traded volume of the price rows between price_lo and price_hi over [from_ts, to_ts), replayed from the host's recording, one column per column_ms. row_width/row_lo/row_hi are the rows at the chart's own grid (null when reason is GEOMETRY_UNAVAILABLE, BAND_TOO_WIDE or BAD_REQUEST). A time with no column is a time the recording does not cover; the client treats it as zero. complete is false when the reply carries nothing and reason says why: STORAGE_UNAVAILABLE (no host reader, or the host could not answer), READ_FAILED (the read errored or overflowed the wire), OVERLOADED (refused under load; retry_after_ms may name the wait), GEOMETRY_UNAVAILABLE (the instrument has no live book grid yet), BAND_TOO_WIDE (the band spans more rows than the cap at the chart's grid), BAD_REQUEST (the request parsed as numbers but broke a bound: a window in the future or over two hours, a column not whole seconds between one and sixty). reason is null when complete is true.",
+      "allOf": [{ "$ref": "#/$defs/frameIdentity" }],
+      "type": "object",
+      "required": [
+        "type",
+        "symbol",
+        "request_id",
+        "from_ts",
+        "to_ts",
+        "price_lo",
+        "price_hi",
+        "column_ms",
+        "row_width",
+        "row_lo",
+        "row_hi",
+        "complete",
+        "reason",
+        "retry_after_ms",
+        "columns"
+      ],
+      "properties": {
+        "type": { "const": "band_history" },
+        "symbol": { "$ref": "#/$defs/symbol" },
+        "request_id": { "type": "integer", "minimum": 0 },
+        "from_ts": { "$ref": "#/$defs/epochMs" },
+        "to_ts": { "$ref": "#/$defs/epochMs" },
+        "price_lo": { "type": "number", "exclusiveMinimum": 0 },
+        "price_hi": { "type": "number", "exclusiveMinimum": 0 },
+        "column_ms": { "type": "integer", "minimum": 1 },
+        "row_width": { "type": ["number", "null"] },
+        "row_lo": { "type": ["integer", "null"] },
+        "row_hi": { "type": ["integer", "null"] },
+        "complete": { "type": "boolean" },
+        "reason": {
+          "enum": [
+            "STORAGE_UNAVAILABLE",
+            "READ_FAILED",
+            "READ_TIMEOUT",
+            "OVERLOADED",
+            "GEOMETRY_UNAVAILABLE",
+            "BAND_TOO_WIDE",
+            "BAD_REQUEST",
+            null
+          ]
+        },
+        "retry_after_ms": { "type": ["integer", "null"] },
+        "columns": {
+          "type": "array",
+          "maxItems": 7200,
+          "items": { "$ref": "#/$defs/bandHistoryColumn" }
+        },
+        "provider": true,
+        "marketKind": true,
+        "assetClass": true
+      },
+      "additionalProperties": false
+    },
+    "markerHistoryRow": {
+      "description": "One retained large-trade marker in positional form: [ts_exchange, price, size, side, trade_id], side abbreviated to b (buy) or s (sell). Expands to a markerFrame carrying the enclosing frame's identity.",
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": false,
+      "prefixItems": [
+        { "$ref": "#/$defs/epochMs" },
+        { "$ref": "#/$defs/wireMagnitude" },
+        { "$ref": "#/$defs/equityTradeSize" },
+        { "enum": ["b", "s"] },
+        { "$ref": "#/$defs/tradeId" }
+      ]
+    },
+    "markerHistoryFrame": {
+      "description": "A page of the server's retained large-trade markers for the pair, oldest first, in positional rows a third the size of marker frames. reset true: replace everything held for the pair before applying the rows (the first page after the snapshot on connect or a pair switch). reset false: append (history warm-up filling in behind the snapshot). seq increases across the pages a client receives for the pair and is informational: rows are idempotent by trade_id, so a client applies every page it gets and does not require seq continuity. Bulk history: held back for a slow client while control and latest-state frames still flow.",
+      "x-capability": "marker_history",
+      "allOf": [{ "$ref": "#/$defs/frameIdentity" }],
+      "if": {
+        "not": {
+          "required": ["provider", "assetClass"],
+          "properties": {
+            "provider": { "const": "DXFEED" },
+            "assetClass": { "const": "EQUITY" }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "rows": {
+            "items": {
+              "prefixItems": [true, true, { "$ref": "#/$defs/wireMagnitude" }]
+            }
+          }
+        }
+      },
+      "type": "object",
+      "required": ["type", "symbol", "reset", "seq", "rows"],
+      "properties": {
+        "type": { "const": "marker_history" },
+        "symbol": { "$ref": "#/$defs/symbol" },
+        "reset": { "type": "boolean" },
+        "seq": { "type": "integer", "minimum": 0 },
+        "rows": {
+          "type": "array",
+          "maxItems": 5000,
+          "items": { "$ref": "#/$defs/markerHistoryRow" }
+        },
+        "provider": true,
+        "marketKind": true,
+        "assetClass": true
+      },
+      "additionalProperties": false
+    },
+
+    "l2Segment": {
+      "description": "The book segment a frame's state belongs to. id is <marketKind or assetClass>:<symbol>:<start_ts>:<state>, where start_ts is the engine's own start of the segment (the first full book for LIVE, the last trusted exchange instant for GAP), so it is the same on every run over the same data. state LIVE: the book is continuous and trusted; GAP: the feed broke, and state on either side of the break must not be joined. null only before the engine's first full book.",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["id", "state"],
+          "properties": {
+            "id": { "type": "string", "minLength": 1, "maxLength": 160 },
+            "state": { "enum": ["LIVE", "GAP"] }
+          },
+          "additionalProperties": false
+        },
+        { "type": "null" }
+      ]
+    },
+    "l2ViewFrame": {
+      "x-capability": "l2_view",
+      "description": "Opt-in (capability l2_view). Columns of heatmap zoom lane k (1..6): the same column encoding as liquidity, over a wider window at coarser rows, one column every 2^k seconds on the recent tier and a coarser deep tier. Lane 0 stays on the liquidity frame. seq counts columns ever sent for (lane, tier), exactly as liquidity: a frame with N columns covers seq-N+1 .. seq. reset starts that (lane, tier) chain afresh. Lane columns carry no prints.",
+      "allOf": [{ "$ref": "#/$defs/frameIdentity" }],
+      "type": "object",
+      "required": ["type", "symbol", "lane", "tier", "ts", "seq", "reset", "row_width", "column_ms", "columns", "segment"],
+      "properties": {
+        "type": { "const": "l2_view" },
+        "symbol": { "$ref": "#/$defs/symbol" },
+        "lane": { "type": "integer", "minimum": 1, "maximum": 6 },
+        "tier": { "enum": ["recent", "deep"] },
+        "ts": { "$ref": "#/$defs/epochMs" },
+        "seq": { "type": "integer", "minimum": 0 },
+        "reset": { "type": "boolean" },
+        "row_width": { "$ref": "#/$defs/wireMagnitude" },
+        "column_ms": { "type": "integer", "minimum": 1 },
+        "columns": {
+          "type": "array",
+          "maxItems": 120,
+          "items": {
+            "allOf": [{ "$ref": "#/$defs/liquidityColumn" }],
+            "not": { "anyOf": [{ "required": ["prints"] }, { "required": ["prints_floor"] }] }
+          }
+        },
+        "segment": { "$ref": "#/$defs/l2Segment" },
+        "provider": true, "marketKind": true, "assetClass": true
+      },
+      "additionalProperties": false
+    },
+    "l2WallDetail": {
+      "description": "What the engine saw of one wall (whale detail). life_ms is null while the wall is active (the client derives it from start_ts and the frame ts) and exact once it ended. cross_side and cross_side_share of an active wall are refreshed at most every 10 s; every other field is current as of the frame. An ended wall's detail is final.",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["life_ms", "first_shrink_ts", "first_shrink_exact", "reached_at_first_shrink", "traded", "absorbed", "swept", "hidden", "cleared", "fill_ratio", "cross_side", "cross_side_share", "end_distance_rows", "end_distance_pct", "cleared_by_trades", "continuity", "repeats", "repeats_complete", "evidence_gap"],
+          "properties": {
+            "life_ms": { "oneOf": [{ "type": "integer", "minimum": 0 }, { "type": "null" }] },
+            "first_shrink_ts": { "oneOf": [{ "$ref": "#/$defs/epochMs" }, { "type": "null" }] },
+            "first_shrink_exact": { "type": "boolean" },
+            "reached_at_first_shrink": { "type": ["boolean", "null"] },
+            "traded": { "$ref": "#/$defs/sizeAmount" },
+            "absorbed": { "$ref": "#/$defs/sizeAmount" },
+            "swept": { "$ref": "#/$defs/sizeAmount" },
+            "hidden": { "$ref": "#/$defs/sizeAmount" },
+            "cleared": { "$ref": "#/$defs/sizeAmount" },
+            "fill_ratio": { "type": "number", "minimum": 0, "maximum": 1 },
+            "cross_side": { "$ref": "#/$defs/sizeAmount" },
+            "cross_side_share": { "$ref": "#/$defs/nonNegativeMagnitude" },
+            "end_distance_rows": { "oneOf": [{ "$ref": "#/$defs/nonNegativeMagnitude" }, { "type": "null" }] },
+            "end_distance_pct": { "oneOf": [{ "$ref": "#/$defs/nonNegativeMagnitude" }, { "type": "null" }] },
+            "cleared_by_trades": { "type": "boolean" },
+            "continuity": {
+              "oneOf": [
+                { "type": "object", "required": ["gap_ms"], "properties": { "gap_ms": { "type": "integer", "minimum": 0 } }, "additionalProperties": false },
+                { "type": "null" }
+              ]
+            },
+            "repeats": { "type": "integer", "minimum": 1 },
+            "repeats_complete": { "type": "boolean" },
+            "evidence_gap": { "type": "boolean" }
+          },
+          "additionalProperties": false
+        },
+        { "type": "null" }
+      ]
+    },
+    "l2Wall": {
+      "description": "A wall with its stable id: every liquidityLevel field plus id and detail, and lane when the client declared l2_walls_lanes.",
+      "type": "object",
+      "required": ["id", "side", "row", "span", "start_ts", "end_ts", "size", "peak", "ended_by", "ratio", "chain", "fill", "eaten", "absorbing", "detail"],
+      "properties": {
+        "id": { "type": "integer", "minimum": 1 },
+        "lane": { "type": "integer", "minimum": 0, "maximum": 6, "description": "The heatmap lane the wall rows belong to: 0 is the fine lane, each wider lane doubles the row width." },
+        "side": { "$ref": "#/$defs/liquidityLevel/properties/side" },
+        "row": { "$ref": "#/$defs/liquidityLevel/properties/row" },
+        "span": { "$ref": "#/$defs/liquidityLevel/properties/span" },
+        "start_ts": { "$ref": "#/$defs/liquidityLevel/properties/start_ts" },
+        "end_ts": { "$ref": "#/$defs/liquidityLevel/properties/end_ts" },
+        "size": { "$ref": "#/$defs/liquidityLevel/properties/size" },
+        "peak": { "$ref": "#/$defs/liquidityLevel/properties/peak" },
+        "ended_by": { "$ref": "#/$defs/liquidityLevel/properties/ended_by" },
+        "ratio": { "$ref": "#/$defs/liquidityLevel/properties/ratio" },
+        "chain": { "$ref": "#/$defs/liquidityLevel/properties/chain" },
+        "fill": { "$ref": "#/$defs/liquidityLevel/properties/fill" },
+        "eaten": { "$ref": "#/$defs/liquidityLevel/properties/eaten" },
+        "absorbing": { "$ref": "#/$defs/liquidityLevel/properties/absorbing" },
+        "detail": { "$ref": "#/$defs/l2WallDetail" }
+      },
+      "additionalProperties": false
+    },
+    "l2WallsFrame": {
+      "x-capability": "l2_walls",
+      "x-capability-variant": "l2_walls_lanes",
+      "description": "Opt-in (capability l2_walls). Without l2_walls_lanes: lane 0's walls only, no lane field, at most 400 walls and 400 removed ids, exactly as before the wider lanes. With l2_walls_lanes as well: every lane's walls, each with its lane, up to 1,000 of each, on a seq chain of its own. The engine's walls with stable ids. reset true: the whole set, replacing what the client holds (removed is empty). reset false: the walls that changed since the previous frame plus the ids that left the set; at least one of the two is non-empty. seq increases by one per frame; a client that sees seq other than its last + 1 on an increment asks l2_resync for this channel.",
+      "allOf": [{ "$ref": "#/$defs/frameIdentity" }],
+      "type": "object",
+      "required": ["type", "symbol", "ts", "seq", "reset", "row_width", "walls", "removed", "segment"],
+      "properties": {
+        "type": { "const": "l2_walls" },
+        "symbol": { "$ref": "#/$defs/symbol" },
+        "ts": { "$ref": "#/$defs/epochMs" },
+        "seq": { "type": "integer", "minimum": 0 },
+        "reset": { "type": "boolean" },
+        "row_width": { "$ref": "#/$defs/wireMagnitude" },
+        "walls": { "type": "array", "maxItems": 1000, "items": { "$ref": "#/$defs/l2Wall" } },
+        "removed": { "type": "array", "maxItems": 1000, "items": { "type": "integer", "minimum": 1 } },
+        "segment": { "$ref": "#/$defs/l2Segment" },
+        "provider": true, "marketKind": true, "assetClass": true
+      },
+      "additionalProperties": false
+    },
+    "l2Event": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["event", "ts", "wall", "side", "row", "span", "size"],
+          "properties": {
+            "event": { "const": "wall_born" }, "ts": { "$ref": "#/$defs/epochMs" }, "wall": { "type": "integer", "minimum": 1 },
+            "side": { "enum": ["bid", "ask"] }, "row": { "type": "integer", "minimum": 0 }, "span": { "type": "integer", "minimum": 1 },
+            "size": { "$ref": "#/$defs/sizeAmount" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["event", "ts", "wall", "exact", "reached"],
+          "properties": {
+            "event": { "const": "wall_shrink" }, "ts": { "$ref": "#/$defs/epochMs" }, "wall": { "type": "integer", "minimum": 1 },
+            "exact": { "type": "boolean" }, "reached": { "type": ["boolean", "null"] }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["event", "ts", "wall", "mode", "price", "size"],
+          "properties": {
+            "event": { "const": "wall_trade" }, "ts": { "$ref": "#/$defs/epochMs" }, "wall": { "type": "integer", "minimum": 1 },
+            "mode": { "enum": ["absorbed", "swept"] }, "price": { "$ref": "#/$defs/wireMagnitude" }, "size": { "$ref": "#/$defs/sizeAmount" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["event", "ts", "wall", "volume"],
+          "properties": {
+            "event": { "const": "wall_hidden" }, "ts": { "$ref": "#/$defs/epochMs" }, "wall": { "type": "integer", "minimum": 1 },
+            "volume": { "$ref": "#/$defs/sizeAmount" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["event", "ts", "wall", "ended_by", "distance_rows"],
+          "properties": {
+            "event": { "const": "wall_end" }, "ts": { "$ref": "#/$defs/epochMs" }, "wall": { "type": "integer", "minimum": 1 },
+            "ended_by": { "enum": ["filled", "partial", "hit", "pulled", "moved"] },
+            "distance_rows": { "oneOf": [{ "$ref": "#/$defs/nonNegativeMagnitude" }, { "type": "null" }] }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["event", "ts", "side", "aggressor", "mode", "price", "size", "late"],
+          "properties": {
+            "event": { "const": "trade" }, "ts": { "$ref": "#/$defs/epochMs" }, "side": { "enum": ["bid", "ask"] },
+            "aggressor": { "enum": ["buy", "sell"] }, "mode": { "enum": ["absorbed", "swept"] },
+            "price": { "$ref": "#/$defs/wireMagnitude" }, "size": { "$ref": "#/$defs/sizeAmount" }, "late": { "type": "boolean" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["event", "ts", "side", "price", "volume"],
+          "properties": {
+            "event": { "const": "hidden" }, "ts": { "$ref": "#/$defs/epochMs" }, "side": { "enum": ["bid", "ask"] },
+            "price": { "$ref": "#/$defs/wireMagnitude" }, "volume": { "$ref": "#/$defs/sizeAmount" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["event", "ts", "segment", "state", "cause"],
+          "properties": {
+            "event": { "const": "segment" }, "ts": { "$ref": "#/$defs/epochMs" },
+            "segment": { "type": "string", "minLength": 1, "maxLength": 160 }, "state": { "enum": ["LIVE", "GAP"] },
+            "cause": { "oneOf": [{ "type": "string", "maxLength": 160 }, { "type": "null" }] }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "l2EventsFrame": {
+      "x-capability": "l2_events",
+      "description": "Opt-in (capability l2_events). The engine's events for the active pair: the lifecycle of tracked walls (born, first shrink, traded into, hidden fill, end with verdict), trades and hidden fills within the heatmap's reference band of the mid, and every segment change. In time order within a frame, each at or before the frame ts. seq counts events ever sent for the pair: an increment with N events follows seq - N. missed counts events the per-frame cap dropped (segment events are never dropped; wall lifecycle outranks near-price trades). reset true: the server's recent ring (at most 500, time-ordered), replacing what the client holds.",
+      "allOf": [{ "$ref": "#/$defs/frameIdentity" }],
+      "type": "object",
+      "required": ["type", "symbol", "ts", "seq", "reset", "missed", "events"],
+      "properties": {
+        "type": { "const": "l2_events" },
+        "symbol": { "$ref": "#/$defs/symbol" },
+        "ts": { "$ref": "#/$defs/epochMs" },
+        "seq": { "type": "integer", "minimum": 0 },
+        "reset": { "type": "boolean" },
+        "missed": { "type": "integer", "minimum": 0 },
+        "events": { "type": "array", "maxItems": 500, "items": { "$ref": "#/$defs/l2Event" } },
+        "provider": true, "marketKind": true, "assetClass": true
+      },
+      "additionalProperties": false
+    },
+    "l2LadderLevel": {
+      "type": "array",
+      "prefixItems": [{ "$ref": "#/$defs/wireMagnitude" }, { "allOf": [{ "$ref": "#/$defs/sizeAmount" }], "exclusiveMinimum": 0 }],
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "l2LadderFrame": {
+      "x-capability": "l2_ladder",
+      "description": "Opt-in (capability l2_ladder). The exact order book to depth levels a side (sizes exact, not rounded), bids best first (descending), asks best first (ascending), best bid below best ask. Latest state: each frame replaces the previous one; there is no seq chain.",
+      "allOf": [{ "$ref": "#/$defs/frameIdentity" }],
+      "type": "object",
+      "required": ["type", "symbol", "ts", "depth", "bids", "asks", "segment"],
+      "properties": {
+        "type": { "const": "l2_ladder" },
+        "symbol": { "$ref": "#/$defs/symbol" },
+        "ts": { "$ref": "#/$defs/epochMs" },
+        "depth": { "type": "integer", "minimum": 1, "maximum": 50 },
+        "bids": { "type": "array", "maxItems": 50, "items": { "$ref": "#/$defs/l2LadderLevel" } },
+        "asks": { "type": "array", "maxItems": 50, "items": { "$ref": "#/$defs/l2LadderLevel" } },
+        "segment": { "$ref": "#/$defs/l2Segment" },
+        "provider": true, "marketKind": true, "assetClass": true
+      },
+      "additionalProperties": false
+    },
+
+    "icebergOrder": {
+      "description": "One iceberg at one price. kind native: a CME order the exchange refilled (certain); kind probable: a Binance price level that kept taking more than it showed (strong, probable, or weak once its display outgrew the learned ratio). display is the largest visible size, tranches = refills + 1, executed is what went through. markedAt is the column where the marker sits (the first refill, or the moment the level passed the learned cuts). status active means the order or episode is still open; the rest are final.",
+      "type": "object",
+      "required": ["id", "kind", "confidence", "side", "price", "display", "tranches", "executed", "startedAt", "markedAt", "updatedAt", "status", "origin"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 96 },
+        "kind": { "enum": ["native", "probable"] },
+        "confidence": { "enum": ["certain", "strong", "probable", "weak"] },
+        "side": { "enum": ["bid", "ask"] },
+        "price": { "$ref": "#/$defs/wireMagnitude" },
+        "display": { "$ref": "#/$defs/sizeAmount" },
+        "tranches": { "type": "integer", "minimum": 1 },
+        "executed": { "$ref": "#/$defs/sizeAmount" },
+        "startedAt": { "$ref": "#/$defs/epochMs" },
+        "markedAt": { "$ref": "#/$defs/epochMs" },
+        "updatedAt": { "$ref": "#/$defs/epochMs" },
+        "status": { "enum": ["active", "filled", "pulled", "replaced", "interrupted", "ended"] },
+        "origin": { "description": "Which machine saw it: runtime for this runtime's own, host for one the host's builder saw over hours this runtime did not watch.", "enum": ["runtime", "host"] }
+      },
+      "additionalProperties": false
+    },
+
+    "icebergOrdersFrame": {
+      "description": "The Iceberg Detector's output for the pair: reset true replaces everything held (the first page on join or a pair switch, further pages append with reset false), reset false carries the icebergs that changed. Icebergs are idempotent by id, in mark order within a frame; seq rises per frame and is informational. Sent only to a client that declared iceberg_orders. Every frame carries watched, the spans over which the runtime vouches for its history. Incremental: dropped first for a slow client, who recovers on the next reset.",
+      "x-capability": "iceberg_orders",
+      "allOf": [{ "$ref": "#/$defs/frameIdentity" }],
+      "type": "object",
+      "required": ["type", "symbol", "ts", "seq", "reset", "icebergs", "watched", "liveSince"],
+      "properties": {
+        "type": { "const": "iceberg_orders" },
+        "symbol": { "$ref": "#/$defs/symbol" },
+        "ts": { "$ref": "#/$defs/epochMs" },
+        "seq": { "type": "integer", "minimum": 0 },
+        "reset": { "type": "boolean" },
+        "icebergs": { "type": "array", "maxItems": 500, "items": { "$ref": "#/$defs/icebergOrder" } },
+        "watched": { "description": "The spans of time, as [from, to] epoch-ms pairs ascending and disjoint, that this runtime watched itself or that a host history fill covered: inside them, no iceberg means none happened; outside them, nothing is known. At most 64, the oldest dropped first.", "type": "array", "maxItems": 64, "items": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "$ref": "#/$defs/epochMs" } } },
+        "liveSince": { "description": "Where the runtime's live window begins: the frame's time less the heatmap's live horizon (L2_HEATMAP_DEEP_S, or L2_HEATMAP_HISTORY_S when the deep tier is off; four hours by default). The chart's History Off shows the runtime's own icebergs marked from here on, the window absorption draws with history off.", "$ref": "#/$defs/epochMs" },
+        "provider": true, "marketKind": true, "assetClass": true
+      },
+      "additionalProperties": false
+    },
+
+    "exhaustionReadingValue": { "oneOf": [{ "type": "null" }, { "type": "number", "minimum": -1000000, "maximum": 1000000 }] },
+    "exhaustionRawValue": { "oneOf": [{ "type": "null" }, { "type": "number", "minimum": -1000000000, "maximum": 1000000000 }] },
+    "exhaustionRaw": {
+      "description": "The sums behind the six readings, volumes in the instrument's own units (base asset, contracts or shares), prices in price units, big and legBig counts of big prints, so a client can show what the ratios came from: own and other are the pushing and the other side's traded volume over the two-candle window, legOwn the leg's average pushing volume per two candles; moved the price gained along the push over the window and legMoved the leg's average per two candles; big the pushing side's big prints over the window and legBig the leg's average per two candles; extremeOwn and extremeOther the two sides' volume over the two candles at the extreme (null until a candle has closed at it); bookNow and bookAt the size of the half-ATR band that decides the book reading (the one furthest under its own line: 0.9 for the band at the extreme, 0.75 for the others), now and at the extreme, and bookBand which band that is (0 the band at the extreme, 1 the biggest band beyond it, 2 the band behind it, on the other side of the book; all null before the book can be read). Each null when it cannot be read, else a finite number within a billion either side of zero, three decimals.",
+      "type": "object",
+      "required": ["own", "other", "legOwn", "moved", "legMoved", "big", "legBig", "extremeOwn", "extremeOther", "bookNow", "bookAt", "bookBand"],
+      "properties": { "own": { "$ref": "#/$defs/exhaustionRawValue" }, "other": { "$ref": "#/$defs/exhaustionRawValue" }, "legOwn": { "$ref": "#/$defs/exhaustionRawValue" }, "moved": { "$ref": "#/$defs/exhaustionRawValue" }, "legMoved": { "$ref": "#/$defs/exhaustionRawValue" }, "big": { "$ref": "#/$defs/exhaustionRawValue" }, "legBig": { "$ref": "#/$defs/exhaustionRawValue" }, "extremeOwn": { "$ref": "#/$defs/exhaustionRawValue" }, "extremeOther": { "$ref": "#/$defs/exhaustionRawValue" }, "bookNow": { "$ref": "#/$defs/exhaustionRawValue" }, "bookAt": { "$ref": "#/$defs/exhaustionRawValue" }, "bookBand": { "oneOf": [{ "type": "null" }, { "enum": [0, 1, 2] }] } },
+      "additionalProperties": false
+    },
+    "exhaustionShade": {
+      "description": "One exhaustion shade: a zone of candle closes in the last fifth of a leg (caught by a three-ATR zigzag on the engine's own mid-price candles; the chart filters by the leg's size and straightness) where the push is fading. candleMs is the chart candle the engine ran on. side buyers: a rise ending (sellers: a fall). score counts the readings that held at the close that first reached the shade's highest score, 0 to 6: rate (the pushing side's volume over the last two candles under half the leg's per-candle rate), progress (price gained per unit of pushing volume under half the leg's), delta (the last two candles' delta against the push), divergence (that delta weaker than at the candle that set the extreme), prints (the pushing side's big prints gone or under half the leg's rate), book (a half-ATR band beyond or behind the extreme pulled). A shade needs a score of three; big prints at or above the leg's rate veto it. intensity bands the score: 1 for 3, 2 for 4 to 5, 3 for 6. startTs is the open of the first shaded candle, endTs the close of the last; the leg runs from legStartTs/legStartPrice to extremeTs/extremePrice, the extreme as it stood at the first shaded close; atr is the leg's ATR(14) at its start, efficiency its straightness at that close (size over the path of its closes, 0 to 1). The verdict has no window: it comes when the move is decided. status open: the strip still extends over consecutive firing closes; pending: the strip has ended and nothing has decided it; broke: a wick went past the extreme by more than the tolerance, one and a half ATR or a tenth of legSize, whichever is larger (judged at the close of the candle that made it); held: a candle came back three ATR from the running extreme (the frozen one pushed out by wicks inside the tolerance), the same comeback that ends the leg; interrupted: a session gap first. judgedAt is null until held, broke or interrupted. score, readings and values are those of the close that first reached the shade's highest score.",
+      "type": "object",
+      "required": ["id", "candleMs", "side", "status", "intensity", "score", "readings", "values", "raw", "startTs", "endTs", "extremeTs", "extremePrice", "legStartTs", "legStartPrice", "legSize", "efficiency", "atr", "judgedAt", "updatedAt", "origin"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 96 },
+        "candleMs": { "enum": [60000, 120000, 180000, 300000, 900000, 1800000, 3600000, 14400000, 21600000, 43200000, 86400000] },
+        "side": { "enum": ["buyers", "sellers"] },
+        "status": { "enum": ["open", "pending", "held", "broke", "interrupted"] },
+        "intensity": { "type": "integer", "minimum": 1, "maximum": 3 },
+        "score": { "type": "integer", "minimum": 0, "maximum": 6 },
+        "readings": {
+          "type": "object",
+          "required": ["rate", "progress", "delta", "divergence", "prints", "book"],
+          "properties": { "rate": { "type": "boolean" }, "progress": { "type": "boolean" }, "delta": { "type": "boolean" }, "divergence": { "type": "boolean" }, "prints": { "type": "boolean" }, "book": { "type": "boolean" } },
+          "additionalProperties": false
+        },
+        "values": {
+          "description": "The six readings as numbers, from the close that set the score: rate and prints are the last two candles against the leg's own per-candle rate (prints null when the leg had no big prints on the pushing side), progress the price gained per unit of pushing volume against the leg's, delta the last two candles' (own - other) / (own + other) of the pushing side, divergence that delta minus the delta at the candle that set the extreme (null at the extreme's own candle), book the half-ATR band that decides the reading (the one furthest under its own line, raw.bookBand names it) now against its size at the extreme (null at the extreme's own candle). Rounded to three decimals.",
+          "type": "object",
+          "required": ["rate", "progress", "delta", "divergence", "prints", "book"],
+          "properties": { "rate": { "$ref": "#/$defs/exhaustionReadingValue" }, "progress": { "$ref": "#/$defs/exhaustionReadingValue" }, "delta": { "$ref": "#/$defs/exhaustionReadingValue" }, "divergence": { "$ref": "#/$defs/exhaustionReadingValue" }, "prints": { "$ref": "#/$defs/exhaustionReadingValue" }, "book": { "$ref": "#/$defs/exhaustionReadingValue" } },
+          "additionalProperties": false
+        },
+        "raw": { "$ref": "#/$defs/exhaustionRaw" },
+        "startTs": { "$ref": "#/$defs/epochMs" },
+        "endTs": { "$ref": "#/$defs/epochMs" },
+        "extremeTs": { "$ref": "#/$defs/epochMs" },
+        "extremePrice": { "$ref": "#/$defs/wireMagnitude" },
+        "legStartTs": { "$ref": "#/$defs/epochMs" },
+        "legStartPrice": { "$ref": "#/$defs/wireMagnitude" },
+        "legSize": { "$ref": "#/$defs/wireMagnitude" },
+        "efficiency": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 },
+        "atr": { "$ref": "#/$defs/wireMagnitude" },
+        "judgedAt": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/epochMs" }] },
+        "updatedAt": { "$ref": "#/$defs/epochMs" },
+        "origin": { "description": "runtime for a shade this runtime process computed from the deep columns it holds, host for one it computed from the host's 10-second columns over the hours before its live window, stored for one restored from its history file.", "enum": ["runtime", "host", "stored"] }
+      },
+      "additionalProperties": false
+    },
+
+    "exhaustionShadesFrame": {
+      "description": "The Exhaustion engine's output for the pair, every candle length together: reset true replaces everything held (the first page on join or a pair switch, further pages append with reset false), reset false carries the shades that changed. Shades are idempotent by id, in start order within a frame; seq rises per frame and is informational. Sent only to a client that declared exhaustion_shades. Incremental: dropped first for a slow client, who recovers on the next reset.",
+      "x-capability": "exhaustion_shades",
+      "allOf": [{ "$ref": "#/$defs/frameIdentity" }],
+      "type": "object",
+      "required": ["type", "symbol", "ts", "seq", "reset", "shades", "liveSince", "loading"],
+      "properties": {
+        "type": { "const": "exhaustion_shades" },
+        "symbol": { "$ref": "#/$defs/symbol" },
+        "ts": { "$ref": "#/$defs/epochMs" },
+        "seq": { "type": "integer", "minimum": 0 },
+        "reset": { "type": "boolean" },
+        "shades": { "type": "array", "maxItems": 500, "items": { "$ref": "#/$defs/exhaustionShade" } },
+        "liveSince": { "description": "The first column this runtime process fed its engine for the pair: the chart's History Off shows the runtime's own shades from here on; what is older is the stored history's.", "$ref": "#/$defs/epochMs" },
+        "loading": { "description": "While the runtime is reading the host's columns for the pair (the day before the live window at start, or the span a client's exhaustion_history request asked for), the start of the span being read; null when nothing is being read. Every change sends a fresh reset page.", "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/epochMs" }] },
+        "provider": true, "marketKind": true, "assetClass": true
+      },
+      "additionalProperties": false
+    },
+
+    "initiativeUnit": { "oneOf": [{ "type": "null" }, { "type": "number", "minimum": 0, "maximum": 1 }] },
+    "initiativeAmount": { "oneOf": [{ "type": "null" }, { "type": "number", "minimum": 0, "maximum": 1000000 }] },
+    "initiativeBand": {
+      "description": "One Initiative Continuation band: the start of a price leg, read once at the candle where the engine flips the leg (a three-ATR comeback from the old leg's extreme on the engine's own mid-price candles, the same legs as the Exhaustion engine) and never changed after, except legExtremePrice/legExtremeTs, which follow the leg's running extreme, and legEndTs, set when the engine ends the leg (the next flip, or the first candle after a session gap). The window runs from the candle after the pivot to the flip candle, windowCandles of them. side up: the new leg rises (down: falls); dominant is the side with the larger aggressive volume in the window and dominantShare its share, so an up leg on sellers' flow is theirs. The five facts are each yes or no with the number they came from: efficiency (|close at the flip - pivot| over the path of the window's closes, yes at 0.7 or more), closes (strong closes, in the strong third of their candle's range, yes when at least half the window), burst (the window's per-candle volume over the per-candle volume of the candles just before the pivot, as many as the window has and at least three, yes at 2 or more), delta (the pushing side's share of the window's aggressive volume, and its rank among the typical candles' per-candle shares, yes at 0.8 or more), prints (the pushing side's big prints per window candle, and their rank among the typical candles', yes at 0.8 or more). The typical is the last four hours of candles before the pivot, at least twelve; rank is the share of typical candles strictly below. score counts the yeses, 0 to 5. pivotTs/pivotPrice is the old leg's extreme, frozenTs/frozenPrice the flip candle and its close; atr is the ATR(14) at the pivot candle. Numbers are rounded to three decimals; a fact value is null when it could not be read.",
+      "type": "object",
+      "required": ["id", "candleMs", "side", "dominant", "dominantShare", "score", "facts", "pivotTs", "pivotPrice", "frozenTs", "frozenPrice", "windowCandles", "atr", "legExtremePrice", "legExtremeTs", "legEndTs", "updatedAt", "origin"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 96 },
+        "candleMs": { "enum": [60000, 120000, 180000, 300000, 900000, 1800000, 3600000, 14400000, 21600000, 43200000, 86400000] },
+        "side": { "enum": ["up", "down"] },
+        "dominant": { "enum": ["buyers", "sellers"] },
+        "dominantShare": { "type": "number", "minimum": 0, "maximum": 1 },
+        "score": { "type": "integer", "minimum": 0, "maximum": 5 },
+        "facts": {
+          "type": "object",
+          "required": ["efficiency", "closes", "burst", "delta", "prints"],
+          "properties": {
+            "efficiency": { "type": "object", "required": ["yes", "value"], "properties": { "yes": { "type": "boolean" }, "value": { "$ref": "#/$defs/initiativeUnit" } }, "additionalProperties": false },
+            "closes": { "type": "object", "required": ["yes", "value"], "properties": { "yes": { "type": "boolean" }, "value": { "type": "integer", "minimum": 0, "maximum": 1000 } }, "additionalProperties": false },
+            "burst": { "type": "object", "required": ["yes", "value"], "properties": { "yes": { "type": "boolean" }, "value": { "$ref": "#/$defs/initiativeAmount" } }, "additionalProperties": false },
+            "delta": { "type": "object", "required": ["yes", "rank", "share"], "properties": { "yes": { "type": "boolean" }, "rank": { "$ref": "#/$defs/initiativeUnit" }, "share": { "$ref": "#/$defs/initiativeUnit" } }, "additionalProperties": false },
+            "prints": { "type": "object", "required": ["yes", "rank", "perCandle"], "properties": { "yes": { "type": "boolean" }, "rank": { "$ref": "#/$defs/initiativeUnit" }, "perCandle": { "$ref": "#/$defs/initiativeAmount" } }, "additionalProperties": false }
+          },
+          "additionalProperties": false
+        },
+        "pivotTs": { "$ref": "#/$defs/epochMs" },
+        "pivotPrice": { "$ref": "#/$defs/wireMagnitude" },
+        "frozenTs": { "$ref": "#/$defs/epochMs" },
+        "frozenPrice": { "$ref": "#/$defs/wireMagnitude" },
+        "windowCandles": { "type": "integer", "minimum": 1, "maximum": 1000 },
+        "atr": { "$ref": "#/$defs/wireMagnitude" },
+        "legExtremePrice": { "$ref": "#/$defs/wireMagnitude" },
+        "legExtremeTs": { "$ref": "#/$defs/epochMs" },
+        "legEndTs": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/epochMs" }] },
+        "updatedAt": { "$ref": "#/$defs/epochMs" },
+        "origin": { "description": "runtime for a band this runtime process read from the deep columns it holds, host for one it read from the host's 10-second columns over the hours before its live window, stored for one restored from its history file. A band keeps the origin it was first seen under when the live feed moves it later.", "enum": ["runtime", "host", "stored"] }
+      },
+      "additionalProperties": false
+    },
+
+    "initiativeBandsFrame": {
+      "description": "The Initiative Continuation engine's output for the pair, every candle length together: reset true replaces everything held (the first page on join or a pair switch, further pages append with reset false), reset false carries the bands that changed. Bands are idempotent by id, in pivot order within a frame; seq rises per frame and is informational. Sent only to a client that declared initiative_bands. Incremental: dropped first for a slow client, who recovers on the next reset.",
+      "x-capability": "initiative_bands",
+      "allOf": [{ "$ref": "#/$defs/frameIdentity" }],
+      "type": "object",
+      "required": ["type", "symbol", "ts", "seq", "reset", "bands", "liveSince", "loading"],
+      "properties": {
+        "type": { "const": "initiative_bands" },
+        "symbol": { "$ref": "#/$defs/symbol" },
+        "ts": { "$ref": "#/$defs/epochMs" },
+        "seq": { "type": "integer", "minimum": 0 },
+        "reset": { "type": "boolean" },
+        "bands": { "type": "array", "maxItems": 500, "items": { "$ref": "#/$defs/initiativeBand" } },
+        "liveSince": { "description": "The first column this runtime process fed its engine for the pair: the chart's History Off shows the runtime's own bands from here on; what is older is the stored history's.", "$ref": "#/$defs/epochMs" },
+        "loading": { "description": "While the runtime is reading the host's columns for the pair (the day before the live window at start, or the span a client's initiative_history request asked for), the start of the span being read; null when nothing is being read. Every change sends a fresh reset page.", "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/epochMs" }] },
+        "provider": true, "marketKind": true, "assetClass": true
+      },
+      "additionalProperties": false
+    },
+
+    "candleMonitorTrade": {
+      "description": "The biggest single trade of one side in the candle, among the heatmap's big prints (about the largest two per cent of recent trades): its size in the instrument's units and its price.",
+      "type": "object",
+      "required": ["price", "size"],
+      "properties": { "price": { "$ref": "#/$defs/wireMagnitude" }, "size": { "type": "number", "exclusiveMinimum": 0, "maximum": 1000000000 } },
+      "additionalProperties": false
+    },
+    "candleMonitorEntry": {
+      "description": "What happened in the last closed candle of one candle length, counted from the heatmap's own columns and independent of the Exhaustion engine: candleTs its open (a multiple of candleMs), buy and sell the aggressor volumes (base asset, contracts or shares), biggestBuy and biggestSell the largest single trade of each side (null when no trade of that side reached the heatmap's big-print floor in the candle). Only candles the runtime saw from their open are counted.",
+      "type": "object",
+      "required": ["candleMs", "candleTs", "buy", "sell", "biggestBuy", "biggestSell"],
+      "properties": {
+        "candleMs": { "enum": [60000, 120000, 180000, 300000, 900000, 1800000, 3600000, 14400000, 21600000, 43200000, 86400000] },
+        "candleTs": { "$ref": "#/$defs/epochMs" },
+        "buy": { "type": "number", "minimum": 0, "maximum": 1000000000 },
+        "sell": { "type": "number", "minimum": 0, "maximum": 1000000000 },
+        "biggestBuy": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/candleMonitorTrade" }] },
+        "biggestSell": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/candleMonitorTrade" }] }
+      },
+      "additionalProperties": false
+    },
+    "candleMonitorFrame": {
+      "description": "The Candle Monitor's feed for the pair, once a second while a client that declared exhaustion_shades watches it: the last closed candle of every candle length that has one, in rising candle length. Latest state: a newer frame replaces the older; the entries change only when a candle closes. Sent with the exhaustion_shades capability: it has no flag of its own.",
+      "x-sent-with": "exhaustion_shades",
+      "allOf": [{ "$ref": "#/$defs/frameIdentity" }],
+      "type": "object",
+      "required": ["type", "symbol", "ts", "entries"],
+      "properties": {
+        "type": { "const": "candle_monitor" },
+        "symbol": { "$ref": "#/$defs/symbol" },
+        "ts": { "$ref": "#/$defs/epochMs" },
+        "entries": { "type": "array", "minItems": 1, "maxItems": 11, "items": { "$ref": "#/$defs/candleMonitorEntry" } },
+        "provider": true, "marketKind": true, "assetClass": true
+      },
+      "additionalProperties": false
+    }
+  }
+}

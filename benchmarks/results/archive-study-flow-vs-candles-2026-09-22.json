@@ -1,0 +1,72 @@
+{
+  "kind": "archive-study-flow-vs-candles",
+  "ranAt": "2026-09-22T20:41:00Z",
+  "commit": "161922a",
+  "publisherFence": 50,
+  "method": {
+    "claim": "bar_flow reports the same volume as the archive's independently built hourly candle family, and never counts unsided volume as a side",
+    "oracle": "POST /archive/study study=bar_flow bucketMs=3600000 over 2026-08-04T00:00Z..2026-08-05T00:00Z, compared bar by bar against POST /archive/query family=candle_1h over the same range; candle_1h is built from the venue's own OHLCV schema, bar_flow is folded from trade_minute_1m, so the two share no derivation step",
+    "conserved": "every bar satisfies buy_volume + sell_volume + unknown_volume == volume within 1e-6"
+  },
+  "instruments": [
+    {
+      "instrument": "ES",
+      "instrumentId": ["XCME", "FUTURE", "ESU6", "USD", "CONTRACT"],
+      "complete": true,
+      "flowBars": 23,
+      "candleBars": 23,
+      "barsMatchingCandleVolume": 21,
+      "worstRelativeDifference": 0.00006311,
+      "flowVolume": 1596969,
+      "candleVolume": 1596969,
+      "unsidedShare": 0,
+      "conserved": true
+    },
+    {
+      "instrument": "NQ",
+      "instrumentId": ["XCME", "FUTURE", "NQU6", "USD", "CONTRACT"],
+      "complete": true,
+      "flowBars": 23,
+      "candleBars": 23,
+      "barsMatchingCandleVolume": 21,
+      "worstRelativeDifference": 0.00024366,
+      "flowVolume": 608061,
+      "candleVolume": 608061,
+      "unsidedShare": 0.0001,
+      "conserved": true
+    },
+    {
+      "instrument": "AAPL",
+      "instrumentId": ["XNAS", "EQUITY", "AAPL", "USD", "SHARE"],
+      "complete": true,
+      "flowBars": 16,
+      "candleBars": 16,
+      "barsMatchingCandleVolume": 14,
+      "worstRelativeDifference": 0.0000219,
+      "flowVolume": 23212871,
+      "candleVolume": 23212871,
+      "unsidedShare": 0.748,
+      "conserved": true
+    },
+    {
+      "instrument": "TSLA",
+      "instrumentId": ["XNAS", "EQUITY", "TSLA", "USD", "SHARE"],
+      "complete": true,
+      "flowBars": 16,
+      "candleBars": 16,
+      "barsMatchingCandleVolume": 16,
+      "worstRelativeDifference": 0,
+      "flowVolume": 8366457,
+      "candleVolume": 8366457,
+      "unsidedShare": 0.5726,
+      "conserved": true
+    }
+  ],
+  "dayTotalsIdentical": true,
+  "edgeAttribution": {
+    "what": "the two bars that differ per instrument are the 19:00Z and 20:00Z bars, by equal and opposite amounts",
+    "amounts": { "ES": 5, "NQ": 8, "AAPL": 40 },
+    "cause": "the disagreement is already present one level down, between the two minute families themselves, for trades stamped exactly on the 20:00:00.000Z minute edge: trade_minute_1m reports 86239 then 20098 for ES, candle_1m reports 86234 then 20103, and both sum to 106337",
+    "reading": "a pre-existing difference between a trade-folded family and a venue-built family, not introduced by the study; bar_flow reproduces the trade-derived family exactly, which is the side a flow study must follow"
+  }
+}

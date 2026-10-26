@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "kind": "browser",
+  "name": "o0-browser-cold-start",
+  "scenario": "cold-start",
+  "durationSeconds": 5,
+  "upstream": { "tradesPerPulse": 10, "pulseMs": 20 }
+}

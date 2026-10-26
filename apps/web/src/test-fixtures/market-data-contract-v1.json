@@ -1,0 +1,2199 @@
+{
+  "corpus": "market-data-contract-v1",
+  "sourceRevision": "1fb26e02088c881c2e87ccafa5203d47e0bd08aa",
+  "producer": "apps/runtime/src/server/frames.js",
+  "extensions": [
+    {
+      "types": [
+        "analytics_status",
+        "vpin",
+        "liquidity",
+        "aggressive_history",
+        "marker_history",
+        "band_history",
+        "delta_profile"
+      ],
+      "builtBy": "the producers table in apps/web/src/types/wireContractEquivalence.test.ts, which the same test holds equal to these frames",
+      "note": "The corpus originally pinned eight of the twelve frame kinds the contract defines. These five were added so every kind has a pinned sample; they were produced by the working-tree builders, not by the sourceRevision above."
+    },
+    {
+      "types": [
+        "l2_view",
+        "l2_walls",
+        "l2_events",
+        "l2_ladder"
+      ],
+      "builtBy": "apps/runtime/test/contracts/l2-corpus.test.js, which rebuilds them with apps/runtime/src/server/l2-frames.js and holds this corpus equal to them",
+      "note": "The four opt-in L2 channel kinds (report 61 P4a/P4b), sent only to a client that declared the capability."
+    },
+    {
+      "types": [
+        "iceberg_orders"
+      ],
+      "builtBy": "apps/runtime/test/contracts/iceberg-corpus.test.js, which rebuilds them with apps/runtime/src/server/iceberg-frames.js and holds this corpus equal to them",
+      "note": "The Iceberg Detector's opt-in channel, sent only to a client that declared iceberg_orders: a reset page and an increment, for both providers."
+    },
+    {
+      "types": [
+        "exhaustion_shades",
+        "candle_monitor"
+      ],
+      "builtBy": "apps/runtime/test/contracts/exhaustion-corpus.test.js, which rebuilds them with apps/runtime/src/server/exhaustion-frames.js and candle-monitor-frames.js and holds this corpus equal to them",
+      "note": "The Exhaustion engine's opt-in channel, sent only to a client that declared exhaustion_shades: a reset page (a held 1m shade judged after its leg's nine candles, an open 5m one) and an increment (the 5m shade pending once its strip stopped), for both providers; and a candle_monitor frame, the last closed candle per length for the Candle Monitor, sent with the same capability."
+    },
+    {
+      "types": [
+        "initiative_bands"
+      ],
+      "builtBy": "apps/runtime/test/contracts/initiative-corpus.test.js, which rebuilds them with apps/runtime/src/server/initiative-frames.js and holds this corpus equal to them",
+      "note": "The Initiative Continuation engine's opt-in channel, sent only to a client that declared initiative_bands: a reset page (a 1m band whose leg has ended, a 5m band whose leg still runs) and an increment (the 5m band's extreme moved), for both providers."
+    }
+  ],
+  "frames": [
+    {
+      "type": "selection",
+      "provider": "BINANCE",
+      "symbol": "BTC-USDT",
+      "marketKind": "PERPETUAL"
+    },
+    {
+      "type": "trade",
+      "provider": "BINANCE",
+      "symbol": "BTC-USDT",
+      "marketKind": "PERPETUAL",
+      "ts_exchange": 1,
+      "price": 100,
+      "size": 2,
+      "side": "buy",
+      "trade_id": "binance-trade-1"
+    },
+    {
+      "type": "marker",
+      "provider": "BINANCE",
+      "symbol": "BTC-USDT",
+      "marketKind": "PERPETUAL",
+      "ts_exchange": 1,
+      "price": 100,
+      "size": 5,
+      "side": "sell",
+      "trade_id": "binance-marker-1",
+      "baseline_log_median": 6.2,
+      "baseline_log_mad": 0.4
+    },
+    {
+      "type": "bar",
+      "provider": "BINANCE",
+      "symbol": "BTC-USDT",
+      "marketKind": "PERPETUAL",
+      "interval_ms": 60000,
+      "ts_open": 0,
+      "open": 100,
+      "high": 102,
+      "low": 99,
+      "close": 101,
+      "volume": 10,
+      "buy_volume": 6,
+      "trade_count": 8,
+      "closed": true,
+      "reconstructed": true
+    },
+    {
+      "type": "health",
+      "provider": "BINANCE",
+      "symbol": "BTC-USDT",
+      "marketKind": "PERPETUAL",
+      "recoveryState": "READY",
+      "stale": false
+    },
+    {
+      "type": "book",
+      "provider": "BINANCE",
+      "symbol": "BTC-USDT",
+      "marketKind": "PERPETUAL",
+      "status": "READY",
+      "bids": [
+        {
+          "price": 100,
+          "size": 2
+        }
+      ],
+      "asks": [
+        {
+          "price": 101,
+          "size": 3
+        }
+      ],
+      "lastUpdateId": 7,
+      "stale": false
+    },
+    {
+      "type": "profile",
+      "provider": "BINANCE",
+      "symbol": "BTC-USDT",
+      "marketKind": "PERPETUAL",
+      "mode": "continuous",
+      "delivery_scope": "LIVE",
+      "history_request_id": null,
+      "period_start_ts": 0,
+      "period_end_ts": null,
+      "row_width": 1,
+      "buckets": [
+        {
+          "price": 100,
+          "volume": 5,
+          "buy_volume": 3,
+          "sell_volume": 2,
+          "single_print": false
+        }
+      ],
+      "poc_price": 100,
+      "vah_price": 100,
+      "val_price": 100
+    },
+    {
+      "type": "snapshot",
+      "provider": "BINANCE",
+      "symbol": "BTC-USDT",
+      "marketKind": "PERPETUAL",
+      "bars": [
+        {
+          "type": "bar",
+          "provider": "BINANCE",
+          "symbol": "BTC-USDT",
+          "marketKind": "PERPETUAL",
+          "interval_ms": 60000,
+          "ts_open": 0,
+          "open": 100,
+          "high": 102,
+          "low": 99,
+          "close": 101,
+          "volume": 10,
+          "buy_volume": 6,
+          "trade_count": 8,
+          "closed": true
+        }
+      ],
+      "trades": [
+        {
+          "type": "trade",
+          "provider": "BINANCE",
+          "symbol": "BTC-USDT",
+          "marketKind": "PERPETUAL",
+          "ts_exchange": 1,
+          "price": 100,
+          "size": 2,
+          "side": "buy",
+          "trade_id": "binance-snapshot-trade-1"
+        }
+      ],
+      "markers": [
+        {
+          "type": "marker",
+          "provider": "BINANCE",
+          "symbol": "BTC-USDT",
+          "marketKind": "PERPETUAL",
+          "ts_exchange": 1,
+          "price": 100,
+          "size": 5,
+          "side": "sell",
+          "trade_id": "binance-snapshot-marker-1"
+        }
+      ]
+    },
+    {
+      "type": "selection",
+      "provider": "DXFEED",
+      "symbol": "/NQU26:XCME",
+      "assetClass": "FUTURE"
+    },
+    {
+      "type": "trade",
+      "provider": "DXFEED",
+      "symbol": "/NQU26:XCME",
+      "assetClass": "FUTURE",
+      "ts_exchange": 1,
+      "price": 20000,
+      "size": 3,
+      "side": "sell",
+      "trade_id": "dxfeed-trade-1"
+    },
+    {
+      "type": "marker",
+      "provider": "DXFEED",
+      "symbol": "/NQU26:XCME",
+      "assetClass": "FUTURE",
+      "ts_exchange": 1,
+      "price": 20000,
+      "size": 80,
+      "side": "buy",
+      "trade_id": "dxfeed-marker-1"
+    },
+    {
+      "type": "bar",
+      "provider": "DXFEED",
+      "symbol": "/NQU26:XCME",
+      "assetClass": "FUTURE",
+      "interval_ms": 60000,
+      "ts_open": 0,
+      "open": 20000,
+      "high": 20002,
+      "low": 19999,
+      "close": 20001,
+      "volume": 12,
+      "buy_volume": 7,
+      "trade_count": 5,
+      "closed": true
+    },
+    {
+      "type": "health",
+      "provider": "DXFEED",
+      "symbol": "/NQU26:XCME",
+      "assetClass": "FUTURE",
+      "recoveryState": "READY",
+      "stale": false,
+      "printsQuiet": false
+    },
+    {
+      "type": "book",
+      "provider": "DXFEED",
+      "symbol": "/NQU26:XCME",
+      "assetClass": "FUTURE",
+      "status": "UNAVAILABLE",
+      "reason": "BUFFERING_SNAPSHOT"
+    },
+    {
+      "type": "profile",
+      "provider": "DXFEED",
+      "symbol": "/NQU26:XCME",
+      "assetClass": "FUTURE",
+      "mode": "fixed_range",
+      "delivery_scope": "FIXED_RANGE",
+      "history_request_id": null,
+      "period_start_ts": 0,
+      "period_end_ts": 60000,
+      "row_width": 0.25,
+      "buckets": [
+        {
+          "price": 20000,
+          "volume": 9,
+          "buy_volume": 5,
+          "sell_volume": 4,
+          "single_print": true
+        }
+      ],
+      "poc_price": 20000,
+      "vah_price": 20000,
+      "val_price": 20000
+    },
+    {
+      "type": "profile",
+      "provider": "DXFEED",
+      "symbol": "/NQU26:XCME",
+      "assetClass": "FUTURE",
+      "mode": "per_candle",
+      "delivery_scope": "HISTORICAL",
+      "history_request_id": 1,
+      "period_start_ts": 60000,
+      "period_end_ts": 120000,
+      "row_width": 0.25,
+      "buckets": [
+        {
+          "price": 20000,
+          "volume": 9,
+          "buy_volume": 5,
+          "sell_volume": 4,
+          "single_print": true
+        }
+      ],
+      "poc_price": 20000,
+      "vah_price": 20000,
+      "val_price": 20000
+    },
+    {
+      "type": "snapshot",
+      "provider": "DXFEED",
+      "symbol": "/NQU26:XCME",
+      "assetClass": "FUTURE",
+      "bars": [
+        {
+          "type": "bar",
+          "provider": "DXFEED",
+          "symbol": "/NQU26:XCME",
+          "assetClass": "FUTURE",
+          "interval_ms": 60000,
+          "ts_open": 60000,
+          "open": 20000,
+          "high": 20002,
+          "low": 19999,
+          "close": 20001,
+          "volume": 12,
+          "buy_volume": 7,
+          "trade_count": 5,
+          "closed": true
+        }
+      ],
+      "trades": [
+        {
+          "type": "trade",
+          "provider": "DXFEED",
+          "symbol": "/NQU26:XCME",
+          "assetClass": "FUTURE",
+          "ts_exchange": 60001,
+          "price": 20001,
+          "size": 2,
+          "side": "buy",
+          "trade_id": "dxfeed-snapshot-trade-1"
+        }
+      ],
+      "markers": [
+        {
+          "type": "marker",
+          "provider": "DXFEED",
+          "symbol": "/NQU26:XCME",
+          "assetClass": "FUTURE",
+          "ts_exchange": 60001,
+          "price": 20001,
+          "size": 75,
+          "side": "buy",
+          "trade_id": "dxfeed-snapshot-marker-1"
+        }
+      ],
+      "bar_history": {
+        "availability": "AVAILABLE",
+        "requestedStartTsOpen": 0,
+        "earliestObservedTsOpen": 60000,
+        "coverage": "START_NOT_COVERED",
+        "interpretation": "OBSERVED_NONEMPTY_BARS_ONLY"
+      }
+    },
+    {
+      "type": "analytics_status",
+      "provider": "BINANCE",
+      "symbol": "BTC-USDT",
+      "marketKind": "PERPETUAL",
+      "indicator": "VPIN",
+      "status": "READY"
+    },
+    {
+      "type": "analytics_status",
+      "provider": "DXFEED",
+      "symbol": "/NQU26:XCME",
+      "assetClass": "FUTURE",
+      "indicator": "PROFILE",
+      "status": "UNAVAILABLE"
+    },
+    {
+      "type": "vpin",
+      "provider": "BINANCE",
+      "symbol": "BTC-USDT",
+      "marketKind": "PERPETUAL",
+      "seal_ts": 60000,
+      "active": true,
+      "direction": "buy",
+      "strength": 0.5,
+      "z_vpin": 1.2,
+      "z_velocity": 0.1,
+      "z_acceleration": -0.05,
+      "activated_at_ts": 30000
+    },
+    {
+      "type": "vpin",
+      "provider": "DXFEED",
+      "symbol": "/NQU26:XCME",
+      "assetClass": "FUTURE",
+      "seal_ts": 120000,
+      "active": false,
+      "direction": null,
+      "strength": 0,
+      "z_vpin": null,
+      "z_velocity": null,
+      "z_acceleration": null,
+      "activated_at_ts": null
+    },
+    {
+      "type": "liquidity",
+      "provider": "BINANCE",
+      "symbol": "BTC-USDT",
+      "marketKind": "PERPETUAL",
+      "ts": 60000,
+      "seq": 2,
+      "reset": true,
+      "row_width": 1,
+      "column_ms": 1000,
+      "columns": [
+        {
+          "ts": 58000,
+          "lo": 99,
+          "hi": 101,
+          "bid": [
+            [
+              0,
+              5
+            ],
+            [
+              1,
+              7
+            ]
+          ],
+          "ask": [
+            [
+              2,
+              4
+            ]
+          ]
+        },
+        {
+          "ts": 59000,
+          "lo": 99,
+          "hi": 102,
+          "bid": [
+            [
+              0,
+              6
+            ]
+          ],
+          "ask": [
+            [
+              2,
+              3
+            ],
+            [
+              3,
+              9
+            ]
+          ]
+        }
+      ],
+      "levels": [
+        {
+          "side": "bid",
+          "row": 99,
+          "span": 1,
+          "start_ts": 1000,
+          "end_ts": null,
+          "size": 50,
+          "peak": 60,
+          "ended_by": null,
+          "ratio": 0,
+          "chain": 0,
+          "fill": 0,
+          "eaten": 0,
+          "absorbing": false
+        }
+      ],
+      "aggressive": [
+        {
+          "side": "buy",
+          "row": 100,
+          "span": 1,
+          "start_ts": 59000,
+          "end_ts": null,
+          "volume": 10,
+          "peak": 5,
+          "floor": 1
+        }
+      ],
+      "backfill": {
+        "status": "COMPLETE",
+        "reason": null
+      }
+    },
+    {
+      "type": "liquidity",
+      "provider": "DXFEED",
+      "symbol": "/NQU26:XCME",
+      "assetClass": "FUTURE",
+      "ts": 60000,
+      "seq": 2,
+      "reset": true,
+      "row_width": 1,
+      "column_ms": 1000,
+      "columns": [
+        {
+          "ts": 58000,
+          "lo": 99,
+          "hi": 101,
+          "bid": [
+            [
+              0,
+              5
+            ],
+            [
+              1,
+              7
+            ]
+          ],
+          "ask": [
+            [
+              2,
+              4
+            ]
+          ]
+        },
+        {
+          "ts": 59000,
+          "lo": 99,
+          "hi": 102,
+          "bid": [
+            [
+              0,
+              6
+            ]
+          ],
+          "ask": [
+            [
+              2,
+              3
+            ],
+            [
+              3,
+              9
+            ]
+          ]
+        }
+      ],
+      "levels": [
+        {
+          "side": "bid",
+          "row": 99,
+          "span": 1,
+          "start_ts": 1000,
+          "end_ts": null,
+          "size": 50,
+          "peak": 60,
+          "ended_by": null,
+          "ratio": 0,
+          "chain": 0,
+          "fill": 0,
+          "eaten": 0,
+          "absorbing": false
+        }
+      ],
+      "aggressive": [
+        {
+          "side": "buy",
+          "row": 100,
+          "span": 1,
+          "start_ts": 59000,
+          "end_ts": null,
+          "volume": 10,
+          "peak": 5,
+          "floor": 1
+        }
+      ],
+      "backfill": {
+        "status": "RUNNING",
+        "reason": null
+      }
+    },
+    {
+      "type": "aggressive_history",
+      "provider": "BINANCE",
+      "symbol": "BTC-USDT",
+      "marketKind": "PERPETUAL",
+      "request_id": 1,
+      "from_ts": 0,
+      "to_ts": 60000,
+      "min_size": 2,
+      "complete": true,
+      "reason": null,
+      "next_cursor": null,
+      "retry_after_ms": null,
+      "trades": [
+        {
+          "type": "trade",
+          "provider": "BINANCE",
+          "symbol": "BTC-USDT",
+          "marketKind": "PERPETUAL",
+          "ts_exchange": 1,
+          "price": 100,
+          "size": 8,
+          "side": "buy",
+          "trade_id": "binance-aggressive-1"
+        }
+      ]
+    },
+    {
+      "type": "aggressive_history",
+      "provider": "DXFEED",
+      "symbol": "/NQU26:XCME",
+      "assetClass": "FUTURE",
+      "request_id": 2,
+      "from_ts": 0,
+      "to_ts": 60000,
+      "min_size": 2,
+      "complete": false,
+      "reason": "OVERLOADED",
+      "next_cursor": null,
+      "retry_after_ms": 1000,
+      "trades": [
+        {
+          "type": "trade",
+          "provider": "DXFEED",
+          "symbol": "/NQU26:XCME",
+          "assetClass": "FUTURE",
+          "ts_exchange": 2,
+          "price": 20001,
+          "size": 40,
+          "side": "sell",
+          "trade_id": "dxfeed-aggressive-1"
+        }
+      ]
+    },
+    {
+      "type": "delta_profile",
+      "provider": "BINANCE",
+      "symbol": "BTC-USDT",
+      "marketKind": "PERPETUAL",
+      "request_id": 1,
+      "from_ts": 0,
+      "to_ts": 7200000,
+      "row_width": 1,
+      "complete": true,
+      "reason": null,
+      "retry_after_ms": null,
+      "pending": 1,
+      "rows": [
+        [
+          84610,
+          12.4,
+          3.1
+        ],
+        [
+          84611,
+          0,
+          7.75
+        ]
+      ]
+    },
+    {
+      "type": "delta_profile",
+      "provider": "DXFEED",
+      "symbol": "/NQU26:XCME",
+      "assetClass": "FUTURE",
+      "request_id": 2,
+      "from_ts": 0,
+      "to_ts": 7200000,
+      "row_width": 0.25,
+      "complete": false,
+      "reason": "OVERLOADED",
+      "retry_after_ms": 1000,
+      "pending": 0,
+      "rows": []
+    },
+    {
+      "type": "band_history",
+      "provider": "BINANCE",
+      "symbol": "BTC-USDT",
+      "marketKind": "PERPETUAL",
+      "request_id": 1,
+      "from_ts": 0,
+      "to_ts": 60000,
+      "price_lo": 99,
+      "price_hi": 101,
+      "column_ms": 1000,
+      "row_width": 1,
+      "row_lo": 99,
+      "row_hi": 100,
+      "complete": true,
+      "reason": null,
+      "retry_after_ms": null,
+      "columns": [
+        {
+          "ts": 58000,
+          "bid": [
+            5,
+            7
+          ],
+          "ask": [
+            0,
+            4
+          ],
+          "buy": [
+            0,
+            1
+          ],
+          "sell": [
+            2,
+            0
+          ]
+        },
+        {
+          "ts": 59000,
+          "bid": [
+            6,
+            0
+          ],
+          "ask": [
+            0,
+            3
+          ],
+          "buy": [
+            0,
+            0
+          ],
+          "sell": [
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "type": "band_history",
+      "provider": "DXFEED",
+      "symbol": "/NQU26:XCME",
+      "assetClass": "FUTURE",
+      "request_id": 2,
+      "from_ts": 0,
+      "to_ts": 60000,
+      "price_lo": 20000,
+      "price_hi": 20002,
+      "column_ms": 1000,
+      "row_width": null,
+      "row_lo": null,
+      "row_hi": null,
+      "complete": false,
+      "reason": "GEOMETRY_UNAVAILABLE",
+      "retry_after_ms": null,
+      "columns": []
+    },
+    {
+      "type": "marker_history",
+      "provider": "BINANCE",
+      "symbol": "BTC-USDT",
+      "marketKind": "PERPETUAL",
+      "reset": true,
+      "seq": 0,
+      "rows": [
+        [
+          1,
+          100,
+          5,
+          "s",
+          "binance-history-1"
+        ],
+        [
+          2,
+          101,
+          7,
+          "b",
+          "binance-history-2"
+        ]
+      ]
+    },
+    {
+      "type": "marker_history",
+      "provider": "DXFEED",
+      "symbol": "/NQU26:XCME",
+      "assetClass": "FUTURE",
+      "reset": false,
+      "seq": 3,
+      "rows": [
+        [
+          3,
+          20000,
+          80,
+          "b",
+          "dxfeed-history-1"
+        ]
+      ]
+    },
+    {
+      "type": "l2_view",
+      "provider": "BINANCE",
+      "symbol": "BTC-USDT",
+      "marketKind": "PERPETUAL",
+      "lane": 2,
+      "tier": "recent",
+      "ts": 1789000060000,
+      "seq": 15,
+      "reset": false,
+      "row_width": 1,
+      "column_ms": 4000,
+      "columns": [
+        {
+          "ts": 1789000056000,
+          "lo": 20000,
+          "hi": 20003,
+          "bid": [
+            [
+              0,
+              5
+            ],
+            [
+              1,
+              2.5
+            ]
+          ],
+          "ask": [
+            [
+              3,
+              1
+            ]
+          ]
+        },
+        {
+          "ts": 1789000060000,
+          "lo": 20000,
+          "hi": 20003,
+          "bid": [
+            [
+              1,
+              0
+            ]
+          ],
+          "ask": []
+        }
+      ],
+      "segment": {
+        "id": "PERPETUAL:BTCUSDT:1789000000000:LIVE",
+        "state": "LIVE"
+      }
+    },
+    {
+      "type": "l2_walls",
+      "provider": "BINANCE",
+      "symbol": "BTC-USDT",
+      "marketKind": "PERPETUAL",
+      "ts": 1789000060000,
+      "seq": 9,
+      "reset": false,
+      "row_width": 0.25,
+      "walls": [
+        {
+          "id": 17,
+          "side": "bid",
+          "row": 80000,
+          "span": 2,
+          "start_ts": 1789000018000,
+          "end_ts": 1789000059000,
+          "size": 40,
+          "peak": 100,
+          "ended_by": "filled",
+          "ratio": 5,
+          "chain": 0,
+          "fill": 0.5,
+          "eaten": 0.3,
+          "absorbing": false,
+          "detail": {
+            "life_ms": 42000,
+            "first_shrink_ts": 1789000040000,
+            "first_shrink_exact": true,
+            "reached_at_first_shrink": true,
+            "traded": 30,
+            "absorbed": 25,
+            "swept": 5,
+            "hidden": 2,
+            "cleared": 60,
+            "fill_ratio": 0.5,
+            "cross_side": 4,
+            "cross_side_share": 0.04,
+            "end_distance_rows": 1,
+            "end_distance_pct": 0.01,
+            "cleared_by_trades": true,
+            "continuity": {
+              "gap_ms": 3000
+            },
+            "repeats": 2,
+            "repeats_complete": true,
+            "evidence_gap": false
+          }
+        },
+        {
+          "id": 18,
+          "side": "ask",
+          "row": 80010,
+          "span": 1,
+          "start_ts": 1789000055000,
+          "end_ts": null,
+          "size": 70,
+          "peak": 70,
+          "ended_by": null,
+          "ratio": 4,
+          "chain": 0,
+          "fill": 0,
+          "eaten": 0,
+          "absorbing": true,
+          "detail": {
+            "life_ms": null,
+            "first_shrink_ts": 1789000040000,
+            "first_shrink_exact": true,
+            "reached_at_first_shrink": true,
+            "traded": 30,
+            "absorbed": 25,
+            "swept": 5,
+            "hidden": 2,
+            "cleared": 60,
+            "fill_ratio": 0.5,
+            "cross_side": 4,
+            "cross_side_share": 0.04,
+            "end_distance_rows": null,
+            "end_distance_pct": null,
+            "cleared_by_trades": false,
+            "continuity": null,
+            "repeats": 1,
+            "repeats_complete": true,
+            "evidence_gap": false
+          }
+        }
+      ],
+      "removed": [
+        12
+      ],
+      "segment": {
+        "id": "PERPETUAL:BTCUSDT:1789000000000:LIVE",
+        "state": "LIVE"
+      }
+    },
+    {
+      "type": "l2_events",
+      "provider": "BINANCE",
+      "symbol": "BTC-USDT",
+      "marketKind": "PERPETUAL",
+      "ts": 1789000060000,
+      "seq": 108,
+      "reset": false,
+      "missed": 3,
+      "events": [
+        {
+          "event": "segment",
+          "ts": 1789000010000,
+          "segment": "PERPETUAL:BTCUSDT:1789000000000:LIVE",
+          "state": "LIVE",
+          "cause": "RESYNC"
+        },
+        {
+          "event": "wall_born",
+          "ts": 1789000018000,
+          "wall": 17,
+          "side": "bid",
+          "row": 80000,
+          "span": 2,
+          "size": 100
+        },
+        {
+          "event": "wall_shrink",
+          "ts": 1789000040000,
+          "wall": 17,
+          "exact": true,
+          "reached": true
+        },
+        {
+          "event": "wall_trade",
+          "ts": 1789000050000,
+          "wall": 17,
+          "mode": "absorbed",
+          "price": 20000,
+          "size": 25
+        },
+        {
+          "event": "wall_hidden",
+          "ts": 1789000051000,
+          "wall": 17,
+          "volume": 2
+        },
+        {
+          "event": "trade",
+          "ts": 1789000055000,
+          "side": "ask",
+          "aggressor": "buy",
+          "mode": "swept",
+          "price": 20002.5,
+          "size": 1.5,
+          "late": false
+        },
+        {
+          "event": "hidden",
+          "ts": 1789000056000,
+          "side": "bid",
+          "price": 20000,
+          "volume": 0.5
+        },
+        {
+          "event": "wall_end",
+          "ts": 1789000059000,
+          "wall": 17,
+          "ended_by": "filled",
+          "distance_rows": 1
+        }
+      ]
+    },
+    {
+      "type": "l2_ladder",
+      "provider": "BINANCE",
+      "symbol": "BTC-USDT",
+      "marketKind": "PERPETUAL",
+      "ts": 1789000060000,
+      "depth": 50,
+      "bids": [
+        [
+          20000,
+          12
+        ],
+        [
+          19999.75,
+          4
+        ]
+      ],
+      "asks": [
+        [
+          20000.25,
+          3
+        ],
+        [
+          20000.5,
+          9
+        ]
+      ],
+      "segment": {
+        "id": "PERPETUAL:BTCUSDT:1789000000000:LIVE",
+        "state": "LIVE"
+      }
+    },
+    {
+      "type": "l2_view",
+      "provider": "DXFEED",
+      "symbol": "/NQZ26:XCME",
+      "assetClass": "FUTURE",
+      "lane": 2,
+      "tier": "recent",
+      "ts": 1789000060000,
+      "seq": 15,
+      "reset": false,
+      "row_width": 1,
+      "column_ms": 4000,
+      "columns": [
+        {
+          "ts": 1789000056000,
+          "lo": 20000,
+          "hi": 20003,
+          "bid": [
+            [
+              0,
+              5
+            ],
+            [
+              1,
+              2.5
+            ]
+          ],
+          "ask": [
+            [
+              3,
+              1
+            ]
+          ]
+        },
+        {
+          "ts": 1789000060000,
+          "lo": 20000,
+          "hi": 20003,
+          "bid": [
+            [
+              1,
+              0
+            ]
+          ],
+          "ask": []
+        }
+      ],
+      "segment": {
+        "id": "FUTURE:/NQZ26:XCME:1789000000000:LIVE",
+        "state": "LIVE"
+      }
+    },
+    {
+      "type": "l2_walls",
+      "provider": "DXFEED",
+      "symbol": "/NQZ26:XCME",
+      "assetClass": "FUTURE",
+      "ts": 1789000060000,
+      "seq": 9,
+      "reset": false,
+      "row_width": 0.25,
+      "walls": [
+        {
+          "id": 17,
+          "side": "bid",
+          "row": 80000,
+          "span": 2,
+          "start_ts": 1789000018000,
+          "end_ts": 1789000059000,
+          "size": 40,
+          "peak": 100,
+          "ended_by": "filled",
+          "ratio": 5,
+          "chain": 0,
+          "fill": 0.5,
+          "eaten": 0.3,
+          "absorbing": false,
+          "detail": {
+            "life_ms": 42000,
+            "first_shrink_ts": 1789000040000,
+            "first_shrink_exact": true,
+            "reached_at_first_shrink": true,
+            "traded": 30,
+            "absorbed": 25,
+            "swept": 5,
+            "hidden": 2,
+            "cleared": 60,
+            "fill_ratio": 0.5,
+            "cross_side": 4,
+            "cross_side_share": 0.04,
+            "end_distance_rows": 1,
+            "end_distance_pct": 0.01,
+            "cleared_by_trades": true,
+            "continuity": {
+              "gap_ms": 3000
+            },
+            "repeats": 2,
+            "repeats_complete": true,
+            "evidence_gap": false
+          }
+        },
+        {
+          "id": 18,
+          "side": "ask",
+          "row": 80010,
+          "span": 1,
+          "start_ts": 1789000055000,
+          "end_ts": null,
+          "size": 70,
+          "peak": 70,
+          "ended_by": null,
+          "ratio": 4,
+          "chain": 0,
+          "fill": 0,
+          "eaten": 0,
+          "absorbing": true,
+          "detail": {
+            "life_ms": null,
+            "first_shrink_ts": 1789000040000,
+            "first_shrink_exact": true,
+            "reached_at_first_shrink": true,
+            "traded": 30,
+            "absorbed": 25,
+            "swept": 5,
+            "hidden": 2,
+            "cleared": 60,
+            "fill_ratio": 0.5,
+            "cross_side": 4,
+            "cross_side_share": 0.04,
+            "end_distance_rows": null,
+            "end_distance_pct": null,
+            "cleared_by_trades": false,
+            "continuity": null,
+            "repeats": 1,
+            "repeats_complete": true,
+            "evidence_gap": false
+          }
+        }
+      ],
+      "removed": [
+        12
+      ],
+      "segment": {
+        "id": "FUTURE:/NQZ26:XCME:1789000000000:LIVE",
+        "state": "LIVE"
+      }
+    },
+    {
+      "type": "l2_events",
+      "provider": "DXFEED",
+      "symbol": "/NQZ26:XCME",
+      "assetClass": "FUTURE",
+      "ts": 1789000060000,
+      "seq": 108,
+      "reset": false,
+      "missed": 3,
+      "events": [
+        {
+          "event": "segment",
+          "ts": 1789000010000,
+          "segment": "FUTURE:/NQZ26:XCME:1789000000000:LIVE",
+          "state": "LIVE",
+          "cause": "RESYNC"
+        },
+        {
+          "event": "wall_born",
+          "ts": 1789000018000,
+          "wall": 17,
+          "side": "bid",
+          "row": 80000,
+          "span": 2,
+          "size": 100
+        },
+        {
+          "event": "wall_shrink",
+          "ts": 1789000040000,
+          "wall": 17,
+          "exact": true,
+          "reached": true
+        },
+        {
+          "event": "wall_trade",
+          "ts": 1789000050000,
+          "wall": 17,
+          "mode": "absorbed",
+          "price": 20000,
+          "size": 25
+        },
+        {
+          "event": "wall_hidden",
+          "ts": 1789000051000,
+          "wall": 17,
+          "volume": 2
+        },
+        {
+          "event": "trade",
+          "ts": 1789000055000,
+          "side": "ask",
+          "aggressor": "buy",
+          "mode": "swept",
+          "price": 20002.5,
+          "size": 1.5,
+          "late": false
+        },
+        {
+          "event": "hidden",
+          "ts": 1789000056000,
+          "side": "bid",
+          "price": 20000,
+          "volume": 0.5
+        },
+        {
+          "event": "wall_end",
+          "ts": 1789000059000,
+          "wall": 17,
+          "ended_by": "filled",
+          "distance_rows": 1
+        }
+      ]
+    },
+    {
+      "type": "l2_ladder",
+      "provider": "DXFEED",
+      "symbol": "/NQZ26:XCME",
+      "assetClass": "FUTURE",
+      "ts": 1789000060000,
+      "depth": 50,
+      "bids": [
+        [
+          20000,
+          12
+        ],
+        [
+          19999.75,
+          4
+        ]
+      ],
+      "asks": [
+        [
+          20000.25,
+          3
+        ],
+        [
+          20000.5,
+          9
+        ]
+      ],
+      "segment": {
+        "id": "FUTURE:/NQZ26:XCME:1789000000000:LIVE",
+        "state": "LIVE"
+      }
+    },
+    {
+      "type": "iceberg_orders",
+      "provider": "BINANCE",
+      "symbol": "BTC-USDT",
+      "marketKind": "PERPETUAL",
+      "ts": 1789000060000,
+      "seq": 0,
+      "reset": true,
+      "icebergs": [
+        {
+          "id": "BTCUSDT|5137554220647449213|1788999933000",
+          "kind": "native",
+          "confidence": "certain",
+          "side": "bid",
+          "price": 31188,
+          "display": 10,
+          "tranches": 4,
+          "executed": 32,
+          "startedAt": 1788999933000,
+          "markedAt": 1788999940000,
+          "updatedAt": 1789000059000,
+          "status": "filled",
+          "origin": "runtime"
+        },
+        {
+          "id": "BTCUSDT|PERPETUAL|ask|80924.2|1789000040000",
+          "kind": "probable",
+          "confidence": "strong",
+          "side": "ask",
+          "price": 80924.2,
+          "display": 1.545,
+          "tranches": 2,
+          "executed": 12.475,
+          "startedAt": 1789000040000,
+          "markedAt": 1789000046000,
+          "updatedAt": 1789000060000,
+          "status": "active",
+          "origin": "runtime"
+        }
+      ],
+      "watched": [
+        [
+          1788996460000,
+          1789000000000
+        ]
+      ],
+      "liveSince": 1000
+    },
+    {
+      "type": "iceberg_orders",
+      "provider": "BINANCE",
+      "symbol": "BTC-USDT",
+      "marketKind": "PERPETUAL",
+      "ts": 1789000061000,
+      "seq": 1,
+      "reset": false,
+      "icebergs": [
+        {
+          "id": "BTCUSDT|PERPETUAL|ask|80924.2|1789000040000",
+          "kind": "probable",
+          "confidence": "strong",
+          "side": "ask",
+          "price": 80924.2,
+          "display": 1.545,
+          "tranches": 2,
+          "executed": 13.1,
+          "startedAt": 1789000040000,
+          "markedAt": 1789000046000,
+          "updatedAt": 1789000061000,
+          "status": "ended",
+          "origin": "runtime"
+        }
+      ],
+      "watched": [
+        [
+          1788996460000,
+          1789000061000
+        ]
+      ],
+      "liveSince": 1000
+    },
+    {
+      "type": "iceberg_orders",
+      "provider": "DXFEED",
+      "symbol": "/NQZ26:XCME",
+      "assetClass": "FUTURE",
+      "ts": 1789000060000,
+      "seq": 0,
+      "reset": true,
+      "icebergs": [
+        {
+          "id": "/NQZ26:XCME|5137554220647449213|1788999933000",
+          "kind": "native",
+          "confidence": "certain",
+          "side": "bid",
+          "price": 31188,
+          "display": 10,
+          "tranches": 4,
+          "executed": 32,
+          "startedAt": 1788999933000,
+          "markedAt": 1788999940000,
+          "updatedAt": 1789000059000,
+          "status": "filled",
+          "origin": "runtime"
+        },
+        {
+          "id": "/NQZ26:XCME|FUTURE|ask|80924.2|1789000040000",
+          "kind": "probable",
+          "confidence": "strong",
+          "side": "ask",
+          "price": 80924.2,
+          "display": 1.545,
+          "tranches": 2,
+          "executed": 12.475,
+          "startedAt": 1789000040000,
+          "markedAt": 1789000046000,
+          "updatedAt": 1789000060000,
+          "status": "active",
+          "origin": "runtime"
+        }
+      ],
+      "watched": [
+        [
+          1788996460000,
+          1789000000000
+        ]
+      ],
+      "liveSince": 1000
+    },
+    {
+      "type": "iceberg_orders",
+      "provider": "DXFEED",
+      "symbol": "/NQZ26:XCME",
+      "assetClass": "FUTURE",
+      "ts": 1789000061000,
+      "seq": 1,
+      "reset": false,
+      "icebergs": [
+        {
+          "id": "/NQZ26:XCME|FUTURE|ask|80924.2|1789000040000",
+          "kind": "probable",
+          "confidence": "strong",
+          "side": "ask",
+          "price": 80924.2,
+          "display": 1.545,
+          "tranches": 2,
+          "executed": 13.1,
+          "startedAt": 1789000040000,
+          "markedAt": 1789000046000,
+          "updatedAt": 1789000061000,
+          "status": "ended",
+          "origin": "runtime"
+        }
+      ],
+      "watched": [
+        [
+          1788996460000,
+          1789000061000
+        ]
+      ],
+      "liveSince": 1000
+    },
+    {
+      "type": "exhaustion_shades",
+      "provider": "BINANCE",
+      "symbol": "BTC-USDT",
+      "marketKind": "PERPETUAL",
+      "ts": 1789000060000,
+      "seq": 0,
+      "reset": true,
+      "shades": [
+        {
+          "id": "60000|buyers|1788999460000",
+          "candleMs": 60000,
+          "side": "buyers",
+          "status": "held",
+          "intensity": 2,
+          "score": 4,
+          "readings": {
+            "rate": true,
+            "progress": true,
+            "delta": true,
+            "divergence": false,
+            "prints": true,
+            "book": false
+          },
+          "values": {
+            "rate": 0.3,
+            "progress": 0.2,
+            "delta": -0.25,
+            "divergence": 0.1,
+            "prints": 0.2,
+            "book": 0.95
+          },
+          "raw": {
+            "own": 3,
+            "other": 7,
+            "legOwn": 14.222,
+            "moved": 0,
+            "legMoved": 1.778,
+            "big": 0,
+            "legBig": 0,
+            "extremeOwn": 20,
+            "extremeOther": 0,
+            "bookNow": 1,
+            "bookAt": 2,
+            "bookBand": 0
+          },
+          "startTs": 1788999460000,
+          "endTs": 1788999580000,
+          "extremeTs": 1788999400000,
+          "extremePrice": 31188.25,
+          "legStartTs": 1788998860000,
+          "legStartPrice": 31170,
+          "legSize": 18.25,
+          "efficiency": 0.8,
+          "atr": 3.25,
+          "judgedAt": 1789000060000,
+          "updatedAt": 1789000060000,
+          "origin": "stored"
+        },
+        {
+          "id": "300000|sellers|1788999760000",
+          "candleMs": 300000,
+          "side": "sellers",
+          "status": "open",
+          "intensity": 1,
+          "score": 3,
+          "readings": {
+            "rate": false,
+            "progress": false,
+            "delta": true,
+            "divergence": true,
+            "prints": true,
+            "book": false
+          },
+          "values": {
+            "rate": 0.62,
+            "progress": 0.8,
+            "delta": -0.3,
+            "divergence": -0.5,
+            "prints": 0,
+            "book": 1.1
+          },
+          "raw": {
+            "own": 3,
+            "other": 7,
+            "legOwn": 14.222,
+            "moved": 0,
+            "legMoved": 1.778,
+            "big": 0,
+            "legBig": 0,
+            "extremeOwn": 20,
+            "extremeOther": 0,
+            "bookNow": 1,
+            "bookAt": 2,
+            "bookBand": 0
+          },
+          "startTs": 1788999760000,
+          "endTs": 1789000060000,
+          "extremeTs": 1788999460000,
+          "extremePrice": 31160,
+          "legStartTs": 1788997660000,
+          "legStartPrice": 31200,
+          "legSize": 40,
+          "efficiency": 0.6,
+          "atr": 7.5,
+          "judgedAt": null,
+          "updatedAt": 1789000060000,
+          "origin": "runtime"
+        }
+      ],
+      "liveSince": 1788996460000,
+      "loading": 1788910060000
+    },
+    {
+      "type": "exhaustion_shades",
+      "provider": "BINANCE",
+      "symbol": "BTC-USDT",
+      "marketKind": "PERPETUAL",
+      "ts": 1789000360000,
+      "seq": 1,
+      "reset": false,
+      "shades": [
+        {
+          "id": "300000|sellers|1788999760000",
+          "candleMs": 300000,
+          "side": "sellers",
+          "status": "pending",
+          "intensity": 1,
+          "score": 3,
+          "readings": {
+            "rate": false,
+            "progress": false,
+            "delta": true,
+            "divergence": true,
+            "prints": true,
+            "book": false
+          },
+          "values": {
+            "rate": 0.62,
+            "progress": 0.8,
+            "delta": -0.3,
+            "divergence": -0.5,
+            "prints": 0,
+            "book": 1.1
+          },
+          "raw": {
+            "own": 3,
+            "other": 7,
+            "legOwn": 14.222,
+            "moved": 0,
+            "legMoved": 1.778,
+            "big": 0,
+            "legBig": 0,
+            "extremeOwn": 20,
+            "extremeOther": 0,
+            "bookNow": 1,
+            "bookAt": 2,
+            "bookBand": 0
+          },
+          "startTs": 1788999760000,
+          "endTs": 1789000060000,
+          "extremeTs": 1788999460000,
+          "extremePrice": 31160,
+          "legStartTs": 1788997660000,
+          "legStartPrice": 31200,
+          "legSize": 40,
+          "efficiency": 0.6,
+          "atr": 7.5,
+          "judgedAt": null,
+          "updatedAt": 1789000360000,
+          "origin": "runtime"
+        }
+      ],
+      "liveSince": 1788996460000,
+      "loading": null
+    },
+    {
+      "type": "candle_monitor",
+      "provider": "BINANCE",
+      "symbol": "BTC-USDT",
+      "marketKind": "PERPETUAL",
+      "ts": 1789000090000,
+      "entries": [
+        {
+          "candleMs": 60000,
+          "candleTs": 1789000020000,
+          "buy": 2.97,
+          "sell": 0.56,
+          "biggestBuy": {
+            "price": 31190,
+            "size": 1.21
+          },
+          "biggestSell": {
+            "price": 31186.5,
+            "size": 0.4
+          }
+        },
+        {
+          "candleMs": 300000,
+          "candleTs": 1788999900000,
+          "buy": 12.5,
+          "sell": 14.25,
+          "biggestBuy": null,
+          "biggestSell": {
+            "price": 31160,
+            "size": 3.5
+          }
+        }
+      ]
+    },
+    {
+      "type": "exhaustion_shades",
+      "provider": "DXFEED",
+      "symbol": "/NQZ26:XCME",
+      "assetClass": "FUTURE",
+      "ts": 1789000060000,
+      "seq": 0,
+      "reset": true,
+      "shades": [
+        {
+          "id": "60000|buyers|1788999460000",
+          "candleMs": 60000,
+          "side": "buyers",
+          "status": "held",
+          "intensity": 2,
+          "score": 4,
+          "readings": {
+            "rate": true,
+            "progress": true,
+            "delta": true,
+            "divergence": false,
+            "prints": true,
+            "book": false
+          },
+          "values": {
+            "rate": 0.3,
+            "progress": 0.2,
+            "delta": -0.25,
+            "divergence": 0.1,
+            "prints": 0.2,
+            "book": 0.95
+          },
+          "raw": {
+            "own": 3,
+            "other": 7,
+            "legOwn": 14.222,
+            "moved": 0,
+            "legMoved": 1.778,
+            "big": 0,
+            "legBig": 0,
+            "extremeOwn": 20,
+            "extremeOther": 0,
+            "bookNow": 1,
+            "bookAt": 2,
+            "bookBand": 0
+          },
+          "startTs": 1788999460000,
+          "endTs": 1788999580000,
+          "extremeTs": 1788999400000,
+          "extremePrice": 31188.25,
+          "legStartTs": 1788998860000,
+          "legStartPrice": 31170,
+          "legSize": 18.25,
+          "efficiency": 0.8,
+          "atr": 3.25,
+          "judgedAt": 1789000060000,
+          "updatedAt": 1789000060000,
+          "origin": "stored"
+        },
+        {
+          "id": "300000|sellers|1788999760000",
+          "candleMs": 300000,
+          "side": "sellers",
+          "status": "open",
+          "intensity": 1,
+          "score": 3,
+          "readings": {
+            "rate": false,
+            "progress": false,
+            "delta": true,
+            "divergence": true,
+            "prints": true,
+            "book": false
+          },
+          "values": {
+            "rate": 0.62,
+            "progress": 0.8,
+            "delta": -0.3,
+            "divergence": -0.5,
+            "prints": 0,
+            "book": 1.1
+          },
+          "raw": {
+            "own": 3,
+            "other": 7,
+            "legOwn": 14.222,
+            "moved": 0,
+            "legMoved": 1.778,
+            "big": 0,
+            "legBig": 0,
+            "extremeOwn": 20,
+            "extremeOther": 0,
+            "bookNow": 1,
+            "bookAt": 2,
+            "bookBand": 0
+          },
+          "startTs": 1788999760000,
+          "endTs": 1789000060000,
+          "extremeTs": 1788999460000,
+          "extremePrice": 31160,
+          "legStartTs": 1788997660000,
+          "legStartPrice": 31200,
+          "legSize": 40,
+          "efficiency": 0.6,
+          "atr": 7.5,
+          "judgedAt": null,
+          "updatedAt": 1789000060000,
+          "origin": "runtime"
+        }
+      ],
+      "liveSince": 1788996460000,
+      "loading": 1788910060000
+    },
+    {
+      "type": "exhaustion_shades",
+      "provider": "DXFEED",
+      "symbol": "/NQZ26:XCME",
+      "assetClass": "FUTURE",
+      "ts": 1789000360000,
+      "seq": 1,
+      "reset": false,
+      "shades": [
+        {
+          "id": "300000|sellers|1788999760000",
+          "candleMs": 300000,
+          "side": "sellers",
+          "status": "pending",
+          "intensity": 1,
+          "score": 3,
+          "readings": {
+            "rate": false,
+            "progress": false,
+            "delta": true,
+            "divergence": true,
+            "prints": true,
+            "book": false
+          },
+          "values": {
+            "rate": 0.62,
+            "progress": 0.8,
+            "delta": -0.3,
+            "divergence": -0.5,
+            "prints": 0,
+            "book": 1.1
+          },
+          "raw": {
+            "own": 3,
+            "other": 7,
+            "legOwn": 14.222,
+            "moved": 0,
+            "legMoved": 1.778,
+            "big": 0,
+            "legBig": 0,
+            "extremeOwn": 20,
+            "extremeOther": 0,
+            "bookNow": 1,
+            "bookAt": 2,
+            "bookBand": 0
+          },
+          "startTs": 1788999760000,
+          "endTs": 1789000060000,
+          "extremeTs": 1788999460000,
+          "extremePrice": 31160,
+          "legStartTs": 1788997660000,
+          "legStartPrice": 31200,
+          "legSize": 40,
+          "efficiency": 0.6,
+          "atr": 7.5,
+          "judgedAt": null,
+          "updatedAt": 1789000360000,
+          "origin": "runtime"
+        }
+      ],
+      "liveSince": 1788996460000,
+      "loading": null
+    },
+    {
+      "type": "candle_monitor",
+      "provider": "DXFEED",
+      "symbol": "/NQZ26:XCME",
+      "assetClass": "FUTURE",
+      "ts": 1789000090000,
+      "entries": [
+        {
+          "candleMs": 60000,
+          "candleTs": 1789000020000,
+          "buy": 2.97,
+          "sell": 0.56,
+          "biggestBuy": {
+            "price": 31190,
+            "size": 1.21
+          },
+          "biggestSell": {
+            "price": 31186.5,
+            "size": 0.4
+          }
+        },
+        {
+          "candleMs": 300000,
+          "candleTs": 1788999900000,
+          "buy": 12.5,
+          "sell": 14.25,
+          "biggestBuy": null,
+          "biggestSell": {
+            "price": 31160,
+            "size": 3.5
+          }
+        }
+      ]
+    },
+    {
+      "type": "initiative_bands",
+      "provider": "BINANCE",
+      "symbol": "BTC-USDT",
+      "marketKind": "PERPETUAL",
+      "ts": 1789000060000,
+      "seq": 0,
+      "reset": true,
+      "bands": [
+        {
+          "id": "60000|down|1788999160000",
+          "candleMs": 60000,
+          "side": "down",
+          "dominant": "sellers",
+          "dominantShare": 0.75,
+          "score": 4,
+          "facts": {
+            "efficiency": {
+              "yes": true,
+              "value": 0.714
+            },
+            "closes": {
+              "yes": true,
+              "value": 2
+            },
+            "burst": {
+              "yes": false,
+              "value": 0.8
+            },
+            "delta": {
+              "yes": true,
+              "rank": 1,
+              "share": 0.75
+            },
+            "prints": {
+              "yes": true,
+              "rank": 0.833,
+              "perCandle": 1
+            }
+          },
+          "pivotTs": 1788999160000,
+          "pivotPrice": 31188.25,
+          "frozenTs": 1788999340000,
+          "frozenPrice": 31170,
+          "windowCandles": 3,
+          "atr": 3.25,
+          "legExtremePrice": 31160,
+          "legExtremeTs": 1788999400000,
+          "legEndTs": 1788999460000,
+          "updatedAt": 1788999460000,
+          "origin": "stored"
+        },
+        {
+          "id": "300000|up|1788999400000",
+          "candleMs": 300000,
+          "side": "up",
+          "dominant": "buyers",
+          "dominantShare": 0.9,
+          "score": 3,
+          "facts": {
+            "efficiency": {
+              "yes": true,
+              "value": 1
+            },
+            "closes": {
+              "yes": true,
+              "value": 1
+            },
+            "burst": {
+              "yes": false,
+              "value": 1.667
+            },
+            "delta": {
+              "yes": true,
+              "rank": 0.85,
+              "share": 0.9
+            },
+            "prints": {
+              "yes": false,
+              "rank": 0.4,
+              "perCandle": 0
+            }
+          },
+          "pivotTs": 1788999400000,
+          "pivotPrice": 31160,
+          "frozenTs": 1788999760000,
+          "frozenPrice": 31190,
+          "windowCandles": 1,
+          "atr": 7.5,
+          "legExtremePrice": 31195.5,
+          "legExtremeTs": 1788999760000,
+          "legEndTs": null,
+          "updatedAt": 1789000060000,
+          "origin": "runtime"
+        }
+      ],
+      "liveSince": 1788996460000,
+      "loading": 1788910060000
+    },
+    {
+      "type": "initiative_bands",
+      "provider": "BINANCE",
+      "symbol": "BTC-USDT",
+      "marketKind": "PERPETUAL",
+      "ts": 1789000360000,
+      "seq": 1,
+      "reset": false,
+      "bands": [
+        {
+          "id": "300000|up|1788999400000",
+          "candleMs": 300000,
+          "side": "up",
+          "dominant": "buyers",
+          "dominantShare": 0.9,
+          "score": 3,
+          "facts": {
+            "efficiency": {
+              "yes": true,
+              "value": 1
+            },
+            "closes": {
+              "yes": true,
+              "value": 1
+            },
+            "burst": {
+              "yes": false,
+              "value": 1.667
+            },
+            "delta": {
+              "yes": true,
+              "rank": 0.85,
+              "share": 0.9
+            },
+            "prints": {
+              "yes": false,
+              "rank": 0.4,
+              "perCandle": 0
+            }
+          },
+          "pivotTs": 1788999400000,
+          "pivotPrice": 31160,
+          "frozenTs": 1788999760000,
+          "frozenPrice": 31190,
+          "windowCandles": 1,
+          "atr": 7.5,
+          "legExtremePrice": 31210,
+          "legExtremeTs": 1789000060000,
+          "legEndTs": null,
+          "updatedAt": 1789000360000,
+          "origin": "runtime"
+        }
+      ],
+      "liveSince": 1788996460000,
+      "loading": null
+    },
+    {
+      "type": "initiative_bands",
+      "provider": "DXFEED",
+      "symbol": "/NQZ26:XCME",
+      "assetClass": "FUTURE",
+      "ts": 1789000060000,
+      "seq": 0,
+      "reset": true,
+      "bands": [
+        {
+          "id": "60000|down|1788999160000",
+          "candleMs": 60000,
+          "side": "down",
+          "dominant": "sellers",
+          "dominantShare": 0.75,
+          "score": 4,
+          "facts": {
+            "efficiency": {
+              "yes": true,
+              "value": 0.714
+            },
+            "closes": {
+              "yes": true,
+              "value": 2
+            },
+            "burst": {
+              "yes": false,
+              "value": 0.8
+            },
+            "delta": {
+              "yes": true,
+              "rank": 1,
+              "share": 0.75
+            },
+            "prints": {
+              "yes": true,
+              "rank": 0.833,
+              "perCandle": 1
+            }
+          },
+          "pivotTs": 1788999160000,
+          "pivotPrice": 31188.25,
+          "frozenTs": 1788999340000,
+          "frozenPrice": 31170,
+          "windowCandles": 3,
+          "atr": 3.25,
+          "legExtremePrice": 31160,
+          "legExtremeTs": 1788999400000,
+          "legEndTs": 1788999460000,
+          "updatedAt": 1788999460000,
+          "origin": "stored"
+        },
+        {
+          "id": "300000|up|1788999400000",
+          "candleMs": 300000,
+          "side": "up",
+          "dominant": "buyers",
+          "dominantShare": 0.9,
+          "score": 3,
+          "facts": {
+            "efficiency": {
+              "yes": true,
+              "value": 1
+            },
+            "closes": {
+              "yes": true,
+              "value": 1
+            },
+            "burst": {
+              "yes": false,
+              "value": 1.667
+            },
+            "delta": {
+              "yes": true,
+              "rank": 0.85,
+              "share": 0.9
+            },
+            "prints": {
+              "yes": false,
+              "rank": 0.4,
+              "perCandle": 0
+            }
+          },
+          "pivotTs": 1788999400000,
+          "pivotPrice": 31160,
+          "frozenTs": 1788999760000,
+          "frozenPrice": 31190,
+          "windowCandles": 1,
+          "atr": 7.5,
+          "legExtremePrice": 31195.5,
+          "legExtremeTs": 1788999760000,
+          "legEndTs": null,
+          "updatedAt": 1789000060000,
+          "origin": "runtime"
+        }
+      ],
+      "liveSince": 1788996460000,
+      "loading": 1788910060000
+    },
+    {
+      "type": "initiative_bands",
+      "provider": "DXFEED",
+      "symbol": "/NQZ26:XCME",
+      "assetClass": "FUTURE",
+      "ts": 1789000360000,
+      "seq": 1,
+      "reset": false,
+      "bands": [
+        {
+          "id": "300000|up|1788999400000",
+          "candleMs": 300000,
+          "side": "up",
+          "dominant": "buyers",
+          "dominantShare": 0.9,
+          "score": 3,
+          "facts": {
+            "efficiency": {
+              "yes": true,
+              "value": 1
+            },
+            "closes": {
+              "yes": true,
+              "value": 1
+            },
+            "burst": {
+              "yes": false,
+              "value": 1.667
+            },
+            "delta": {
+              "yes": true,
+              "rank": 0.85,
+              "share": 0.9
+            },
+            "prints": {
+              "yes": false,
+              "rank": 0.4,
+              "perCandle": 0
+            }
+          },
+          "pivotTs": 1788999400000,
+          "pivotPrice": 31160,
+          "frozenTs": 1788999760000,
+          "frozenPrice": 31190,
+          "windowCandles": 1,
+          "atr": 7.5,
+          "legExtremePrice": 31210,
+          "legExtremeTs": 1789000060000,
+          "legEndTs": null,
+          "updatedAt": 1789000360000,
+          "origin": "runtime"
+        }
+      ],
+      "liveSince": 1788996460000,
+      "loading": null
+    }
+  ]
+}

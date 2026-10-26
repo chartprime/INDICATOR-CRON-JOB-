@@ -1,0 +1,1015 @@
+{
+  "contractVersion": 1,
+  "source": {
+    "git": {
+      "commit": "234638db94502f476223d55cf6adaefb508fb529",
+      "dirty": false,
+      "trackedChanges": 0,
+      "untrackedFiles": 0,
+      "trackedDiffSha256": null
+    },
+    "scriptSha256": "97edcbabe0f0df622333660d7b49df2c53afb14cb5ae4c09755ad3bebf1687d0",
+    "manifestSha256": "866f6b235db27a5fe4894230ac15541424e53eb9554f167e8705fa6272cf569a",
+    "nodeVersion": "v25.2.1",
+    "contractVersions": {
+      "liveStorage": "live-storage/1",
+      "archive": null
+    },
+    "endpoints": {
+      "liveStorageOrigin": "http://10.88.0.1:8001",
+      "archiveOrigin": null,
+      "healthOrigin": null
+    }
+  },
+  "name": "o5-binance-replay-4h-20-page-sample-sparse-books-2026-09-20",
+  "startedAtUtc": "2026-09-20T13:08:39.607Z",
+  "users": 1,
+  "rounds": 1,
+  "wallMs": 65046.866,
+  "summary": {
+    "requests": 20,
+    "succeeded": 20,
+    "failed": 0,
+    "responseBytes": 19558684,
+    "latencyMs": {
+      "min": 2005.543,
+      "p50": 2951.01,
+      "p95": 5264.084,
+      "p99": 5796.359,
+      "max": 5796.359
+    },
+    "statuses": {
+      "200": 20
+    },
+    "failureClasses": {
+      "SUCCESS": 20
+    }
+  },
+  "byRoute": {
+    "replay-page": {
+      "requests": 20,
+      "succeeded": 20,
+      "failed": 0,
+      "responseBytes": 19558684,
+      "latencyMs": {
+        "min": 2005.543,
+        "p50": 2951.01,
+        "p95": 5264.084,
+        "p99": 5796.359,
+        "max": 5796.359
+      },
+      "statuses": {
+        "200": 20
+      },
+      "failureClasses": {
+        "SUCCESS": 20
+      }
+    }
+  },
+  "byRoutePage": {
+    "replay-page": {
+      "0": {
+        "requests": 1,
+        "succeeded": 1,
+        "failed": 0,
+        "responseBytes": 1052705,
+        "latencyMs": {
+          "min": 5796.359,
+          "p50": 5796.359,
+          "p95": 5796.359,
+          "p99": 5796.359,
+          "max": 5796.359
+        },
+        "statuses": {
+          "200": 1
+        },
+        "failureClasses": {
+          "SUCCESS": 1
+        }
+      },
+      "1": {
+        "requests": 1,
+        "succeeded": 1,
+        "failed": 0,
+        "responseBytes": 991255,
+        "latencyMs": {
+          "min": 5264.084,
+          "p50": 5264.084,
+          "p95": 5264.084,
+          "p99": 5264.084,
+          "max": 5264.084
+        },
+        "statuses": {
+          "200": 1
+        },
+        "failureClasses": {
+          "SUCCESS": 1
+        }
+      },
+      "2": {
+        "requests": 1,
+        "succeeded": 1,
+        "failed": 0,
+        "responseBytes": 892596,
+        "latencyMs": {
+          "min": 3546.19,
+          "p50": 3546.19,
+          "p95": 3546.19,
+          "p99": 3546.19,
+          "max": 3546.19
+        },
+        "statuses": {
+          "200": 1
+        },
+        "failureClasses": {
+          "SUCCESS": 1
+        }
+      },
+      "3": {
+        "requests": 1,
+        "succeeded": 1,
+        "failed": 0,
+        "responseBytes": 1026399,
+        "latencyMs": {
+          "min": 3106.367,
+          "p50": 3106.367,
+          "p95": 3106.367,
+          "p99": 3106.367,
+          "max": 3106.367
+        },
+        "statuses": {
+          "200": 1
+        },
+        "failureClasses": {
+          "SUCCESS": 1
+        }
+      },
+      "4": {
+        "requests": 1,
+        "succeeded": 1,
+        "failed": 0,
+        "responseBytes": 1040029,
+        "latencyMs": {
+          "min": 3207.605,
+          "p50": 3207.605,
+          "p95": 3207.605,
+          "p99": 3207.605,
+          "max": 3207.605
+        },
+        "statuses": {
+          "200": 1
+        },
+        "failureClasses": {
+          "SUCCESS": 1
+        }
+      },
+      "5": {
+        "requests": 1,
+        "succeeded": 1,
+        "failed": 0,
+        "responseBytes": 982841,
+        "latencyMs": {
+          "min": 3540.228,
+          "p50": 3540.228,
+          "p95": 3540.228,
+          "p99": 3540.228,
+          "max": 3540.228
+        },
+        "statuses": {
+          "200": 1
+        },
+        "failureClasses": {
+          "SUCCESS": 1
+        }
+      },
+      "6": {
+        "requests": 1,
+        "succeeded": 1,
+        "failed": 0,
+        "responseBytes": 966478,
+        "latencyMs": {
+          "min": 2951.01,
+          "p50": 2951.01,
+          "p95": 2951.01,
+          "p99": 2951.01,
+          "max": 2951.01
+        },
+        "statuses": {
+          "200": 1
+        },
+        "failureClasses": {
+          "SUCCESS": 1
+        }
+      },
+      "7": {
+        "requests": 1,
+        "succeeded": 1,
+        "failed": 0,
+        "responseBytes": 960381,
+        "latencyMs": {
+          "min": 2549.562,
+          "p50": 2549.562,
+          "p95": 2549.562,
+          "p99": 2549.562,
+          "max": 2549.562
+        },
+        "statuses": {
+          "200": 1
+        },
+        "failureClasses": {
+          "SUCCESS": 1
+        }
+      },
+      "8": {
+        "requests": 1,
+        "succeeded": 1,
+        "failed": 0,
+        "responseBytes": 966336,
+        "latencyMs": {
+          "min": 2338.39,
+          "p50": 2338.39,
+          "p95": 2338.39,
+          "p99": 2338.39,
+          "max": 2338.39
+        },
+        "statuses": {
+          "200": 1
+        },
+        "failureClasses": {
+          "SUCCESS": 1
+        }
+      },
+      "9": {
+        "requests": 1,
+        "succeeded": 1,
+        "failed": 0,
+        "responseBytes": 1003610,
+        "latencyMs": {
+          "min": 2807.287,
+          "p50": 2807.287,
+          "p95": 2807.287,
+          "p99": 2807.287,
+          "max": 2807.287
+        },
+        "statuses": {
+          "200": 1
+        },
+        "failureClasses": {
+          "SUCCESS": 1
+        }
+      },
+      "10": {
+        "requests": 1,
+        "succeeded": 1,
+        "failed": 0,
+        "responseBytes": 896870,
+        "latencyMs": {
+          "min": 2574.696,
+          "p50": 2574.696,
+          "p95": 2574.696,
+          "p99": 2574.696,
+          "max": 2574.696
+        },
+        "statuses": {
+          "200": 1
+        },
+        "failureClasses": {
+          "SUCCESS": 1
+        }
+      },
+      "11": {
+        "requests": 1,
+        "succeeded": 1,
+        "failed": 0,
+        "responseBytes": 1009033,
+        "latencyMs": {
+          "min": 3273.969,
+          "p50": 3273.969,
+          "p95": 3273.969,
+          "p99": 3273.969,
+          "max": 3273.969
+        },
+        "statuses": {
+          "200": 1
+        },
+        "failureClasses": {
+          "SUCCESS": 1
+        }
+      },
+      "12": {
+        "requests": 1,
+        "succeeded": 1,
+        "failed": 0,
+        "responseBytes": 988381,
+        "latencyMs": {
+          "min": 3142.897,
+          "p50": 3142.897,
+          "p95": 3142.897,
+          "p99": 3142.897,
+          "max": 3142.897
+        },
+        "statuses": {
+          "200": 1
+        },
+        "failureClasses": {
+          "SUCCESS": 1
+        }
+      },
+      "13": {
+        "requests": 1,
+        "succeeded": 1,
+        "failed": 0,
+        "responseBytes": 964338,
+        "latencyMs": {
+          "min": 2563.899,
+          "p50": 2563.899,
+          "p95": 2563.899,
+          "p99": 2563.899,
+          "max": 2563.899
+        },
+        "statuses": {
+          "200": 1
+        },
+        "failureClasses": {
+          "SUCCESS": 1
+        }
+      },
+      "14": {
+        "requests": 1,
+        "succeeded": 1,
+        "failed": 0,
+        "responseBytes": 1046467,
+        "latencyMs": {
+          "min": 2682.607,
+          "p50": 2682.607,
+          "p95": 2682.607,
+          "p99": 2682.607,
+          "max": 2682.607
+        },
+        "statuses": {
+          "200": 1
+        },
+        "failureClasses": {
+          "SUCCESS": 1
+        }
+      },
+      "15": {
+        "requests": 1,
+        "succeeded": 1,
+        "failed": 0,
+        "responseBytes": 925937,
+        "latencyMs": {
+          "min": 4992.355,
+          "p50": 4992.355,
+          "p95": 4992.355,
+          "p99": 4992.355,
+          "max": 4992.355
+        },
+        "statuses": {
+          "200": 1
+        },
+        "failureClasses": {
+          "SUCCESS": 1
+        }
+      },
+      "16": {
+        "requests": 1,
+        "succeeded": 1,
+        "failed": 0,
+        "responseBytes": 976224,
+        "latencyMs": {
+          "min": 3678.695,
+          "p50": 3678.695,
+          "p95": 3678.695,
+          "p99": 3678.695,
+          "max": 3678.695
+        },
+        "statuses": {
+          "200": 1
+        },
+        "failureClasses": {
+          "SUCCESS": 1
+        }
+      },
+      "17": {
+        "requests": 1,
+        "succeeded": 1,
+        "failed": 0,
+        "responseBytes": 952806,
+        "latencyMs": {
+          "min": 2768.144,
+          "p50": 2768.144,
+          "p95": 2768.144,
+          "p99": 2768.144,
+          "max": 2768.144
+        },
+        "statuses": {
+          "200": 1
+        },
+        "failureClasses": {
+          "SUCCESS": 1
+        }
+      },
+      "18": {
+        "requests": 1,
+        "succeeded": 1,
+        "failed": 0,
+        "responseBytes": 951057,
+        "latencyMs": {
+          "min": 2245.423,
+          "p50": 2245.423,
+          "p95": 2245.423,
+          "p99": 2245.423,
+          "max": 2245.423
+        },
+        "statuses": {
+          "200": 1
+        },
+        "failureClasses": {
+          "SUCCESS": 1
+        }
+      },
+      "19": {
+        "requests": 1,
+        "succeeded": 1,
+        "failed": 0,
+        "responseBytes": 964941,
+        "latencyMs": {
+          "min": 2005.543,
+          "p50": 2005.543,
+          "p95": 2005.543,
+          "p99": 2005.543,
+          "max": 2005.543
+        },
+        "statuses": {
+          "200": 1
+        },
+        "failureClasses": {
+          "SUCCESS": 1
+        }
+      }
+    }
+  },
+  "samples": [
+    {
+      "user": 0,
+      "round": 0,
+      "requestIndex": 0,
+      "route": "replay-page",
+      "page": 0,
+      "correlationId": "7dcd4b30-f351-4775-be1e-0190bd15bc69.0.0.0.0",
+      "status": 200,
+      "responseBytes": 1052705,
+      "bodySha256": "f2ce1d52a18eceee48c15acf55589a83441ceae8ca8c65cad6e45171e14a4a94",
+      "responseSummary": {
+        "frames": 2000,
+        "complete": false,
+        "stats": {
+          "snapshotsUsed": 1,
+          "eventsRead": 8801,
+          "tradesRead": 1390,
+          "booksEmitted": 611,
+          "gaps": 0,
+          "timestampGroupsExamined": 805,
+          "encodedBytes": 1052109
+        }
+      },
+      "failureClass": "SUCCESS",
+      "durationMs": 5796.359,
+      "headersMs": 3385.76,
+      "bodyMs": 2390.487
+    },
+    {
+      "user": 0,
+      "round": 0,
+      "requestIndex": 0,
+      "route": "replay-page",
+      "page": 1,
+      "correlationId": "7dcd4b30-f351-4775-be1e-0190bd15bc69.0.0.0.1",
+      "status": 200,
+      "responseBytes": 991255,
+      "bodySha256": "a346cd1776b5eeaf7eae4e17c35e3c77146dfac8970a81616152ed54d0b761fb",
+      "responseSummary": {
+        "frames": 2000,
+        "complete": false,
+        "stats": {
+          "snapshotsUsed": 1,
+          "eventsRead": 9650,
+          "tradesRead": 1150,
+          "booksEmitted": 851,
+          "gaps": 0,
+          "timestampGroupsExamined": 1082,
+          "encodedBytes": 990659
+        }
+      },
+      "failureClass": "SUCCESS",
+      "durationMs": 5264.084,
+      "headersMs": 4379.805,
+      "bodyMs": 867.628
+    },
+    {
+      "user": 0,
+      "round": 0,
+      "requestIndex": 0,
+      "route": "replay-page",
+      "page": 2,
+      "correlationId": "7dcd4b30-f351-4775-be1e-0190bd15bc69.0.0.0.2",
+      "status": 200,
+      "responseBytes": 892596,
+      "bodySha256": "98c6922919dcabc33e2d56be18287003b4e224b4ebdc6f8a8389a3a669113dbc",
+      "responseSummary": {
+        "frames": 1977,
+        "complete": false,
+        "stats": {
+          "snapshotsUsed": 1,
+          "eventsRead": 10396,
+          "tradesRead": 1258,
+          "booksEmitted": 747,
+          "gaps": 0,
+          "timestampGroupsExamined": 878,
+          "encodedBytes": 892000
+        }
+      },
+      "failureClass": "SUCCESS",
+      "durationMs": 3546.19,
+      "headersMs": 2495.168,
+      "bodyMs": 1032.162
+    },
+    {
+      "user": 0,
+      "round": 0,
+      "requestIndex": 0,
+      "route": "replay-page",
+      "page": 3,
+      "correlationId": "7dcd4b30-f351-4775-be1e-0190bd15bc69.0.0.0.3",
+      "status": 200,
+      "responseBytes": 1026399,
+      "bodySha256": "92dc17b35d78f59a3ea7d42b0b8f014f18bed1d1b7073c5f6fbddc2b219e5bd2",
+      "responseSummary": {
+        "frames": 1997,
+        "complete": false,
+        "stats": {
+          "snapshotsUsed": 1,
+          "eventsRead": 11083,
+          "tradesRead": 1319,
+          "booksEmitted": 687,
+          "gaps": 0,
+          "timestampGroupsExamined": 882,
+          "encodedBytes": 1025802
+        }
+      },
+      "failureClass": "SUCCESS",
+      "durationMs": 3106.367,
+      "headersMs": 2631.131,
+      "bodyMs": 458.864
+    },
+    {
+      "user": 0,
+      "round": 0,
+      "requestIndex": 0,
+      "route": "replay-page",
+      "page": 4,
+      "correlationId": "7dcd4b30-f351-4775-be1e-0190bd15bc69.0.0.0.4",
+      "status": 200,
+      "responseBytes": 1040029,
+      "bodySha256": "3d2fb904b641cf910fe6f6d458d59b80e746f7d2ab52195a0b0ae3b31fa592f7",
+      "responseSummary": {
+        "frames": 1998,
+        "complete": false,
+        "stats": {
+          "snapshotsUsed": 1,
+          "eventsRead": 11893,
+          "tradesRead": 1190,
+          "booksEmitted": 811,
+          "gaps": 0,
+          "timestampGroupsExamined": 984,
+          "encodedBytes": 1039432
+        }
+      },
+      "failureClass": "SUCCESS",
+      "durationMs": 3207.605,
+      "headersMs": 2622.551,
+      "bodyMs": 567.237
+    },
+    {
+      "user": 0,
+      "round": 0,
+      "requestIndex": 0,
+      "route": "replay-page",
+      "page": 5,
+      "correlationId": "7dcd4b30-f351-4775-be1e-0190bd15bc69.0.0.0.5",
+      "status": 200,
+      "responseBytes": 982841,
+      "bodySha256": "e18e8dea5048b447b182654f28c6ece30983e4c2dd35e73c72b5d67ec19ab3b5",
+      "responseSummary": {
+        "frames": 2000,
+        "complete": false,
+        "stats": {
+          "snapshotsUsed": 1,
+          "eventsRead": 12614,
+          "tradesRead": 1279,
+          "booksEmitted": 722,
+          "gaps": 0,
+          "timestampGroupsExamined": 961,
+          "encodedBytes": 982245
+        }
+      },
+      "failureClass": "SUCCESS",
+      "durationMs": 3540.228,
+      "headersMs": 2733.485,
+      "bodyMs": 790.369
+    },
+    {
+      "user": 0,
+      "round": 0,
+      "requestIndex": 0,
+      "route": "replay-page",
+      "page": 6,
+      "correlationId": "7dcd4b30-f351-4775-be1e-0190bd15bc69.0.0.0.6",
+      "status": 200,
+      "responseBytes": 966478,
+      "bodySha256": "835891907cc0824fb1a0d2ab8681d32179e1be7a80f9339d154ac07c84482b80",
+      "responseSummary": {
+        "frames": 2000,
+        "complete": false,
+        "stats": {
+          "snapshotsUsed": 1,
+          "eventsRead": 1492,
+          "tradesRead": 1122,
+          "booksEmitted": 879,
+          "gaps": 0,
+          "timestampGroupsExamined": 1055,
+          "encodedBytes": 965882
+        }
+      },
+      "failureClass": "SUCCESS",
+      "durationMs": 2951.01,
+      "headersMs": 1757.234,
+      "bodyMs": 1177.688
+    },
+    {
+      "user": 0,
+      "round": 0,
+      "requestIndex": 0,
+      "route": "replay-page",
+      "page": 7,
+      "correlationId": "7dcd4b30-f351-4775-be1e-0190bd15bc69.0.0.0.7",
+      "status": 200,
+      "responseBytes": 960381,
+      "bodySha256": "8b974bc6e5b3d9e1abeb26573fee5118d11d701bee91b770f2ac8e6cfb691dff",
+      "responseSummary": {
+        "frames": 2000,
+        "complete": false,
+        "stats": {
+          "snapshotsUsed": 1,
+          "eventsRead": 2394,
+          "tradesRead": 1097,
+          "booksEmitted": 904,
+          "gaps": 0,
+          "timestampGroupsExamined": 1075,
+          "encodedBytes": 959785
+        }
+      },
+      "failureClass": "SUCCESS",
+      "durationMs": 2549.562,
+      "headersMs": 1751.673,
+      "bodyMs": 782.449
+    },
+    {
+      "user": 0,
+      "round": 0,
+      "requestIndex": 0,
+      "route": "replay-page",
+      "page": 8,
+      "correlationId": "7dcd4b30-f351-4775-be1e-0190bd15bc69.0.0.0.8",
+      "status": 200,
+      "responseBytes": 966336,
+      "bodySha256": "86833a0cf12d9d77651345c82d1083f1706096d5458efb01461de5e9b1e4ec7d",
+      "responseSummary": {
+        "frames": 1999,
+        "complete": false,
+        "stats": {
+          "snapshotsUsed": 1,
+          "eventsRead": 3478,
+          "tradesRead": 945,
+          "booksEmitted": 1086,
+          "gaps": 0,
+          "timestampGroupsExamined": 1293,
+          "encodedBytes": 965740
+        }
+      },
+      "failureClass": "SUCCESS",
+      "durationMs": 2338.39,
+      "headersMs": 1810.679,
+      "bodyMs": 511.638
+    },
+    {
+      "user": 0,
+      "round": 0,
+      "requestIndex": 0,
+      "route": "replay-page",
+      "page": 9,
+      "correlationId": "7dcd4b30-f351-4775-be1e-0190bd15bc69.0.0.0.9",
+      "status": 200,
+      "responseBytes": 1003610,
+      "bodySha256": "b3396c5949c78055ae80f434d09a783919716deb03ad214a4c550c3dbed45dcf",
+      "responseSummary": {
+        "frames": 2000,
+        "complete": false,
+        "stats": {
+          "snapshotsUsed": 1,
+          "eventsRead": 4666,
+          "tradesRead": 812,
+          "booksEmitted": 1189,
+          "gaps": 0,
+          "timestampGroupsExamined": 1381,
+          "encodedBytes": 1003011
+        }
+      },
+      "failureClass": "SUCCESS",
+      "durationMs": 2807.287,
+      "headersMs": 1971.41,
+      "bodyMs": 819.343
+    },
+    {
+      "user": 0,
+      "round": 0,
+      "requestIndex": 0,
+      "route": "replay-page",
+      "page": 10,
+      "correlationId": "7dcd4b30-f351-4775-be1e-0190bd15bc69.0.0.0.10",
+      "status": 200,
+      "responseBytes": 896870,
+      "bodySha256": "8fb671ec7f21ab6f272d4267672ba57fa76beeb243c8ef2e741c9cb72a90a5f1",
+      "responseSummary": {
+        "frames": 2000,
+        "complete": false,
+        "stats": {
+          "snapshotsUsed": 1,
+          "eventsRead": 5698,
+          "tradesRead": 977,
+          "booksEmitted": 1033,
+          "gaps": 0,
+          "timestampGroupsExamined": 1211,
+          "encodedBytes": 896272
+        }
+      },
+      "failureClass": "SUCCESS",
+      "durationMs": 2574.696,
+      "headersMs": 1841.891,
+      "bodyMs": 716.886
+    },
+    {
+      "user": 0,
+      "round": 0,
+      "requestIndex": 0,
+      "route": "replay-page",
+      "page": 11,
+      "correlationId": "7dcd4b30-f351-4775-be1e-0190bd15bc69.0.0.0.11",
+      "status": 200,
+      "responseBytes": 1009033,
+      "bodySha256": "f0380391d4ed65a710760fb24b0adf7e0f45e0ff225022f2da6f7cd73094ded9",
+      "responseSummary": {
+        "frames": 2000,
+        "complete": false,
+        "stats": {
+          "snapshotsUsed": 1,
+          "eventsRead": 6688,
+          "tradesRead": 1010,
+          "booksEmitted": 991,
+          "gaps": 0,
+          "timestampGroupsExamined": 1195,
+          "encodedBytes": 1008434
+        }
+      },
+      "failureClass": "SUCCESS",
+      "durationMs": 3273.969,
+      "headersMs": 1913.852,
+      "bodyMs": 1341.462
+    },
+    {
+      "user": 0,
+      "round": 0,
+      "requestIndex": 0,
+      "route": "replay-page",
+      "page": 12,
+      "correlationId": "7dcd4b30-f351-4775-be1e-0190bd15bc69.0.0.0.12",
+      "status": 200,
+      "responseBytes": 988381,
+      "bodySha256": "e31e23799744afa1d293b68ec0750c5a2d4a82604b64a76c383d795e9d44dbb4",
+      "responseSummary": {
+        "frames": 1993,
+        "complete": false,
+        "stats": {
+          "snapshotsUsed": 1,
+          "eventsRead": 7957,
+          "tradesRead": 752,
+          "booksEmitted": 1270,
+          "gaps": 0,
+          "timestampGroupsExamined": 1460,
+          "encodedBytes": 987783
+        }
+      },
+      "failureClass": "SUCCESS",
+      "durationMs": 3142.897,
+      "headersMs": 2091.301,
+      "bodyMs": 1034.193
+    },
+    {
+      "user": 0,
+      "round": 0,
+      "requestIndex": 0,
+      "route": "replay-page",
+      "page": 13,
+      "correlationId": "7dcd4b30-f351-4775-be1e-0190bd15bc69.0.0.0.13",
+      "status": 200,
+      "responseBytes": 964338,
+      "bodySha256": "0018d5fadc7bb69b06b1ff5910708a276b4ce42cc38a8ff52a10768cd1cecb6c",
+      "responseSummary": {
+        "frames": 2000,
+        "complete": false,
+        "stats": {
+          "snapshotsUsed": 1,
+          "eventsRead": 8610,
+          "tradesRead": 1347,
+          "booksEmitted": 654,
+          "gaps": 0,
+          "timestampGroupsExamined": 859,
+          "encodedBytes": 963741
+        }
+      },
+      "failureClass": "SUCCESS",
+      "durationMs": 2563.899,
+      "headersMs": 2028.07,
+      "bodyMs": 520.998
+    },
+    {
+      "user": 0,
+      "round": 0,
+      "requestIndex": 0,
+      "route": "replay-page",
+      "page": 14,
+      "correlationId": "7dcd4b30-f351-4775-be1e-0190bd15bc69.0.0.0.14",
+      "status": 200,
+      "responseBytes": 1046467,
+      "bodySha256": "297b33fb8754d7c459c658456cdf5f9fdd79b5be583f8981e7efdecbe295e0f5",
+      "responseSummary": {
+        "frames": 2000,
+        "complete": false,
+        "stats": {
+          "snapshotsUsed": 1,
+          "eventsRead": 9688,
+          "tradesRead": 921,
+          "booksEmitted": 1080,
+          "gaps": 0,
+          "timestampGroupsExamined": 1332,
+          "encodedBytes": 1045868
+        }
+      },
+      "failureClass": "SUCCESS",
+      "durationMs": 2682.607,
+      "headersMs": 2027.711,
+      "bodyMs": 638.603
+    },
+    {
+      "user": 0,
+      "round": 0,
+      "requestIndex": 0,
+      "route": "replay-page",
+      "page": 15,
+      "correlationId": "7dcd4b30-f351-4775-be1e-0190bd15bc69.0.0.0.15",
+      "status": 200,
+      "responseBytes": 925937,
+      "bodySha256": "e79358a4f8d63bad260ce2f94f20906654b14042ad63a8633749f2fe00eae696",
+      "responseSummary": {
+        "frames": 1975,
+        "complete": false,
+        "stats": {
+          "snapshotsUsed": 1,
+          "eventsRead": 10476,
+          "tradesRead": 1222,
+          "booksEmitted": 788,
+          "gaps": 0,
+          "timestampGroupsExamined": 1012,
+          "encodedBytes": 925338
+        }
+      },
+      "failureClass": "SUCCESS",
+      "durationMs": 4992.355,
+      "headersMs": 2039.991,
+      "bodyMs": 2937.049
+    },
+    {
+      "user": 0,
+      "round": 0,
+      "requestIndex": 0,
+      "route": "replay-page",
+      "page": 16,
+      "correlationId": "7dcd4b30-f351-4775-be1e-0190bd15bc69.0.0.0.16",
+      "status": 200,
+      "responseBytes": 976224,
+      "bodySha256": "68cbe2a0d1c7caa3f5c6b8cc0d144f72fce4a7bb85fabfb97b85368f18f5ccba",
+      "responseSummary": {
+        "frames": 1910,
+        "complete": false,
+        "stats": {
+          "snapshotsUsed": 1,
+          "eventsRead": 11321,
+          "tradesRead": 1248,
+          "booksEmitted": 845,
+          "gaps": 0,
+          "timestampGroupsExamined": 1082,
+          "encodedBytes": 975625
+        }
+      },
+      "failureClass": "SUCCESS",
+      "durationMs": 3678.695,
+      "headersMs": 2177.018,
+      "bodyMs": 1485.796
+    },
+    {
+      "user": 0,
+      "round": 0,
+      "requestIndex": 0,
+      "route": "replay-page",
+      "page": 17,
+      "correlationId": "7dcd4b30-f351-4775-be1e-0190bd15bc69.0.0.0.17",
+      "status": 200,
+      "responseBytes": 952806,
+      "bodySha256": "75cb70eb3b0edd893ff77d2fd79576bdaa8774279a7f9fff48c06dde22a1a7d1",
+      "responseSummary": {
+        "frames": 1993,
+        "complete": false,
+        "stats": {
+          "snapshotsUsed": 1,
+          "eventsRead": 12059,
+          "tradesRead": 1278,
+          "booksEmitted": 738,
+          "gaps": 0,
+          "timestampGroupsExamined": 951,
+          "encodedBytes": 952208
+        }
+      },
+      "failureClass": "SUCCESS",
+      "durationMs": 2768.144,
+      "headersMs": 2222.831,
+      "bodyMs": 531.989
+    },
+    {
+      "user": 0,
+      "round": 0,
+      "requestIndex": 0,
+      "route": "replay-page",
+      "page": 18,
+      "correlationId": "7dcd4b30-f351-4775-be1e-0190bd15bc69.0.0.0.18",
+      "status": 200,
+      "responseBytes": 951057,
+      "bodySha256": "d82d721f11b3b1d3d59dac285918f81aeb5ccba302fd710a7570ea325c4a14f3",
+      "responseSummary": {
+        "frames": 1939,
+        "complete": false,
+        "stats": {
+          "snapshotsUsed": 1,
+          "eventsRead": 1047,
+          "tradesRead": 1083,
+          "booksEmitted": 984,
+          "gaps": 0,
+          "timestampGroupsExamined": 1159,
+          "encodedBytes": 950459
+        }
+      },
+      "failureClass": "SUCCESS",
+      "durationMs": 2245.423,
+      "headersMs": 1625.915,
+      "bodyMs": 604.754
+    },
+    {
+      "user": 0,
+      "round": 0,
+      "requestIndex": 0,
+      "route": "replay-page",
+      "page": 19,
+      "correlationId": "7dcd4b30-f351-4775-be1e-0190bd15bc69.0.0.0.19",
+      "status": 200,
+      "responseBytes": 964941,
+      "bodySha256": "4c49fa292a29b65c114192c8f5e23f3806a5a547976e013c1b4f1fcb9166b668",
+      "responseSummary": {
+        "frames": 2000,
+        "complete": false,
+        "stats": {
+          "snapshotsUsed": 1,
+          "eventsRead": 1937,
+          "tradesRead": 1110,
+          "booksEmitted": 891,
+          "gaps": 0,
+          "timestampGroupsExamined": 1054,
+          "encodedBytes": 964343
+        }
+      },
+      "failureClass": "SUCCESS",
+      "durationMs": 2005.543,
+      "headersMs": 1163.696,
+      "bodyMs": 826.776
+    }
+  ]
+}

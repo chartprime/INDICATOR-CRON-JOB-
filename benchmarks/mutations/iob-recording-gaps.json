@@ -1,0 +1,398 @@
+{
+ "mutations": [
+  {
+   "id": "iob-gap.hole-stops-the-read",
+   "file": "apps/web/src/lib/indicators/institutional-order-blocks/bookEvidence.ts",
+   "find": "      if (inWindow && state.firstInWindow !== null && state.lastTs < windowEnd - HOLE_MS && state.gap === null) state.gap = { from: state.lastTs, to: column.ts };",
+   "replace": "      if (inWindow && state.firstInWindow !== null && state.lastTs < windowEnd - HOLE_MS) {\n        state.hole = { from: state.lastTs, to: column.ts };\n        return true;\n      }",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/institutional-order-blocks/tests/bookEvidence.test.ts",
+    "src/lib/indicators/institutional-order-blocks/tests/institutionalTracker.test.ts"
+   ],
+   "mustFail": [
+    "reads through a hole inside the formation window with the columns it has, naming the first hole, and keeps reading after it",
+    "grades through a hole with the columns it has, asks the recording for the whole window meanwhile, and reads again from the start once columns arrive inside the hole"
+   ]
+  },
+  {
+   "id": "iob-gap.run-spans-the-hole",
+   "file": "apps/web/src/lib/indicators/institutional-order-blocks/bookEvidence.ts",
+   "find": "    if (state.lastTs !== null && column.ts - state.lastTs > HOLE_MS) {\n      state.run = null;\n",
+   "replace": "    if (state.lastTs !== null && column.ts - state.lastTs > HOLE_MS) {\n",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/institutional-order-blocks/tests/bookEvidence.test.ts"
+   ],
+   "mustFail": [
+    "does not count a wall across a hole: its age starts again after it, so a wall seen only after it is not yet held"
+   ]
+  },
+  {
+   "id": "iob-gap.last-hole-named",
+   "file": "apps/web/src/lib/indicators/institutional-order-blocks/bookEvidence.ts",
+   "find": " && state.gap === null) state.gap = { from: state.lastTs, to: column.ts };",
+   "replace": ") state.gap = { from: state.lastTs, to: column.ts };",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/institutional-order-blocks/tests/bookEvidence.test.ts"
+   ],
+   "mustFail": [
+    "reads through a hole inside the formation window with the columns it has, naming the first hole, and keeps reading after it"
+   ]
+  },
+  {
+   "id": "iob-gap.hole-after-the-window-named",
+   "file": "apps/web/src/lib/indicators/institutional-order-blocks/bookEvidence.ts",
+   "find": "      if (inWindow && state.firstInWindow !== null && state.lastTs < windowEnd - HOLE_MS && state.gap === null)",
+   "replace": "      if (inWindow && state.firstInWindow !== null && state.gap === null)",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/institutional-order-blocks/tests/bookEvidence.test.ts"
+   ],
+   "mustFail": [
+    "treats a hole after the formation window as the wall closing, not as the zone unreadable"
+   ]
+  },
+  {
+   "id": "iob-gap.partial-ignored-at-the-start",
+   "file": "apps/web/src/lib/indicators/institutional-order-blocks/bookEvidence.ts",
+   "find": "  if (state.firstInWindow === null || (rules.partial !== true && state.firstInWindow > zone.pivotTime + HOLE_MS))",
+   "replace": "  if (state.firstInWindow === null || state.firstInWindow > zone.pivotTime + HOLE_MS)",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/institutional-order-blocks/tests/bookEvidence.test.ts"
+   ],
+   "mustFail": [
+    "with the recording's partial rule, grades from a window the book reaches only part of, and only an empty window stays unread"
+   ]
+  },
+  {
+   "id": "iob-gap.partial-ignored-at-the-end",
+   "file": "apps/web/src/lib/indicators/institutional-order-blocks/bookEvidence.ts",
+   "find": "  if (state.lastTs === null || (rules.partial !== true && state.lastTs < windowEnd - HOLE_MS))",
+   "replace": "  if (state.lastTs === null || state.lastTs < windowEnd - HOLE_MS)",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/institutional-order-blocks/tests/bookEvidence.test.ts",
+    "src/lib/indicators/institutional-order-blocks/tests/institutionalTracker.test.ts"
+   ],
+   "mustFail": [
+    "with the recording's partial rule, grades from a window the book reaches only part of, and only an empty window stays unread",
+    "keeps a recording-graded block's grade when the page has no columns after the recording's last one"
+   ]
+  },
+  {
+   "id": "iob-gap.partial-reads-an-empty-window",
+   "file": "apps/web/src/lib/indicators/institutional-order-blocks/bookEvidence.ts",
+   "find": "  if (state.firstInWindow === null || (rules.partial !== true",
+   "replace": "  if ((rules.partial !== true && state.firstInWindow === null) || (rules.partial !== true",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/institutional-order-blocks/tests/bookEvidence.test.ts"
+   ],
+   "mustFail": [
+    "with the recording's partial rule, grades from a window the book reaches only part of, and only an empty window stays unread"
+   ]
+  },
+  {
+   "id": "iob-gap.recording-holes-read-as-zeros",
+   "file": "apps/web/src/lib/indicators/institutional-order-blocks/institutionalTracker.ts",
+   "find": "    { feed: recordedOnly(answer.feed, answer.gaps), rowWidth: answer.rowWidth },",
+   "replace": "    { feed: answer.feed, rowWidth: answer.rowWidth },",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/institutional-order-blocks/tests/institutionalTracker.test.ts"
+   ],
+   "mustFail": [
+    "grades a block from what the recording has however much of its window is missing, never reading the missing stretch as an empty book"
+   ]
+  },
+  {
+   "id": "iob-gap.recording-read-not-partial",
+   "file": "apps/web/src/lib/indicators/institutional-order-blocks/institutionalTracker.ts",
+   "find": "    { wall: thresholds.wall, bandRows: thresholds.bandRows, flashMs: book.flashMs, partial: true },",
+   "replace": "    { wall: thresholds.wall, bandRows: thresholds.bandRows, flashMs: book.flashMs },",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/institutional-order-blocks/tests/institutionalTracker.test.ts"
+   ],
+   "mustFail": [
+    "grades a block from what the recording has however much of its window is missing, never reading the missing stretch as an empty book"
+   ]
+  },
+  {
+   "id": "iob-gap.gap-bounds-inclusive-start",
+   "file": "apps/web/src/lib/indicators/institutional-order-blocks/institutionalTracker.ts",
+   "find": "column.ts > gap.from && column.ts <= gap.to",
+   "replace": "column.ts >= gap.from && column.ts <= gap.to",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/institutional-order-blocks/tests/institutionalTracker.test.ts"
+   ],
+   "mustFail": [
+    "grades a block from what the recording has however much of its window is missing, never reading the missing stretch as an empty book"
+   ]
+  },
+  {
+   "id": "iob-gap.empty-window-not-unverified",
+   "file": "apps/web/src/lib/indicators/institutional-order-blocks/institutionalTracker.ts",
+   "find": "    if (result.reason !== \"before\" || answer.gaps.length === 0) return false;",
+   "replace": "    return false;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/institutional-order-blocks/tests/institutionalTracker.test.ts"
+   ],
+   "mustFail": [
+    "keeps a block unverifiable when the recording has nothing of its window, and does not read it again"
+   ]
+  },
+  {
+   "id": "iob-gap.live-page-downgrades-a-recording-grade",
+   "file": "apps/web/src/lib/indicators/institutional-order-blocks/institutionalTracker.ts",
+   "find": "edgeUnknown: book.edgeUnknown === true, partial: entry.historical },",
+   "replace": "edgeUnknown: book.edgeUnknown === true },",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/institutional-order-blocks/tests/institutionalTracker.test.ts"
+   ],
+   "mustFail": [
+    "keeps a recording-graded block's grade when the page has no columns after the recording's last one"
+   ]
+  },
+  {
+   "id": "iob-gap.holed-live-read-asks-nothing",
+   "file": "apps/web/src/lib/indicators/institutional-order-blocks/institutionalTracker.ts",
+   "find": "    if (!entry.historical) entry.want = read.missing === null ? null : entry.want ?? wantFor(block, book);",
+   "replace": "    if (!entry.historical) entry.want = null;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/institutional-order-blocks/tests/institutionalTracker.test.ts"
+   ],
+   "mustFail": [
+    "grades through a hole with the columns it has, asks the recording for the whole window meanwhile, and reads again from the start once columns arrive inside the hole"
+   ]
+  },
+  {
+   "id": "iob-gap.holed-live-read-forgets-its-gap",
+   "file": "apps/web/src/lib/indicators/institutional-order-blocks/institutionalTracker.ts",
+   "find": "  entry.gap = entry.historical ? null : missing;",
+   "replace": "    entry.gap = null;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/institutional-order-blocks/tests/institutionalTracker.test.ts"
+   ],
+   "mustFail": [
+    "grades through a hole with the columns it has, asks the recording for the whole window meanwhile, and reads again from the start once columns arrive inside the hole"
+   ]
+  },
+  {
+   "id": "iob-gap.filled-hole-not-reread",
+   "file": "apps/web/src/lib/indicators/institutional-order-blocks/institutionalTracker.ts",
+   "find": "    else if (\n      entry.gap !== null &&\n      holeFilled(feed, entry.gap)\n    )",
+   "replace": "    else if (\n      entry.reason === \"hole\" &&\n      entry.gap !== null &&\n      holeFilled(feed, entry.gap)\n    )",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/institutional-order-blocks/tests/institutionalTracker.test.ts"
+   ],
+   "mustFail": [
+    "grades through a hole with the columns it has, asks the recording for the whole window meanwhile, and reads again from the start once columns arrive inside the hole"
+   ]
+  },
+  {
+   "id": "iob-gap.label-names-the-gap",
+   "file": "apps/web/src/lib/indicators/institutional-order-blocks/institutionalRender.ts",
+   "find": "    const why = entry.reason === \"gap\" && entry.gap !== null ? ",
+   "replace": "    const why = (entry.reason === \"gap\" || entry.reason === \"hole\") && entry.gap !== null ? ",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/institutional-order-blocks/tests/institutionalRender.test.ts"
+   ],
+   "mustFail": [
+    "says only that no book was recorded for a zone whose whole window fell in a recording gap, without the gap's times"
+   ]
+  },
+  {
+   "id": "iob-gap.owner-gap-may-reject",
+   "file": "apps/web/src/lib/indicators/institutional-order-blocks/institutionalTracker.ts",
+   "find": "  if (verdict === \"rejected\" && missing !== null) {",
+   "replace": "  if (false && verdict === \"rejected\" && missing !== null) {",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/institutional-order-blocks/tests/institutionalTracker.test.ts"
+   ],
+   "mustFail": [
+    "holds a zone the gap would reject unverified, names the gap, asks the recording, and grades it once the book it did record confirms the wall",
+    "holds a recording-graded zone unverified when the recording missed the start of its window and reads no wall"
+   ]
+  },
+  {
+   "id": "iob-gap.owner-missing-ignores-the-hole",
+   "file": "apps/web/src/lib/indicators/institutional-order-blocks/bookEvidence.ts",
+   "find": "    state.gap ??\n",
+   "replace": "    null ??\n",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/institutional-order-blocks/tests/bookEvidence.test.ts",
+    "src/lib/indicators/institutional-order-blocks/tests/institutionalTracker.test.ts"
+   ],
+   "mustFail": [
+    "reads through a hole inside the formation window with the columns it has, naming the first hole, and keeps reading after it",
+    "holds a zone the gap would reject unverified, names the gap, asks the recording, and grades it once the book it did record confirms the wall"
+   ]
+  },
+  {
+   "id": "iob-gap.owner-missing-ignores-a-late-start",
+   "file": "apps/web/src/lib/indicators/institutional-order-blocks/bookEvidence.ts",
+   "find": "    (state.firstInWindow > zone.pivotTime + HOLE_MS",
+   "replace": "    (false && state.firstInWindow > zone.pivotTime + HOLE_MS",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/institutional-order-blocks/tests/bookEvidence.test.ts",
+    "src/lib/indicators/institutional-order-blocks/tests/institutionalTracker.test.ts"
+   ],
+   "mustFail": [
+    "with the recording's partial rule, grades from a window the book reaches only part of, and only an empty window stays unread",
+    "holds a recording-graded zone unverified when the recording missed the start of its window and reads no wall"
+   ]
+  },
+  {
+   "id": "iob-gap.owner-missing-ignores-an-early-end",
+   "file": "apps/web/src/lib/indicators/institutional-order-blocks/bookEvidence.ts",
+   "find": "      : state.lastTs < readTo - HOLE_MS",
+   "replace": "      : false && state.lastTs < readTo - HOLE_MS",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/institutional-order-blocks/tests/bookEvidence.test.ts"
+   ],
+   "mustFail": [
+    "with the recording's partial rule, grades from a window the book reaches only part of, and only an empty window stays unread"
+   ]
+  },
+  {
+   "id": "iob-gap.owner-missing-past-the-read",
+   "file": "apps/web/src/lib/indicators/institutional-order-blocks/bookEvidence.ts",
+   "find": "  const readTo = Math.min(windowEnd, upTo);",
+   "replace": "  const readTo = windowEnd;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/institutional-order-blocks/tests/bookEvidence.test.ts"
+   ],
+   "mustFail": [
+    "with the recording's partial rule, grades from a window the book reaches only part of, and only an empty window stays unread"
+   ]
+  },
+  {
+   "id": "iob-gap.owner-gap-zone-read-no-more",
+   "file": "apps/web/src/lib/indicators/institutional-order-blocks/institutionalTracker.ts",
+   "find": "    case null:\n    case \"gap\":\n",
+   "replace": "    case null:\n",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/institutional-order-blocks/tests/institutionalTracker.test.ts"
+   ],
+   "mustFail": [
+    "holds a zone the gap would reject unverified, names the gap, asks the recording, and grades it once the book it did record confirms the wall"
+   ]
+  },
+  {
+   "id": "iob-gap.owner-gap-label-without-times",
+   "file": "apps/web/src/lib/indicators/institutional-order-blocks/institutionalRender.ts",
+   "find": "    const why = entry.reason === \"gap\" && entry.gap !== null ? ",
+   "replace": "    const why = false && entry.gap !== null ? ",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/institutional-order-blocks/tests/institutionalTracker.test.ts"
+   ],
+   "mustFail": [
+    "holds a zone the gap would reject unverified, names the gap, asks the recording, and grades it once the book it did record confirms the wall",
+    "holds a recording-graded zone unverified when the recording missed the start of its window and reads no wall"
+   ]
+  },
+  {
+   "id": "iob-gap.owner-gap-zone-asks-nothing",
+   "file": "apps/web/src/lib/indicators/institutional-order-blocks/institutionalTracker.ts",
+   "find": "    if (!entry.historical) entry.want = read.missing === null ? null : entry.want ?? wantFor(block, book);",
+   "replace": "    if (!entry.historical) entry.want = entry.verdict === \"unverifiable\" ? null : read.missing === null ? null : entry.want ?? wantFor(block, book);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/institutional-order-blocks/tests/institutionalTracker.test.ts"
+   ],
+   "mustFail": [
+    "holds a zone the gap would reject unverified, names the gap, asks the recording, and grades it once the book it did record confirms the wall"
+   ]
+  }
+ ]
+}

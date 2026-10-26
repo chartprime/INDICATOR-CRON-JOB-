@@ -1,0 +1,1221 @@
+{
+  "mutations": [
+    {
+      "id": "initiative.indicator.restore-age-by-frozen-candle",
+      "file": "apps/runtime/src/indicators/initiative/initiative-indicator.js",
+      "find": "      if (!validBand(band) || !state.lengths.includes(band.candleMs) || band.frozenTs < at - maxAgeMs) {",
+      "replace": "      if (!validBand(band) || !state.lengths.includes(band.candleMs) || band.frozenTs < 0) {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-indicator.test.js"
+      ],
+      "mustFail": [
+        "a restored history shows up stored before any column is fed"
+      ]
+    },
+    {
+      "id": "initiative.indicator.restore-rejects-an-invalid-band",
+      "file": "apps/runtime/src/indicators/initiative/initiative-indicator.js",
+      "find": "      if (!validBand(band) || !state.lengths.includes(band.candleMs) || band.frozenTs < at - maxAgeMs) {",
+      "replace": "      if (!state.lengths.includes(band.candleMs) || band.frozenTs < at - maxAgeMs) {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-indicator.test.js"
+      ],
+      "mustFail": [
+        "a restored history shows up stored before any column is fed"
+      ]
+    },
+    {
+      "id": "initiative.indicator.restore-rejects-another-length",
+      "file": "apps/runtime/src/indicators/initiative/initiative-indicator.js",
+      "find": "      if (!validBand(band) || !state.lengths.includes(band.candleMs) || band.frozenTs < at - maxAgeMs) {",
+      "replace": "      if (!validBand(band) || band.frozenTs < at - maxAgeMs) {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-indicator.test.js"
+      ],
+      "mustFail": [
+        "a restored history shows up stored before any column is fed"
+      ]
+    },
+    {
+      "id": "initiative.indicator.stored-copy-gives-way-by-pivot",
+      "file": "apps/runtime/src/indicators/initiative/initiative-indicator.js",
+      "find": "      if (stored.candleMs === band.candleMs && stored.side === band.side && Math.abs(stored.pivotTs - band.pivotTs) <= band.candleMs) state.stored.delete(id);",
+      "replace": "      if (stored.candleMs === band.candleMs && stored.side === band.side && Math.abs(stored.pivotTs - band.pivotTs) < 0) state.stored.delete(id);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-indicator.test.js"
+      ],
+      "mustFail": [
+        "stop saves every band and every engine's state with its open band"
+      ]
+    },
+    {
+      "id": "initiative.indicator.live-bands-capped",
+      "file": "apps/runtime/src/indicators/initiative/initiative-indicator.js",
+      "find": "    if (state.live.size > maxBands) {",
+      "replace": "    if (state.live.size > maxBands + 1) {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-indicator.test.js"
+      ],
+      "mustFail": [
+        "the live bands are capped"
+      ]
+    },
+    {
+      "id": "initiative.indicator.pass-skips-live-bands",
+      "file": "apps/runtime/src/indicators/initiative/initiative-indicator.js",
+      "find": "      if (state.live.has(band.id)) continue;",
+      "replace": "      if (state.live.has(band.id)) void 0;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-indicator.test.js"
+      ],
+      "mustFail": [
+        "a band the fill read in its warm-up hours below the covered start is live"
+      ]
+    },
+    {
+      "id": "initiative.indicator.pass-keeps-pivots-in-the-day",
+      "file": "apps/runtime/src/indicators/initiative/initiative-indicator.js",
+      "find": "              for (const update of tracker.push(column)) if (update.pivotTs >= start && update.pivotTs < end) latest.set(update.id, update);",
+      "replace": "              for (const update of tracker.push(column)) if (update.pivotTs >= start) latest.set(update.id, update);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-indicator.test.js"
+      ],
+      "mustFail": [
+        "a client's ask for an older span is read a day at a time"
+      ]
+    },
+    {
+      "id": "initiative.indicator.pass-leaves-the-warm-hours",
+      "file": "apps/runtime/src/indicators/initiative/initiative-indicator.js",
+      "find": "              for (const update of tracker.push(column)) if (update.pivotTs >= start && update.pivotTs < end) latest.set(update.id, update);",
+      "replace": "              for (const update of tracker.push(column)) if (update.pivotTs < end) latest.set(update.id, update);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-indicator.test.js"
+      ],
+      "mustFail": [
+        "a client's ask for an older span is read a day at a time"
+      ]
+    },
+    {
+      "id": "initiative.indicator.prune-by-frozen-candle",
+      "file": "apps/runtime/src/indicators/initiative/initiative-indicator.js",
+      "find": "    for (const map of [state.live, state.stored]) for (const [id, band] of map) if (band.frozenTs < cutoff) map.delete(id);",
+      "replace": "    for (const map of [state.live, state.stored]) for (const [id, band] of map) if (band.frozenTs < 0) map.delete(id);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-indicator.test.js"
+      ],
+      "mustFail": [
+        "bands frozen before the age cap leave the live and stored sets"
+      ]
+    },
+    {
+      "id": "initiative.indicator.save-every-band",
+      "file": "apps/runtime/src/indicators/initiative/initiative-indicator.js",
+      "find": "    const bands = [...state.stored.values(), ...state.live.values()].sort(byPivot).map(withoutOrigin);",
+      "replace": "    const bands = [...state.stored.values(), ...state.live.values()].filter((band) => band.legEndTs !== null).sort(byPivot).map(withoutOrigin);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-indicator.test.js"
+      ],
+      "mustFail": [
+        "stop saves every band and every engine's state with its open band"
+      ]
+    },
+    {
+      "id": "initiative.indicator.save-without-origin",
+      "file": "apps/runtime/src/indicators/initiative/initiative-indicator.js",
+      "find": "    const bands = [...state.stored.values(), ...state.live.values()].sort(byPivot).map(withoutOrigin);",
+      "replace": "    const bands = [...state.stored.values(), ...state.live.values()].sort(byPivot);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-indicator.test.js"
+      ],
+      "mustFail": [
+        "stop saves every band and every engine's state with its open band"
+      ]
+    },
+    {
+      "id": "initiative.indicator.live-since-is-the-first-runtime-column",
+      "file": "apps/runtime/src/indicators/initiative/initiative-indicator.js",
+      "find": "      if (origin === \"runtime\") state.liveSince ??= column.ts;",
+      "replace": "      state.liveSince ??= column.ts;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-indicator.test.js"
+      ],
+      "mustFail": [
+        "the hours below the host's edge are probed newest first"
+      ]
+    },
+    {
+      "id": "initiative.indicator.the-charts-pair-reads-first",
+      "file": "apps/runtime/src/indicators/initiative/initiative-indicator.js",
+      "find": "    const ordered = [...pairs].sort((a, b) => Number(isActive(b)) - Number(isActive(a)));",
+      "replace": "    const ordered = [...pairs];",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-indicator.test.js"
+      ],
+      "mustFail": [
+        "one pair reads at a time, the chart's pair first"
+      ]
+    },
+    {
+      "id": "initiative.indicator.no-host-switches-the-fill-off",
+      "file": "apps/runtime/src/indicators/initiative/initiative-indicator.js",
+      "find": "      if (probe.failed !== null && probe.traded === 0 && probe.reason === \"NO_HOST\") {",
+      "replace": "      if (probe.failed !== null && probe.traded === 0 && probe.reason === \"NEVER\") {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-indicator.test.js"
+      ],
+      "mustFail": [
+        "without a host reader or with the fill switched off"
+      ]
+    },
+    {
+      "id": "initiative.indicator.prune-interval",
+      "file": "apps/runtime/src/indicators/initiative/initiative-indicator.js",
+      "find": "      if (at - state.prunedAt >= PRUNE_MS) prune(state, at);",
+      "replace": "      if (at - state.prunedAt >= PRUNE_MS * 1_000_000_000) prune(state, at);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-indicator.test.js"
+      ],
+      "mustFail": [
+        "bands frozen before the age cap leave the live and stored sets"
+      ]
+    },
+    {
+      "id": "initiative.indicator.save-interval",
+      "file": "apps/runtime/src/indicators/initiative/initiative-indicator.js",
+      "find": "      if (histories && state.dirty && at - state.savedAt >= storeMs) saveInBackground(state, at);",
+      "replace": "      if (histories && state.dirty && at - state.savedAt >= storeMs * 10) saveInBackground(state, at);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-indicator.test.js"
+      ],
+      "mustFail": [
+        "the history is saved in the background once the store interval has passed"
+      ]
+    },
+    {
+      "id": "initiative.indicator.a-save-cleans-only-its-own-revision",
+      "file": "apps/runtime/src/indicators/initiative/initiative-indicator.js",
+      "find": "      if (state.revision === taken.revision) state.dirty = false;",
+      "replace": "      state.dirty = false;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-indicator.test.js"
+      ],
+      "mustFail": [
+        "a background save that stop() superseded is told so"
+      ]
+    },
+    {
+      "id": "initiative.indicator.stop-supersedes-saves",
+      "file": "apps/runtime/src/indicators/initiative/initiative-indicator.js",
+      "find": "    generation += 1;",
+      "replace": "    generation += 0;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-indicator.test.js"
+      ],
+      "mustFail": [
+        "a background save that stop() superseded is told so"
+      ]
+    },
+    {
+      "id": "initiative.indicator.provider-checked",
+      "file": "apps/runtime/src/indicators/initiative/initiative-indicator.js",
+      "find": "  if (!PROVIDERS.has(provider)) throw new Error(\"initiative-indicator: provider must be BINANCE or DXFEED\");",
+      "replace": "  if (provider === undefined) throw new Error(\"initiative-indicator: provider must be BINANCE or DXFEED\");",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-indicator.test.js"
+      ],
+      "mustFail": [
+        "the factory refuses a bad provider"
+      ]
+    },
+    {
+      "id": "initiative.indicator.equities-run-the-short-lengths",
+      "file": "apps/runtime/src/indicators/initiative/initiative-indicator.js",
+      "find": "  return pair.marketKind === \"EQUITY\" ? candleLengths.filter((candleMs) => candleMs <= SHORT_MAX_MS) : candleLengths;",
+      "replace": "  return pair.marketKind === \"FUTURE\" ? candleLengths.filter((candleMs) => candleMs <= SHORT_MAX_MS) : candleLengths;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-indicator.test.js"
+      ],
+      "mustFail": [
+        "an equity runs the short candle lengths only"
+      ]
+    },
+    {
+      "id": "initiative.indicator.run-start-after-the-last-hole",
+      "file": "apps/runtime/src/indicators/initiative/initiative-indicator.js",
+      "find": "  while (index > 0 && columns[index].ts - columns[index - 1].ts <= GAP_MS) index -= 1;",
+      "replace": "  while (index > 0 && columns[index].ts - columns[index - 1].ts <= GAP_MS * 2) index -= 1;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-indicator.test.js"
+      ],
+      "mustFail": [
+        "the ring's newest run starts after the last hole"
+      ]
+    },
+    {
+      "id": "initiative.indicator.loading-names-the-fill-span",
+      "file": "apps/runtime/src/indicators/initiative/initiative-indicator.js",
+      "find": "    setLoading(state, Math.max(floor, edge - fillMs));",
+      "replace": "    setLoading(state, floor);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-indicator.test.js"
+      ],
+      "mustFail": [
+        "the start fills a day of columns by default"
+      ]
+    },
+    {
+      "id": "initiative.indicator.reselect-only-the-charts-pair",
+      "file": "apps/runtime/src/indicators/initiative/initiative-indicator.js",
+      "find": "    if (isActive(state.pair)) reselect();",
+      "replace": "    reselect();",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-indicator.test.js"
+      ],
+      "mustFail": [
+        "the start fills a day of columns by default"
+      ]
+    },
+    {
+      "id": "initiative.indicator.ask-inside-the-covered-span-refused",
+      "file": "apps/runtime/src/indicators/initiative/initiative-indicator.js",
+      "find": "    if (from >= reach) return false;",
+      "replace": "    if (from > reach) return false;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-indicator.test.js"
+      ],
+      "mustFail": [
+        "a client's ask for an older span is read a day at a time"
+      ]
+    },
+    {
+      "id": "initiative.indicator.ask-clamped-to-the-age-cap",
+      "file": "apps/runtime/src/indicators/initiative/initiative-indicator.js",
+      "find": "    const from = Math.max(fromTs, now() - maxAgeMs);",
+      "replace": "    const from = fromTs;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-indicator.test.js"
+      ],
+      "mustFail": [
+        "an ask is clamped to the age cap"
+      ]
+    },
+    {
+      "id": "initiative.indicator.pass-day-starts-at-the-ask",
+      "file": "apps/runtime/src/indicators/initiative/initiative-indicator.js",
+      "find": "        const start = Math.max(from, end - PASS_CHUNK_MS);",
+      "replace": "        const start = end - PASS_CHUNK_MS;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-indicator.test.js"
+      ],
+      "mustFail": [
+        "the pass reads the after-hours above the covered start"
+      ]
+    },
+    {
+      "id": "initiative.indicator.pass-never-past-the-live-start",
+      "file": "apps/runtime/src/indicators/initiative/initiative-indicator.js",
+      "find": "        const result = await readSpan(state, start - warm, Math.min(end + after, state.liveSince ?? now()), (columns) => {",
+      "replace": "        const result = await readSpan(state, start - warm, end + after, (columns) => {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-indicator.test.js"
+      ],
+      "mustFail": [
+        "a client's ask for an older span is read a day at a time"
+      ]
+    },
+    {
+      "id": "initiative.indicator.env-keys-are-initiative",
+      "file": "apps/runtime/src/indicators/initiative/initiative-indicator.js",
+      "find": "  if (env.L2_INITIATIVE === \"0\") options.enabled = false;",
+      "replace": "  if (env.L2_EXHAUSTION === \"0\") options.enabled = false;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-indicator.test.js"
+      ],
+      "mustFail": [
+        "env options: on/off, histories, host fill"
+      ]
+    },
+    {
+      "id": "initiative.store.file-suffix",
+      "file": "apps/runtime/src/indicators/initiative/initiative-store.js",
+      "find": "  return path.join(dir, `${pairKey.replace(/[^A-Za-z0-9_.-]+/g, \"_\")}.initiative.json`);",
+      "replace": "  return path.join(dir, `${pairKey.replace(/[^A-Za-z0-9_.-]+/g, \"_\")}.exhaustion.json`);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-store.test.js"
+      ],
+      "mustFail": [
+        "the file is <pair>.initiative.json"
+      ]
+    },
+    {
+      "id": "initiative.store.foreign-version-rejected",
+      "file": "apps/runtime/src/indicators/initiative/initiative-store.js",
+      "find": "  if (!saved || saved.version !== INITIATIVE_STORE_VERSION || saved.pairKey !== pairKey) return reject(\"FOREIGN\");",
+      "replace": "  if (!saved || saved.pairKey !== pairKey) return reject(\"FOREIGN\");",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-store.test.js"
+      ],
+      "mustFail": [
+        "a missing file loads as null without a rejection; a bad one is rejected"
+      ]
+    },
+    {
+      "id": "initiative.store.foreign-pair-rejected",
+      "file": "apps/runtime/src/indicators/initiative/initiative-store.js",
+      "find": "  if (!saved || saved.version !== INITIATIVE_STORE_VERSION || saved.pairKey !== pairKey) return reject(\"FOREIGN\");",
+      "replace": "  if (!saved || saved.version !== INITIATIVE_STORE_VERSION) return reject(\"FOREIGN\");",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-store.test.js"
+      ],
+      "mustFail": [
+        "a missing file loads as null without a rejection; a bad one is rejected"
+      ]
+    },
+    {
+      "id": "initiative.store.stale-rules-rejected",
+      "file": "apps/runtime/src/indicators/initiative/initiative-store.js",
+      "find": "  if (saved.rulesVersion !== rulesVersion) return reject(\"STALE_RULES\");",
+      "replace": "  if (false) return reject(\"STALE_RULES\");",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-store.test.js"
+      ],
+      "mustFail": [
+        "a missing file loads as null without a rejection; a bad one is rejected"
+      ]
+    },
+    {
+      "id": "initiative.store.malformed-scales-rejected",
+      "file": "apps/runtime/src/indicators/initiative/initiative-store.js",
+      "find": "  if (!Number.isSafeInteger(saved.savedAt) || !Array.isArray(saved.bands) || !Array.isArray(saved.scales)) return reject(\"MALFORMED\");",
+      "replace": "  if (!Number.isSafeInteger(saved.savedAt) || !Array.isArray(saved.bands)) return reject(\"MALFORMED\");",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-store.test.js"
+      ],
+      "mustFail": [
+        "a missing file loads as null without a rejection; a bad one is rejected"
+      ]
+    },
+    {
+      "id": "initiative.store.malformed-bands-rejected",
+      "file": "apps/runtime/src/indicators/initiative/initiative-store.js",
+      "find": "  if (!Number.isSafeInteger(saved.savedAt) || !Array.isArray(saved.bands) || !Array.isArray(saved.scales)) return reject(\"MALFORMED\");",
+      "replace": "  if (!Number.isSafeInteger(saved.savedAt) || !Array.isArray(saved.scales)) return reject(\"MALFORMED\");",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-store.test.js"
+      ],
+      "mustFail": [
+        "a missing file loads as null without a rejection; a bad one is rejected"
+      ]
+    },
+    {
+      "id": "initiative.store.malformed-saved-at-rejected",
+      "file": "apps/runtime/src/indicators/initiative/initiative-store.js",
+      "find": "  if (!Number.isSafeInteger(saved.savedAt) || !Array.isArray(saved.bands) || !Array.isArray(saved.scales)) return reject(\"MALFORMED\");",
+      "replace": "  if (!Array.isArray(saved.bands) || !Array.isArray(saved.scales)) return reject(\"MALFORMED\");",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-store.test.js"
+      ],
+      "mustFail": [
+        "a missing file loads as null without a rejection; a bad one is rejected"
+      ]
+    },
+    {
+      "id": "initiative.store.malformed-covered-until-rejected",
+      "file": "apps/runtime/src/indicators/initiative/initiative-store.js",
+      "find": "  if (coveredUntil !== null && !Number.isSafeInteger(coveredUntil)) return reject(\"MALFORMED\");",
+      "replace": "  if (false) return reject(\"MALFORMED\");",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-store.test.js"
+      ],
+      "mustFail": [
+        "a missing file loads as null without a rejection; a bad one is rejected"
+      ]
+    },
+    {
+      "id": "initiative.store.malformed-covered-from-rejected",
+      "file": "apps/runtime/src/indicators/initiative/initiative-store.js",
+      "find": "  if (coveredFrom !== null && !Number.isSafeInteger(coveredFrom)) return reject(\"MALFORMED\");",
+      "replace": "  if (false) return reject(\"MALFORMED\");",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-store.test.js"
+      ],
+      "mustFail": [
+        "a missing file loads as null without a rejection; a bad one is rejected"
+      ]
+    },
+    {
+      "id": "initiative.store.too-large-rejected",
+      "file": "apps/runtime/src/indicators/initiative/initiative-store.js",
+      "find": "    if (stats.size > maxFileBytes) return reject(\"TOO_LARGE\");",
+      "replace": "    if (false) return reject(\"TOO_LARGE\");",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-store.test.js"
+      ],
+      "mustFail": [
+        "a missing file loads as null without a rejection; a bad one is rejected"
+      ]
+    },
+    {
+      "id": "initiative.store.sync-save-budget",
+      "file": "apps/runtime/src/indicators/initiative/initiative-store.js",
+      "find": "    if (bytes > maxBytes) return { ok: false, reason: \"OVER_BUDGET\", bytes };\n    fs.mkdirSync(dir, { recursive: true });",
+      "replace": "    fs.mkdirSync(dir, { recursive: true });",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-store.test.js"
+      ],
+      "mustFail": [
+        "a payload over the budget is refused"
+      ]
+    },
+    {
+      "id": "initiative.store.async-save-budget",
+      "file": "apps/runtime/src/indicators/initiative/initiative-store.js",
+      "find": "    if (bytes > maxBytes) return { ok: false, reason: \"OVER_BUDGET\", bytes };\n    await fs.promises.mkdir(dir, { recursive: true });",
+      "replace": "    await fs.promises.mkdir(dir, { recursive: true });",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-store.test.js"
+      ],
+      "mustFail": [
+        "a payload over the budget is refused"
+      ]
+    },
+    {
+      "id": "initiative.store.superseded-save-never-lands",
+      "file": "apps/runtime/src/indicators/initiative/initiative-store.js",
+      "find": "    if (superseded()) return { ok: false, reason: \"SUPERSEDED\" };",
+      "replace": "    if (false) return { ok: false, reason: \"SUPERSEDED\" };",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-store.test.js"
+      ],
+      "mustFail": [
+        "a background save that was superseded before its rename"
+      ]
+    },
+    {
+      "id": "initiative.history.one-minute-warms-over-the-typical",
+      "file": "apps/runtime/src/indicators/initiative/initiative-history.js",
+      "find": "  Object.freeze({ maxMs: 180_000, warm: 5, after: 1 }),",
+      "replace": "  Object.freeze({ maxMs: 180_000, warm: 4, after: 1 }),",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-history.test.js"
+      ],
+      "mustFail": [
+        "the short candle lengths are 1m to 30m; each warms over the typical"
+      ]
+    },
+    {
+      "id": "initiative.history.thirty-minutes-warm-over-twelve-candles",
+      "file": "apps/runtime/src/indicators/initiative/initiative-history.js",
+      "find": "  Object.freeze({ maxMs: SHORT_MAX_MS, warm: 14, after: 8 }),",
+      "replace": "  Object.freeze({ maxMs: SHORT_MAX_MS, warm: 6, after: 8 }),",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-history.test.js"
+      ],
+      "mustFail": [
+        "the short candle lengths are 1m to 30m; each warms over the typical"
+      ]
+    },
+    {
+      "id": "initiative.history.long-lengths-have-no-group",
+      "file": "apps/runtime/src/indicators/initiative/initiative-history.js",
+      "find": "  if (!CANDLE_MS.includes(candleMs) || candleMs > SHORT_MAX_MS) return null;",
+      "replace": "  if (!CANDLE_MS.includes(candleMs)) return null;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-history.test.js"
+      ],
+      "mustFail": [
+        "the short candle lengths are 1m to 30m; each warms over the typical"
+      ]
+    },
+    {
+      "id": "initiative.frames.frozen-after-pivot",
+      "file": "apps/runtime/src/server/initiative-frames.js",
+      "find": "  if (frozenTs <= pivotTs) throw new Error(`${field}.frozenTs: must follow pivotTs`);",
+      "replace": "  if (frozenTs < pivotTs) throw new Error(`${field}.frozenTs: must follow pivotTs`);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/initiative-frames.test.js"
+      ],
+      "mustFail": [
+        "the builder refuses"
+      ]
+    },
+    {
+      "id": "initiative.frames.extreme-not-before-frozen",
+      "file": "apps/runtime/src/server/initiative-frames.js",
+      "find": "  if (legExtremeTs < frozenTs) throw new Error(`${field}.legExtremeTs: must not precede frozenTs`);",
+      "replace": "  if (false) throw new Error(`${field}.legExtremeTs: must not precede frozenTs`);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/initiative-frames.test.js"
+      ],
+      "mustFail": [
+        "the builder refuses"
+      ]
+    },
+    {
+      "id": "initiative.frames.leg-end-not-before-frozen",
+      "file": "apps/runtime/src/server/initiative-frames.js",
+      "find": "  if (legEndTs !== null && legEndTs < frozenTs) throw new Error(`${field}.legEndTs: must be null or not precede frozenTs`);",
+      "replace": "  if (false) throw new Error(`${field}.legEndTs: must be null or not precede frozenTs`);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/initiative-frames.test.js"
+      ],
+      "mustFail": [
+        "the builder refuses"
+      ]
+    },
+    {
+      "id": "initiative.frames.update-not-before-frozen",
+      "file": "apps/runtime/src/server/initiative-frames.js",
+      "find": "  if (updatedAt < frozenTs) throw new Error(`${field}.updatedAt: must not precede frozenTs`);",
+      "replace": "  if (false) throw new Error(`${field}.updatedAt: must not precede frozenTs`);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/initiative-frames.test.js"
+      ],
+      "mustFail": [
+        "the builder refuses"
+      ]
+    },
+    {
+      "id": "initiative.frames.strong-closes-within-the-window",
+      "file": "apps/runtime/src/server/initiative-frames.js",
+      "find": "  if (closes > windowCandles) throw new Error(`${field}.closes.value: must not exceed windowCandles`);",
+      "replace": "  if (false) throw new Error(`${field}.closes.value: must not exceed windowCandles`);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/initiative-frames.test.js"
+      ],
+      "mustFail": [
+        "the builder refuses"
+      ]
+    },
+    {
+      "id": "initiative.frames.unit-values-from-zero-to-one",
+      "file": "apps/runtime/src/server/initiative-frames.js",
+      "find": "  if (typeof value !== \"number\" || !Number.isFinite(value) || value < 0 || value > 1) throw new Error(`${field}: must be a number from 0 to 1`);",
+      "replace": "  if (typeof value !== \"number\" || !Number.isFinite(value) || value > 1) throw new Error(`${field}: must be a number from 0 to 1`);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/initiative-frames.test.js"
+      ],
+      "mustFail": [
+        "the builder refuses"
+      ]
+    },
+    {
+      "id": "initiative.frames.unit-values-not-over-one",
+      "file": "apps/runtime/src/server/initiative-frames.js",
+      "find": "  if (typeof value !== \"number\" || !Number.isFinite(value) || value < 0 || value > 1) throw new Error(`${field}: must be a number from 0 to 1`);",
+      "replace": "  if (typeof value !== \"number\" || !Number.isFinite(value) || value < 0) throw new Error(`${field}: must be a number from 0 to 1`);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/initiative-frames.test.js"
+      ],
+      "mustFail": [
+        "the builder refuses"
+      ]
+    },
+    {
+      "id": "initiative.frames.amounts-within-the-cap",
+      "file": "apps/runtime/src/server/initiative-frames.js",
+      "find": "  if (typeof value !== \"number\" || !Number.isFinite(value) || value < 0 || value > MAX_INITIATIVE_VALUE) throw new Error(`${field}: must be null or a number from 0 to ${MAX_INITIATIVE_VALUE}`);",
+      "replace": "  if (typeof value !== \"number\" || !Number.isFinite(value) || value < 0) throw new Error(`${field}: must be null or a number from 0 to ${MAX_INITIATIVE_VALUE}`);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/initiative-frames.test.js"
+      ],
+      "mustFail": [
+        "the builder refuses"
+      ]
+    },
+    {
+      "id": "initiative.frames.amounts-finite",
+      "file": "apps/runtime/src/server/initiative-frames.js",
+      "find": "  if (typeof value !== \"number\" || !Number.isFinite(value) || value < 0 || value > MAX_INITIATIVE_VALUE) throw new Error(`${field}: must be null or a number from 0 to ${MAX_INITIATIVE_VALUE}`);",
+      "replace": "  if (typeof value !== \"number\" || value < 0 || value > MAX_INITIATIVE_VALUE) throw new Error(`${field}: must be null or a number from 0 to ${MAX_INITIATIVE_VALUE}`);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/initiative-frames.test.js"
+      ],
+      "mustFail": [
+        "the builder refuses"
+      ]
+    },
+    {
+      "id": "initiative.frames.yes-is-a-boolean",
+      "file": "apps/runtime/src/server/initiative-frames.js",
+      "find": "  if (typeof value !== \"boolean\") throw new Error(`${field}: must be a boolean`);",
+      "replace": "  if (typeof value === \"undefined\") throw new Error(`${field}: must be a boolean`);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/initiative-frames.test.js"
+      ],
+      "mustFail": [
+        "the builder refuses"
+      ]
+    },
+    {
+      "id": "initiative.frames.exactly-five-facts",
+      "file": "apps/runtime/src/server/initiative-frames.js",
+      "find": "  if (keys.length !== SORTED_FACTS.length || keys.some((key, i) => key !== SORTED_FACTS[i])) throw new Error(`${field}: must carry exactly ${INITIATIVE_FACTS.join(\", \")}`);",
+      "replace": "  if (false) throw new Error(`${field}: must carry exactly ${INITIATIVE_FACTS.join(\", \")}`);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/initiative-frames.test.js"
+      ],
+      "mustFail": [
+        "the builder refuses"
+      ]
+    },
+    {
+      "id": "initiative.frames.exact-fact-keys",
+      "file": "apps/runtime/src/server/initiative-frames.js",
+      "find": "  if (own.length !== sorted.length || own.some((key, i) => key !== sorted[i])) throw new Error(`${field}: must carry exactly ${keys.join(\", \")}`);",
+      "replace": "  if (false) throw new Error(`${field}: must carry exactly ${keys.join(\", \")}`);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/initiative-frames.test.js"
+      ],
+      "mustFail": [
+        "the builder refuses"
+      ]
+    },
+    {
+      "id": "initiative.frames.dominant-share-never-null",
+      "file": "apps/runtime/src/server/initiative-frames.js",
+      "find": "    dominantShare: unit(entry.dominantShare, `${field}.dominantShare`),",
+      "replace": "    dominantShare: unitOrNull(entry.dominantShare, `${field}.dominantShare`),",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/initiative-frames.test.js"
+      ],
+      "mustFail": [
+        "the builder refuses"
+      ]
+    },
+    {
+      "id": "initiative.frames.score-capped",
+      "file": "apps/runtime/src/server/initiative-frames.js",
+      "find": "    score: bounded(entry.score, 0, MAX_INITIATIVE_SCORE, `${field}.score`),",
+      "replace": "    score: bounded(entry.score, 0, 10, `${field}.score`),",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/initiative-frames.test.js"
+      ],
+      "mustFail": [
+        "the builder refuses"
+      ]
+    },
+    {
+      "id": "initiative.frames.window-at-least-one-candle",
+      "file": "apps/runtime/src/server/initiative-frames.js",
+      "find": "  const windowCandles = bounded(entry.windowCandles, 1, MAX_INITIATIVE_WINDOW, `${field}.windowCandles`);",
+      "replace": "  const windowCandles = bounded(entry.windowCandles, 0, MAX_INITIATIVE_WINDOW, `${field}.windowCandles`);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/initiative-frames.test.js"
+      ],
+      "mustFail": [
+        "the builder refuses"
+      ]
+    },
+    {
+      "id": "initiative.frames.origin-in-the-vocabulary",
+      "file": "apps/runtime/src/server/initiative-frames.js",
+      "find": "    origin: oneOf(entry.origin, INITIATIVE_ORIGINS, `${field}.origin`),",
+      "replace": "    origin: entry.origin,",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/initiative-frames.test.js"
+      ],
+      "mustFail": [
+        "the builder refuses"
+      ]
+    },
+    {
+      "id": "initiative.frames.id-length-capped",
+      "file": "apps/runtime/src/server/initiative-frames.js",
+      "find": "  if (typeof entry.id !== \"string\" || entry.id.length === 0 || entry.id.length > MAX_INITIATIVE_ID_LENGTH) {",
+      "replace": "  if (typeof entry.id !== \"string\" || entry.id.length === 0) {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/initiative-frames.test.js"
+      ],
+      "mustFail": [
+        "the builder refuses"
+      ]
+    },
+    {
+      "id": "initiative.frames.extra-band-fields-dropped",
+      "file": "apps/runtime/src/server/initiative-frames.js",
+      "find": "    origin: oneOf(entry.origin, INITIATIVE_ORIGINS, `${field}.origin`),\n  });",
+      "replace": "    origin: oneOf(entry.origin, INITIATIVE_ORIGINS, `${field}.origin`),\n    ...entry,\n  });",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/initiative-frames.test.js"
+      ],
+      "mustFail": [
+        "a band is exactly the eighteen wire fields"
+      ]
+    },
+    {
+      "id": "initiative.frames.increment-not-empty",
+      "file": "apps/runtime/src/server/initiative-frames.js",
+      "find": "  if (!reset && bands.length === 0) throw new Error(\"initiativeBandsFrame: an increment must carry at least one band\");",
+      "replace": "  if (false) throw new Error(\"initiativeBandsFrame: an increment must carry at least one band\");",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/initiative-frames.test.js"
+      ],
+      "mustFail": [
+        "the frame refuses an empty increment, a page over the cap, duplicate ids"
+      ]
+    },
+    {
+      "id": "initiative.frames.unique-ids",
+      "file": "apps/runtime/src/server/initiative-frames.js",
+      "find": "    if (ids.has(checked.id)) throw new Error(`initiativeBandsFrame.bands[${index}].id: ids must be unique within a frame`);",
+      "replace": "    if (false) throw new Error(`initiativeBandsFrame.bands[${index}].id: ids must be unique within a frame`);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/initiative-frames.test.js"
+      ],
+      "mustFail": [
+        "the frame refuses an empty increment, a page over the cap, duplicate ids"
+      ]
+    },
+    {
+      "id": "initiative.frames.pivot-order",
+      "file": "apps/runtime/src/server/initiative-frames.js",
+      "find": "    if (previous !== null && byPivot(previous, checked) > 0) throw new Error(`initiativeBandsFrame.bands[${index}]: bands must be in pivot order`);",
+      "replace": "    if (false) throw new Error(`initiativeBandsFrame.bands[${index}]: bands must be in pivot order`);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/initiative-frames.test.js"
+      ],
+      "mustFail": [
+        "the frame refuses an empty increment, a page over the cap, duplicate ids"
+      ]
+    },
+    {
+      "id": "initiative.frames.page-cap",
+      "file": "apps/runtime/src/server/initiative-frames.js",
+      "find": "  if (!Array.isArray(bands) || bands.length > MAX_INITIATIVE_BANDS) {",
+      "replace": "  if (!Array.isArray(bands) || bands.length > MAX_INITIATIVE_BANDS * 2) {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/initiative-frames.test.js"
+      ],
+      "mustFail": [
+        "the frame refuses an empty increment, a page over the cap, duplicate ids"
+      ]
+    },
+    {
+      "id": "initiative.frames.ties-break-by-id",
+      "file": "apps/runtime/src/server/initiative-frames.js",
+      "find": "  return a.pivotTs - b.pivotTs || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);",
+      "replace": "  return a.pivotTs - b.pivotTs;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/initiative-frames.test.js"
+      ],
+      "mustFail": [
+        "the frame refuses an empty increment, a page over the cap, duplicate ids"
+      ]
+    },
+    {
+      "id": "initiative.frames.first-page-resets",
+      "file": "apps/runtime/src/server/initiative-frames.js",
+      "find": "    frames.push(initiativeBandsFrame(identity, { ts, seq: frames.length, reset: start === 0, bands: bands.slice(start, start + chunk), liveSince, loading }));",
+      "replace": "    frames.push(initiativeBandsFrame(identity, { ts, seq: frames.length, reset: true, bands: bands.slice(start, start + chunk), liveSince, loading }));",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/initiative-frames.test.js"
+      ],
+      "mustFail": [
+        "a snapshot is paged"
+      ]
+    },
+    {
+      "id": "initiative.frames.nulls-stay-null",
+      "file": "apps/runtime/src/server/initiative-frames.js",
+      "find": "  return value === null ? null : unit(value, field);",
+      "replace": "  return value === null ? 0 : unit(value, field);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/initiative-frames.test.js"
+      ],
+      "mustFail": [
+        "the fact values the engine could not read are null"
+      ]
+    },
+    {
+      "id": "initiative.indicator.eviction-counted",
+      "file": "apps/runtime/src/indicators/initiative/initiative-indicator.js",
+      "find": "      state.evicted += 1;",
+      "replace": "      void 0;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-indicator.test.js"
+      ],
+      "mustFail": [
+        "the live bands are capped"
+      ]
+    },
+    {
+      "id": "initiative.indicator.eviction-said-once",
+      "file": "apps/runtime/src/indicators/initiative/initiative-indicator.js",
+      "find": "      if (state.evicted === 1) warn(",
+      "replace": "      if (state.evicted >= 1) warn(",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-indicator.test.js"
+      ],
+      "mustFail": [
+        "the live bands are capped"
+      ]
+    },
+    {
+      "id": "initiative.indicator.restore-every-length",
+      "file": "apps/runtime/src/indicators/initiative/initiative-indicator.js",
+      "find": "      const tracker = state.trackers.get(scales?.candleMs);",
+      "replace": "      const tracker = isShort(scales?.candleMs) ? undefined : state.trackers.get(scales?.candleMs);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-indicator.test.js"
+      ],
+      "mustFail": [
+        "stop saves every band and every engine's state"
+      ]
+    },
+    {
+      "id": "initiative.indicator.save-every-engine",
+      "file": "apps/runtime/src/indicators/initiative/initiative-indicator.js",
+      "find": "scales: [...state.trackers.values()].map((tracker) => tracker.toJSON()) };",
+      "replace": "scales: [...state.trackers.values()].filter((tracker) => !isShort(tracker.candleMs)).map((tracker) => tracker.toJSON()) };",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-indicator.test.js"
+      ],
+      "mustFail": [
+        "stop saves every band and every engine's state"
+      ]
+    },
+    {
+      "id": "initiative.indicator.restored-band-served-once",
+      "file": "apps/runtime/src/indicators/initiative/initiative-indicator.js",
+      "find": "    for (const id of state.live.keys()) state.stored.delete(id);",
+      "replace": "    void state;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-indicator.test.js"
+      ],
+      "mustFail": [
+        "stop saves every band and every engine's state",
+        "every candle length is fed the same stream"
+      ]
+    },
+    {
+      "id": "initiative.indicator.unreadable-state-starts-afresh",
+      "file": "apps/runtime/src/indicators/initiative/initiative-indicator.js",
+      "find": "        state.trackers.set(scales.candleMs, createInitiativeTracker({ candleMs: scales.candleMs, rowWidth: state.rowWidth }));",
+      "replace": "        void scales;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-indicator.test.js"
+      ],
+      "mustFail": [
+        "a saved engine state that cannot be read starts that engine afresh"
+      ]
+    },
+    {
+      "id": "initiative.indicator.unreadable-state-said",
+      "file": "apps/runtime/src/indicators/initiative/initiative-indicator.js",
+      "find": "        warn(`initiative indicator: ${state.pairKey} saved engine state for ${scales.candleMs} ms could not be read (${error?.message ?? error}); starting afresh`);",
+      "replace": "        void error;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-indicator.test.js"
+      ],
+      "mustFail": [
+        "a saved engine state that cannot be read starts that engine afresh"
+      ]
+    },
+    {
+      "id": "initiative.indicator.origin-kept-stored",
+      "file": "apps/runtime/src/indicators/initiative/initiative-indicator.js",
+      "find": "    return known === \"host\" || known === \"stored\" ? known : origin;",
+      "replace": "    return known === \"host\" ? known : origin;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-indicator.test.js"
+      ],
+      "mustFail": [
+        "stop saves every band and every engine's state",
+        "after a restart the heatmap's restored tier"
+      ]
+    },
+    {
+      "id": "initiative.indicator.origin-kept-host",
+      "file": "apps/runtime/src/indicators/initiative/initiative-indicator.js",
+      "find": "    return known === \"host\" || known === \"stored\" ? known : origin;",
+      "replace": "    return known === \"stored\" ? known : origin;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-indicator.test.js"
+      ],
+      "mustFail": [
+        "a band born inside the host's hours arrives with origin host"
+      ]
+    },
+    {
+      "id": "initiative.indicator.fresh-page-after-restore",
+      "file": "apps/runtime/src/indicators/initiative/initiative-indicator.js",
+      "find": "    if (state.stored.size + state.live.size > 0 && isActive(state.pair)) reselect();",
+      "replace": "    void state;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-indicator.test.js"
+      ],
+      "mustFail": [
+        "a restore gives the chart's pair a fresh page"
+      ]
+    },
+    {
+      "id": "initiative.indicator.fresh-page-only-with-bands",
+      "file": "apps/runtime/src/indicators/initiative/initiative-indicator.js",
+      "find": "    if (state.stored.size + state.live.size > 0 && isActive(state.pair)) reselect();",
+      "replace": "    if (isActive(state.pair)) reselect();",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-indicator.test.js"
+      ],
+      "mustFail": [
+        "a restore gives the chart's pair a fresh page"
+      ]
+    },
+    {
+      "id": "initiative.indicator.fresh-page-only-for-the-charts-pair",
+      "file": "apps/runtime/src/indicators/initiative/initiative-indicator.js",
+      "find": "    if (state.stored.size + state.live.size > 0 && isActive(state.pair)) reselect();",
+      "replace": "    if (state.stored.size + state.live.size > 0) reselect();",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-indicator.test.js"
+      ],
+      "mustFail": [
+        "a restore gives the chart's pair a fresh page"
+      ]
+    }
+  ]
+}

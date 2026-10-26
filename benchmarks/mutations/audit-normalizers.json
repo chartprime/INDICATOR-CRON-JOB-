@@ -1,0 +1,452 @@
+{
+  "mutations": [
+    {
+      "id": "audit-normalizer.binance.trade-time-from-event-time",
+      "file": "apps/runtime/src/providers/binance/binance-event-normalizer.js",
+      "find": "    return isUsableTimestamp(raw.T) ? raw.T : undefined;\n  }\n  if (eventType === EVENT_TYPES.BOOK_TICKER) {",
+      "replace": "    return isUsableTimestamp(raw.E) ? raw.E : undefined;\n  }\n  if (eventType === EVENT_TYPES.BOOK_TICKER) {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/providers/binance/binance-event-normalizer.test.js"
+      ],
+      "mustFail": [
+        "returns an UNAVAILABLE degraded state when the trade time is mi"
+      ]
+    },
+    {
+      "id": "audit-normalizer.binance.ticker-bid-ask-swapped",
+      "file": "apps/runtime/src/providers/binance/binance-event-normalizer.js",
+      "find": "    bestBidPrice: isPositiveDecimalString(raw.b) ? raw.b : undefined,",
+      "replace": "    bestBidPrice: isPositiveDecimalString(raw.a) ? raw.a : undefined,",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/providers/binance/binance-event-normalizer.test.js"
+      ],
+      "mustFail": [
+        "normalizes a real USD-M book ticker using its own T as ev"
+      ]
+    },
+    {
+      "id": "audit-normalizer.binance.kline-open-close-swapped",
+      "file": "apps/runtime/src/providers/binance/binance-event-normalizer.js",
+      "find": "    open: isPositiveDecimalString(k.o) ? k.o : undefined,",
+      "replace": "    open: isPositiveDecimalString(k.c) ? k.c : undefined,",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/providers/binance/binance-event-normalizer.test.js"
+      ],
+      "mustFail": [
+        "normalizes a real spot kline, preserving isClosed"
+      ]
+    },
+    {
+      "id": "audit-normalizer.binance.kline-high-low-swapped",
+      "file": "apps/runtime/src/providers/binance/binance-event-normalizer.js",
+      "find": "    high: isPositiveDecimalString(k.h) ? k.h : undefined,",
+      "replace": "    high: isPositiveDecimalString(k.l) ? k.l : undefined,",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/providers/binance/binance-event-normalizer.test.js"
+      ],
+      "mustFail": [
+        "normalizes a real spot kline, preserving isClosed"
+      ]
+    },
+    {
+      "id": "audit-normalizer.binance.kline-taker-is-total",
+      "file": "apps/runtime/src/providers/binance/binance-event-normalizer.js",
+      "find": "    takerBuyBaseVolume: isValidDecimalString(k.V) ? k.V : undefined,",
+      "replace": "    takerBuyBaseVolume: isValidDecimalString(k.v) ? k.v : undefined,",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/providers/binance/binance-event-normalizer.test.js"
+      ],
+      "mustFail": [
+        "normalizes a real spot kline, preserving isClosed"
+      ]
+    },
+    {
+      "id": "audit-normalizer.binance.depth-first-last-swapped",
+      "file": "apps/runtime/src/providers/binance/binance-event-normalizer.js",
+      "find": "    firstUpdateId: isUsableNonNegativeInteger(raw.U) ? raw.U : undefined,",
+      "replace": "    firstUpdateId: isUsableNonNegativeInteger(raw.u) ? raw.u : undefined,",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/providers/binance/binance-event-normalizer.test.js"
+      ],
+      "mustFail": [
+        "normalizes real spot depth: previousUpdateId is explicitly null"
+      ]
+    },
+    {
+      "id": "audit-normalizer.binance.perp-depth-previous-optional",
+      "file": "apps/runtime/src/providers/binance/binance-event-normalizer.js",
+      "find": "    marketKind === MARKET_KINDS.PERPETUAL &&\n    payload.previousUpdateId === undefined\n  ) {\n    missing.push(\"previousUpdateId\");",
+      "replace": "    false\n  ) {\n    missing.push(\"previousUpdateId\");",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/providers/binance/binance-event-normalizer.test.js"
+      ],
+      "mustFail": [
+        "returns an UNAVAILABLE degraded state when USD-M depth is missi"
+      ]
+    },
+    {
+      "id": "audit-normalizer.binance.kline-close-time-unchecked",
+      "file": "apps/runtime/src/providers/binance/binance-event-normalizer.js",
+      "find": "    closeTime - openTime + 1 === intervalMs\n",
+      "replace": "    true\n",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/providers/binance/binance-event-normalizer.test.js"
+      ],
+      "mustFail": [
+        "returns an UNAVAILABLE KLINE_TIME_RANGE_INVALID when the wire i"
+      ]
+    },
+    {
+      "id": "audit-normalizer.binance.kline-open-off-grid",
+      "file": "apps/runtime/src/providers/binance/binance-event-normalizer.js",
+      "find": "    openTime % intervalMs === 0 &&\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/providers/binance/binance-event-normalizer.test.js"
+      ],
+      "mustFail": [
+        "rejects a duration-correct kline whose open time is not aligned"
+      ]
+    },
+    {
+      "id": "audit-normalizer.binance.ohlc-low-above-close",
+      "file": "apps/runtime/src/providers/binance/binance-event-normalizer.js",
+      "find": "    compareDecimalStrings(low, close) <= 0\n",
+      "replace": "    true\n",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/providers/binance/binance-event-normalizer.test.js"
+      ],
+      "mustFail": [
+        "returns an UNAVAILABLE KLINE_OHLC_RANGE_INVALID when open or cl"
+      ]
+    },
+    {
+      "id": "audit-normalizer.binance.taker-quote-unbounded",
+      "file": "apps/runtime/src/providers/binance/binance-event-normalizer.js",
+      "find": "    compareDecimalStrings(takerBuyQuoteVolume, quoteVolume) <= 0\n",
+      "replace": "    true\n",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/providers/binance/binance-event-normalizer.test.js"
+      ],
+      "mustFail": [
+        "returns an UNAVAILABLE KLINE_VOLUME_RANGE_INVALID when taker-bu"
+      ]
+    },
+    {
+      "id": "audit-normalizer.binance.decimal-int-lexicographic",
+      "file": "apps/runtime/src/providers/binance/binance-event-normalizer.js",
+      "find": "  if (aIntTrimmed.length !== bIntTrimmed.length) {\n    return aIntTrimmed.length > bIntTrimmed.length ? 1 : -1;\n  }\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/providers/binance/binance-event-normalizer.test.js"
+      ],
+      "mustFail": [
+        "normalizes a real USD-M kline identically in shape to spot's"
+      ]
+    },
+    {
+      "id": "audit-normalizer.binance.decimal-leading-zeros-kept",
+      "file": "apps/runtime/src/providers/binance/binance-event-normalizer.js",
+      "find": "  const aIntTrimmed = aInt.replace(/^0+(?=\\d)/, \"\");",
+      "replace": "  const aIntTrimmed = aInt;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/providers/binance/binance-event-normalizer.test.js"
+      ],
+      "mustFail": [
+        "treats equal values as equal regardless of lead"
+      ]
+    },
+    {
+      "id": "audit-normalizer.binance.zero-price-accepted",
+      "file": "apps/runtime/src/providers/binance/binance-event-normalizer.js",
+      "find": "  return isValidDecimalString(value) && compareDecimalStrings(value, \"0\") > 0;",
+      "replace": "  return isValidDecimalString(value) && compareDecimalStrings(value, \"0\") >= 0;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/providers/binance/binance-event-normalizer.test.js"
+      ],
+      "mustFail": [
+        "rejects a zero trade price at the canonical boundary"
+      ]
+    },
+    {
+      "id": "audit-normalizer.binance.canonical-trailing-zeros-kept",
+      "file": "apps/runtime/src/providers/binance/binance-event-normalizer.js",
+      "find": "  const fracTrimmed = frac.replace(/0+$/, \"\");",
+      "replace": "  const fracTrimmed = frac;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/providers/binance/binance-event-normalizer.test.js"
+      ],
+      "mustFail": [
+        "is the identity class of compareDecimalStrings"
+      ]
+    },
+    {
+      "id": "audit-normalizer.dxfeed.quote-time-earliest",
+      "file": "apps/runtime/src/providers/dxfeed/dxfeed-event-normalizer.js",
+      "find": "      return Math.max(raw.bidTime, raw.askTime);",
+      "replace": "      return Math.min(raw.bidTime, raw.askTime);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/providers/dxfeed/dxfeed-event-normalizer.test.js"
+      ],
+      "mustFail": [
+        "eventTime is the max of bidTime/askTime when they differ"
+      ]
+    },
+    {
+      "id": "audit-normalizer.dxfeed.quote-one-side-time-dropped",
+      "file": "apps/runtime/src/providers/dxfeed/dxfeed-event-normalizer.js",
+      "find": "    if (bidUsable) {\n      return raw.bidTime;\n    }\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/providers/dxfeed/dxfeed-event-normalizer.test.js"
+      ],
+      "mustFail": [
+        "resolveEventTimeMs picks whichever single side is usable"
+      ]
+    },
+    {
+      "id": "audit-normalizer.dxfeed.quote-bid-ask-swapped",
+      "file": "apps/runtime/src/providers/dxfeed/dxfeed-event-normalizer.js",
+      "find": "    bidPrice: isPositiveFiniteNumber(raw.bidPrice) ? raw.bidPrice : undefined,\n    bidSize:",
+      "replace": "    bidPrice: isPositiveFiniteNumber(raw.askPrice) ? raw.askPrice : undefined,\n    bidSize:",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/providers/dxfeed/dxfeed-event-normalizer.test.js"
+      ],
+      "mustFail": [
+        "normalizes a real futures quote, venue parsed from the symbol suffix"
+      ]
+    },
+    {
+      "id": "audit-normalizer.dxfeed.trade-zero-size-accepted",
+      "file": "apps/runtime/src/providers/dxfeed/dxfeed-event-normalizer.js",
+      "find": "    size: isPositiveFiniteNumber(raw.size) ? raw.size : undefined,\n    time: isUsableTimestamp(raw.time) ? raw.time : undefined,\n    exchangeCode: isNonEmptyString(raw.exchangeCode) ? raw.exchangeCode : undefined,\n    change:",
+      "replace": "    size: isNonNegativeFiniteNumber(raw.size) ? raw.size : undefined,\n    time: isUsableTimestamp(raw.time) ? raw.time : undefined,\n    exchangeCode: isNonEmptyString(raw.exchangeCode) ? raw.exchangeCode : undefined,\n    change:",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/providers/dxfeed/dxfeed-event-normalizer.test.js"
+      ],
+      "mustFail": [
+        "rejects a zero size as invalid rather than coercing (trade size must be strictly positive)"
+      ]
+    },
+    {
+      "id": "audit-normalizer.dxfeed.tns-aggressor-any-string",
+      "file": "apps/runtime/src/providers/dxfeed/dxfeed-event-normalizer.js",
+      "find": "    aggressorSide: AGGRESSOR_SIDES.has(raw.aggressorSide) ? raw.aggressorSide : undefined,",
+      "replace": "    aggressorSide: isNonEmptyString(raw.aggressorSide) ? raw.aggressorSide : undefined,",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/providers/dxfeed/dxfeed-event-normalizer.test.js"
+      ],
+      "mustFail": [
+        "degrades an invalid aggressorSide instead of producing an envelope the adapter cannot hono"
+      ]
+    },
+    {
+      "id": "audit-normalizer.dxfeed.tns-type-any",
+      "file": "apps/runtime/src/providers/dxfeed/dxfeed-event-normalizer.js",
+      "find": "    type: TIME_AND_SALE_TYPES.has(raw.type) ? raw.type : undefined,",
+      "replace": "    type: raw.type,",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/providers/dxfeed/dxfeed-event-normalizer.test.js"
+      ],
+      "mustFail": [
+        "degrades an invalid type instead of producing an envelope the adapter cannot honor"
+      ]
+    },
+    {
+      "id": "audit-normalizer.dxfeed.order-nan-size-dropped",
+      "file": "apps/runtime/src/providers/dxfeed/dxfeed-event-normalizer.js",
+      "find": "  if (raw.size === NAN_TOKEN) {\n    return null;\n  }\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/providers/dxfeed/dxfeed-event-normalizer.test.js"
+      ],
+      "mustFail": [
+        "normalizes a real futures order (GLBX source, no marketMaker)"
+      ]
+    },
+    {
+      "id": "audit-normalizer.dxfeed.order-zero-price-any-action",
+      "file": "apps/runtime/src/providers/dxfeed/dxfeed-event-normalizer.js",
+      "find": "  return isPositiveFiniteNumber(price) || (price === 0 && ZERO_PRICE_ACTIONS.has(action));",
+      "replace": "  return isPositiveFiniteNumber(price) || price === 0;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/providers/dxfeed/dxfeed-event-normalizer.test.js"
+      ],
+      "mustFail": [
+        "still rejects price: 0 for every other action -- the relaxation is scoped to TRADE/BUST on"
+      ]
+    },
+    {
+      "id": "audit-normalizer.dxfeed.order-nan-price-not-zeroed",
+      "file": "apps/runtime/src/providers/dxfeed/dxfeed-event-normalizer.js",
+      "find": "  const normalized = price === NAN_TOKEN && ZERO_PRICE_ACTIONS.has(action) ? 0 : price;",
+      "replace": "  const normalized = price;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/providers/dxfeed/dxfeed-event-normalizer.test.js"
+      ],
+      "mustFail": [
+        "accepts a real TRADE/BUST order-v2 event whose price arrives as the literal wire string \"N"
+      ]
+    },
+    {
+      "id": "audit-normalizer.dxfeed.remove-flag-wrong-bit",
+      "file": "apps/runtime/src/providers/dxfeed/dxfeed-event-normalizer.js",
+      "find": "const REMOVE_EVENT_FLAG = 0x02;",
+      "replace": "const REMOVE_EVENT_FLAG = 0x04;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/providers/dxfeed/dxfeed-event-normalizer.test.js"
+      ],
+      "mustFail": [
+        "still degrades when action is missing"
+      ]
+    },
+    {
+      "id": "audit-normalizer.dxfeed.remove-needs-full-fields",
+      "file": "apps/runtime/src/providers/dxfeed/dxfeed-event-normalizer.js",
+      "find": "  if (isRemoveEvent(raw.eventFlags)) return [\"index\", \"eventFlags\", \"source\"];\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/providers/dxfeed/dxfeed-event-normalizer.test.js"
+      ],
+      "mustFail": [
+        "preserves a valid empty snapshot removal even when dxFeed marks irrelevant order fields wi"
+      ]
+    },
+    {
+      "id": "audit-normalizer.dxfeed.index-overlong-accepted",
+      "file": "apps/runtime/src/providers/dxfeed/dxfeed-event-normalizer.js",
+      "find": "    rawIndexString.length > MAX_ORDER_V2_INDEX_LENGTH ||\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/providers/dxfeed/dxfeed-event-normalizer.test.js"
+      ],
+      "mustFail": [
+        "a malformed or schema-incompatible raw index string degrades the event rather than passing"
+      ]
+    },
+    {
+      "id": "audit-normalizer.dxfeed.negative-event-flags",
+      "file": "apps/runtime/src/providers/dxfeed/dxfeed-event-normalizer.js",
+      "find": "  return Number.isSafeInteger(value) && value >= 0;\n}\n\nconst ZERO_PRICE_ACTIONS",
+      "replace": "  return Number.isSafeInteger(value);\n}\n\nconst ZERO_PRICE_ACTIONS",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/providers/dxfeed/dxfeed-event-normalizer.test.js"
+      ],
+      "mustFail": [
+        "degrades on eventFlags missing or unsafe (negative, non-integer) -- required for v2's tran"
+      ]
+    }
+  ]
+}

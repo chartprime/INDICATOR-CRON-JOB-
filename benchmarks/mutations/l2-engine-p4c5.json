@@ -1,0 +1,114 @@
+{
+  "mutations": [
+    {
+      "id": "p4c5.lane-ignores-the-pin",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane.js",
+      "find": "    const fixedRows = pinnedRows ?? configuredRows;",
+      "replace": "    const fixedRows = configuredRows;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/passive_liquidity/liquidity-publisher-pyramid.test.js"],
+      "mustFail": ["takes the pinned rows when the pyramid pinned them"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "p4c5.lane-takes-a-pin-on-other-ticks",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane.js",
+      "find": "pin.tickSize === engine.tickSize && pin.clusterTicks === engine.clusterTicks && ",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/passive_liquidity/liquidity-publisher-pyramid.test.js"],
+      "mustFail": ["takes the pinned rows when the pyramid pinned them"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "p4c5.pin-overrides-configured-rows",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane.js",
+      "find": "    const pin = Number.isSafeInteger(configuredRows) && configuredRows > 0 ? null : ctx.pyramid?.pinned(marketKind, symbol) ?? null;",
+      "replace": "    const pin = ctx.pyramid?.pinned(marketKind, symbol) ?? null;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/passive_liquidity/liquidity-publisher-pyramid.test.js"],
+      "mustFail": ["an instrument whose rows are configured in ticks keeps them"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "p4c5.pins-asked-only-at-lane-creation",
+      "file": "apps/runtime/src/indicators/passive_liquidity/liquidity-publisher.js",
+      "find": "      pyramidSource.pinned(marketKind, symbol);\n      if (typeof pyramidSource.pinReady",
+      "replace": "      if (typeof pyramidSource.pinReady",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/passive_liquidity/liquidity-publisher-pyramid.test.js"],
+      "mustFail": ["asks for a pair's pinned rows from its first tick"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "p4c5.env-cannot-turn-it-off",
+      "file": "apps/runtime/src/indicators/passive_liquidity/liquidity-publisher.js",
+      "find": "  if (env.L2_HEATMAP_PYRAMID === \"0\") options.pyramid = null;",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/passive_liquidity/liquidity-publisher-pyramid.test.js"],
+      "mustFail": ["unless the environment turns it off"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "p4c5.deep-never-filled-from-the-pyramid",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane-rebuild.js",
+      "find": "      return fillDeepFromPyramid(state, engine, until, at);",
+      "replace": "      return undefined;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/passive_liquidity/liquidity-publisher-pyramid.test.js"],
+      "mustFail": ["fills the deep tier from the pyramid first"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "p4c5.raw-columns-behind-the-fill-dropped",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane-rebuild.js",
+      "find": "      lane.mergeLaneColumns(state.deep, rebuilt);\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/passive_liquidity/liquidity-publisher-pyramid.test.js"],
+      "mustFail": ["lets them fill only the pyramid's holes"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "p4c5.raw-windows-measured-after-the-fill",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane-rebuild.js",
+      "find": "      windows = deepWindows(state, until, at);\n      repairs = repairWindows(state, at);\n      return fillDeepFromPyramid(state, engine, until, at);\n    }).then(() => {",
+      "replace": "      repairs = repairWindows(state, at);\n      return fillDeepFromPyramid(state, engine, until, at);\n    }).then(() => {\n      windows = deepWindows(state, until, at);",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/passive_liquidity/liquidity-publisher-pyramid.test.js"],
+      "mustFail": ["still runs the raw passes"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "p4c5.warmup-takes-other-rows",
+      "file": "apps/runtime/src/indicators/l2-memory/pyramid/pyramid-warmup.js",
+      "find": "      if (!sameNumber(g.rowWidth, geometry.rowWidth) || !sameNumber(g.tickSize, geometry.tickSize) || g.clusterTicks !== geometry.clusterTicks) {",
+      "replace": "      if (g.clusterTicks !== geometry.clusterTicks) {",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/pyramid-warmup.test.js"],
+      "mustFail": ["refuses pages in other rows"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "p4c5.warmup-stops-at-the-first-page",
+      "file": "apps/runtime/src/indicators/l2-memory/pyramid/pyramid-warmup.js",
+      "find": "        return { windows: [], reason: \"PAGE_CURSOR\" };\n      }\n      cursor = page.next;",
+      "replace": "        return { windows: [], reason: \"PAGE_CURSOR\" };\n      }\n      cursor = null;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/pyramid-warmup.test.js"],
+      "mustFail": ["following next"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "p4c5.warmup-rereads-the-pin-every-time",
+      "file": "apps/runtime/src/indicators/l2-memory/pyramid/pyramid-warmup.js",
+      "find": "    if (entry === undefined || (entry.pending === null && now() - entry.at >= pinRefreshMs)) void refreshPin(marketKind, symbol);",
+      "replace": "    void refreshPin(marketKind, symbol);",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/pyramid-warmup.test.js"],
+      "mustFail": ["reads a pair's pinned rows once"],
+      "timeoutMs": 240000
+    }
+  ]
+}

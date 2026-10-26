@@ -1,0 +1,184 @@
+{
+  "mutations": [
+    {
+      "id": "handtest-1-server-equity-liquidity-keeps-10m",
+      "file": "apps/runtime/src/server/frames.js",
+      "find": "...liquidityWireBody(body, sizeCeilingForAssetClass(assetClass)),",
+      "replace": "...liquidityWireBody(body),",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/types/sizeCeiling.test.ts", "-t", "carries the measured NVDA closing cross"],
+      "mustFail": ["carries the measured NVDA closing cross"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "handtest-1-server-asset-ceiling-flat",
+      "file": "apps/runtime/src/server/wire-fields.js",
+      "find": "return assetClass === \"EQUITY\" ? MAX_EQUITY_TRADE_SIZE : MAX_WIRE_MAGNITUDE;",
+      "replace": "return MAX_WIRE_MAGNITUDE;",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/types/sizeCeiling.test.ts", "-t", "names the same ceiling in both places"],
+      "mustFail": ["names the same ceiling in both places"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "handtest-1-server-pool-floor-unbounded",
+      "file": "apps/runtime/src/server/frames.js",
+      "find": "if (!Number.isFinite(pool.floor) || pool.floor < 0 || pool.floor > floorAbove(ceiling)) {",
+      "replace": "if (!Number.isFinite(pool.floor) || pool.floor < 0) {",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/types/sizeCeiling.test.ts", "-t", "aggressive-print pool floor"],
+      "mustFail": ["aggressive-print pool floor"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "handtest-1-server-band-history-keeps-10m",
+      "file": "apps/runtime/src/server/frames.js",
+      "find": "const ceiling = identity.provider === \"DXFEED\" ? sizeCeilingForAssetClass(identity.assetClass) : MAX_WIRE_MAGNITUDE;",
+      "replace": "const ceiling = MAX_WIRE_MAGNITUDE;",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/types/sizeCeiling.test.ts", "-t", "band_history reply"],
+      "mustFail": ["band_history reply"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "handtest-1-server-lane-keeps-10m",
+      "file": "apps/runtime/src/server/l2-frames.js",
+      "find": "const body = liquidityWireBody({ ts, seq, reset, rowWidth, columnMs, columns }, sizeCeilingFor(identity));",
+      "replace": "const body = liquidityWireBody({ ts, seq, reset, rowWidth, columnMs, columns });",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/types/sizeCeiling.test.ts", "-t", "lane, walls, events and ladder"],
+      "mustFail": ["lane, walls, events and ladder"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "handtest-1-client-equity-ceiling-flat",
+      "file": "apps/web/src/types/frames.ts",
+      "find": "    ? MAX_EQUITY_TRADE_SIZE\n    : MAX_REASONABLE_MAGNITUDE;\n}\n\nfunction isSizeWithin",
+      "replace": "    ? MAX_REASONABLE_MAGNITUDE\n    : MAX_REASONABLE_MAGNITUDE;\n}\n\nfunction isSizeWithin",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/types/sizeCeiling.test.ts", "-t", "carries the measured NVDA closing cross"],
+      "mustFail": ["carries the measured NVDA closing cross"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "handtest-1-client-prints-floor-stricter-than-server",
+      "file": "apps/web/src/types/frames.ts",
+      "find": "value <= ceiling + Number.EPSILON * Math.max(1, ceiling);",
+      "replace": "value <= ceiling;",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/types/sizeCeiling.test.ts", "-t", "aggressive-print pool floor"],
+      "mustFail": ["aggressive-print pool floor"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "handtest-1-client-band-history-keeps-10m",
+      "file": "apps/web/src/types/frames.ts",
+      "find": "values.every((value) => isSizeWithin(value, sizeCeiling))",
+      "replace": "values.every((value) => isSizeWithin(value, 10_000_000))",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/types/sizeCeiling.test.ts", "-t", "band_history reply"],
+      "mustFail": ["band_history reply"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "handtest-1-client-lane-keeps-10m",
+      "file": "apps/web/src/types/frames.ts",
+      "find": "const parsed = parseLiquidityColumn(entry, raw.ts, raw.column_ms, previousTs, sizeCeiling);",
+      "replace": "const parsed = parseLiquidityColumn(entry, raw.ts, raw.column_ms, previousTs, 10_000_000);",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/types/sizeCeiling.test.ts", "-t", "lane, walls, events and ladder"],
+      "mustFail": ["lane, walls, events and ladder"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "handtest-2-panned-view-not-restored",
+      "file": "apps/web/src/lib/chart/rightOffsetRoom.ts",
+      "find": "  if (held !== null) timeScale.setVisibleLogicalRange(held);\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/chart/tests/rightOffsetRoom.test.ts"],
+      "mustFail": ["leaves a view the user panned into the past"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "handtest-2-live-edge-never-followed",
+      "file": "apps/web/src/lib/chart/rightOffsetRoom.ts",
+      "find": "const followingLive = timeScale.scrollPosition() >= options.rightOffset - LIVE_EDGE_TOLERANCE_BARS;",
+      "replace": "const followingLive = false;",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/chart/tests/rightOffsetRoom.test.ts"],
+      "mustFail": ["still follows the newest candle"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "handtest-2-live-edge-always-assumed",
+      "file": "apps/web/src/lib/chart/rightOffsetRoom.ts",
+      "find": "const followingLive = timeScale.scrollPosition() >= options.rightOffset - LIVE_EDGE_TOLERANCE_BARS;",
+      "replace": "const followingLive = true;",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/chart/tests/rightOffsetRoom.test.ts"],
+      "mustFail": ["leaves a view the user panned into the past"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "handtest-3-identical-reads-not-shared",
+      "file": "apps/runtime/src/server/heatmap-route.js",
+      "find": "if (flight !== undefined && !flight.controller.signal.aborted) {",
+      "replace": "if (false) {",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/server/heatmap-route.test.js", "-t", "gives identical requests"],
+      "mustFail": ["gives identical requests"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "handtest-3-first-leaver-aborts-shared-read",
+      "file": "apps/runtime/src/server/heatmap-route.js",
+      "find": "if (joined.waiters === 0) joined.controller.abort();",
+      "replace": "joined.controller.abort();",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/server/heatmap-route.test.js", "-t", "keeps a shared read going"],
+      "mustFail": ["keeps a shared read going"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "handtest-3-abandoned-read-never-aborted",
+      "file": "apps/runtime/src/server/heatmap-route.js",
+      "find": "if (joined.waiters === 0) joined.controller.abort();",
+      "replace": "void joined;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/server/heatmap-route.test.js", "-t", "keeps a shared read going"],
+      "mustFail": ["keeps a shared read going"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "handtest-4-preview-without-proxies",
+      "file": "apps/web/vite.config.ts",
+      "find": "    preview: served,\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "vite.config.test.ts"],
+      "mustFail": ["serves the built bundle on the same address"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "handtest-5-closed-equity-reads-recovering",
+      "file": "apps/runtime/src/server/dxfeed-eager-market-data-server.js",
+      "find": "l1: { recoveryState: sessionState === \"CLOSED\" && l1Recovery === \"RECOVERING\" ? \"CLOSED\" : l1Recovery,",
+      "replace": "l1: { recoveryState: l1Recovery,",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/server/dxfeed-eager-market-data-server.test.js", "-t", "a closed equity that never recovered"],
+      "mustFail": ["a closed equity that never recovered"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "handtest-5-closed-hides-a-recovered-feed",
+      "file": "apps/runtime/src/server/dxfeed-eager-market-data-server.js",
+      "find": "l1: { recoveryState: sessionState === \"CLOSED\" && l1Recovery === \"RECOVERING\" ? \"CLOSED\" : l1Recovery,",
+      "replace": "l1: { recoveryState: sessionState === \"CLOSED\" ? \"CLOSED\" : l1Recovery,",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/server/dxfeed-eager-market-data-server.test.js", "-t", "a closed equity that never recovered"],
+      "mustFail": ["a closed equity that never recovered"],
+      "timeoutMs": 240000
+    }
+  ]
+}

@@ -1,0 +1,130 @@
+{
+  "mutations": [
+    {
+      "id": "o0-m1.compare.sample-key-omits-page",
+      "file": "apps/runtime/scripts/bench/compare-live-storage-reports.js",
+      "find": "${sample.route}:${sample.page ?? 0}",
+      "replace": "${sample.route}",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/scripts/bench/compare-live-storage-reports.test.js"],
+      "mustFail": ["a difference on a middle page", "a swap of two earlier pages", "a truncated pagination", "keys samples by page"]
+    },
+    {
+      "id": "o0-m1.compare.duplicate-keys-collapse",
+      "file": "apps/runtime/scripts/bench/compare-live-storage-reports.js",
+      "find": "if (byKey.has(key)) {",
+      "replace": "if (false) {",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/scripts/bench/compare-live-storage-reports.test.js"],
+      "mustFail": ["repeats a sample key"]
+    },
+    {
+      "id": "o0-m1.compare.manifest-mismatch-ignored",
+      "file": "apps/runtime/scripts/bench/compare-live-storage-reports.js",
+      "find": "if (beforeSource && afterSource && beforeSource.manifestSha256 !== afterSource.manifestSha256) {",
+      "replace": "if (false) {",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/scripts/bench/compare-live-storage-reports.test.js"],
+      "mustFail": ["different manifests are never semantically equivalent"]
+    },
+    {
+      "id": "o0-m1.compare.dirty-tree-not-warned",
+      "file": "apps/runtime/scripts/bench/compare-live-storage-reports.js",
+      "find": "else if (source.git.dirty) warnings.push(",
+      "replace": "else if (false) warnings.push(",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/scripts/bench/compare-live-storage-reports.test.js"],
+      "mustFail": ["dirty trees and a changed tool script", "strict identity turns every identity gap"]
+    },
+    {
+      "id": "o0-m1.compare.strict-identity-is-a-noop",
+      "file": "apps/runtime/scripts/bench/compare-live-storage-reports.js",
+      "find": "if (strictIdentity) differences.push(",
+      "replace": "if (false) differences.push(",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/scripts/bench/compare-live-storage-reports.test.js"],
+      "mustFail": ["strict identity turns every identity gap"]
+    },
+    {
+      "id": "o0-m1.compare.tool-script-change-not-warned",
+      "file": "apps/runtime/scripts/bench/compare-live-storage-reports.js",
+      "find": "before.scriptSha256 !== after.scriptSha256",
+      "replace": "false",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/scripts/bench/compare-live-storage-reports.test.js"],
+      "mustFail": ["dirty trees and a changed tool script"]
+    },
+    {
+      "id": "o0-m1.load.dirty-ignores-untracked-files",
+      "file": "apps/runtime/scripts/bench/live-storage-load.js",
+      "find": "dirty: lines.length > 0,",
+      "replace": "dirty: trackedChanges > 0,",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/scripts/bench/live-storage-load.test.js"],
+      "mustFail": ["untracked files alone mark the tree dirty"]
+    },
+    {
+      "id": "o0-m1.load.tracked-diff-digest-dropped",
+      "file": "apps/runtime/scripts/bench/live-storage-load.js",
+      "find": "trackedDiffSha256: diff === null ? null : sha256Hex(diff),",
+      "replace": "trackedDiffSha256: null,",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/scripts/bench/live-storage-load.test.js"],
+      "mustFail": ["a dirty tree records how many files differ"]
+    },
+    {
+      "id": "o0-m1.load.manifest-hash-not-of-file-bytes",
+      "file": "apps/runtime/scripts/bench/live-storage-load.js",
+      "find": "manifestSha256: sha256Hex(manifestBytes),",
+      "replace": "manifestSha256: sha256Hex(\"manifest\"),",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/scripts/bench/live-storage-load.test.js"],
+      "mustFail": ["pins the exact manifest and tool bytes"]
+    },
+    {
+      "id": "o0-m1.load.endpoint-records-full-url-not-origin",
+      "file": "apps/runtime/scripts/bench/live-storage-load.js",
+      "find": "liveStorageOrigin: hasLiveStorageRequests ? new URL(baseUrl).origin : null,",
+      "replace": "liveStorageOrigin: hasLiveStorageRequests ? baseUrl : null,",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/scripts/bench/live-storage-load.test.js"],
+      "mustFail": ["the report carries the provenance"]
+    },
+    {
+      "id": "o0-m1.load.provenance-not-embedded-in-report",
+      "file": "apps/runtime/scripts/bench/live-storage-load.js",
+      "find": "...(provenance === null ? {} : {",
+      "replace": "...(true ? {} : {",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/scripts/bench/live-storage-load.test.js"],
+      "mustFail": ["the report carries the provenance"]
+    },
+    {
+      "id": "o0-m1.mutation-check.restore-skipped",
+      "file": "apps/runtime/scripts/verify/mutation-check.js",
+      "find": "    fs.writeFileSync(target, original);\n    fs.rmSync(journal, { force: true });\n  }",
+      "replace": "    fs.rmSync(journal, { force: true });\n  }",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/scripts/verify/mutation-check.test.js"],
+      "mustFail": ["restores the file even when the test runner itself throws"]
+    },
+    {
+      "id": "o0-m1.mutation-check.baseline-not-enforced",
+      "file": "apps/runtime/scripts/verify/mutation-check.js",
+      "find": "if (baseline.exitCode !== 0) {",
+      "replace": "if (false) {",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/scripts/verify/mutation-check.test.js"],
+      "mustFail": ["a suite that already fails is never mutated"]
+    },
+    {
+      "id": "o0-m1.mutation-check.must-fail-unchecked",
+      "file": "apps/runtime/scripts/verify/mutation-check.js",
+      "find": "unmatched.length > 0 ? \"KILLED_BY_UNEXPECTED_TEST\"",
+      "replace": "false ? \"KILLED_BY_UNEXPECTED_TEST\"",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/scripts/verify/mutation-check.test.js"],
+      "mustFail": ["caught by a different test than the one named"]
+    }
+  ]
+}

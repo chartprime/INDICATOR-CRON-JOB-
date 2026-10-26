@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://terminal-l1-l2/contracts/dxfeed-order-book/v1",
+  "title": "dxFeed L2 Order Book v1",
+  "description": "getState() of dxfeed-book-assembler.js, one instance per symbol:assetClass:orderSource view.",
+  "oneOf": [
+    { "$ref": "#/$defs/ready" },
+    { "$ref": "#/$defs/buffering" },
+    { "$ref": "#/$defs/unavailable" }
+  ],
+  "$defs": {
+    "positiveNumber": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "priceLevel": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "prefixItems": [
+        { "$ref": "#/$defs/positiveNumber" },
+        { "$ref": "#/$defs/positiveNumber" }
+      ]
+    },
+    "ready": {
+      "type": "object",
+      "required": ["status", "book"],
+      "properties": {
+        "status": { "const": "READY" },
+        "book": {
+          "type": "object",
+          "required": ["bids", "asks", "lastUpdateId"],
+          "properties": {
+            "bids": {
+              "type": "array",
+              "description": "Descending by price; index 0 is the best bid.",
+              "items": { "$ref": "#/$defs/priceLevel" }
+            },
+            "asks": {
+              "type": "array",
+              "description": "Ascending by price; index 0 is the best ask.",
+              "items": { "$ref": "#/$defs/priceLevel" }
+            },
+            "lastUpdateId": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Local monotonic revision counter, not a provider sequence number. Only meaningful within one assembler instance."
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "buffering": {
+      "type": "object",
+      "required": ["status"],
+      "properties": {
+        "status": { "const": "BUFFERING" }
+      },
+      "additionalProperties": false
+    },
+    "unavailable": {
+      "type": "object",
+      "required": ["status", "reason"],
+      "properties": {
+        "status": { "const": "UNAVAILABLE" },
+        "reason": {
+          "enum": [
+            "IDENTITY_MISMATCH",
+            "SOURCE_MISMATCH",
+            "SNIPPED_SNAPSHOT",
+            "PENDING_EVENT_LIMIT_EXCEEDED",
+            "ORDER_CAP_EXCEEDED",
+            "CROSSED_BOOK",
+            "UPSTREAM_EVENT_UNAVAILABLE",
+            "ORDER_CAPTURE_ERROR"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

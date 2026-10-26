@@ -1,0 +1,91 @@
+:root {
+  --bg: #0c0c0c;
+  --surface: #171717;
+  --surface-2: #202020;
+  --surface-3: #262626;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-soft: rgba(255, 255, 255, 0.05);
+  --text: rgba(250, 250, 247, 0.92);
+  --text-2: rgba(250, 250, 247, 0.68);
+  --text-3: rgba(250, 250, 247, 0.42);
+  --accent: rgba(255, 255, 255, 0.92);
+  --accent-soft: rgba(255, 255, 255, 0.07);
+  --bull: #4ade80;
+  --bull-soft: rgba(74, 222, 128, 0.15);
+  --bear: #f87171;
+  --bear-soft: rgba(248, 113, 113, 0.15);
+  --warn: #fbbf24;
+  --warn-soft: rgba(251, 191, 36, 0.15);
+  --radius: 8px;
+  --mono: "JetBrains Mono", "SF Mono", "Cascadia Code", ui-monospace, Consolas, monospace;
+  --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --sans-display: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+
+  color-scheme: dark light;
+}
+
+:root[data-theme="light"] {
+  --bg: #f4f6f9;
+  --surface: #ffffff;
+  --surface-2: #eef1f5;
+  --surface-3: #e3e7ee;
+  --border: #dce1e8;
+  --border-soft: #e7eaef;
+  --text: #12161f;
+  --text-2: #57607a;
+  --text-3: #8b93a7;
+  --accent: #0e9a93;
+  --accent-soft: rgba(14, 154, 147, 0.1);
+  --bull: #0e9a66;
+  --bull-soft: rgba(14, 154, 102, 0.1);
+  --bear: #c23854;
+  --bear-soft: rgba(194, 56, 84, 0.1);
+  --warn: #b07a1e;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #f4f6f9;
+    --surface: #ffffff;
+    --surface-2: #eef1f5;
+    --surface-3: #e3e7ee;
+    --border: #dce1e8;
+    --border-soft: #e7eaef;
+    --text: #12161f;
+    --text-2: #57607a;
+    --text-3: #8b93a7;
+    --accent: #0e9a93;
+    --accent-soft: rgba(14, 154, 147, 0.1);
+    --bull: #0e9a66;
+    --bull-soft: rgba(14, 154, 102, 0.1);
+    --bear: #c23854;
+    --bear-soft: rgba(194, 56, 84, 0.1);
+    --warn: #b07a1e;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+  font-family: var(--mono);
+}

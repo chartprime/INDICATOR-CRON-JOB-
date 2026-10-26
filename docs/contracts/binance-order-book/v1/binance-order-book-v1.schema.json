@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://terminal-l1-l2/contracts/binance-order-book/v1",
+  "title": "Binance L2 Order-Book Contract v1",
+  "description": "The book assembler's own getState() shape. undefined (not representable here) for a marketKind:symbol pair never subscribed to DEPTH.",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": ["status", "book"],
+      "properties": {
+        "status": { "const": "READY" },
+        "book": {
+          "type": "object",
+          "required": ["bids", "asks", "lastUpdateId"],
+          "properties": {
+            "bids": { "type": "array", "maxItems": 10000, "items": { "$ref": "#/$defs/priceLevel" } },
+            "asks": { "type": "array", "maxItems": 10000, "items": { "$ref": "#/$defs/priceLevel" } },
+            "lastUpdateId": { "type": "integer", "minimum": 0 }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": ["status"],
+      "properties": {
+        "status": { "const": "BUFFERING" }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": ["status", "reason"],
+      "properties": {
+        "status": { "const": "UNAVAILABLE" },
+        "reason": {
+          "enum": [
+            "SNAPSHOT_MALFORMED",
+            "SNAPSHOT_TOO_OLD",
+            "SEQUENCE_GAP",
+            "UPSTREAM_EVENT_UNAVAILABLE",
+            "BUFFER_OVERFLOW_BEFORE_SNAPSHOT",
+            "CROSSED_BOOK",
+            "BOOK_LEVEL_CAP_EXCEEDED"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  ],
+  "$defs": {
+    "priceLevel": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "prefixItems": [
+        { "type": "string", "maxLength": 1024, "pattern": "^(?=.*[1-9])\\d+(\\.\\d+)?$" },
+        { "type": "string", "maxLength": 1024, "pattern": "^\\d+(\\.\\d+)?$" }
+      ]
+    }
+  }
+}

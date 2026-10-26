@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "kind": "ws-fanout",
+  "name": "o0-ws-slow-client-transient-stall-production-thresholds",
+  "clients": 4,
+  "warmupMs": 6000,
+  "durationMs": 10000,
+  "sampleEveryMs": 100,
+  "upstream": { "tradesPerPulse": 20, "pulseMs": 20 },
+  "slowClients": { "count": 1, "pauseAfterMs": 1000, "resumeAfterMs": 4000 }
+}

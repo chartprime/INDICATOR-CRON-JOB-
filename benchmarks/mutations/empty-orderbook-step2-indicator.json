@@ -1,0 +1,1948 @@
+{
+  "mutations": [
+    {
+      "id": "empty-book.zone-length-typed",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookSettings.ts",
+      "find": "{ key: \"zoneLengthMin\", label: \"Zone Length (min)\", kind: \"slider\",",
+      "replace": "{ key: \"zoneLengthMin\", label: \"Zone Length (min)\", kind: \"numeric\",",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "every number on a slider"
+      ],
+      "mustFail": [
+        "offers Size per Zone, Refill Size, Fixed Zone Height, Rows Clear of Price, Zone Length, Keep the Levels, Zones per Side, the flash switch and the two colours, every number on a slider, and no Sensitivity"
+      ]
+    },
+    {
+      "id": "empty-book.zones-per-side-typed",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookSettings.ts",
+      "find": "{ key: \"zonesPerSide\", label: \"Zones per Side\", kind: \"slider\",",
+      "replace": "{ key: \"zonesPerSide\", label: \"Zones per Side\", kind: \"numeric\",",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "every number on a slider"
+      ],
+      "mustFail": [
+        "offers Size per Zone, Refill Size, Fixed Zone Height, Rows Clear of Price, Zone Length, Keep the Levels, Zones per Side, the flash switch and the two colours, every number on a slider, and no Sensitivity"
+      ]
+    },
+    {
+      "id": "empty-book.thin-crypto-typed",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookSettings.ts",
+      "find": "{ key: \"thinPctCrypto\", label: \"Size per Zone (%)\", kind: \"slider\",",
+      "replace": "{ key: \"thinPctCrypto\", label: \"Size per Zone (%)\", kind: \"numeric\",",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "every number on a slider"
+      ],
+      "mustFail": [
+        "offers Size per Zone, Refill Size, Fixed Zone Height, Rows Clear of Price, Zone Length, Keep the Levels, Zones per Side, the flash switch and the two colours, every number on a slider, and no Sensitivity"
+      ]
+    },
+    {
+      "id": "empty-book.thin-index-typed",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookSettings.ts",
+      "find": "{ key: \"thinPctIndex\", label: \"Size per Zone (%)\", kind: \"slider\",",
+      "replace": "{ key: \"thinPctIndex\", label: \"Size per Zone (%)\", kind: \"numeric\",",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "every number on a slider"
+      ],
+      "mustFail": [
+        "offers Size per Zone, Refill Size, Fixed Zone Height, Rows Clear of Price, Zone Length, Keep the Levels, Zones per Side, the flash switch and the two colours, every number on a slider, and no Sensitivity"
+      ]
+    },
+    {
+      "id": "empty-book.other-market-sliders-shown",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookSettings.ts",
+      "find": "    if (field !== undefined) fields[key] = { ...field, visibleIf: () => false };",
+      "replace": "    if (false) fields[key] = { ...field, visibleIf: () => false };",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "shows one Size per Zone and one Refill Size slider"
+      ],
+      "mustFail": [
+        "shows one Size per Zone and one Refill Size slider, the crypto ones on a crypto pair and the index and stock ones on dxFeed, so each market keeps its own"
+      ]
+    },
+    {
+      "id": "empty-book.other-market-refill-slider-shown",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookSettings.ts",
+      "find": "? [\"thinPctIndex\", \"refillPctIndex\"] : [\"thinPctCrypto\", \"refillPctCrypto\"];",
+      "replace": "? [\"thinPctIndex\"] : [\"thinPctCrypto\"];",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "shows one Size per Zone and one Refill Size slider"
+      ],
+      "mustFail": [
+        "shows one Size per Zone and one Refill Size slider, the crypto ones on a crypto pair and the index and stock ones on dxFeed, so each market keeps its own"
+      ]
+    },
+    {
+      "id": "empty-book.thin-sliders-not-wired",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": "  settingsFieldsFor: marketFieldsFor,\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "shows one Size per Zone and one Refill Size slider"
+      ],
+      "mustFail": [
+        "shows one Size per Zone and one Refill Size slider, the crypto ones on a crypto pair and the index and stock ones on dxFeed, so each market keeps its own"
+      ]
+    },
+    {
+      "id": "empty-book.crypto-gets-the-index-share",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookSettings.ts",
+      "find": "  return identity.provider === \"BINANCE\" ? \"thinPctCrypto\" : \"thinPctIndex\";",
+      "replace": "  return \"thinPctIndex\";",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "calls a row thin under 50 %"
+      ],
+      "mustFail": [
+        "calls a row thin under 50 % of a typical row on crypto and 75 % on indexes and stocks by default, each moved by its own slider, kept between 10 and 100 %"
+      ]
+    },
+    {
+      "id": "empty-book.thin-not-kept-in-range",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookSettings.ts",
+      "find": "  return Math.min(max, Math.max(min, pct)) / 100;",
+      "replace": "  return pct / 100;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "calls a row thin under 50 %"
+      ],
+      "mustFail": [
+        "calls a row thin under 50 % of a typical row on crypto and 75 % on indexes and stocks by default, each moved by its own slider, kept between 10 and 100 %"
+      ]
+    },
+    {
+      "id": "empty-book.thin-setting-ignored",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookSettings.ts",
+      "find": "  const pct = Number.isFinite(settings[key]) ? settings[key] : DEFAULT_EMPTY_ORDERBOOK_SETTINGS[key];",
+      "replace": "  const pct = DEFAULT_EMPTY_ORDERBOOK_SETTINGS[key];",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "leaves a stretch at 60 %"
+      ],
+      "mustFail": [
+        "leaves a stretch at 60 % of a typical row out on crypto by default, and draws it once the crypto slider is raised to 75 %"
+      ]
+    },
+    {
+      "id": "empty-book.thin-share-not-passed",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": ".bandSizes, clearRows, thinShare, refillMultiple);",
+      "replace": ".bandSizes, clearRows, 0.75, refillMultiple);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "leaves a stretch at 60 %"
+      ],
+      "mustFail": [
+        "leaves a stretch at 60 % of a typical row out on crypto by default, and draws it once the crypto slider is raised to 75 %"
+      ]
+    },
+    {
+      "id": "empty-book.refill-crypto-typed",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookSettings.ts",
+      "find": "{ key: \"refillPctCrypto\", label: \"Refill Size (%)\", kind: \"slider\",",
+      "replace": "{ key: \"refillPctCrypto\", label: \"Refill Size (%)\", kind: \"numeric\",",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "every number on a slider"
+      ],
+      "mustFail": [
+        "offers Size per Zone, Refill Size, Fixed Zone Height, Rows Clear of Price, Zone Length, Keep the Levels, Zones per Side, the flash switch and the two colours, every number on a slider, and no Sensitivity"
+      ]
+    },
+    {
+      "id": "empty-book.refill-index-typed",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookSettings.ts",
+      "find": "{ key: \"refillPctIndex\", label: \"Refill Size (%)\", kind: \"slider\",",
+      "replace": "{ key: \"refillPctIndex\", label: \"Refill Size (%)\", kind: \"numeric\",",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "every number on a slider"
+      ],
+      "mustFail": [
+        "offers Size per Zone, Refill Size, Fixed Zone Height, Rows Clear of Price, Zone Length, Keep the Levels, Zones per Side, the flash switch and the two colours, every number on a slider, and no Sensitivity"
+      ]
+    },
+    {
+      "id": "empty-book.refill-slider-from-half",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookSettings.ts",
+      "find": "export const MIN_REFILL_PCT = 100;",
+      "replace": "export const MIN_REFILL_PCT = 50;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "refills a row at 100 %"
+      ],
+      "mustFail": [
+        "refills a row at 100 % of a typical row on crypto and on indexes and stocks by default, each moved by its own slider, kept between 100 and 300 %"
+      ]
+    },
+    {
+      "id": "empty-book.crypto-gets-the-index-refill",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookSettings.ts",
+      "find": "  return thinKeyFor(identity) === \"thinPctCrypto\" ? \"refillPctCrypto\" : \"refillPctIndex\";",
+      "replace": "  return \"refillPctIndex\";",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "refills a row at 100 %"
+      ],
+      "mustFail": [
+        "refills a row at 100 % of a typical row on crypto and on indexes and stocks by default, each moved by its own slider, kept between 100 and 300 %"
+      ]
+    },
+    {
+      "id": "empty-book.refill-range-from-the-thin-slider",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookSettings.ts",
+      "find": "pctOf(settings, refillKeyFor(identity), MIN_REFILL_PCT, MAX_REFILL_PCT)",
+      "replace": "pctOf(settings, refillKeyFor(identity), MIN_THIN_PCT, MAX_THIN_PCT)",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "refills a row at 100 %"
+      ],
+      "mustFail": [
+        "refills a row at 100 % of a typical row on crypto and on indexes and stocks by default, each moved by its own slider, kept between 100 and 300 %"
+      ]
+    },
+    {
+      "id": "empty-book.refill-default-crypto-twice",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookSettings.ts",
+      "find": "  refillPctCrypto: 100,",
+      "replace": "  refillPctCrypto: 200,",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "holds a typical row again"
+      ],
+      "mustFail": [
+        "flashes a row of a stretch once it holds a typical row again by default, and waits for more once the crypto Refill Size is raised"
+      ]
+    },
+    {
+      "id": "empty-book.refill-default-index-twice",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookSettings.ts",
+      "find": "  refillPctIndex: 100,",
+      "replace": "  refillPctIndex: 200,",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "every number on a slider"
+      ],
+      "mustFail": [
+        "offers Size per Zone, Refill Size, Fixed Zone Height, Rows Clear of Price, Zone Length, Keep the Levels, Zones per Side, the flash switch and the two colours, every number on a slider, and no Sensitivity"
+      ]
+    },
+    {
+      "id": "empty-book.refill-not-passed",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": ".bandSizes, clearRows, thinShare, refillMultiple);",
+      "replace": ".bandSizes, clearRows, thinShare);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "holds a typical row again"
+      ],
+      "mustFail": [
+        "flashes a row of a stretch once it holds a typical row again by default, and waits for more once the crypto Refill Size is raised"
+      ]
+    },
+    {
+      "id": "empty-book.model-kept-across-refill-size",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": ":${thinShare}:${refillMultiple}:${clearRows}:",
+      "replace": ":${thinShare}:${clearRows}:",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "keeps the book it has read"
+      ],
+      "mustFail": [
+        "keeps the book it has read across a change of Zone Length, colour or the flash, and reads it again for a new Size per Zone or Refill Size"
+      ]
+    },
+    {
+      "id": "empty-book.model-kept-across-thin-share",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": ":${bar.interval_ms}:${thinShare}:${refillMultiple}:",
+      "replace": ":${bar.interval_ms}:${refillMultiple}:",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "leaves a stretch at 60 %"
+      ],
+      "mustFail": [
+        "leaves a stretch at 60 % of a typical row out on crypto by default, and draws it once the crypto slider is raised to 75 %"
+      ]
+    },
+    {
+      "id": "empty-book.indicator-reach-near-price-only",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "  reachBp: Infinity,",
+      "replace": "  reachBp: 100,",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "anywhere in the book the chart holds"
+      ],
+      "mustFail": [
+        "finds a thin stretch anywhere in the book the chart holds, not only near price"
+      ]
+    },
+    {
+      "id": "empty-book.rules-ignore-thin-share",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookRules.ts",
+      "find": "clearRows: clear, thinShare: thin, refillMultiple: refill };",
+      "replace": "clearRows: clear, refillMultiple: refill };",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookRules.test.ts",
+        "-t",
+        "builds the model's rules"
+      ],
+      "mustFail": [
+        "builds the model's rules from the heatmap's row size and the minimum height, on the fixed numbers"
+      ]
+    },
+    {
+      "id": "empty-book.height-typed",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookSettings.ts",
+      "find": "{ key: \"heightRows\", label: \"Zone Height (rows)\", kind: \"slider\",",
+      "replace": "{ key: \"heightRows\", label: \"Zone Height (rows)\", kind: \"numeric\",",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "every number on a slider"
+      ],
+      "mustFail": [
+        "offers Size per Zone, Refill Size, Fixed Zone Height, Rows Clear of Price, Zone Length, Keep the Levels, Zones per Side, the flash switch and the two colours, every number on a slider, and no Sensitivity"
+      ]
+    },
+    {
+      "id": "empty-book.height-slider-always-shown",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookSettings.ts",
+      "find": "visibleIf: (settings) => settings.fixedHeight === true,",
+      "replace": "visibleIf: () => true,",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "every number on a slider"
+      ],
+      "mustFail": [
+        "offers Size per Zone, Refill Size, Fixed Zone Height, Rows Clear of Price, Zone Length, Keep the Levels, Zones per Side, the flash switch and the two colours, every number on a slider, and no Sensitivity"
+      ]
+    },
+    {
+      "id": "empty-book.fixed-height-switch-ignored",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookSettings.ts",
+      "find": "  if (settings.fixedHeight !== true) return null;",
+      "replace": "  if (false) return null;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "with Fixed Zone Height on"
+      ],
+      "mustFail": [
+        "with Fixed Zone Height on, takes the slider's rows as the zone's least height: one thin row is a zone at 1, three rows are not enough at 4"
+      ]
+    },
+    {
+      "id": "empty-book.fixed-height-not-kept-in-range",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookSettings.ts",
+      "find": "  return Math.min(MAX_HEIGHT_ROWS, Math.max(1, rows));",
+      "replace": "  return rows;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "with Fixed Zone Height on"
+      ],
+      "mustFail": [
+        "with Fixed Zone Height on, takes the slider's rows as the zone's least height: one thin row is a zone at 1, three rows are not enough at 4"
+      ]
+    },
+    {
+      "id": "empty-book.fixed-height-not-used",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": "fixedRows ?? minRowsOf(",
+      "replace": "null ?? minRowsOf(",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "with Fixed Zone Height on"
+      ],
+      "mustFail": [
+        "with Fixed Zone Height on, takes the slider's rows as the zone's least height: one thin row is a zone at 1, three rows are not enough at 4"
+      ]
+    },
+    {
+      "id": "empty-book.model-kept-across-fixed-height",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": ":${fixedRows ?? \"auto\"}:${feed.epoch}`;",
+      "replace": ":${feed.epoch}`;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "with Fixed Zone Height on"
+      ],
+      "mustFail": [
+        "with Fixed Zone Height on, takes the slider's rows as the zone's least height: one thin row is a zone at 1, three rows are not enough at 4"
+      ]
+    },
+    {
+      "id": "empty-book.two-row-floor-kept",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookRules.ts",
+      "find": "minRows: Math.max(1, Math.floor(minRows)), bandSizes,",
+      "replace": "minRows: Math.max(2, Math.floor(minRows)), bandSizes,",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "with Fixed Zone Height on"
+      ],
+      "mustFail": [
+        "with Fixed Zone Height on, takes the slider's rows as the zone's least height: one thin row is a zone at 1, three rows are not enough at 4"
+      ]
+    },
+    {
+      "id": "empty-book.one-row-said-rows",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookRender.ts",
+      "find": "count === 1 ? \"row\" : \"rows\"",
+      "replace": "\"rows\"",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "with Fixed Zone Height on"
+      ],
+      "mustFail": [
+        "with Fixed Zone Height on, takes the slider's rows as the zone's least height: one thin row is a zone at 1, three rows are not enough at 4"
+      ]
+    },
+    {
+      "id": "empty-book.rows-not-capped",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": "  const capped = Math.max(1, Math.min(rows, Math.floor(side / MIN_ROWS_PER_SIDE)));",
+      "replace": "  const capped = rows;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "never makes the rows so coarse"
+      ],
+      "mustFail": [
+        "never makes the rows so coarse that the book holds fewer than 30 a side: finer rows than the heatmap on the higher timeframes"
+      ]
+    },
+    {
+      "id": "empty-book.cap-on-the-whole-window",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": "  const side = Math.floor((newest.hi - newest.lo + 1) / 2);",
+      "replace": "  const side = newest.hi - newest.lo + 1;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "never makes the rows so coarse"
+      ],
+      "mustFail": [
+        "never makes the rows so coarse that the book holds fewer than 30 a side: finer rows than the heatmap on the higher timeframes"
+      ]
+    },
+    {
+      "id": "empty-book.cap-can-reach-zero",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": "  const capped = Math.max(1, Math.min(rows, Math.floor(side / MIN_ROWS_PER_SIDE)));",
+      "replace": "  const capped = Math.min(rows, Math.floor(side / MIN_ROWS_PER_SIDE));",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "never makes the rows so coarse"
+      ],
+      "mustFail": [
+        "never makes the rows so coarse that the book holds fewer than 30 a side: finer rows than the heatmap on the higher timeframes"
+      ]
+    },
+    {
+      "id": "empty-book.row-size-flips-with-the-window",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": "  return previous >= capped && previous <= loosest ? previous : capped;",
+      "replace": "  return capped;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "keeps the row size it drew with"
+      ],
+      "mustFail": [
+        "keeps the row size it drew with while the book narrows by a row or two, so the boxes do not flip between two row sizes"
+      ]
+    },
+    {
+      "id": "empty-book.row-size-slack-ignored",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": "Math.floor(side / (MIN_ROWS_PER_SIDE - ROW_CAP_SLACK))",
+      "replace": "Math.floor(side / MIN_ROWS_PER_SIDE)",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "keeps the row size it drew with"
+      ],
+      "mustFail": [
+        "keeps the row size it drew with while the book narrows by a row or two, so the boxes do not flip between two row sizes"
+      ]
+    },
+    {
+      "id": "empty-book.row-size-kept-above-the-heatmap-rows",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": "  const loosest = Math.min(rows, Math.floor(side / (MIN_ROWS_PER_SIDE - ROW_CAP_SLACK)));",
+      "replace": "  const loosest = Math.floor(side / (MIN_ROWS_PER_SIDE - ROW_CAP_SLACK));",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "keeps the row size it drew with"
+      ],
+      "mustFail": [
+        "keeps the row size it drew with while the book narrows by a row or two, so the boxes do not flip between two row sizes"
+      ]
+    },
+    {
+      "id": "empty-book.row-size-kept-below-the-cap",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": "previous >= capped && previous <= loosest",
+      "replace": "previous <= loosest",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "keeps the row size it drew with"
+      ],
+      "mustFail": [
+        "keeps the row size it drew with while the book narrows by a row or two, so the boxes do not flip between two row sizes"
+      ]
+    },
+    {
+      "id": "empty-book.previous-row-size-not-passed",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": "    const clusterRows = heatmapRowsOf(ctx, state.clusterRows);",
+      "replace": "    const clusterRows = heatmapRowsOf(ctx);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "keeps the row size it drew with"
+      ],
+      "mustFail": [
+        "keeps the row size it drew with while the book narrows by a row or two, so the boxes do not flip between two row sizes"
+      ]
+    },
+    {
+      "id": "empty-book.zones-not-cleared",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": ".map((zone) => clearedOf(zone, state.bars, geometry, bar.interval_ms))",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "after the last candle that traded inside"
+      ],
+      "mustFail": [
+        "starts a zone's box and its age after the last candle that traded inside its prices, so no closed candle sits inside a box"
+      ]
+    },
+    {
+      "id": "empty-book.live-bar-range-frozen",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": "    last.high = high;\n    last.low = low;\n    return;",
+      "replace": "    return;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "after the last candle that traded inside"
+      ],
+      "mustFail": [
+        "starts a zone's box and its age after the last candle that traded inside its prices, so no closed candle sits inside a box"
+      ]
+    },
+    {
+      "id": "empty-book.candle-on-the-top-edge-counts",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": "if (bar.low < top && bar.high >= bottom)",
+      "replace": "if (bar.low <= top && bar.high >= bottom)",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "finds the last candle inside a price range"
+      ],
+      "mustFail": [
+        "finds the last candle inside a price range from the newest back, no further than the zone's start"
+      ]
+    },
+    {
+      "id": "empty-book.candle-on-the-bottom-edge-ignored",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": "if (bar.low < top && bar.high >= bottom)",
+      "replace": "if (bar.low < top && bar.high > bottom)",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "finds the last candle inside a price range"
+      ],
+      "mustFail": [
+        "finds the last candle inside a price range from the newest back, no further than the zone's start"
+      ]
+    },
+    {
+      "id": "empty-book.cleared-at-the-candle-open",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": "return Math.max(since, bar.open + intervalMs);",
+      "replace": "return Math.max(since, bar.open);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "finds the last candle inside a price range"
+      ],
+      "mustFail": [
+        "finds the last candle inside a price range from the newest back, no further than the zone's start"
+      ]
+    },
+    {
+      "id": "empty-book.flash-switch-ignored",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": "drawnFlashes(state, settings.showFlash ? emptyBookFlashes(model) : [])",
+      "replace": "drawnFlashes(state, emptyBookFlashes(model))",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "flash switched off"
+      ],
+      "mustFail": [
+        "draws no flash with the flash switched off, and the zone still closes up"
+      ]
+    },
+    {
+      "id": "empty-book.flash-on-the-live-bar-only",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookRender.ts",
+      "find": "    slot.setLeftTop(flash.left, top);",
+      "replace": "    slot.setLeftTop(frame.liveOpen, top);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "flashes a refilled row"
+      ],
+      "mustFail": [
+        "flashes a refilled row in the side's colour across the zone, and the zone closes up around what is still thin"
+      ]
+    },
+    {
+      "id": "empty-book.flash-for-a-row-never-drawn",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": "state.drawnRows.get(`${flash.side}:${flash.row}`) ?? null);",
+      "replace": "state.drawnRows.get(`${flash.side}:${flash.row}`) ?? 1);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "draws a refill's flash from where its box started"
+      ],
+      "mustFail": [
+        "draws a refill's flash from where its box started, and only for a row that was inside a drawn box"
+      ]
+    },
+    {
+      "id": "empty-book.flash-decided-on-every-draw",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": "    if (!state.flashLeft.has(key)) state.flashLeft.set(",
+      "replace": "    if (true) state.flashLeft.set(",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "flashes a refilled row"
+      ],
+      "mustFail": [
+        "flashes a refilled row in the side's colour across the zone, and the zone closes up around what is still thin"
+      ]
+    },
+    {
+      "id": "empty-book.drawn-rows-never-kept",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": "    state.drawnRows = rowsDrawn(zones, frame.leftOf);\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "flashes a refilled row"
+      ],
+      "mustFail": [
+        "flashes a refilled row in the side's colour across the zone, and the zone closes up around what is still thin"
+      ]
+    },
+    {
+      "id": "empty-book.drawn-rows-from-the-model-not-the-boxes",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": "    state.drawnRows = rowsDrawn(zones, frame.leftOf);",
+      "replace": "    state.drawnRows = rowsDrawn(emptyBookZones(model), frame.leftOf);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "draws a refill's flash from where its box started"
+      ],
+      "mustFail": [
+        "draws a refill's flash from where its box started, and only for a row that was inside a drawn box"
+      ]
+    },
+    {
+      "id": "empty-book.flash-left-from-the-model",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": "    for (let row = zone.lo; row <= zone.hi; row += 1) rows.set(`${zone.side}:${row}`, left);",
+      "replace": "    for (let row = zone.lo; row <= zone.hi; row += 1) rows.set(`${zone.side}:${row}`, zone.since);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "flashes a refilled row"
+      ],
+      "mustFail": [
+        "flashes a refilled row in the side's colour across the zone, and the zone closes up around what is still thin"
+      ]
+    },
+    {
+      "id": "empty-book.split-counted-as-two",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookRender.ts",
+      "find": "      const group = zone.group ?? zone;",
+      "replace": "      const group = zone;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "counts both parts of a split as one zone"
+      ],
+      "mustFail": [
+        "counts both parts of a split as one zone in Zones per Side, so a refill in the middle shows as two boxes"
+      ]
+    },
+    {
+      "id": "empty-book.split-parts-not-grouped",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "      group ??= zone.group;",
+      "replace": "      group ??= null;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "counts both parts of a split as one zone"
+      ],
+      "mustFail": [
+        "counts both parts of a split as one zone in Zones per Side, so a refill in the middle shows as two boxes"
+      ]
+    },
+    {
+      "id": "empty-book.exact-height-ignored",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": "(fixedRows === null ? zone : windowOf(model, zone, fixedRows))",
+      "replace": "zone",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "draws only the emptiest rows of each zone"
+      ],
+      "mustFail": [
+        "with Fixed Zone Height on, draws only the emptiest rows of each zone at exactly that height, and hides the rest of it"
+      ]
+    },
+    {
+      "id": "empty-book.exact-window-not-emptiest",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "    if (sum < least) {",
+      "replace": "    if (sum <= least) {",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "draws only the emptiest rows of each zone"
+      ],
+      "mustFail": [
+        "with Fixed Zone Height on, draws only the emptiest rows of each zone at exactly that height, and hides the rest of it"
+      ]
+    },
+    {
+      "id": "empty-book.exact-window-one-row-summed",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "    for (let row = lo; row < lo + size; row += 1) sum += averageOf(state, zone.side, row) ?? Infinity;",
+      "replace": "    for (let row = lo; row < lo + 1; row += 1) sum += averageOf(state, zone.side, row) ?? Infinity;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "draws only the emptiest rows of each zone"
+      ],
+      "mustFail": [
+        "with Fixed Zone Height on, draws only the emptiest rows of each zone at exactly that height, and hides the rest of it"
+      ]
+    },
+    {
+      "id": "empty-book.zone-drawn-back-the-whole-length",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": "  const ts = Math.max(since, nowTs - lengthMs);",
+      "replace": "  const ts = nowTs - lengthMs;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "no further back than the Zone Length"
+      ],
+      "mustFail": [
+        "draws a zone from the bar it began in, no further back than the Zone Length, and keeps the real age on its label"
+      ]
+    },
+    {
+      "id": "empty-book.zone-length-not-a-cap",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": "  const ts = Math.max(since, nowTs - lengthMs);",
+      "replace": "  const ts = since;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "no further back than the Zone Length"
+      ],
+      "mustFail": [
+        "draws a zone from the bar it began in, no further back than the Zone Length, and keeps the real age on its label"
+      ]
+    },
+    {
+      "id": "empty-book.left-edge-off-the-bars",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": "  if (bars[lo].open + intervalMs > ts) return bars[lo].open;",
+      "replace": "  if (bars[lo].open + intervalMs > ts) return ts;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "draws a thin stretch as a box"
+      ],
+      "mustFail": [
+        "draws a thin stretch as a box lightly filled in its side's colour, from the bar it began in to the live bar, with the side, the rows, what rests there now, the price range and the age in its corner"
+      ]
+    },
+    {
+      "id": "empty-book.gap-snaps-back",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": "  return bars[lo + 1]?.open ?? liveOpen;",
+      "replace": "  return bars[lo].open;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "starts a box on the next candle there is"
+      ],
+      "mustFail": [
+        "starts a box on the next candle there is when the minute after the touching candle has none"
+      ]
+    },
+    {
+      "id": "empty-book.gap-ignores-the-bar-length",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": "  if (bars[lo].open + intervalMs > ts) return bars[lo].open;",
+      "replace": "  if (true) return bars[lo].open;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "starts a box on the next candle there is"
+      ],
+      "mustFail": [
+        "starts a box on the next candle there is when the minute after the touching candle has none"
+      ]
+    },
+    {
+      "id": "empty-book.before-the-first-bar-not-held",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": "  if (ts < bars[0].open) return bars[0].open;",
+      "replace": "  if (ts < bars[0].open) return liveOpen;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "starts a box on the next candle there is"
+      ],
+      "mustFail": [
+        "starts a box on the next candle there is when the minute after the touching candle has none"
+      ]
+    },
+    {
+      "id": "empty-book.clear-rows-typed",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookSettings.ts",
+      "find": "{ key: \"clearRows\", label: \"Rows Clear of Price\", kind: \"slider\",",
+      "replace": "{ key: \"clearRows\", label: \"Rows Clear of Price\", kind: \"numeric\",",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "every number on a slider"
+      ],
+      "mustFail": [
+        "offers Size per Zone, Refill Size, Fixed Zone Height, Rows Clear of Price, Zone Length, Keep the Levels, Zones per Side, the flash switch and the two colours, every number on a slider, and no Sensitivity"
+      ]
+    },
+    {
+      "id": "empty-book.flash-switch-missing",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookSettings.ts",
+      "find": "  { key: \"showFlash\", label: \"Flash Refilled Rows\", kind: \"boolean\", affects: \"recompute\" },\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "every number on a slider"
+      ],
+      "mustFail": [
+        "offers Size per Zone, Refill Size, Fixed Zone Height, Rows Clear of Price, Zone Length, Keep the Levels, Zones per Side, the flash switch and the two colours, every number on a slider, and no Sensitivity"
+      ]
+    },
+    {
+      "id": "empty-book.zone-length-ignored",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookSettings.ts",
+      "find": "  const minutes = Number.isFinite(settings.zoneLengthMin) ? settings.zoneLengthMin : DEFAULT_EMPTY_ORDERBOOK_SETTINGS.zoneLengthMin;",
+      "replace": "  const minutes = DEFAULT_EMPTY_ORDERBOOK_SETTINGS.zoneLengthMin;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "no further back than the Zone Length"
+      ],
+      "mustFail": [
+        "draws a zone from the bar it began in, no further back than the Zone Length, and keeps the real age on its label"
+      ]
+    },
+    {
+      "id": "empty-book.zones-per-side-ignored",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookSettings.ts",
+      "find": "  return Math.min(MAX_ZONES_PER_SIDE, Math.max(1, count));",
+      "replace": "  return MAX_ZONES_PER_SIDE;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "keeps Zones per Side"
+      ],
+      "mustFail": [
+        "keeps Zones per Side, the nearest to price by default and the furthest when asked, each side on its own"
+      ]
+    },
+    {
+      "id": "empty-book.clear-rows-setting-ignored",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookSettings.ts",
+      "find": "  return Math.min(MAX_CLEAR_ROWS, Math.max(0, rows));",
+      "replace": "  return DEFAULT_EMPTY_ORDERBOOK_SETTINGS.clearRows;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "lets Rows Clear of Price"
+      ],
+      "mustFail": [
+        "lets Rows Clear of Price bring the first zone closer to price or push it away"
+      ]
+    },
+    {
+      "id": "empty-book.clear-rows-not-passed-to-the-rules",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": ".bandSizes, clearRows, thinShare, refillMultiple);",
+      "replace": ".bandSizes, 4, thinShare, refillMultiple);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "lets Rows Clear of Price"
+      ],
+      "mustFail": [
+        "lets Rows Clear of Price bring the first zone closer to price or push it away"
+      ]
+    },
+    {
+      "id": "empty-book.model-kept-across-clear-rows",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": ":${refillMultiple}:${clearRows}:${fixedRows",
+      "replace": ":${refillMultiple}:${fixedRows",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "lets Rows Clear of Price"
+      ],
+      "mustFail": [
+        "lets Rows Clear of Price bring the first zone closer to price or push it away"
+      ]
+    },
+    {
+      "id": "empty-book.furthest-ignored",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookRender.ts",
+      "find": "  const order = by === \"furthest\" ?",
+      "replace": "  const order = false ?",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "keeps Zones per Side"
+      ],
+      "mustFail": [
+        "keeps Zones per Side, the nearest to price by default and the furthest when asked, each side on its own"
+      ]
+    },
+    {
+      "id": "empty-book.flash-without-colour",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookRender.ts",
+      "find": "    slot.setBackgroundColor(withAlpha(zoneColor(flash.side, settings), flashAlpha(frame.nowTs - flash.ts, frame.flashMs)));",
+      "replace": "    slot.setBackgroundColor(HIDDEN);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "flashes a refilled row"
+      ],
+      "mustFail": [
+        "flashes a refilled row in the side's colour across the zone, and the zone closes up around what is still thin"
+      ]
+    },
+    {
+      "id": "empty-book.flash-drawn-already-faded",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookRender.ts",
+      "find": "flashAlpha(frame.nowTs - flash.ts, frame.flashMs)",
+      "replace": "flashAlpha(frame.flashMs, frame.flashMs)",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "flashes a refilled row"
+      ],
+      "mustFail": [
+        "flashes a refilled row in the side's colour across the zone, and the zone closes up around what is still thin"
+      ]
+    },
+    {
+      "id": "empty-book.flash-never-fades",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookRender.ts",
+      "find": "  return FLASH_ALPHA * Math.min(1, Math.max(FLASH_FLOOR, left));",
+      "replace": "  return FLASH_ALPHA;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "fades the flash"
+      ],
+      "mustFail": [
+        "fades the flash over its three seconds, never under a quarter of its strength"
+      ]
+    },
+    {
+      "id": "empty-book.flash-fades-to-nothing",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookRender.ts",
+      "find": "Math.max(FLASH_FLOOR, left)",
+      "replace": "Math.max(0, left)",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "fades the flash"
+      ],
+      "mustFail": [
+        "fades the flash over its three seconds, never under a quarter of its strength"
+      ]
+    },
+    {
+      "id": "empty-book.zone-not-filled",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookRender.ts",
+      "find": "    slot.setBackgroundColor(withAlpha(color, ZONE_FILL_ALPHA));",
+      "replace": "    slot.setBackgroundColor(HIDDEN);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "draws a thin stretch as a box"
+      ],
+      "mustFail": [
+        "draws a thin stretch as a box lightly filled in its side's colour, from the bar it began in to the live bar, with the side, the rows, what rests there now, the price range and the age in its corner"
+      ]
+    },
+    {
+      "id": "empty-book.zone-filled-solid",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookRender.ts",
+      "find": "    slot.setBackgroundColor(withAlpha(color, ZONE_FILL_ALPHA));",
+      "replace": "    slot.setBackgroundColor(withAlpha(color, ZONE_BORDER_ALPHA));",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "draws a thin stretch as a box"
+      ],
+      "mustFail": [
+        "draws a thin stretch as a box lightly filled in its side's colour, from the bar it began in to the live bar, with the side, the rows, what rests there now, the price range and the age in its corner"
+      ]
+    },
+    {
+      "id": "empty-book.size-missing-from-the-label",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookRender.ts",
+      "find": "frame.sizeOf(zone));",
+      "replace": "null);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "draws a thin stretch as a box"
+      ],
+      "mustFail": [
+        "draws a thin stretch as a box lightly filled in its side's colour, from the bar it began in to the live bar, with the side, the rows, what rests there now, the price range and the age in its corner"
+      ]
+    },
+    {
+      "id": "empty-book.size-of-an-older-book",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": "    const book = columns[Math.min(columns.length - 1, liquidityIndexAtOrAfter(columns, nowTs))];",
+      "replace": "    const book = columns[0];",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "writes what rests in the zone"
+      ],
+      "mustFail": [
+        "writes what rests in the zone right now as the ladder reads its rows, in the instrument's unit: whole contracts and shares, coins like the ladder"
+      ]
+    },
+    {
+      "id": "empty-book.size-from-one-row",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookRender.ts",
+      "find": "  for (let row = zone.lo; row <= zone.hi; row += 1) size += sizes(",
+      "replace": "  for (let row = zone.lo; row <= zone.lo; row += 1) size += sizes(",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "writes what rests in the zone"
+      ],
+      "mustFail": [
+        "writes what rests in the zone right now as the ladder reads its rows, in the instrument's unit: whole contracts and shares, coins like the ladder"
+      ]
+    },
+    {
+      "id": "empty-book.size-from-the-other-side",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookRender.ts",
+      "find": "size += sizes(column, row, clusterRows)[zone.side];",
+      "replace": "size += sizes(column, row, clusterRows).ask;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "writes what rests in the zone"
+      ],
+      "mustFail": [
+        "writes what rests in the zone right now as the ladder reads its rows, in the instrument's unit: whole contracts and shares, coins like the ladder"
+      ]
+    },
+    {
+      "id": "empty-book.label-read-like-crypto-on-indexes",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": "restingIn(book, zone, clusterRows, rules.bandSizes)",
+      "replace": "restingIn(book, zone, clusterRows, liquidityStyleFor(\"BINANCE\", bar.symbol, bar.marketKind).bandSizes)",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "adds up the ladder's numbers on indexes"
+      ],
+      "mustFail": [
+        "adds up the ladder's numbers on indexes, the biggest order of each row, where crypto adds up every order in the zone"
+      ]
+    },
+    {
+      "id": "empty-book.contracts-with-decimals",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookRender.ts",
+      "find": "WHOLE_UNITS.includes(unit) ? Math.round(size).toLocaleString(\"en-US\")",
+      "replace": "false ? Math.round(size).toLocaleString(\"en-US\")",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "writes what rests in the zone"
+      ],
+      "mustFail": [
+        "writes what rests in the zone right now as the ladder reads its rows, in the instrument's unit: whole contracts and shares, coins like the ladder"
+      ]
+    },
+    {
+      "id": "empty-book.zone-from-another-zone-s-age",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookRender.ts",
+      "find": "    slot.setLeftTop(frame.leftOf(zone.since), top);",
+      "replace": "    slot.setLeftTop(frame.leftOf(frame.nowTs), top);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "draws a thin stretch as a box"
+      ],
+      "mustFail": [
+        "draws a thin stretch as a box lightly filled in its side's colour, from the bar it began in to the live bar, with the side, the rows, what rests there now, the price range and the age in its corner"
+      ]
+    },
+    {
+      "id": "empty-book.reads-only-the-1-s-columns",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": "    eachColumn(feed, from, Infinity,",
+      "replace": "    eachColumn({ ...feed, deep: null }, from, Infinity,",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "reads back as far as the longest Zone Length"
+      ],
+      "mustFail": [
+        "reads back as far as the longest Zone Length when it starts, through the 10 s columns and then the 1 s ones, so a zone keeps its real age"
+      ]
+    },
+    {
+      "id": "empty-book.book-read-only-to-the-candle-s-end",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": "    eachColumn(feed, from, Infinity,",
+      "replace": "    eachColumn(feed, from, bar.ts_open + bar.interval_ms - 1,",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "keeps reading the book past the end"
+      ],
+      "mustFail": [
+        "keeps reading the book past the end of the last candle, so a market that stops printing candles still shows the book as it is now"
+      ]
+    },
+    {
+      "id": "empty-book.reads-one-hour-back",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": "export const REPLAY_MS = MAX_ZONE_LENGTH_MIN * 60_000 + 300_000;",
+      "replace": "export const REPLAY_MS = 3_600_000;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "reads back as far as the longest Zone Length"
+      ],
+      "mustFail": [
+        "reads back as far as the longest Zone Length when it starts, through the 10 s columns and then the 1 s ones, so a zone keeps its real age"
+      ]
+    },
+    {
+      "id": "empty-book.tier-spacing-not-passed",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": "stepEmptyBook(model, column, rules, spacing));",
+      "replace": "stepEmptyBook(model, column, rules, feed.fine.columnMs));",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "reads back as far as the longest Zone Length"
+      ],
+      "mustFail": [
+        "reads back as far as the longest Zone Length when it starts, through the 10 s columns and then the 1 s ones, so a zone keeps its real age"
+      ]
+    },
+    {
+      "id": "empty-book.age-from-the-left-edge",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookRender.ts",
+      "find": "ageText(nowTs - zone.since)]",
+      "replace": "ageText(0)]",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "no further back than the Zone Length"
+      ],
+      "mustFail": [
+        "draws a zone from the bar it began in, no further back than the Zone Length, and keeps the real age on its label"
+      ]
+    },
+    {
+      "id": "empty-book.zone-top-one-row-low",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookRender.ts",
+      "find": "top: Number(((hi + 1) * height).toPrecision(12))",
+      "replace": "top: Number((hi * height).toPrecision(12))",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "draws a thin stretch as a box"
+      ],
+      "mustFail": [
+        "draws a thin stretch as a box lightly filled in its side's colour, from the bar it began in to the live bar, with the side, the rows, what rests there now, the price range and the age in its corner"
+      ]
+    },
+    {
+      "id": "empty-book.rows-miscounted",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookRender.ts",
+      "find": "  const count = zone.hi - zone.lo + 1;",
+      "replace": "  const count = zone.hi - zone.lo;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "draws a thin stretch as a box"
+      ],
+      "mustFail": [
+        "draws a thin stretch as a box lightly filled in its side's colour, from the bar it began in to the live bar, with the side, the rows, what rests there now, the price range and the age in its corner"
+      ]
+    },
+    {
+      "id": "empty-book.heatmap-rows-ignored",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": "  const base = typeof chosen === \"number\" && chosen >= 1 ? chosen : liquidityStyleFor(",
+      "replace": "  const base = typeof chosen === \"number\" && false ? chosen : liquidityStyleFor(",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "one-row rows"
+      ],
+      "mustFail": [
+        "uses the heatmap's Row Size: one-row rows make the same stretch twenty rows tall"
+      ]
+    },
+    {
+      "id": "empty-book.timeframe-not-scaled",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": "  const rows = clusterRowsFor({ clusterRows: base }, bar.interval_ms);",
+      "replace": "  const rows = base;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "falls back to the instrument"
+      ],
+      "mustFail": [
+        "falls back to the instrument's own heatmap Row Size before the heatmap's settings arrive, and scales the rows with the timeframe like the heatmap"
+      ]
+    },
+    {
+      "id": "empty-book.sensitivity-not-high",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": "export const SENSITIVITY: Sensitivity = \"high\";",
+      "replace": "export const SENSITIVITY: Sensitivity = \"normal\";",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "always uses the High sensitivity"
+      ],
+      "mustFail": [
+        "always uses the High sensitivity: on BTC at 8 USD rows a zone needs 4 rows, so four thin rows draw a zone and three do not"
+      ]
+    },
+    {
+      "id": "empty-book.sensitivity-from-old-settings",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": "minRowsOf({ sensitivity: SENSITIVITY }, identity,",
+      "replace": "minRowsOf({ sensitivity: \"normal\" }, identity,",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "always uses the High sensitivity"
+      ],
+      "mustFail": [
+        "always uses the High sensitivity: on BTC at 8 USD rows a zone needs 4 rows, so four thin rows draw a zone and three do not"
+      ]
+    },
+    {
+      "id": "empty-book.model-kept-across-grids",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": "\"auto\"}:${feed.epoch}`;",
+      "replace": "\"auto\"}`;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "starts over on a new grid"
+      ],
+      "mustFail": [
+        "starts over on a new grid, a new Row Size or a new timeframe"
+      ]
+    },
+    {
+      "id": "empty-book.model-kept-across-row-sizes",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": "const key = `${instrumentKey(bar)}:${rowWidth}:${clusterRows}:",
+      "replace": "const key = `${instrumentKey(bar)}:${rowWidth}:",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "starts over on a new grid"
+      ],
+      "mustFail": [
+        "starts over on a new grid, a new Row Size or a new timeframe"
+      ]
+    },
+    {
+      "id": "empty-book.model-not-kept",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": "    const model = modelFor(key, clusterRows);",
+      "replace": "    const model = modelFor(`${key}:${Math.random()}`, clusterRows);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "keeps the book it has read"
+      ],
+      "mustFail": [
+        "keeps the book it has read across a change of Zone Length, colour or the flash, and reads it again for a new Size per Zone or Refill Size"
+      ]
+    },
+    {
+      "id": "empty-book.reads-every-column",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": "    const from = model.lastTs === null ? newest.ts - REPLAY_MS : model.lastTs + 1;",
+      "replace": "    const from = model.lastTs === null ? -Infinity : model.lastTs + 1;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "reads back as far as the longest Zone Length"
+      ],
+      "mustFail": [
+        "reads back as far as the longest Zone Length when it starts, through the 10 s columns and then the 1 s ones, so a zone keeps its real age"
+      ]
+    },
+    {
+      "id": "empty-book.stale-ignored",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": "    if (now - newest.ts > STALE_MS) {",
+      "replace": "    if (false) {",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "says it is waiting"
+      ],
+      "mustFail": [
+        "says it is waiting without the book, unavailable in Historical Mode, and stale when the newest column is old, and draws no zone then"
+      ]
+    },
+    {
+      "id": "empty-book.historical-ignored",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": "  if (l2?.availability === \"HISTORICAL_UNAVAILABLE\") return \"historical\";",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "says it is waiting"
+      ],
+      "mustFail": [
+        "says it is waiting without the book, unavailable in Historical Mode, and stale when the newest column is old, and draws no zone then"
+      ]
+    },
+    {
+      "id": "empty-book.book-read-on-every-bar",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": "    if (ctx.drawNow === false) return;\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "reads the book on the bar it draws"
+      ],
+      "mustFail": [
+        "reads the book on the bar it draws, with that bar's price, so a replay never judges the book on its oldest bar"
+      ]
+    },
+    {
+      "id": "empty-book.slots-never-let-go",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": "  if (models.size > MAX_MODEL_SLOTS) models.delete(",
+      "replace": "  if (false) models.delete(",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "keeps the models of the last few books"
+      ],
+      "mustFail": [
+        "keeps the models of the last few books and lets go of the one unused longest"
+      ]
+    },
+    {
+      "id": "empty-book.slot-use-not-refreshed",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyOrderbookIndicator.ts",
+      "find": "  models.delete(key);\n  models.set(key, model);",
+      "replace": "  models.set(key, model);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "keeps the models of the last few books"
+      ],
+      "mustFail": [
+        "keeps the models of the last few books and lets go of the one unused longest"
+      ]
+    },
+    {
+      "id": "empty-book.registry-historical-policy-missing",
+      "file": "apps/web/src/lib/chart/indicatorRegistry.ts",
+      "find": "  emptyOrderbook: {\n    requiredCapabilities: [\"ohlcv\", \"l2_states\"],",
+      "replace": "  emptyOrderbook: {\n    requiredCapabilities: [],",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyOrderbookIndicator.test.ts",
+        "-t",
+        "is an L2 overlay in the registry"
+      ],
+      "mustFail": [
+        "is an L2 overlay in the registry, right after Order Flow Gaps, unavailable on a historical chart"
+      ]
+    },
+    {
+      "id": "empty-book.handle-reports-no-rows",
+      "file": "apps/web/src/lib/chart/indicatorLiquidity.ts",
+      "find": "      return heatmapClusterRows();",
+      "replace": "      return null;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/chart/tests/indicatorLiquidity.test.ts",
+        "-t",
+        "reports the heatmap's Row Size"
+      ],
+      "mustFail": [
+        "reports the heatmap's Row Size as the chart holds it when asked, so a change reaches the next bar, and none by default"
+      ]
+    },
+    {
+      "id": "empty-book.chart-hands-no-rows",
+      "file": "apps/web/src/components/chart/ChartPanel.tsx",
+      "find": "                : indicatorLiquidityOf(grid, runtimeColumnHistoryRef.current, heatmapClusterRows),",
+      "replace": "                : indicatorLiquidityOf(grid, runtimeColumnHistoryRef.current),",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/components/chart/tests/ChartPanel.lifecycle.test.tsx",
+        "-t",
+        "read the heatmap's Row Size"
+      ],
+      "mustFail": [
+        "lets the runtime indicators read the heatmap's Row Size the chart was last given, through the liquidity handle"
+      ]
+    },
+    {
+      "id": "empty-book.chart-reads-no-rows",
+      "file": "apps/web/src/components/chart/ChartPanel.tsx",
+      "find": "latestLiquiditySettingsRef.current?.clusterRows ?? null;",
+      "replace": "null;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/components/chart/tests/ChartPanel.lifecycle.test.tsx",
+        "-t",
+        "read the heatmap's Row Size"
+      ],
+      "mustFail": [
+        "lets the runtime indicators read the heatmap's Row Size the chart was last given, through the liquidity handle"
+      ]
+    },
+    {
+      "id": "empty-book.no-book-for-the-zones",
+      "file": "apps/web/src/components/chart/MainPanel.tsx",
+      "find": "        liquidityVoidsOn ||\n        emptyOrderbookOn ||",
+      "replace": "        liquidityVoidsOn ||",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/components/chart/tests/MainPanel.test.tsx",
+        "-t",
+        "while the zones are visible"
+      ],
+      "mustFail": [
+        "provides the shared lane-0 grid while the zones are visible, with the heatmap off"
+      ]
+    }
+  ]
+}

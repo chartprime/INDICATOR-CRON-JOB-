@@ -1,0 +1,104 @@
+{
+  "mutations": [
+    {
+      "id": "l2p1.replay-sorted-by-order-time",
+      "file": "apps/runtime/src/indicators/l2-memory/dxfeed-replay-source.js",
+      "find": "AND source = ? ORDER BY id`,",
+      "replace": "AND source = ? ORDER BY event_time, id`,",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/dxfeed-replay-source.test.js", "-t", "replays orders in arrival order"],
+      "mustFail": ["replays orders in arrival order"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "l2p1.replay-clock-rewinds",
+      "file": "apps/runtime/src/indicators/l2-memory/dxfeed-replay-source.js",
+      "find": "if (row.event_time > clock) clock = row.event_time;",
+      "replace": "clock = row.event_time;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/dxfeed-replay-source.test.js", "-t", "an arrival-ordered clock never runs backwards"],
+      "mustFail": ["an arrival-ordered clock never runs backwards"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "l2p1.sparse-ships-full-book",
+      "file": "apps/runtime/src/indicators/l2-memory/dxfeed-book-frames.js",
+      "find": "  return bookMode === \"full\" ? assembler.getState().book : assembler.getBestPrices();",
+      "replace": "  return assembler.getState().book;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/dxfeed-replay-source.test.js", "-t", "sparse mode ships the whole book only when"],
+      "mustFail": ["sparse mode ships the whole book only when"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "l2p1.crossed-grace-back-to-2s",
+      "file": "apps/runtime/src/providers/dxfeed/dxfeed-book-assembler.js",
+      "find": "const DEFAULT_CROSSED_GRACE_MS = 30_000;",
+      "replace": "const DEFAULT_CROSSED_GRACE_MS = 2_000;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/providers/dxfeed/dxfeed-book-assembler.test.js", "-t", "the default grace outlasts the longest self-healing cross"],
+      "mustFail": ["the default grace outlasts the longest self-healing cross"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "l2p1.tests-not-counted",
+      "file": "apps/runtime/src/indicators/l2-memory/level-ledger.js",
+      "find": "        nowBest.tests += 1;",
+      "replace": "        nowBest.tests += 0;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/level-ledger.test.js", "-t", "observeQuote tracks closest approach"],
+      "mustFail": ["observeQuote tracks closest approach"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "l2p1.bid-trail-keeps-maximum",
+      "file": "apps/runtime/src/indicators/l2-memory/level-ledger.js",
+      "find": "bid: createExtremeTrail((top, value) => top < value)",
+      "replace": "bid: createExtremeTrail((top, value) => top > value)",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/level-ledger.test.js", "-t", "observeQuote tracks closest approach"],
+      "mustFail": ["observeQuote tracks closest approach"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "l2p1.every-shrink-announced",
+      "file": "apps/runtime/src/indicators/l2-memory/level-ledger.js",
+      "find": "if (wasThere && change < 0 && record.lifeFirstShrinkTs === null) {",
+      "replace": "if (wasThere && change < 0) {",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/level-events.test.js", "-t", "a wall's life"],
+      "mustFail": ["a wall's life"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "l2p1.verdict-not-announced",
+      "file": "apps/runtime/src/indicators/l2-memory/level-ledger.js",
+      "find": "    emit({ type: \"verdict\", ts,",
+      "replace": "    void ({ type: \"verdict\", ts,",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/level-events.test.js", "-t", "a wall's life"],
+      "mustFail": ["a wall's life"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "l2p1.gap-segment-missing",
+      "file": "apps/runtime/src/indicators/l2-memory/memory-engine.js",
+      "find": "      noteSegment(clockTs, \"GAP\", cause);",
+      "replace": "      void cause;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/level-events.test.js", "-t", "seed opens a LIVE segment"],
+      "mustFail": ["seed opens a LIVE segment"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "l2p1.catalog-geometry-ignored",
+      "file": "apps/runtime/src/indicators/l2-memory/live-binding.js",
+      "find": "const knownTicks = clusterTicks ?? configured?.clusterTicks;",
+      "replace": "const knownTicks = clusterTicks;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/live-binding.test.js", "-t", "a catalogued pair takes its fixed band"],
+      "mustFail": ["a catalogued pair takes its fixed band"],
+      "timeoutMs": 60000
+    }
+  ]
+}

@@ -1,0 +1,186 @@
+{
+  "mutations": [
+    {
+      "id": "tardis.checkpoint-ignores-window",
+      "file": "apps/runtime/conversion/job.py",
+      "find": "scope[\"stream_windows\"] = stream_windows",
+      "replace": "pass",
+      "cwd": "apps/runtime/conversion",
+      "command": ["uv", "run", "--frozen", "pytest", "-q", "tests/test_tardis_stream.py", "-k", "checkpoint_identity"],
+      "mustFail": ["test_a_stream_window_is_part_of_the_checkpoint_identity"]
+    },
+    {
+      "id": "tardis.empty-day-publishes-successfully",
+      "file": "apps/runtime/conversion/job.py",
+      "find": "raise JobError(f\"TARDIS_DAY_HAS_NO_SOURCE_ROWS:{','.join(missing)}\")",
+      "replace": "pass",
+      "cwd": "apps/runtime/conversion",
+      "command": ["uv", "run", "--frozen", "pytest", "-q", "tests/test_tardis_stream.py", "-k", "empty_crypto_day"],
+      "mustFail": ["test_a_present_but_empty_crypto_day_is_not_a_successful_month"]
+    },
+    {
+      "id": "tardis.late-arrival-silently-filtered",
+      "file": "apps/runtime/conversion/tardis_decode.py",
+      "find": "if event_ns < (receive_ns // _DAY_NS - 1) * _DAY_NS:",
+      "replace": "if False:",
+      "cwd": "apps/runtime/conversion",
+      "command": ["uv", "run", "--frozen", "pytest", "-q", "tests/test_tardis_stream.py", "-k", "delayed_beyond"],
+      "mustFail": ["test_a_trade_delayed_beyond_the_next_receive_day_is_not_silently_filtered"]
+    },
+    {
+      "id": "tardis.owner-window-silently-shrinks",
+      "file": "apps/runtime/conversion/backfill_sequence.py",
+      "find": "if (first, last) != tuple(window):",
+      "replace": "if False:",
+      "cwd": "apps/runtime/conversion",
+      "command": ["uv", "run", "--frozen", "pytest", "-q", "tests/test_tardis_stream.py", "-k", "silently_shrink"],
+      "mustFail": ["test_the_owner_window_cannot_silently_shrink_to_the_available_files"]
+    },
+    {
+      "id": "tardis.window-end-includes-next-midnight",
+      "file": "apps/runtime/conversion/tardis_decode.py",
+      "find": "if event_ns >= window_to:",
+      "replace": "if event_ns > window_to:",
+      "cwd": "apps/runtime/conversion",
+      "command": ["uv", "run", "--frozen", "pytest", "-q", "tests/test_tardis_stream.py", "-k", "arrival_order_and_accounts"],
+      "mustFail": ["test_the_stream_keeps_window_rows_in_arrival_order_and_accounts_for_every_other_row"]
+    },
+    {
+      "id": "tardis.rows-before-window-kept",
+      "file": "apps/runtime/conversion/tardis_decode.py",
+      "find": "if event_ns < window_from:",
+      "replace": "if False:",
+      "cwd": "apps/runtime/conversion",
+      "command": ["uv", "run", "--frozen", "pytest", "-q", "tests/test_tardis_stream.py", "-k", "arrival_order_and_accounts"],
+      "mustFail": ["test_the_stream_keeps_window_rows_in_arrival_order_and_accounts_for_every_other_row"]
+    },
+    {
+      "id": "tardis.position-restarts-per-file",
+      "file": "apps/runtime/conversion/tardis_decode.py",
+      "find": "yield offset + file_row, row",
+      "replace": "yield file_row, row",
+      "cwd": "apps/runtime/conversion",
+      "command": ["uv", "run", "--frozen", "pytest", "-q", "tests/test_tardis_stream.py", "-k", "arrival_order_and_accounts or cross_midnight"],
+      "mustFail": ["test_the_stream_keeps_window_rows_in_arrival_order_and_accounts_for_every_other_row", "test_a_cross_midnight_trade_lands_on_its_exchange_date_with_its_own_file_lineage"]
+    },
+    {
+      "id": "tardis.lineage-row-is-stream-position",
+      "file": "apps/runtime/conversion/job.py",
+      "find": "\"lineageRow\": row[\"file_row\"],",
+      "replace": "",
+      "cwd": "apps/runtime/conversion",
+      "command": ["uv", "run", "--frozen", "pytest", "-q", "tests/test_tardis_stream.py", "-k", "cross_midnight"],
+      "mustFail": ["test_a_cross_midnight_trade_lands_on_its_exchange_date_with_its_own_file_lineage"]
+    },
+    {
+      "id": "tardis.lineage-names-the-first-file",
+      "file": "apps/runtime/conversion/job.py",
+      "find": "yield source_symbol, stream_files[file_index], group",
+      "replace": "yield source_symbol, stream_files[0], group",
+      "cwd": "apps/runtime/conversion",
+      "command": ["uv", "run", "--frozen", "pytest", "-q", "tests/test_tardis_stream.py", "-k", "cross_midnight"],
+      "mustFail": ["test_a_cross_midnight_trade_lands_on_its_exchange_date_with_its_own_file_lineage"]
+    },
+    {
+      "id": "tardis.manifest-lists-one-source-file",
+      "file": "apps/runtime/conversion/job.py",
+      "find": "sources.extend(contributed)",
+      "replace": "sources.append(contributed[0])",
+      "cwd": "apps/runtime/conversion",
+      "command": ["uv", "run", "--frozen", "pytest", "-q", "tests/test_tardis_stream.py", "-k", "cross_midnight"],
+      "mustFail": ["test_a_cross_midnight_trade_lands_on_its_exchange_date_with_its_own_file_lineage"]
+    },
+    {
+      "id": "tardis.rows-mapped-as-databento",
+      "file": "apps/runtime/conversion/job.py",
+      "find": "results = bridge.map_batch(batch_id, provider, dispatch_family, group, context)",
+      "replace": "results = bridge.map_batch(batch_id, \"DATABENTO\", dispatch_family, group, context)",
+      "cwd": "apps/runtime/conversion",
+      "command": ["uv", "run", "--frozen", "pytest", "-q", "tests/test_tardis_stream.py", "-k", "cross_midnight"],
+      "mustFail": ["test_a_cross_midnight_trade_lands_on_its_exchange_date_with_its_own_file_lineage"]
+    },
+    {
+      "id": "tardis.published-under-databento",
+      "file": "apps/runtime/conversion/job.py",
+      "find": "return sources, providers.pop()",
+      "replace": "return sources, \"databento\"",
+      "cwd": "apps/runtime/conversion",
+      "command": ["uv", "run", "--frozen", "pytest", "-q", "tests/test_tardis_stream.py", "-k", "cross_midnight"],
+      "mustFail": ["test_a_cross_midnight_trade_lands_on_its_exchange_date_with_its_own_file_lineage"]
+    },
+    {
+      "id": "tardis.month-listing-misses-next-day",
+      "file": "apps/runtime/conversion/backfill_driver.py",
+      "find": "list_end = _next_day(_next_day(dates[-1])) if tardis else _next_day(dates[-1])",
+      "replace": "list_end = _next_day(dates[-1])",
+      "cwd": "apps/runtime/conversion",
+      "command": ["uv", "run", "--frozen", "pytest", "-q", "tests/test_tardis_stream.py", "-k", "downloads_its_days"],
+      "mustFail": ["test_a_tardis_month_downloads_its_days_and_the_next_publishes_under_binance_and_frees_the_raw"]
+    },
+    {
+      "id": "tardis.missing-day-file-accepted",
+      "file": "apps/runtime/conversion/backfill_driver.py",
+      "find": "    if missing:",
+      "replace": "    if False:",
+      "cwd": "apps/runtime/conversion",
+      "command": ["uv", "run", "--frozen", "pytest", "-q", "tests/test_tardis_stream.py", "-k", "next_day_file or exactly_once"],
+      "mustFail": ["test_a_tardis_month_without_its_next_day_file_stops_before_downloading", "test_the_month_needs_every_day_file_and_the_next_one_exactly_once"]
+    },
+    {
+      "id": "tardis.cleanup-refuses-binance-paths",
+      "file": "apps/runtime/conversion/backfill_driver.py",
+      "find": "parts[0] not in (\"databento\", \"binance\")",
+      "replace": "parts[0] != \"databento\"",
+      "cwd": "apps/runtime/conversion",
+      "command": ["uv", "run", "--frozen", "pytest", "-q", "tests/test_tardis_stream.py", "-k", "downloads_its_days"],
+      "mustFail": ["test_a_tardis_month_downloads_its_days_and_the_next_publishes_under_binance_and_frees_the_raw"]
+    },
+    {
+      "id": "tardis.phase-window-ignored",
+      "file": "apps/runtime/conversion/backfill_sequence.py",
+      "find": "first, last = max(first, window[0]), min(last, window[1])",
+      "replace": "first, last = first, last",
+      "cwd": "apps/runtime/conversion",
+      "command": ["uv", "run", "--frozen", "pytest", "-q", "tests/test_tardis_stream.py", "-k", "owner_window"],
+      "mustFail": ["test_the_crypto_phase_is_clamped_to_the_owner_window_and_selects_spot_and_perpetual_apart"]
+    },
+    {
+      "id": "tardis.spot-and-perp-share-a-selection-key",
+      "file": "apps/runtime/conversion/backfill_sequence.py",
+      "find": "return entry[2] if symbols.count(entry[2]) == 1 else f\"{entry[0]}:{entry[2]}\"",
+      "replace": "return entry[2]",
+      "cwd": "apps/runtime/conversion",
+      "command": ["uv", "run", "--frozen", "pytest", "-q", "tests/test_tardis_stream.py", "-k", "owner_window"],
+      "mustFail": ["test_the_crypto_phase_is_clamped_to_the_owner_window_and_selects_spot_and_perpetual_apart"]
+    },
+    {
+      "id": "tardis.btc-perp-tick-wrong",
+      "file": "config/archive-crypto-ticks.json",
+      "find": "{ \"dataset\": \"BINANCE.UM\", \"marketKind\": \"PERPETUAL\", \"symbol\": \"BTCUSDT\", \"tickSize\": \"0.1\" }",
+      "replace": "{ \"dataset\": \"BINANCE.UM\", \"marketKind\": \"PERPETUAL\", \"symbol\": \"BTCUSDT\", \"tickSize\": \"0.01\" }",
+      "cwd": "apps/runtime/conversion",
+      "command": ["uv", "run", "--frozen", "pytest", "-q", "tests/test_tardis_stream.py", "-k", "exchange_tick"],
+      "mustFail": ["test_every_crypto_study_instrument_has_its_exchange_tick"]
+    },
+    {
+      "id": "tardis.spot-labelled-milliseconds",
+      "file": "apps/runtime/src/data-contracts/v1/adapters.js",
+      "find": "{ binance: \"us\", \"binance-futures\": \"ms\" }",
+      "replace": "{ binance: \"ms\", \"binance-futures\": \"ms\" }",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/contracts/market-observation-v1.test.js", "-t", "precision each market publishes"],
+      "mustFail": ["precision each market publishes"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "tardis.lineage-row-ignored-by-contract-service",
+      "file": "apps/runtime/src/conversion/contract-service.js",
+      "find": "entry.lineageRow === undefined ? position : String(entry.lineageRow)",
+      "replace": "position",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/conversion/contract-service.test.js", "-t", "explicit lineage row"],
+      "mustFail": ["explicit lineage row"],
+      "timeoutMs": 180000
+    }
+  ]
+}

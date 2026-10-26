@@ -1,0 +1,111 @@
+{
+  "contractVersion": 1,
+  "kind": "browser",
+  "name": "o0-browser-steady-tape-2000-trades-per-second",
+  "scenario": "steady-tape",
+  "source": {
+    "git": {
+      "commit": "f127ea4f44a274ad43c3fb5b6639d02c18d8a6f0",
+      "dirty": true,
+      "trackedChanges": 28,
+      "untrackedFiles": 63,
+      "trackedDiffSha256": "48bb9080efde0c9d31d529307ca908786ebf96c25e85ddad7906e98a6e2baf4c"
+    },
+    "scriptSha256": "67d425d19c922f5724eb1b3c9faff65d66484583319efccd1ad0084b3d1551b7",
+    "manifestSha256": "eacde476b5d17fd1650a91210ecb3424608683999917ede1fdae47edd54e8cf5",
+    "nodeVersion": "v25.2.1",
+    "webDist": {
+      "fileCount": 5,
+      "totalBytes": 869994,
+      "sha256": "312b4ab3ba5f2d28a182a3d6388420a62d630d7d08b82b4cf8c141d8a3b87fa9"
+    },
+    "browser": "Chrome/152.0.7977.84"
+  },
+  "startedAtUtc": "2026-09-20T03:54:05.479Z",
+  "settings": {
+    "durationSeconds": 30,
+    "upstream": {
+      "tradesPerPulse": 40,
+      "pulseMs": 20
+    },
+    "selectionChangeAtSeconds": null
+  },
+  "timings": {
+    "navigationToWebSocketConnectMs": 295,
+    "firstTradePublishedToFirstCommitMs": 15
+  },
+  "tape": {
+    "published": 38720,
+    "committed": 38720,
+    "newestCommittedId": 38720,
+    "rowsRetained": 60,
+    "eventToDomCommitMs": {
+      "samples": 38720,
+      "p50": 19,
+      "p95": 31,
+      "p99": 40,
+      "max": 54
+    }
+  },
+  "longTaskMs": {
+    "samples": 2,
+    "p50": 53,
+    "p95": 63,
+    "p99": 63,
+    "max": 63
+  },
+  "memory": [
+    {
+      "seconds": 5,
+      "heapUsed": 11886396,
+      "nodes": 3552,
+      "layoutCount": 184,
+      "taskDuration": 4.185041
+    },
+    {
+      "seconds": 10,
+      "heapUsed": 12609816,
+      "nodes": 2507,
+      "layoutCount": 359,
+      "taskDuration": 7.857411
+    },
+    {
+      "seconds": 15,
+      "heapUsed": 17070172,
+      "nodes": 3552,
+      "layoutCount": 531,
+      "taskDuration": 11.7161
+    },
+    {
+      "seconds": 20,
+      "heapUsed": 12136652,
+      "nodes": 6632,
+      "layoutCount": 708,
+      "taskDuration": 15.546668
+    },
+    {
+      "seconds": 25,
+      "heapUsed": 23552528,
+      "nodes": 5752,
+      "layoutCount": 878,
+      "taskDuration": 19.074445
+    },
+    {
+      "seconds": 30,
+      "heapUsed": 21776216,
+      "nodes": 4432,
+      "layoutCount": 1051,
+      "taskDuration": 22.591218
+    }
+  ],
+  "pageErrors": [],
+  "invariants": {
+    "latestPublishedTradeReachedTheDom": true,
+    "noPageErrors": true,
+    "tapeRowsBounded": true,
+    "chartCanvasesPresent": true,
+    "tapeWithdrawnOnDisconnect": true,
+    "selectionHonoured": null
+  },
+  "pass": true
+}

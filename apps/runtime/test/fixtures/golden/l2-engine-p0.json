@@ -1,0 +1,91 @@
+{
+  "dxfeedStyle": {
+    "stats": {
+      "seeds": 1,
+      "resyncs": 1,
+      "deltas": 2391,
+      "trades": 3628,
+      "lateEvents": 700,
+      "unavailable": 1,
+      "outsideRangeSeeds": 0,
+      "bidRecords": 51,
+      "askRecords": 66,
+      "lastTs": 1780000600000,
+      "pendingPrints": 0
+    },
+    "records": 117,
+    "ledgerVerdicts": {
+      "filled": 27,
+      "pulled": 80
+    },
+    "wallVerdicts": {
+      "pulled": 7,
+      "filled": 4,
+      "partial": 7,
+      "moved": 1,
+      "active": 4,
+      "hit": 1
+    },
+    "columns": 597,
+    "ledgerSha256": "efa908cd0a9f584243c69292a0cb03351a7183a035cac388c443d251b8147950",
+    "ledgerWithoutClosestSha256": "4ef9e67b2015a26393f36ad4f7fb428376c603e2df76bf02b9c165426193c200",
+    "columnsSha256": "c746008d8bf3f502f2324f6871d33d0aebeefbc5a8679761870018dce48eaa8a",
+    "wallsSha256": "d7d5fc417d9edc56ecc7e4457680e1ef967d8bcf401be21778aa7c0a339ed53d",
+    "wallDetail": {
+      "walls": 24,
+      "firstShrinkExact": 17,
+      "reachedAtFirstShrink": 0,
+      "clearedByTrades": 9,
+      "continuity": 4,
+      "repeated": 20,
+      "repeatsComplete": 0,
+      "withCrossSide": 24,
+      "withTrades": 21,
+      "evidenceGap": 3
+    },
+    "wallDetailSha256": "003a2e7714f57c8854dae94de19b76ba3da9194d8524e1bd7fddd85e2ff1dac0"
+  },
+  "binanceStyle": {
+    "stats": {
+      "seeds": 1,
+      "resyncs": 1,
+      "deltas": 2391,
+      "trades": 3584,
+      "lateEvents": 736,
+      "unavailable": 1,
+      "outsideRangeSeeds": 7,
+      "bidRecords": 20,
+      "askRecords": 20,
+      "lastTs": 1780000600000,
+      "pendingPrints": 0
+    },
+    "records": 40,
+    "ledgerVerdicts": {
+      "filled": 8,
+      "pulled": 5
+    },
+    "wallVerdicts": {
+      "partial": 5,
+      "filled": 1,
+      "active": 3
+    },
+    "columns": 597,
+    "ledgerSha256": "cf009091e781ecaae11e4323766fbd7682e7ebd9e9e1be108c99dff3b02de676",
+    "ledgerWithoutClosestSha256": "d2ce01f5c6e450df4237fbf1ca52bac16edf729ed69dc283e495028caf48e866",
+    "columnsSha256": "92fd7f032396f766f0cc4cc9fbfc2042a94abd73a52ded22150a559f7d45ec78",
+    "wallsSha256": "82481bcbaa85170110a6484206f1513f270d222f4792b773131581673ca1df6a",
+    "wallDetail": {
+      "walls": 9,
+      "firstShrinkExact": 4,
+      "reachedAtFirstShrink": 1,
+      "clearedByTrades": 5,
+      "continuity": 1,
+      "repeated": 7,
+      "repeatsComplete": 0,
+      "withCrossSide": 7,
+      "withTrades": 9,
+      "evidenceGap": 2
+    },
+    "wallDetailSha256": "f9b4fae22ef29bae8bea7b592533b3a30956b777fbbd86f7139b39187967b97c"
+  }
+}

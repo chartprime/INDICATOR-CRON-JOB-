@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "kind": "ws-fanout",
+  "name": "o0-ws-fanout-32-clients-500-trades-per-second",
+  "clients": 32,
+  "warmupMs": 6000,
+  "durationMs": 20000,
+  "sampleEveryMs": 250,
+  "upstream": { "tradesPerPulse": 10, "pulseMs": 20 }
+}

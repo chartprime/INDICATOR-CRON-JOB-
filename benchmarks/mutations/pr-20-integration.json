@@ -1,0 +1,34 @@
+{
+  "mutations": [
+    {
+      "id": "pr20-range-stats-ignore-coverage",
+      "file": "apps/web/src/lib/indicators/session-levels/rangeStats.ts",
+      "find": "covered = column.ts <= fromMs + columnMs;",
+      "replace": "covered = true;",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/indicators/session-levels/tests/rangeStats.test.ts", "-t", "reads a range whose start is older than the oldest column"],
+      "mustFail": ["reads a range whose start is older than the oldest column as no stats"],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "pr20-held-level-shown-with-sweeps-off",
+      "file": "apps/web/src/lib/indicators/session-levels/sessionLevelsRules.ts",
+      "find": "return verdict === \"swept\" || verdict === \"held\";",
+      "replace": "return verdict === \"swept\";",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/indicators/session-levels/tests/sessionLevelsRender.test.ts", "-t", "hides a level the window read as held"],
+      "mustFail": ["hides a level the window read as held when swept levels are off"],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "pr20-chip-paint-order-applies-to-every-box",
+      "file": "apps/web/src/lib/chart/draw/kernelPrimitive.ts",
+      "find": "if (card !== null && box.textOverLines) paintCard(context, box, card, dy);",
+      "replace": "if (card !== null) paintCard(context, box, card, dy);",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/chart/draw/tests/kernelPrimitive.test.ts", "-t", "paints every other box's card with its box"],
+      "mustFail": ["paints every other box's card with its box, before the lines, as it always has"],
+      "timeoutMs": 120000
+    }
+  ]
+}

@@ -1,0 +1,604 @@
+{
+ "mutations": [
+  {
+   "id": "shade.ceiling-is-the-95th-percentile",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityGrid.ts",
+   "find": "this._smooth(column, tier, 1, tier.ceiling, LIQUIDITY_CEILING_ALPHA)",
+   "replace": "this._smooth(column, tier, 0.5, tier.ceiling, LIQUIDITY_CEILING_ALPHA)",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityGrid.test.ts"
+   ],
+   "mustFail": [
+    "the ceiling follows the biggest row near the mid over half an hour, one column at a time, and a deep column counts for its ten seconds"
+   ]
+  },
+  {
+   "id": "shade.ceiling-at-the-reference-pace",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityGrid.ts",
+   "find": "this._smooth(column, tier, 1, tier.ceiling, LIQUIDITY_CEILING_ALPHA)",
+   "replace": "this._smooth(column, tier, 1, tier.ceiling)",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityGrid.test.ts"
+   ],
+   "mustFail": [
+    "the ceiling follows the biggest row near the mid over half an hour, one column at a time, and a deep column counts for its ten seconds"
+   ]
+  },
+  {
+   "id": "shade.deep-column-counts-one-second",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityGrid.ts",
+   "find": "    const alpha = tier === this._fine ? fineAlpha : 1 - (1 - fineAlpha) ** Math.max(1, tier.columnMs / fineMs);",
+   "replace": "    const alpha = fineAlpha;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityGrid.test.ts"
+   ],
+   "mustFail": [
+    "the ceiling follows the biggest row near the mid over half an hour, one column at a time, and a deep column counts for its ten seconds"
+   ]
+  },
+  {
+   "id": "shade.column-carries-no-ceiling",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityGrid.ts",
+   "find": "      column.ceiling = this._trackCeiling(column, tier);\n",
+   "replace": "      this._trackCeiling(column, tier);\n",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityGrid.test.ts"
+   ],
+   "mustFail": [
+    "starts on a reset frame and chains delta frames by seq"
+   ]
+  },
+  {
+   "id": "shade.reset-keeps-the-old-ceiling",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityGrid.ts",
+   "find": "      tier.median = 0;\n      tier.ceiling = 0;\n    } else if (!tier || !tier.synced",
+   "replace": "      tier.median = 0;\n    } else if (!tier || !tier.synced",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityGrid.test.ts"
+   ],
+   "mustFail": [
+    "the ceiling follows the biggest row near the mid over half an hour, one column at a time, and a deep column counts for its ten seconds"
+   ]
+  },
+  {
+   "id": "shade.half-hour-pace",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityGrid.ts",
+   "find": "export const LIQUIDITY_CEILING_ALPHA = 1 / 1800;",
+   "replace": "export const LIQUIDITY_CEILING_ALPHA = 1 / 180;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityGrid.test.ts"
+   ],
+   "mustFail": [
+    "the ceiling follows the biggest row near the mid over half an hour, one column at a time, and a deep column counts for its ten seconds"
+   ]
+  },
+  {
+   "id": "shade.yardstick-drops-the-ceiling",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityGrid.ts",
+   "find": "    return { reference: column.reference, median: column.median ?? 0, ceiling: column.ceiling ?? 0 };",
+   "replace": "    return { reference: column.reference, median: column.median ?? 0, ceiling: 0 };",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityGrid.test.ts"
+   ],
+   "mustFail": [
+    "hands a zoom lane its yardstick at a time: the column at that time or the one before it, on the tier asked, and nothing where none has one"
+   ]
+  },
+  {
+   "id": "shade.lane-keeps-its-own-ceiling",
+   "file": "apps/web/src/lib/l2/laneGrids.ts",
+   "find": "        column.median = own.median;\n        column.ceiling = own.ceiling;",
+   "replace": "        column.median = own.median;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/l2/l2Store.test.ts"
+   ],
+   "mustFail": [
+    "on an index market a lane's columns carry lane 0's yardstick at their time and tier; a crypto lane keeps the one measured on its own rows"
+   ]
+  },
+  {
+   "id": "shade.history-ceiling-at-the-reference-pace",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/heatmapHistoryDecode.ts",
+   "find": "smooth(column, rowWidth, 1, smoothing.ceiling, ceilingAlpha(levelMs))",
+   "replace": "smooth(column, rowWidth, 1, smoothing.ceiling, alpha)",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/heatmapHistoryDecode.test.ts"
+   ],
+   "mustFail": [
+    "measures the ceiling as the biggest row near the mid, moving at its half-hour pace per column of the page's level, not the reference's"
+   ],
+   "timeoutMs": 240000
+  },
+  {
+   "id": "shade.history-ceiling-is-the-95th-percentile",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/heatmapHistoryDecode.ts",
+   "find": "smooth(column, rowWidth, 1, smoothing.ceiling, ceilingAlpha(levelMs))",
+   "replace": "smooth(column, rowWidth, LIQUIDITY_REFERENCE_PERCENTILE, smoothing.ceiling, ceilingAlpha(levelMs))",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/heatmapHistoryDecode.test.ts"
+   ],
+   "mustFail": [
+    "measures the ceiling as the biggest row near the mid, moving at its half-hour pace per column of the page's level, not the reference's"
+   ],
+   "timeoutMs": 240000
+  },
+  {
+   "id": "shade.history-column-carries-no-ceiling",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/heatmapHistoryDecode.ts",
+   "find": "      column.median = smoothing.median;\n      column.ceiling = smoothing.ceiling;",
+   "replace": "      column.median = smoothing.median;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/heatmapHistoryDecode.test.ts"
+   ],
+   "mustFail": [
+    "keeps flow as absolute rows and prints with their floor, and gives each column a yardstick that carries only across touching windows"
+   ],
+   "timeoutMs": 240000
+  },
+  {
+   "id": "shade.history-ceiling-per-column-not-per-level",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/heatmapHistoryDecode.ts",
+   "find": "  return 1 - (1 - LIQUIDITY_CEILING_ALPHA) ** Math.max(1, levelMs / 1_000);",
+   "replace": "  return LIQUIDITY_CEILING_ALPHA;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/heatmapHistoryDecode.test.ts"
+   ],
+   "mustFail": [
+    "measures the ceiling as the biggest row near the mid, moving at its half-hour pace per column of the page's level, not the reference's"
+   ],
+   "timeoutMs": 240000
+  },
+  {
+   "id": "shade.fold-max-drops-the-ceiling",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/heatmapHistoryDecode.ts",
+   "find": "      if (column.ceiling !== undefined) folded.ceiling = column.ceiling;\n",
+   "replace": "",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityLanes.test.ts",
+    "src/lib/indicators/passive-liquidity/tests/heatmapHistoryDecode.test.ts"
+   ],
+   "mustFail": [
+    "on an index market folds the host's history into a lane by the biggest tick with lane 0's yardstick; on crypto it sums"
+   ]
+  },
+  {
+   "id": "shade.fold-sum-ceiling-at-the-reference-pace",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/heatmapHistoryDecode.ts",
+   "find": "smooth(folded, laneRowWidth, 1, smoothing.ceiling, ceilingAlpha(levelMs))",
+   "replace": "smooth(folded, laneRowWidth, 1, smoothing.ceiling, alpha)",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/heatmapHistoryDecode.test.ts"
+   ],
+   "mustFail": [
+    "sums every pair of rows into one on the lane's rows, keeps the flow on the wider rows, and measures the yardstick again there"
+   ]
+  },
+  {
+   "id": "shade.fold-sum-ceiling-is-the-median",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/heatmapHistoryDecode.ts",
+   "find": "smooth(folded, laneRowWidth, 1, smoothing.ceiling, ceilingAlpha(levelMs))",
+   "replace": "smooth(folded, laneRowWidth, 0.5, smoothing.ceiling, ceilingAlpha(levelMs))",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/heatmapHistoryDecode.test.ts"
+   ],
+   "mustFail": [
+    "sums every pair of rows into one on the lane's rows, keeps the flow on the wider rows, and measures the yardstick again there"
+   ]
+  },
+  {
+   "id": "shade.ceiling-under-the-threshold",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/indexLiquidityStyle.ts",
+   "find": "    return Math.max(ceiling, threshold(column, context));",
+   "replace": "    return ceiling > 0 ? ceiling : threshold(column, context);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityStyle.test.ts"
+   ],
+   "mustFail": [
+    "tops the colour out at the column's ceiling, the biggest row near price smoothed over half an hour, never under the server's wall threshold; a fixed scale is the trader's size"
+   ]
+  },
+  {
+   "id": "shade.threshold-ignores-the-ceiling",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/indexLiquidityStyle.ts",
+   "find": "    return Math.max(ceiling, threshold(column, context));",
+   "replace": "    return threshold(column, context);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityStyle.test.ts"
+   ],
+   "mustFail": [
+    "tops the colour out at the column's ceiling, the biggest row near price smoothed over half an hour, never under the server's wall threshold; a fixed scale is the trader's size"
+   ]
+  },
+  {
+   "id": "shade.fixed-scale-ignored",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/indexLiquidityStyle.ts",
+   "find": "    if (settings.scaleMode === \"fixed\" && settings.scaleSize > 0)\n      return threshold(column, context);\n    const ceiling",
+   "replace": "    const ceiling",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityStyle.test.ts"
+   ],
+   "mustFail": [
+    "tops the colour out at the column's ceiling, the biggest row near price smoothed over half an hour, never under the server's wall threshold; a fixed scale is the trader's size"
+   ]
+  },
+  {
+   "id": "shade.linear-not-gamma",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/indexLiquidityStyle.ts",
+   "find": "    return maxAlpha * Math.min(1, size / saturation) ** params.rampGamma;",
+   "replace": "    return maxAlpha * Math.min(1, size / saturation);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityStyle.test.ts"
+   ],
+   "mustFail": [
+    "shades a level by its share of the ceiling, size^gamma like crypto, and thickens it from a quarter of its row to the whole row"
+   ]
+  },
+  {
+   "id": "shade.past-the-ceiling-keeps-darkening",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/indexLiquidityStyle.ts",
+   "find": "    return maxAlpha * Math.min(1, size / saturation) ** params.rampGamma;",
+   "replace": "    return maxAlpha * (size / saturation) ** params.rampGamma;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityStyle.test.ts"
+   ],
+   "mustFail": [
+    "shades a level by its share of the ceiling, size^gamma like crypto, and thickens it from a quarter of its row to the whole row"
+   ]
+  },
+  {
+   "id": "shade.no-ceiling-draws",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/indexLiquidityStyle.ts",
+   "find": "    if (!(size > 0) || !(saturation > 0)) return 0;",
+   "replace": "    if (!(size > 0)) return 0;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityStyle.test.ts"
+   ],
+   "mustFail": [
+    "shades a level by its share of the ceiling, size^gamma like crypto, and thickens it from a quarter of its row to the whole row"
+   ]
+  },
+  {
+   "id": "shade.boost-past-opaque",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/indexLiquidityStyle.ts",
+   "find": "      Math.min(1, Math.max(0, settings.maxOpacity) * params.opacityBoost) * 255;",
+   "replace": "      Math.max(0, settings.maxOpacity) * params.opacityBoost * 255;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityStyle.test.ts"
+   ],
+   "mustFail": [
+    "shades a level by its share of the ceiling, size^gamma like crypto, and thickens it from a quarter of its row to the whole row"
+   ]
+  },
+  {
+   "id": "shade.full-row-whatever-the-size",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/indexLiquidityStyle.ts",
+   "find": "    bandSpan,\n    ladderNumbers: true,",
+   "replace": "    bandSpan: (_ratio: number, height: number) => ({ offset: 0, size: Math.max(1, Math.floor(height)) }),\n    ladderNumbers: true,",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityStyle.test.ts",
+    "src/lib/indicators/passive-liquidity/tests/indexShadingBySize.test.ts"
+   ],
+   "mustFail": [
+    "shades a level by its share of the ceiling, size^gamma like crypto, and thickens it from a quarter of its row to the whole row",
+    "a bigger resting wall is darker and taller than a smaller one, the smaller one well short of its row; the biggest fills it"
+   ]
+  },
+  {
+   "id": "shade.gamma-is-not-cryptos",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/indexLiquidityStyle.ts",
+   "find": "  rampGamma: LIQUIDITY_GAMMA,",
+   "replace": "  rampGamma: 1,",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityStyle.test.ts"
+   ],
+   "mustFail": [
+    "shades a level by its share of the ceiling, size^gamma like crypto, and thickens it from a quarter of its row to the whole row"
+   ]
+  },
+  {
+   "id": "shade.nq-shades-its-own-way",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/nqLiquidityStyle.ts",
+   "find": "  monsterMultiple: 4,\n});",
+   "replace": "  monsterMultiple: 4,\n  rampGamma: 1,\n});",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityStyle.test.ts"
+   ],
+   "mustFail": [
+    "every index instrument shades the same way; the files differ in the trader's settings and the absorption wall"
+   ]
+  },
+  {
+   "id": "shade.crypto-drawing-touched",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/cryptoLiquidityStyle.ts",
+   "find": "  return maxAlpha * Math.min(1, Math.max(0, ratio)) ** LIQUIDITY_GAMMA;",
+   "replace": "  return maxAlpha * Math.min(1, Math.max(0, ratio)) ** (LIQUIDITY_GAMMA * 0.99);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/cryptoDrawingFrozen.test.ts"
+   ],
+   "mustFail": [
+    "paints the crypto scenes pixel for pixel as it did before the index shading change of 2026-10-12"
+   ],
+   "timeoutMs": 240000
+  },
+  {
+   "id": "shade.ceiling-seed-capped-live",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityGrid.ts",
+   "find": "    tier.ceiling = seededCeiling(tier.ceiling, this._smooth(column, tier, 1, tier.ceiling, LIQUIDITY_CEILING_ALPHA), tier.reference);",
+   "replace": "    tier.ceiling = this._smooth(column, tier, 1, tier.ceiling, LIQUIDITY_CEILING_ALPHA);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityGrid.test.ts"
+   ],
+   "mustFail": [
+    "a ceiling starts from its column's biggest row near the mid but never above ten times that column's 95th percentile"
+   ]
+  },
+  {
+   "id": "shade.ceiling-seed-cap-is-ten",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityGrid.ts",
+   "find": "export const LIQUIDITY_CEILING_SEED_CAP = 10;",
+   "replace": "export const LIQUIDITY_CEILING_SEED_CAP = 20;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityGrid.test.ts"
+   ],
+   "mustFail": [
+    "a ceiling starts from its column's biggest row near the mid but never above ten times that column's 95th percentile"
+   ]
+  },
+  {
+   "id": "shade.ceiling-seed-only",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityGrid.ts",
+   "find": "  return previous <= 0 ? Math.min(next, LIQUIDITY_CEILING_SEED_CAP * reference) : next;",
+   "replace": "  return Math.min(next, LIQUIDITY_CEILING_SEED_CAP * reference);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityGrid.test.ts"
+   ],
+   "mustFail": [
+    "a ceiling starts from its column's biggest row near the mid but never above ten times that column's 95th percentile"
+   ]
+  },
+  {
+   "id": "shade.history-ceiling-seed-capped",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/heatmapHistoryDecode.ts",
+   "find": "        ceiling: seededCeiling(smoothing.ceiling, smooth(column, rowWidth, 1, smoothing.ceiling, ceilingAlpha(levelMs)), reference),",
+   "replace": "        ceiling: smooth(column, rowWidth, 1, smoothing.ceiling, ceilingAlpha(levelMs)),",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/heatmapHistoryDecode.test.ts"
+   ],
+   "mustFail": [
+    "a page's ceiling starts below ten times its first column's 95th percentile"
+   ]
+  },
+  {
+   "id": "shade.history-ceiling-seed-reads-this-column",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/heatmapHistoryDecode.ts",
+   "find": "        ceiling: seededCeiling(smoothing.ceiling, smooth(column, rowWidth, 1, smoothing.ceiling, ceilingAlpha(levelMs)), reference),",
+   "replace": "        ceiling: seededCeiling(smoothing.ceiling, smooth(column, rowWidth, 1, smoothing.ceiling, ceilingAlpha(levelMs)), smoothing.reference),",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/heatmapHistoryDecode.test.ts"
+   ],
+   "mustFail": [
+    "a page's ceiling starts below ten times its first column's 95th percentile"
+   ]
+  },
+  {
+   "id": "shade.fold-sum-ceiling-seed-capped",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/heatmapHistoryDecode.ts",
+   "find": "      ceiling: seededCeiling(smoothing.ceiling, smooth(folded, laneRowWidth, 1, smoothing.ceiling, ceilingAlpha(levelMs)), reference),",
+   "replace": "      ceiling: smooth(folded, laneRowWidth, 1, smoothing.ceiling, ceilingAlpha(levelMs)),",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/heatmapHistoryDecode.test.ts"
+   ],
+   "mustFail": [
+    "a summed lane's ceiling starts below ten times the folded column's 95th percentile"
+   ]
+  },
+  {
+   "id": "shade.fold-cell-keeps-the-ceiling",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityCells.ts",
+   "find": "  if (ceiling > 0) cell.ceiling = ceiling;\n",
+   "replace": "",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityCells.test.ts"
+   ],
+   "mustFail": [
+    "takes the biggest size each row held in the cell, each side apart, over the union of the rows, and the biggest yardstick, on cell boundaries"
+   ]
+  },
+  {
+   "id": "shade.fold-cell-takes-the-biggest-ceiling",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityCells.ts",
+   "find": "    if (column.ceiling !== undefined && column.ceiling > ceiling) ceiling = column.ceiling;",
+   "replace": "    if (column.ceiling !== undefined) ceiling = column.ceiling;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityCells.test.ts"
+   ],
+   "mustFail": [
+    "takes the biggest size each row held in the cell, each side apart, over the union of the rows, and the biggest yardstick, on cell boundaries"
+   ]
+  },
+  {
+   "id": "shade.raster-repaints-a-ceiling-change",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": " || a.ceiling !== b.ceiling",
+   "replace": "",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatRaster.test.ts"
+   ],
+   "mustFail": [
+    "as a slow chart's folds hand it new cells with the same sizes and another ceiling"
+   ]
+  },
+  {
+   "id": "shade.ceiling-seed-reads-the-95th-percentile",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityGrid.ts",
+   "find": "LIQUIDITY_CEILING_ALPHA), tier.reference);",
+   "replace": "LIQUIDITY_CEILING_ALPHA), tier.median);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityGrid.test.ts"
+   ],
+   "mustFail": [
+    "a ceiling starts from its column's biggest row near the mid but never above ten times that column's 95th percentile"
+   ]
+  },
+  {
+   "id": "shade.history-ceiling-seed-reads-the-95th-percentile",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/heatmapHistoryDecode.ts",
+   "find": "        ceiling: seededCeiling(smoothing.ceiling, smooth(column, rowWidth, 1, smoothing.ceiling, ceilingAlpha(levelMs)), reference),",
+   "replace": "        ceiling: seededCeiling(smoothing.ceiling, smooth(column, rowWidth, 1, smoothing.ceiling, ceilingAlpha(levelMs)), smooth(column, rowWidth, 0.5, smoothing.median, alpha)),",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/heatmapHistoryDecode.test.ts"
+   ],
+   "mustFail": [
+    "a page's ceiling starts below ten times its first column's 95th percentile"
+   ]
+  }
+ ]
+}

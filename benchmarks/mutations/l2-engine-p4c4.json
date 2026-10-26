@@ -1,0 +1,184 @@
+{
+  "mutations": [
+    {
+      "id": "p4c4.route-serves-any-origin",
+      "file": "apps/runtime/src/server/heatmap-route.js",
+      "find": "    if (typeof origin !== \"string\" || !allowedOrigins.has(origin)) {",
+      "replace": "    if (false) {",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/server/heatmap-route.test.js"],
+      "mustFail": ["refuses other origins and methods"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "p4c4.route-caches-unavailable",
+      "file": "apps/runtime/src/server/heatmap-route.js",
+      "find": "      if (result?.available === true) remember(key, body, now());",
+      "replace": "      remember(key, body, now());",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/server/heatmap-route.test.js"],
+      "mustFail": ["never an unavailable answer"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "p4c4.route-never-busy",
+      "file": "apps/runtime/src/server/heatmap-route.js",
+      "find": "    if (inFlight >= maxConcurrent) {",
+      "replace": "    if (false) {",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/server/heatmap-route.test.js"],
+      "mustFail": ["answers busy past the concurrent reads"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "p4c4.route-keeps-the-dash",
+      "file": "apps/runtime/src/server/heatmap-route.js",
+      "find": "    storageSymbol = symbol.replace(\"-\", \"\");",
+      "replace": "    storageSymbol = symbol;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/server/heatmap-route.test.js"],
+      "mustFail": ["stores the Binance symbol without the dash"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "p4c4.remote-sends-dxfeed-as-binance",
+      "file": "apps/runtime/src/storage/remote-storage-reader.js",
+      "find": "JSON.stringify(provider === \"dxfeed\" ? { provider, symbol, assetClass: marketKind, options } : { symbol, marketKind, options })",
+      "replace": "JSON.stringify({ symbol, marketKind, options })",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/storage/remote-storage-reader.test.js"],
+      "mustFail": ["a dxFeed pair with provider and assetClass"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "p4c4.remote-trusts-any-page",
+      "file": "apps/runtime/src/storage/remote-storage-reader.js",
+      "find": "  if (routeName === \"heatmap-columns\") return validHeatmapPage(body);",
+      "replace": "  if (routeName === \"heatmap-columns\") return true;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/storage/remote-storage-reader.test.js"],
+      "mustFail": ["a page with a malformed window or geometry is the unavailable fallback"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "p4c4.decode-ignores-the-session",
+      "file": "apps/web/src/lib/indicators/passive-liquidity/heatmapHistoryDecode.ts",
+      "find": "      if (!inChartSession(identity, column.ts)) continue;",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/passive-liquidity/tests/heatmapHistoryDecode.test.ts"],
+      "mustFail": ["drops equity columns outside the regular session"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "p4c4.decode-smooths-across-holes",
+      "file": "apps/web/src/lib/indicators/passive-liquidity/heatmapHistoryDecode.ts",
+      "find": "    if (lastWindowTs === null || window.ts !== lastWindowTs + HISTORY_WINDOW_MS) smoothing = { reference: 0, median: 0, ceiling: 0 };",
+      "replace": "    if (lastWindowTs === null) smoothing = { reference: 0, median: 0, ceiling: 0 };",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/passive-liquidity/tests/heatmapHistoryDecode.test.ts"],
+      "mustFail": ["carries only across touching windows"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "p4c4.store-asks-twice",
+      "file": "apps/web/src/lib/indicators/passive-liquidity/heatmapHistory.ts",
+      "find": "      if (slot.pending.has(ts)) continue;",
+      "replace": "      if (false) continue;",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/passive-liquidity/tests/heatmapHistory.test.ts"],
+      "mustFail": ["never asks twice for what is on the way"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "p4c4.store-ignores-next",
+      "file": "apps/web/src/lib/indicators/passive-liquidity/heatmapHistory.ts",
+      "find": "    if (page.next !== null && page.next < request.toTs && page.next > request.fromTs) {",
+      "replace": "    if (false) {",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/passive-liquidity/tests/heatmapHistory.test.ts"],
+      "mustFail": ["follows a page's next to the end of the request"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "p4c4.store-evicts-the-view",
+      "file": "apps/web/src/lib/indicators/passive-liquidity/heatmapHistory.ts",
+      "find": "        const pinned = (this._pinned !== null && this._pinned.slot === slotKey && ts >= windowStart(this._pinned.from) && ts < this._pinned.to)\n",
+      "replace": "        const pinned = false\n",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/passive-liquidity/tests/heatmapHistory.test.ts"],
+      "mustFail": ["never the ones on screen"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "p4c4.store-keeps-requests-across-pairs",
+      "file": "apps/web/src/lib/indicators/passive-liquidity/heatmapHistory.ts",
+      "find": "    this._pool.free(this._inFlight.size);\n    this._inFlight.clear();",
+      "replace": "    this._pool.free(this._inFlight.size);",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/passive-liquidity/tests/heatmapHistory.test.ts"],
+      "mustFail": ["ignores answers still on the way"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "p4c4.layout-draws-other-rows",
+      "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatmapLayout.ts",
+      "find": "  if (!sameRowWidth(shownStatus.rowWidth, base.rowWidth) || !sameRowWidth(shownStatus.rowWidth * laneFactor, drawn.rowWidth)) return",
+      "replace": "  if (false) return",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/passive-liquidity/tests/liquidityHistoryLayout.test.ts"],
+      "mustFail": ["never draws a page whose rows are not the drawn rows"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "p4c4.layout-history-reaches-into-live",
+      "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatmapLayout.ts",
+      "find": "    if (column.ts >= liveEdge) break;\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/passive-liquidity/tests/liquidityHistoryLayout.test.ts"],
+      "mustFail": ["at 15 min bars it folds history into cells, and a hole between the live columns wider than a cell is filled with one"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "p4c4.hook-acks-history-pages",
+      "file": "apps/web/src/hooks/useMarketData.ts",
+      "find": "      if (msg.kind === \"heatmap_history\") {",
+      "replace": "      if (false) {",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/hooks/useMarketData.l2.test.tsx"],
+      "mustFail": ["never counts a page as a delivered frame"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "p4c4.hook-history-never-follows-the-pair",
+      "file": "apps/web/src/hooks/useMarketData.ts",
+      "find": "        history.setIdentity(historyIdentityOf(nextSelection));",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/hooks/useMarketData.l2.test.tsx"],
+      "mustFail": ["follows the confirmed pair"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "p4c4.chart-never-repaints-on-pages",
+      "file": "apps/web/src/components/chart/ChartPanel.tsx",
+      "find": "          if (history !== null) heatmapHistoryUnsubscribeRef.current = history.subscribe(() => liquidityPrimitiveRef.current?.refresh());",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/components/chart/tests/ChartPanel.lifecycle.test.tsx", "-t", "history store"],
+      "mustFail": ["repaints it when pages land"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "p4c4.legend-hides-history",
+      "file": "apps/web/src/components/chart/MainPanel.tsx",
+      "find": "${historyLegend(liquidityHistory)}",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/components/chart/tests/MainPanel.test.tsx", "-t", "legend names the rows"],
+      "mustFail": ["the heatmap legend names the rows the chart is drawing"],
+      "timeoutMs": 240000
+    }
+  ]
+}

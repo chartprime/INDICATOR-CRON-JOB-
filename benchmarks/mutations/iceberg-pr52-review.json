@@ -1,0 +1,188 @@
+{
+  "mutations": [
+    {
+      "id": "iceberg.pr52.tap-ends-the-pair-when-the-book-is-out-of-sync",
+      "file": "apps/runtime/src/server/market-data-server.js",
+      "find": "        if (state?.status !== \"READY\") endIcebergDepth(envelope);",
+      "replace": "        if (false) endIcebergDepth(envelope);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/market-data-server.test.js",
+        "-t",
+        "Iceberg Detector channel"
+      ],
+      "mustFail": [
+        "a depth sequence gap takes the book out of sync"
+      ]
+    },
+    {
+      "id": "iceberg.pr52.tap-feeds-only-a-book-in-sync",
+      "file": "apps/runtime/src/server/market-data-server.js",
+      "find": "        if (state?.status !== \"READY\") endIcebergDepth(envelope);\n        else if (envelope.state !== \"UNAVAILABLE\") feedIcebergDepth(envelope);",
+      "replace": "        if (state?.status !== \"READY\") endIcebergDepth(envelope);\n        if (envelope.state !== \"UNAVAILABLE\") feedIcebergDepth(envelope);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/market-data-server.test.js",
+        "-t",
+        "Iceberg Detector channel"
+      ],
+      "mustFail": [
+        "a depth sequence gap takes the book out of sync"
+      ]
+    },
+    {
+      "id": "iceberg.pr52.lost-book-breaks-the-watch-run",
+      "file": "apps/runtime/src/indicators/iceberg/iceberg-indicator.js",
+      "find": "    state.depthDown = true;\n    state.runFrom = null;\n",
+      "replace": "    state.depthDown = true;\n",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/iceberg/iceberg-indicator.test.js"
+      ],
+      "mustFail": [
+        "a Binance book that loses sync ends the pair's marked icebergs"
+      ]
+    },
+    {
+      "id": "iceberg.pr52.lost-book-ends-the-marked-icebergs",
+      "file": "apps/runtime/src/indicators/iceberg/iceberg-indicator.js",
+      "find": "    return emit(state, [...state.tracker.reset(at)], at);\n  }\n\n  function onDepth(",
+      "replace": "    return [];\n  }\n\n  function onDepth(",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/iceberg/iceberg-indicator.test.js"
+      ],
+      "mustFail": [
+        "a Binance book that loses sync ends the pair's marked icebergs"
+      ]
+    },
+    {
+      "id": "iceberg.pr52.trades-ignored-while-the-book-is-out",
+      "file": "apps/runtime/src/indicators/iceberg/iceberg-indicator.js",
+      "find": "    if (state.depthDown) return [];\n    noteEvent(state, ts);",
+      "replace": "    noteEvent(state, ts);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/iceberg/iceberg-indicator.test.js"
+      ],
+      "mustFail": [
+        "a Binance book that loses sync ends the pair's marked icebergs"
+      ]
+    },
+    {
+      "id": "iceberg.pr52.depth-back-ends-the-outage",
+      "file": "apps/runtime/src/indicators/iceberg/iceberg-indicator.js",
+      "find": "    const state = stateFor(pair);\n    state.depthDown = false;\n",
+      "replace": "    const state = stateFor(pair);\n",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/iceberg/iceberg-indicator.test.js"
+      ],
+      "mustFail": [
+        "a Binance book that loses sync ends the pair's marked icebergs"
+      ]
+    },
+    {
+      "id": "iceberg.pr52.reset-drops-the-open-episodes",
+      "file": "apps/runtime/src/indicators/iceberg/probable-iceberg-tracker.js",
+      "find": "    open.clear();\n    levels.clear();\n",
+      "replace": "    levels.clear();\n",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/iceberg/probable-iceberg-tracker.test.js"
+      ],
+      "mustFail": [
+        "a reset ends every marked episode at the reset time"
+      ]
+    },
+    {
+      "id": "iceberg.pr52.reset-forgets-the-levels",
+      "file": "apps/runtime/src/indicators/iceberg/probable-iceberg-tracker.js",
+      "find": "    open.clear();\n    levels.clear();\n",
+      "replace": "    open.clear();\n",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/iceberg/probable-iceberg-tracker.test.js"
+      ],
+      "mustFail": [
+        "a reset ends every marked episode at the reset time"
+      ]
+    },
+    {
+      "id": "iceberg.pr52.reset-ends-only-marked-episodes",
+      "file": "apps/runtime/src/indicators/iceberg/probable-iceberg-tracker.js",
+      "find": "    for (const episode of open.values()) if (episode.markedAt !== null) ended.push(snapshot(episode, \"ended\", ts));",
+      "replace": "    for (const episode of open.values()) ended.push(snapshot(episode, \"ended\", ts));",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/iceberg/probable-iceberg-tracker.test.js"
+      ],
+      "mustFail": [
+        "a reset ends every marked episode at the reset time"
+      ]
+    },
+    {
+      "id": "iceberg.pr52.reader-page-is-one-snapshot",
+      "file": "apps/runtime/src/indicators/iceberg/iceberg-host-reader.js",
+      "find": "    return store.readTransaction(() => {",
+      "replace": "    return ((fn) => fn())(() => {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/iceberg/iceberg-host-reader.test.js"
+      ],
+      "mustFail": [
+        "every read behind a page happens inside one store snapshot"
+      ]
+    },
+    {
+      "id": "iceberg.pr52.store-read-transaction-is-a-transaction",
+      "file": "apps/runtime/src/indicators/iceberg/iceberg-host-store.js",
+      "find": "    return db.transaction(fn)();",
+      "replace": "    return fn();",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/iceberg/iceberg-host-store.test.js"
+      ],
+      "mustFail": [
+        "a read snapshot holds the builder's commit off until it ends"
+      ]
+    },
+    {
+      "id": "iceberg.pr52.fill-delay-zero-accepted",
+      "file": "apps/runtime/src/platform/config-registry.js",
+      "find": "entry(\"L2_ICEBERG_FILL_DELAY_S\", [TERMINAL_C], { kind: \"number\", min: 0,",
+      "replace": "entry(\"L2_ICEBERG_FILL_DELAY_S\", [TERMINAL_C], { kind: \"number\", gt: 0,",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/platform/config-registry.test.js"
+      ],
+      "mustFail": [
+        "L2_ICEBERG_FILL_DELAY_S: 0 fills at once"
+      ]
+    }
+  ]
+}

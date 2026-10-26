@@ -1,0 +1,44 @@
+{
+  "mutations": [
+    {
+      "id": "s3-publish.bundle-verifies-published-partitions-serially",
+      "file": "apps/runtime/conversion/s3_publish.py",
+      "find": "    if already_published:\n        verify_remote_partitions(store, already_published, workers=verification_workers)",
+      "replace": "    if already_published:\n        verify_remote_partitions(store, already_published, workers=1)",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "tests/test_s3_publish.py",
+        "-k",
+        "bounded_pool"
+      ],
+      "mustFail": [
+        "test_bundle_verifies_every_published_partition_through_the_bounded_pool"
+      ]
+    },
+    {
+      "id": "s3-publish.bundle-skips-remote-verification-entirely",
+      "file": "apps/runtime/conversion/s3_publish.py",
+      "find": "                already_published.append((prefix, manifest_sha))",
+      "replace": "                pass",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "tests/test_s3_publish.py",
+        "-k",
+        "remote_bytes_changed or bounded_pool"
+      ],
+      "mustFail": [
+        "test_bundle_still_refuses_a_published_partition_whose_remote_bytes_changed"
+      ]
+    }
+  ]
+}

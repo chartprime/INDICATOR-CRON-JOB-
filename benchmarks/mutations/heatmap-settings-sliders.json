@@ -1,0 +1,1356 @@
+{
+ "mutations": [
+  {
+   "id": "sliders.width-max",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquiditySettings.ts",
+   "find": "export const MAX_LEVEL_WIDTH = 50;",
+   "replace": "export const MAX_LEVEL_WIDTH = 40;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "moves the level width in whole ticks from 1 to 50, and names them"
+   ]
+  },
+  {
+   "id": "sliders.quiet-max-fixed",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquiditySettings.ts",
+   "find": "  return Math.max(100, 2 * defaults.quietBands);",
+   "replace": "  return 100;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquiditySettings.test.ts",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "let the level width run to 50 and the quiet zone to 100 bands, or twice a market's own",
+    "runs the quiet zone from off to 100 bands, or twice the market's own when that is more"
+   ]
+  },
+  {
+   "id": "sliders.quiet-max-no-floor",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquiditySettings.ts",
+   "find": "  return Math.max(100, 2 * defaults.quietBands);",
+   "replace": "  return 2 * defaults.quietBands;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquiditySettings.test.ts"
+   ],
+   "mustFail": [
+    "let the level width run to 50 and the quiet zone to 100 bands, or twice a market's own"
+   ]
+  },
+  {
+   "id": "sliders.round-sizes-coarse",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquiditySettings.ts",
+   "find": "const ROUND_SIZES = [1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 7, 8, 9];",
+   "replace": "const ROUND_SIZES = [1, 2, 3, 4, 5, 6, 7, 8, 9];",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquiditySettings.test.ts"
+   ],
+   "mustFail": [
+    "step through round sizes from a quarter of the anchor to fifty times it, the anchor among them"
+   ]
+  },
+  {
+   "id": "sliders2.below-twentieth",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquiditySettings.ts",
+   "find": "const SIZE_SLIDER_BELOW = 4;",
+   "replace": "const SIZE_SLIDER_BELOW = 20;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquiditySettings.test.ts"
+   ],
+   "mustFail": [
+    "step through round sizes from a quarter of the anchor to fifty times it, the anchor among them"
+   ]
+  },
+  {
+   "id": "sliders2.above-twenty",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquiditySettings.ts",
+   "find": "const SIZE_SLIDER_ABOVE = 50;",
+   "replace": "const SIZE_SLIDER_ABOVE = 20;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquiditySettings.test.ts"
+   ],
+   "mustFail": [
+    "step through round sizes from a quarter of the anchor to fifty times it, the anchor among them"
+   ]
+  },
+  {
+   "id": "sliders2.share-anchor-small",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquiditySettings.ts",
+   "find": "const SHARE_BOOK_ANCHOR = 1_000;",
+   "replace": "const SHARE_BOOK_ANCHOR = 10;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquiditySettings.test.ts",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "are built around the market's own minimum level, else the book's typical row, else a usual level for its kind of book",
+    "builds a market without a minimum of its own around the book's typical row when the dialog opens, keeps it while open, and around a thousand shares before the book has said"
+   ]
+  },
+  {
+   "id": "sliders.no-anchor-for-zero",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquiditySettings.ts",
+   "find": "const BOOK_ANCHOR = 10;",
+   "replace": "const BOOK_ANCHOR = 1;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquiditySettings.test.ts"
+   ],
+   "mustFail": [
+    "are built around the market's own minimum level, else the book's typical row, else a usual level for its kind of book"
+   ]
+  },
+  {
+   "id": "sliders.own-minimum-ignored",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquiditySettings.ts",
+   "find": "  if (defaults.minBandSize > 0) return defaults.minBandSize;",
+   "replace": "",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquiditySettings.test.ts"
+   ],
+   "mustFail": [
+    "are built around the market's own minimum level, else the book's typical row, else a usual level for its kind of book"
+   ]
+  },
+  {
+   "id": "sliders2.typical-ignored",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquiditySettings.ts",
+   "find": "  if (typicalSize > 0) return Number(typicalSize.toPrecision(1));",
+   "replace": "  if (typicalSize < 0) return Number(typicalSize.toPrecision(1));",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquiditySettings.test.ts"
+   ],
+   "mustFail": [
+    "are built around the market's own minimum level, else the book's typical row, else a usual level for its kind of book"
+   ]
+  },
+  {
+   "id": "sliders.typical-not-rounded",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquiditySettings.ts",
+   "find": "  if (typicalSize > 0) return Number(typicalSize.toPrecision(1));",
+   "replace": "  if (typicalSize > 0) return typicalSize;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquiditySettings.test.ts"
+   ],
+   "mustFail": [
+    "are built around the market's own minimum level, else the book's typical row, else a usual level for its kind of book"
+   ]
+  },
+  {
+   "id": "sliders.own-defaults-dropped",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquiditySettings.ts",
+   "find": "  const own = [anchor, ...include.filter((size) => size > 0)];",
+   "replace": "  const own = [anchor];",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquiditySettings.test.ts"
+   ],
+   "mustFail": [
+    "keep to whole contracts and shares on an index, and widen to take in the sizes asked for"
+   ]
+  },
+  {
+   "id": "sliders.decade-skipped",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquiditySettings.ts",
+   "find": "  for (let exponent = Math.floor(Math.log10(lo)); 10 ** exponent <= hi; exponent += 1) {",
+   "replace": "  for (let exponent = Math.ceil(Math.log10(lo)); 10 ** exponent <= hi; exponent += 1) {",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquiditySettings.test.ts"
+   ],
+   "mustFail": [
+    "step through round sizes from a quarter of the anchor to fifty times it, the anchor among them"
+   ]
+  },
+  {
+   "id": "sliders.top-decade-skipped",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquiditySettings.ts",
+   "find": "  for (let exponent = Math.floor(Math.log10(lo)); 10 ** exponent <= hi; exponent += 1) {",
+   "replace": "  for (let exponent = Math.floor(Math.log10(lo)); 10 ** exponent < hi; exponent += 1) {",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquiditySettings.test.ts"
+   ],
+   "mustFail": [
+    "step through round sizes from a quarter of the anchor to fifty times it, the anchor among them"
+   ]
+  },
+  {
+   "id": "sliders.below-span-kept",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquiditySettings.ts",
+   "find": "      if (size >= lo && size <= hi) sizes.add(size);",
+   "replace": "      if (size <= hi) sizes.add(size);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquiditySettings.test.ts"
+   ],
+   "mustFail": [
+    "step through round sizes from a quarter of the anchor to fifty times it, the anchor among them"
+   ]
+  },
+  {
+   "id": "sliders.above-span-kept",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquiditySettings.ts",
+   "find": "      if (size >= lo && size <= hi) sizes.add(size);",
+   "replace": "      if (size >= lo) sizes.add(size);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquiditySettings.test.ts"
+   ],
+   "mustFail": [
+    "step through round sizes from a quarter of the anchor to fifty times it, the anchor among them"
+   ]
+  },
+  {
+   "id": "sliders2.fractions-on-index",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquiditySettings.ts",
+   "find": "  return [...sizes].filter((size) => market !== \"index\" || Number.isInteger(size)).sort((a, b) => a - b);",
+   "replace": "  return [...sizes].sort((a, b) => a - b);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquiditySettings.test.ts"
+   ],
+   "mustFail": [
+    "keep to whole contracts and shares on an index, and widen to take in the sizes asked for"
+   ]
+  },
+  {
+   "id": "sliders.sizes-unsorted",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquiditySettings.ts",
+   "find": "  return [...sizes].filter((size) => market !== \"index\" || Number.isInteger(size)).sort((a, b) => a - b);",
+   "replace": "  return [...sizes].filter((size) => market !== \"index\" || Number.isInteger(size));",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquiditySettings.test.ts"
+   ],
+   "mustFail": [
+    "step through round sizes from a quarter of the anchor to fifty times it, the anchor among them"
+   ]
+  },
+  {
+   "id": "sliders.sensitivity-not-reversed",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquiditySettings.ts",
+   "find": "  return [...sizes].reverse().concat(0);",
+   "replace": "  return [...sizes].concat(0);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquiditySettings.test.ts",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "run sensitivity from the largest size down to 0, no minimum",
+    "hides less as sensitivity moves right, from fifty times the market's minimum down to a quarter of it, then no minimum"
+   ]
+  },
+  {
+   "id": "sliders.no-minimum-stop-missing",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquiditySettings.ts",
+   "find": "  return [...sizes].reverse().concat(0);",
+   "replace": "  return [...sizes].reverse();",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquiditySettings.test.ts"
+   ],
+   "mustFail": [
+    "run sensitivity from the largest size down to 0, no minimum"
+   ]
+  },
+  {
+   "id": "sliders.zero-not-every-level",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquiditySettings.ts",
+   "find": "  if (!(size > 0)) return Math.max(0, stops.indexOf(0));",
+   "replace": "  if (!(size > 0)) return 0;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquiditySettings.test.ts"
+   ],
+   "mustFail": [
+    "find the stop nearest a size on a log scale, and 0 only for 0"
+   ]
+  },
+  {
+   "id": "sliders.zero-without-stop-negative",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquiditySettings.ts",
+   "find": "  if (!(size > 0)) return Math.max(0, stops.indexOf(0));",
+   "replace": "  if (!(size > 0)) return stops.indexOf(0);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquiditySettings.test.ts"
+   ],
+   "mustFail": [
+    "find the stop nearest a size on a log scale, and 0 only for 0"
+   ]
+  },
+  {
+   "id": "sliders.nearest-linear",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquiditySettings.ts",
+   "find": "    const distance = Math.abs(Math.log(stop / size));",
+   "replace": "    const distance = Math.abs(stop - size);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquiditySettings.test.ts"
+   ],
+   "mustFail": [
+    "find the stop nearest a size on a log scale, and 0 only for 0"
+   ]
+  },
+  {
+   "id": "sliders.drag-never-released",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/LiquidityHeatmapSettingsModal.tsx",
+   "find": "    setDragged(null);",
+   "replace": "",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "puts every slider back with Reset to default"
+   ]
+  },
+  {
+   "id": "sliders.thumb-not-followed",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/LiquidityHeatmapSettingsModal.tsx",
+   "find": "          setDragged(pending.current);",
+   "replace": "",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "follows the thumb at once but hands the setting over only once the thumb has rested, or is let go"
+   ]
+  },
+  {
+   "id": "sliders.position-saved-as-text",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/LiquidityHeatmapSettingsModal.tsx",
+   "find": "          pending.current = Number(event.target.value);",
+   "replace": "          pending.current = event.target.value as unknown as number;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "moves the level width in whole ticks from 1 to 50, and names them"
+   ]
+  },
+  {
+   "id": "sliders2.commits-every-notch",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/LiquidityHeatmapSettingsModal.tsx",
+   "find": "          timer.current = setTimeout(flush, SLIDER_COMMIT_MS);",
+   "replace": "          flush();",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "follows the thumb at once but hands the setting over only once the thumb has rested, or is let go"
+   ]
+  },
+  {
+   "id": "sliders.rest-never-commits",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/LiquidityHeatmapSettingsModal.tsx",
+   "find": "          timer.current = setTimeout(flush, SLIDER_COMMIT_MS);",
+   "replace": "",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "follows the thumb at once but hands the setting over only once the thumb has rested, or is let go"
+   ]
+  },
+  {
+   "id": "sliders2.no-release-commit",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/LiquidityHeatmapSettingsModal.tsx",
+   "find": "        onPointerUp={flush}",
+   "replace": "        onPointerUp={() => undefined}",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "follows the thumb at once but hands the setting over only once the thumb has rested, or is let go"
+   ]
+  },
+  {
+   "id": "sliders.half-steps",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/LiquidityHeatmapSettingsModal.tsx",
+   "find": "        step={1}",
+   "replace": "        step={0.5}",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "moves the level width in whole ticks from 1 to 50, and names them"
+   ]
+  },
+  {
+   "id": "sliders2.typical-not-frozen",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/LiquidityHeatmapSettingsModal.tsx",
+   "find": "  const anchor = sliderAnchorFor(defaults, typicalAtOpen, unit);",
+   "replace": "  const anchor = sliderAnchorFor(defaults, typicalSize, unit);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "builds a market without a minimum of its own around the book's typical row when the dialog opens, keeps it while open, and around a thousand shares before the book has said"
+   ]
+  },
+  {
+   "id": "sliders.dialog-stops-unordered",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/LiquidityHeatmapSettingsModal.tsx",
+   "find": "  const sensitivity = sensitivityStops(sensitivitySizes(anchor, market));",
+   "replace": "  const sensitivity = sensitivitySizes(anchor, market);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "hides less as sensitivity moves right, from fifty times the market's minimum down to a quarter of it, then no minimum"
+   ]
+  },
+  {
+   "id": "sliders2.saturation-default-unreachable",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/LiquidityHeatmapSettingsModal.tsx",
+   "find": "  const saturation = sliderSizes(anchor, market, [defaults.scaleSize]);",
+   "replace": "  const saturation = sliderSizes(anchor, market);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "offers the size that saturates as a slider of round sizes when the colour scale is fixed, per row on crypto"
+   ]
+  },
+  {
+   "id": "sliders.quiet-max-follows-saved",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/LiquidityHeatmapSettingsModal.tsx",
+   "find": "  const quietMax = quietZoneMaxFor(defaults);",
+   "replace": "  const quietMax = quietZoneMaxFor(settings);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "runs the quiet zone from off to 100 bands, or twice the market's own when that is more, whatever is saved"
+   ]
+  },
+  {
+   "id": "sliders.unit-dropped",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/LiquidityHeatmapSettingsModal.tsx",
+   "find": "  const sized = (size: number) => `${size.toLocaleString(\"en-US\")}${unit === \"\" ? \"\" : ` ${unit}`}`;",
+   "replace": "  const sized = (size: number) => `${size.toLocaleString(\"en-US\")}`;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "hides less as sensitivity moves right, from fifty times the market's minimum down to a quarter of it, then no minimum"
+   ]
+  },
+  {
+   "id": "sliders.size-not-grouped",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/LiquidityHeatmapSettingsModal.tsx",
+   "find": "  const sized = (size: number) => `${size.toLocaleString(\"en-US\")}${unit === \"\" ? \"\" : ` ${unit}`}`;",
+   "replace": "  const sized = (size: number) => `${String(size)}${unit === \"\" ? \"\" : ` ${unit}`}`;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "keeps a saved size the slider cannot reach, and names it, until the slider is moved"
+   ]
+  },
+  {
+   "id": "sliders.one-tick-plural",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/LiquidityHeatmapSettingsModal.tsx",
+   "find": "  const counted = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;",
+   "replace": "  const counted = (count: number, one: string, many: string) => `${count} ${count === 0 ? one : many}`;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "moves the level width in whole ticks from 1 to 50, and names them"
+   ]
+  },
+  {
+   "id": "sliders2.every-level-wording",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/LiquidityHeatmapSettingsModal.tsx",
+   "find": ": \"no minimum\");",
+   "replace": ": \"every level\");",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "hides less as sensitivity moves right, from fifty times the market's minimum down to a quarter of it, then no minimum"
+   ]
+  },
+  {
+   "id": "sliders2.crypto-hint-dropped",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/LiquidityHeatmapSettingsModal.tsx",
+   "find": "\" On the 1m chart; it grows with the bands on higher timeframes.\"",
+   "replace": "\"\"",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "offers the size that saturates as a slider of round sizes when the colour scale is fixed, per row on crypto"
+   ]
+  },
+  {
+   "id": "sliders.width-min-zero",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/LiquidityHeatmapSettingsModal.tsx",
+   "find": "              min={1}",
+   "replace": "              min={0}",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "moves the level width in whole ticks from 1 to 50, and names them"
+   ]
+  },
+  {
+   "id": "sliders.width-thumb-not-on-setting",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/LiquidityHeatmapSettingsModal.tsx",
+   "find": "              position={settings.clusterRows}",
+   "replace": "              position={1}",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "puts every slider back with Reset to default"
+   ]
+  },
+  {
+   "id": "sliders.label-lags-thumb",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/LiquidityHeatmapSettingsModal.tsx",
+   "find": "              describe={(at) => `Level width ${widthWord(at ?? settings.clusterRows)}`}",
+   "replace": "              describe={() => `Level width ${widthWord(settings.clusterRows)}`}",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "follows the thumb at once but hands the setting over only once the thumb has rested, or is let go"
+   ]
+  },
+  {
+   "id": "sliders.width-not-saved",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/LiquidityHeatmapSettingsModal.tsx",
+   "find": "              onCommit={(at) => update({ clusterRows: at })}",
+   "replace": "              onCommit={() => undefined}",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "moves the level width in whole ticks from 1 to 50, and names them"
+   ]
+  },
+  {
+   "id": "sliders.quiet-cannot-turn-off",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/LiquidityHeatmapSettingsModal.tsx",
+   "find": "              min={0}\n              max={quietMax}",
+   "replace": "              min={1}\n              max={quietMax}",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "runs the quiet zone from off to 100 bands, or twice the market's own when that is more, whatever is saved"
+   ]
+  },
+  {
+   "id": "sliders.quiet-thumb-not-on-setting",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/LiquidityHeatmapSettingsModal.tsx",
+   "find": "              position={settings.quietBands}",
+   "replace": "              position={0}",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "puts every slider back with Reset to default"
+   ]
+  },
+  {
+   "id": "sliders.quiet-off-unnamed",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/LiquidityHeatmapSettingsModal.tsx",
+   "find": "${bands === 0 ? \"off\" : counted(bands, \"band\", \"bands\")}",
+   "replace": "${bands === -1 ? \"off\" : counted(bands, \"band\", \"bands\")}",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "runs the quiet zone from off to 100 bands, or twice the market's own when that is more"
+   ]
+  },
+  {
+   "id": "sliders.quiet-not-saved",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/LiquidityHeatmapSettingsModal.tsx",
+   "find": "              onCommit={(at) => update({ quietBands: at })}",
+   "replace": "              onCommit={() => undefined}",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "runs the quiet zone from off to 100 bands, or twice the market's own when that is more"
+   ]
+  },
+  {
+   "id": "sliders.largest-sensitivity-unreachable",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/LiquidityHeatmapSettingsModal.tsx",
+   "find": "              min={0}\n              max={sensitivity.length - 1}",
+   "replace": "              min={1}\n              max={sensitivity.length - 1}",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "hides less as sensitivity moves right, from fifty times the market's minimum down to a quarter of it, then no minimum"
+   ]
+  },
+  {
+   "id": "sliders.no-minimum-unreachable",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/LiquidityHeatmapSettingsModal.tsx",
+   "find": "              max={sensitivity.length - 1}",
+   "replace": "              max={sensitivity.length - 2}",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "hides less as sensitivity moves right, from fifty times the market's minimum down to a quarter of it, then no minimum"
+   ]
+  },
+  {
+   "id": "sliders.sensitivity-thumb-not-on-setting",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/LiquidityHeatmapSettingsModal.tsx",
+   "find": "              position={nearestStop(sensitivity, settings.minBandSize)}",
+   "replace": "              position={0}",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "hides less as sensitivity moves right, from fifty times the market's minimum down to a quarter of it, then no minimum"
+   ]
+  },
+  {
+   "id": "sliders.sensitivity-not-saved",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/LiquidityHeatmapSettingsModal.tsx",
+   "find": "              onCommit={(at) => update({ minBandSize: sensitivity[at] })}",
+   "replace": "              onCommit={() => undefined}",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "hides less as sensitivity moves right, from fifty times the market's minimum down to a quarter of it, then no minimum"
+   ]
+  },
+  {
+   "id": "sliders.smallest-saturation-unreachable",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/LiquidityHeatmapSettingsModal.tsx",
+   "find": "                min={0}\n                max={saturation.length - 1}",
+   "replace": "                min={1}\n                max={saturation.length - 1}",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "offers the size that saturates as a slider of round sizes when the colour scale is fixed, per row on crypto"
+   ]
+  },
+  {
+   "id": "sliders.saturation-thumb-not-on-setting",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/LiquidityHeatmapSettingsModal.tsx",
+   "find": "                position={nearestStop(saturation, settings.scaleSize)}",
+   "replace": "                position={0}",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "offers the size that saturates as a slider of round sizes when the colour scale is fixed, per row on crypto"
+   ]
+  },
+  {
+   "id": "sliders2.per-row-dropped",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/LiquidityHeatmapSettingsModal.tsx",
+   "find": "${market === \"crypto\" ? \" per row\" : \"\"}",
+   "replace": "",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "offers the size that saturates as a slider of round sizes when the colour scale is fixed, per row on crypto"
+   ]
+  },
+  {
+   "id": "sliders.saturation-not-saved",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/LiquidityHeatmapSettingsModal.tsx",
+   "find": "                onCommit={(at) => update({ scaleSize: saturation[at] })}",
+   "replace": "                onCommit={() => undefined}",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "offers the size that saturates as a slider of round sizes when the colour scale is fixed"
+   ]
+  },
+  {
+   "id": "htf.default-not-auto",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquiditySettings.ts",
+   "find": "  timeframeWidening: 1,",
+   "replace": "  timeframeWidening: 2,",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/chart/tests/liveIndicatorExtras.test.ts",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "keeps heatmap settings saved before the higher-timeframe slider existed, at auto",
+    "sets how much the higher timeframes widen the levels, around auto, and shows what that gives on the chart on screen"
+   ]
+  },
+  {
+   "id": "htf.reach-short",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquiditySettings.ts",
+   "find": "export const MIN_WIDENING_STEP = -7;",
+   "replace": "export const MIN_WIDENING_STEP = -6;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquiditySettings.test.ts"
+   ],
+   "mustFail": [
+    "halves the widening per step left and doubles it per step right, never finer than the 1m width"
+   ]
+  },
+  {
+   "id": "htf.reach-short-right",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquiditySettings.ts",
+   "find": "export const MAX_WIDENING_STEP = 3;",
+   "replace": "export const MAX_WIDENING_STEP = 2;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquiditySettings.test.ts"
+   ],
+   "mustFail": [
+    "steps through powers of two from -7 to +3, and reads a saved width it cannot use as auto"
+   ]
+  },
+  {
+   "id": "htf.step-direction-flipped",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquiditySettings.ts",
+   "find": "  return 2 ** step;",
+   "replace": "  return 2 ** -step;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquiditySettings.test.ts"
+   ],
+   "mustFail": [
+    "steps through powers of two from -7 to +3, and reads a saved width it cannot use as auto"
+   ]
+  },
+  {
+   "id": "htf.step-not-whole",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquiditySettings.ts",
+   "find": "  return Math.min(MAX_WIDENING_STEP, Math.max(MIN_WIDENING_STEP, Math.round(Math.log2(widening))));",
+   "replace": "  return Math.min(MAX_WIDENING_STEP, Math.max(MIN_WIDENING_STEP, Math.log2(widening)));",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquiditySettings.test.ts"
+   ],
+   "mustFail": [
+    "steps through powers of two from -7 to +3, and reads a saved width it cannot use as auto"
+   ]
+  },
+  {
+   "id": "htf.unusable-not-auto",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquiditySettings.ts",
+   "find": "  if (value === undefined || !Number.isFinite(value) || value <= 0) return 1;",
+   "replace": "  if (value === undefined) return 1;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquiditySettings.test.ts"
+   ],
+   "mustFail": [
+    "steps through powers of two from -7 to +3, and reads a saved width it cannot use as auto"
+   ]
+  },
+  {
+   "id": "htf.zero-not-auto",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquiditySettings.ts",
+   "find": "  if (value === undefined || !Number.isFinite(value) || value <= 0) return 1;",
+   "replace": "  if (value === undefined || !Number.isFinite(value)) return 1;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquiditySettings.test.ts"
+   ],
+   "mustFail": [
+    "steps through powers of two from -7 to +3, and reads a saved width it cannot use as auto"
+   ]
+  },
+  {
+   "id": "htf.nan-not-auto",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquiditySettings.ts",
+   "find": "  if (value === undefined || !Number.isFinite(value) || value <= 0) return 1;",
+   "replace": "  if (value === undefined || value <= 0) return 1;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquiditySettings.test.ts"
+   ],
+   "mustFail": [
+    "steps through powers of two from -7 to +3, and reads a saved width it cannot use as auto"
+   ]
+  },
+  {
+   "id": "htf.unclamped",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquiditySettings.ts",
+   "find": "  return Math.min(wideningOfStep(MAX_WIDENING_STEP), Math.max(wideningOfStep(MIN_WIDENING_STEP), value));",
+   "replace": "  return value;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquiditySettings.test.ts"
+   ],
+   "mustFail": [
+    "steps through powers of two from -7 to +3, and reads a saved width it cannot use as auto"
+   ]
+  },
+  {
+   "id": "htf.no-upper-bound",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquiditySettings.ts",
+   "find": "  return Math.min(wideningOfStep(MAX_WIDENING_STEP), Math.max(wideningOfStep(MIN_WIDENING_STEP), value));",
+   "replace": "  return Math.max(wideningOfStep(MIN_WIDENING_STEP), value);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquiditySettings.test.ts"
+   ],
+   "mustFail": [
+    "steps through powers of two from -7 to +3, and reads a saved width it cannot use as auto"
+   ]
+  },
+  {
+   "id": "htf.no-lower-bound",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquiditySettings.ts",
+   "find": "  return Math.min(wideningOfStep(MAX_WIDENING_STEP), Math.max(wideningOfStep(MIN_WIDENING_STEP), value));",
+   "replace": "  return Math.min(wideningOfStep(MAX_WIDENING_STEP), value);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquiditySettings.test.ts"
+   ],
+   "mustFail": [
+    "steps through powers of two from -7 to +3, and reads a saved width it cannot use as auto"
+   ]
+  },
+  {
+   "id": "htf.widens-1m-too",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquiditySettings.ts",
+   "find": "  return auto > 1 ? Math.max(1, auto * timeframeWideningOf(settings)) : 1;",
+   "replace": "  return Math.max(1, auto * timeframeWideningOf(settings));",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquiditySettings.test.ts"
+   ],
+   "mustFail": [
+    "widens 15m, 1h, 4h and 1D as before at auto, and leaves 1m and 5m alone whatever is set"
+   ]
+  },
+  {
+   "id": "htf.finer-than-1m",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquiditySettings.ts",
+   "find": "  return auto > 1 ? Math.max(1, auto * timeframeWideningOf(settings)) : 1;",
+   "replace": "  return auto > 1 ? auto * timeframeWideningOf(settings) : 1;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquiditySettings.test.ts"
+   ],
+   "mustFail": [
+    "halves the widening per step left and doubles it per step right, never finer than the 1m width"
+   ]
+  },
+  {
+   "id": "htf.rows-ignore-setting",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquiditySettings.ts",
+   "find": "  return Math.max(1, Math.round(Math.floor(settings.clusterRows) * widenedBandFactorFor(settings, intervalMs)));",
+   "replace": "  return Math.max(1, Math.round(Math.floor(settings.clusterRows) * bandFactorFor(intervalMs)));",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquiditySettings.test.ts"
+   ],
+   "mustFail": [
+    "halves the widening per step left and doubles it per step right, never finer than the 1m width"
+   ]
+  },
+  {
+   "id": "htf.crypto-minimum-ignores-setting",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquiditySettings.ts",
+   "find": "  return market === \"crypto\" ? floor * widenedBandFactorFor(settings, intervalMs) : floor;",
+   "replace": "  return market === \"crypto\" ? floor * bandFactorFor(intervalMs) : floor;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquiditySettings.test.ts"
+   ],
+   "mustFail": [
+    "scales the crypto minimum level with the widened bands, and leaves an index's alone"
+   ]
+  },
+  {
+   "id": "htf.old-saves-dropped",
+   "file": "apps/web/src/lib/chart/liveIndicatorExtras.ts",
+   "find": "\"historyDays\", \"timeframeWidening\", \"shape\"",
+   "replace": "\"historyDays\", \"shape\"",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/chart/tests/liveIndicatorExtras.test.ts"
+   ],
+   "mustFail": [
+    "keeps heatmap settings saved before the higher-timeframe slider existed, at auto"
+   ]
+  },
+  {
+   "id": "htf.hint-skips-4h",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/LiquidityHeatmapSettingsModal.tsx",
+   "find": ", [14_400_000, \"4h\"]",
+   "replace": "",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "sets how much the higher timeframes widen the levels, around auto, and shows what that gives on the chart on screen"
+   ]
+  },
+  {
+   "id": "htf.hour-named-in-minutes",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/LiquidityHeatmapSettingsModal.tsx",
+   "find": "  if (intervalMs >= 3_600_000) return `${Math.round(intervalMs / 3_600_000)}h`;",
+   "replace": "",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "sets how much the higher timeframes widen the levels, around auto, and shows what that gives on the chart on screen"
+   ]
+  },
+  {
+   "id": "sliders.crypto-width-in-ticks",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/LiquidityHeatmapSettingsModal.tsx",
+   "find": "  const widthWord = (rows: number) => (market === \"index\" ? counted(rows, \"tick\", \"ticks\") : counted(rows, \"row\", \"rows\"));",
+   "replace": "  const widthWord = (rows: number) => counted(rows, \"tick\", \"ticks\");",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "calls a crypto level's width rows"
+   ]
+  },
+  {
+   "id": "htf.auto-unnamed",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/LiquidityHeatmapSettingsModal.tsx",
+   "find": "    const name = step === 0 ? \"auto\" : step > 0 ? `+${step}` : String(step);",
+   "replace": "    const name = step > 0 ? `+${step}` : String(step);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "sets how much the higher timeframes widen the levels, around auto, and shows what that gives on the chart on screen"
+   ]
+  },
+  {
+   "id": "htf.plus-sign-dropped",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/LiquidityHeatmapSettingsModal.tsx",
+   "find": "    const name = step === 0 ? \"auto\" : step > 0 ? `+${step}` : String(step);",
+   "replace": "    const name = step === 0 ? \"auto\" : String(step);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "sets how much the higher timeframes widen the levels, around auto, and shows what that gives on the chart on screen"
+   ]
+  },
+  {
+   "id": "htf.label-on-every-chart",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/LiquidityHeatmapSettingsModal.tsx",
+   "find": "    if (!(bandFactorFor(intervalMs) > 1)) return `Higher timeframes ${name}`;",
+   "replace": "    if (bandFactorFor(intervalMs) < 0) return `Higher timeframes ${name}`;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "names only the setting on a chart under 15m, which keeps its own width"
+   ]
+  },
+  {
+   "id": "htf.label-rows-at-auto",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/LiquidityHeatmapSettingsModal.tsx",
+   "find": "    const rows = clusterRowsFor({ clusterRows: settings.clusterRows, timeframeWidening: widening }, intervalMs);",
+   "replace": "    const rows = clusterRowsFor({ clusterRows: settings.clusterRows }, intervalMs);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "sets how much the higher timeframes widen the levels, around auto, and shows what that gives on the chart on screen"
+   ]
+  },
+  {
+   "id": "htf.label-factor-at-auto",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/LiquidityHeatmapSettingsModal.tsx",
+   "find": "${factorWords(widenedBandFactorFor({ timeframeWidening: widening }, intervalMs))} on this",
+   "replace": "${factorWords(bandFactorFor(intervalMs))} on this",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "sets how much the higher timeframes widen the levels, around auto, and shows what that gives on the chart on screen"
+   ]
+  },
+  {
+   "id": "htf.hint-at-auto",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/LiquidityHeatmapSettingsModal.tsx",
+   "find": "`${factorWords(widenedBandFactorFor({ timeframeWidening: widening }, ms))} on ${name}`",
+   "replace": "`${factorWords(bandFactorFor(ms))} on ${name}`",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "sets how much the higher timeframes widen the levels, around auto, and shows what that gives on the chart on screen"
+   ]
+  },
+  {
+   "id": "htf.width-hint-old",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/LiquidityHeatmapSettingsModal.tsx",
+   "find": "              hint=\"On the 1m chart; higher timeframes widen it as set below.\"",
+   "replace": "              hint=\"On the 1m chart. Bands widen with the chart: x3 on 15m, x8 on 1h, x30 on 4h, x80 on 1D.\"",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "names only the setting on a chart under 15m, which keeps its own width"
+   ]
+  },
+  {
+   "id": "htf.slider-no-finer",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/LiquidityHeatmapSettingsModal.tsx",
+   "find": "              min={MIN_WIDENING_STEP}",
+   "replace": "              min={0}",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "sets how much the higher timeframes widen the levels, around auto, and shows what that gives on the chart on screen"
+   ]
+  },
+  {
+   "id": "htf.slider-no-thicker",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/LiquidityHeatmapSettingsModal.tsx",
+   "find": "              max={MAX_WIDENING_STEP}",
+   "replace": "              max={0}",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "sets how much the higher timeframes widen the levels, around auto, and shows what that gives on the chart on screen"
+   ]
+  },
+  {
+   "id": "htf.slider-not-saved",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/LiquidityHeatmapSettingsModal.tsx",
+   "find": "              onCommit={(at) => update({ timeframeWidening: wideningOfStep(at) })}",
+   "replace": "              onCommit={() => undefined}",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "sets how much the higher timeframes widen the levels, around auto, and shows what that gives on the chart on screen"
+   ]
+  }
+ ]
+}

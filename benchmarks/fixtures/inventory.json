@@ -1,0 +1,687 @@
+{
+  "version": 1,
+  "fixtures": [
+    {
+      "id": "binance-btcusdt-perpetual-1h-2026-09-08",
+      "provider": "binance",
+      "symbol": "BTCUSDT",
+      "marketKind": "PERPETUAL",
+      "window": {
+        "fromTs": 1788908400000,
+        "toTs": 1788912000000,
+        "anchorCapturedAt": 1788908324689,
+        "anchorLastUpdateId": 11508827369367,
+        "eventFromTs": 1788908264689,
+        "tradeFromTs": 1788908324689
+      },
+      "source": {
+        "basename": "market-data.sqlite",
+        "sizeBytes": 15495376896,
+        "schemaVersion": 15,
+        "journalMode": "wal",
+        "captureSpan": {
+          "fromTs": 1788807187520,
+          "toTs": 1788974007500
+        },
+        "maxIds": {
+          "l2_depth_events": 5376932,
+          "trades": 20320432,
+          "l2_depth_snapshots": 3196
+        },
+        "sqliteVersion": "3.53.4",
+        "advancedDuringExport": false
+      },
+      "exporter": {
+        "version": 1,
+        "appSchemaVersion": 16,
+        "sqliteVersion": "3.53.4",
+        "anchorSlackMs": 60000
+      },
+      "file": {
+        "name": "binance-btcusdt-perpetual-1h-2026-09-08.sqlite",
+        "sizeBytes": 67702784,
+        "sha256": "51c921a480172a975d534aca46b4c8672aa25e5ca15fb5954d91cdf6e2a6a9b5",
+        "journalMode": "delete"
+      },
+      "tables": {
+        "capture_sessions": {
+          "rows": 1,
+          "sha256": "2f7bbd85780334e175ec9cd153e3bf1290238dc2ac7ac1c1b35cdea788b406ea"
+        },
+        "capture_incidents": {
+          "rows": 86,
+          "sha256": "2a35d48503adea1b504050f7ead1768b650858cecdfe9c1759028d0fcf79fd99"
+        },
+        "trades": {
+          "rows": 39044,
+          "sha256": "38fb59e8f3c9d5b9d7c36813a883a8b415cdc70ae338ae2d45db7f9d7a465c40"
+        },
+        "candles": {
+          "rows": 63,
+          "sha256": "742aca231857bc4b8f5393fb8a56da4d5de596f47ef12ad12b0a4a2cadbdd270"
+        },
+        "l2_depth_snapshots": {
+          "rows": 16,
+          "sha256": "49ff3b061f6487e2e67e5109c9e0ad332f18ce2df26765ff10a680b8da5bad93"
+        },
+        "l2_depth_events": {
+          "rows": 34827,
+          "sha256": "60ab97b21fb47c583c86a468e7148f1ec2794f4f47cad5f55f930c862f7a6828"
+        }
+      },
+      "integrity": {
+        "quickCheck": "ok",
+        "foreignKeyViolations": 0
+      },
+      "stats": {
+        "windowMs": 3600000,
+        "events": {
+          "inWindow": 34064,
+          "perSecond": 9.46,
+          "levelsPerEvent": {
+            "mean": 55.43,
+            "p50": 41,
+            "p95": 109,
+            "max": 1359
+          }
+        },
+        "snapshots": {
+          "fromAnchorToEnd": 16,
+          "gapMs": {
+            "mean": 236096.4,
+            "p50": 191470,
+            "p95": 604368,
+            "max": 604368
+          }
+        },
+        "trades": {
+          "inWindow": 38364,
+          "perSecond": 10.66
+        }
+      },
+      "governance": {
+        "dataClass": "public-exchange-market-data",
+        "retention": "local-only-git-ignored",
+        "basis": "Public Binance market-data feed captured by the project's own collector. The rows stay in the git-ignored data directory; the inventory records only hashes, counts and statistics."
+      },
+      "acceptance": {
+        "referenceKey": "binance-btcusdt-perpetual-hour",
+        "criteria": [
+          {
+            "metric": "events.perSecond",
+            "min": 7.84,
+            "max": 12.25
+          },
+          {
+            "metric": "events.levelsPerEvent.mean",
+            "min": 29.49,
+            "max": 117.96
+          },
+          {
+            "metric": "trades.perSecond",
+            "min": 5.96,
+            "max": 23.82
+          },
+          {
+            "metric": "snapshots.gapMs.p50",
+            "max": 300000
+          }
+        ],
+        "results": [
+          {
+            "metric": "events.perSecond",
+            "min": 7.84,
+            "max": 12.25,
+            "observed": 9.46,
+            "pass": true
+          },
+          {
+            "metric": "events.levelsPerEvent.mean",
+            "min": 29.49,
+            "max": 117.96,
+            "observed": 55.43,
+            "pass": true
+          },
+          {
+            "metric": "trades.perSecond",
+            "min": 5.96,
+            "max": 23.82,
+            "observed": 10.66,
+            "pass": true
+          },
+          {
+            "metric": "snapshots.gapMs.p50",
+            "max": 300000,
+            "observed": 191470,
+            "pass": true
+          }
+        ],
+        "pass": true
+      },
+      "replayPin": {
+        "geometry": {
+          "tickSize": 0.01,
+          "clusterTicks": 50,
+          "rowClusters": 8,
+          "windowRows": 1023
+        },
+        "limits": {
+          "maxFrames": null,
+          "maxBytes": null
+        },
+        "window": {
+          "fromTs": 1788908400000,
+          "toTs": 1788909600000
+        },
+        "pageLimit": 5,
+        "complete": false,
+        "pages": 5,
+        "frames": 123,
+        "stats": {
+          "booksEmitted": 95,
+          "encodedBytes": 7130403,
+          "eventsRead": 3985,
+          "gaps": 0,
+          "snapshotsUsed": 5,
+          "timestampGroupsExamined": 118,
+          "tradesRead": 3538
+        },
+        "sha256": "41b75b613fefc1ab39248eedcad45c168d4b6a407783e52be0cb8cc47d4890f2"
+      }
+    },
+    {
+      "id": "binance-btcusdt-spot-4h-2026-09-08",
+      "provider": "binance",
+      "symbol": "BTCUSDT",
+      "marketKind": "SPOT",
+      "window": {
+        "fromTs": 1788904800000,
+        "toTs": 1788919200000,
+        "anchorCapturedAt": 1788904436208,
+        "anchorLastUpdateId": 99860972772,
+        "eventFromTs": 1788904376208,
+        "tradeFromTs": 1788904436208
+      },
+      "source": {
+        "basename": "market-data.sqlite",
+        "sizeBytes": 15495376896,
+        "schemaVersion": 15,
+        "journalMode": "wal",
+        "captureSpan": {
+          "fromTs": 1788807187614,
+          "toTs": 1788974007514
+        },
+        "maxIds": {
+          "l2_depth_events": 5376932,
+          "trades": 20320432,
+          "l2_depth_snapshots": 3196
+        },
+        "sqliteVersion": "3.53.4",
+        "advancedDuringExport": false
+      },
+      "exporter": {
+        "version": 1,
+        "appSchemaVersion": 16,
+        "sqliteVersion": "3.53.4",
+        "anchorSlackMs": 60000
+      },
+      "file": {
+        "name": "binance-btcusdt-spot-4h-2026-09-08.sqlite",
+        "sizeBytes": 218374144,
+        "sha256": "a819b0a3ff7e88e099952ecb6fa58eb1c52036500a818b93f82c9e443089808f",
+        "journalMode": "delete"
+      },
+      "tables": {
+        "capture_sessions": {
+          "rows": 1,
+          "sha256": "2f7bbd85780334e175ec9cd153e3bf1290238dc2ac7ac1c1b35cdea788b406ea"
+        },
+        "capture_incidents": {
+          "rows": 353,
+          "sha256": "173c4c0f43f72af2734c053c7c090433d69285c1084e9b1a99747668d2e29060"
+        },
+        "trades": {
+          "rows": 284417,
+          "sha256": "702ba6c35f07bd93aac3b00217faf5582f282b11286322ba44e4668ecca93070"
+        },
+        "candles": {
+          "rows": 242,
+          "sha256": "af6c5bb7422d3af74b0c52026132d70748838d415c6e5b4d355422fac2a3dd32"
+        },
+        "l2_depth_snapshots": {
+          "rows": 41,
+          "sha256": "be4d653b987cc8e0eed502c51517eb7fb5e6490cf96d360d7030a7492f109a5a"
+        },
+        "l2_depth_events": {
+          "rows": 142802,
+          "sha256": "06af6e5adfa053bb700746cb2d5cb92e32d0a4c567b65cbee91f3b1f5ce4c2a7"
+        }
+      },
+      "integrity": {
+        "quickCheck": "ok",
+        "foreignKeyViolations": 0
+      },
+      "stats": {
+        "windowMs": 14400000,
+        "events": {
+          "inWindow": 138720,
+          "perSecond": 9.63,
+          "levelsPerEvent": {
+            "mean": 18.24,
+            "p50": 9,
+            "p95": 56,
+            "max": 1545
+          }
+        },
+        "snapshots": {
+          "fromAnchorToEnd": 41,
+          "gapMs": {
+            "mean": 367226.83,
+            "p50": 169384,
+            "p95": 1143608,
+            "max": 2303422
+          }
+        },
+        "trades": {
+          "inWindow": 278131,
+          "perSecond": 19.31
+        }
+      },
+      "governance": {
+        "dataClass": "public-exchange-market-data",
+        "retention": "local-only-git-ignored",
+        "basis": "Public Binance market-data feed captured by the project's own collector. The rows stay in the git-ignored data directory; the inventory records only hashes, counts and statistics."
+      },
+      "acceptance": {
+        "referenceKey": "binance-btcusdt-spot-hour",
+        "criteria": [
+          {
+            "metric": "events.perSecond",
+            "min": 8,
+            "max": 12.5
+          },
+          {
+            "metric": "events.levelsPerEvent.mean",
+            "min": 7.14,
+            "max": 28.56
+          },
+          {
+            "metric": "trades.perSecond",
+            "min": 6.22,
+            "max": 24.89
+          },
+          {
+            "metric": "snapshots.gapMs.p50",
+            "max": 1200000
+          }
+        ],
+        "results": [
+          {
+            "metric": "events.perSecond",
+            "min": 8,
+            "max": 12.5,
+            "observed": 9.63,
+            "pass": true
+          },
+          {
+            "metric": "events.levelsPerEvent.mean",
+            "min": 7.14,
+            "max": 28.56,
+            "observed": 18.24,
+            "pass": true
+          },
+          {
+            "metric": "trades.perSecond",
+            "min": 6.22,
+            "max": 24.89,
+            "observed": 19.31,
+            "pass": true
+          },
+          {
+            "metric": "snapshots.gapMs.p50",
+            "max": 1200000,
+            "observed": 169384,
+            "pass": true
+          }
+        ],
+        "pass": true
+      },
+      "replayPin": {
+        "geometry": {
+          "tickSize": 0.01,
+          "clusterTicks": 50,
+          "rowClusters": 8,
+          "windowRows": 1023
+        },
+        "limits": {
+          "maxFrames": null,
+          "maxBytes": null
+        },
+        "window": {
+          "fromTs": 1788904800000,
+          "toTs": 1788906000000
+        },
+        "pageLimit": 5,
+        "complete": false,
+        "pages": 5,
+        "frames": 433,
+        "stats": {
+          "booksEmitted": 29,
+          "encodedBytes": 6586680,
+          "eventsRead": 18340,
+          "gaps": 0,
+          "snapshotsUsed": 5,
+          "timestampGroupsExamined": 41,
+          "tradesRead": 31843
+        },
+        "sha256": "7c6c739a127900bc27094697aa35a6d28340a0a563ebf06e209f19e092dfe81e"
+      }
+    },
+    {
+      "id": "binance-btcusdt-perpetual-20m-2026-09-23-fa1",
+      "provider": "binance",
+      "symbol": "BTCUSDT",
+      "marketKind": "PERPETUAL",
+      "window": {
+        "fromTs": 1790173200000,
+        "toTs": 1790174400000,
+        "anchorCapturedAt": 1790173161723,
+        "anchorLastUpdateId": 11637062077547,
+        "eventFromTs": 1790173101723,
+        "tradeFromTs": 1790173161723
+      },
+      "source": {
+        "basename": "market-data.sqlite",
+        "sizeBytes": 131030786048,
+        "schemaVersion": 16,
+        "journalMode": "wal",
+        "captureSpan": {
+          "fromTs": 1788973795625,
+          "toTs": 1790216079058
+        },
+        "maxIds": {
+          "l2_depth_events": 44396176,
+          "trades": 167546454,
+          "l2_depth_snapshots": 30162
+        },
+        "sqliteVersion": "3.53.4",
+        "advancedDuringExport": true
+      },
+      "exporter": {
+        "version": 1,
+        "appSchemaVersion": 16,
+        "sqliteVersion": "3.53.4",
+        "anchorSlackMs": 60000
+      },
+      "file": {
+        "name": "binance-btcusdt-perpetual-20m-2026-09-23-fa1.sqlite",
+        "sizeBytes": 1523712,
+        "sha256": "9e6da23dd1dae3be95788fe7db1935566e4d30e54d0a1ddad78db18ec2fe844c",
+        "journalMode": "delete"
+      },
+      "tables": {
+        "capture_sessions": {
+          "rows": 1,
+          "sha256": "9fc9598763c975a7a893382163e694099f287f8f49b06d6216fcc73ae511e337"
+        },
+        "capture_incidents": {
+          "rows": 86,
+          "sha256": "c0c6305bef3a0e9d2353bc9bfa04f82598b4baa688dd364ad269ad2e912fba7f"
+        },
+        "trades": {
+          "rows": 832,
+          "sha256": "d43c7db55567507b2e5c09fa6f0179a2b7d4d387077eeb19c3246013ff973b4f"
+        },
+        "candles": {
+          "rows": 19,
+          "sha256": "36bc411e2649c491ccd1c4d554a45a0687ca3917bd868f8ec5438d2e6f75da7f"
+        },
+        "l2_depth_snapshots": {
+          "rows": 19,
+          "sha256": "167242cb78063ee902fbcf7a9587b9b3d336e48469266cd33c73865a37c25605"
+        },
+        "l2_depth_events": {
+          "rows": 41,
+          "sha256": "9e0e9260f712307744e5b47fb01cc2545438c39587d770f2d6dd50a571ca19ae"
+        }
+      },
+      "integrity": {
+        "quickCheck": "ok",
+        "foreignKeyViolations": 0
+      },
+      "stats": {
+        "windowMs": 1200000,
+        "events": {
+          "inWindow": 39,
+          "perSecond": 0.03,
+          "levelsPerEvent": {
+            "mean": 271.77,
+            "p50": 156,
+            "p95": 1123,
+            "max": 1423
+          }
+        },
+        "snapshots": {
+          "fromAnchorToEnd": 19,
+          "gapMs": {
+            "mean": 51768.83,
+            "p50": 45374,
+            "p95": 118837,
+            "max": 118837
+          }
+        },
+        "trades": {
+          "inWindow": 832,
+          "perSecond": 0.69
+        }
+      },
+      "governance": {
+        "dataClass": "public-exchange-market-data",
+        "retention": "local-only-git-ignored",
+        "basis": "Public Binance market-data feed captured by the project's own collector. The rows stay in the git-ignored data directory; the inventory records only hashes, counts and statistics."
+      }
+    },
+    {
+      "id": "dxfeed-aapl-equity-20m-2026-09-23",
+      "provider": "dxfeed",
+      "symbol": "AAPL",
+      "assetClass": "EQUITY",
+      "orderSource": "NTV",
+      "window": {
+        "fromTs": 1790193000000,
+        "toTs": 1790194200000,
+        "anchorEventTime": 1790170257932,
+        "orderFromTs": 1790170257932,
+        "tapeFromTs": 1790193000000
+      },
+      "source": {
+        "basename": "dxfeed-market-data.sqlite",
+        "sizeBytes": 40943853568,
+        "schemaVersion": 22,
+        "journalMode": "wal",
+        "captureSpan": {
+          "fromTs": 1789632000385,
+          "toTs": 1790215303502
+        },
+        "maxIds": {
+          "dxfeed_order_book_capture": 141856210,
+          "dxfeed_time_and_sales": 16147818,
+          "dxfeed_quotes": 2591234
+        },
+        "sqliteVersion": "3.53.4",
+        "advancedDuringExport": true
+      },
+      "exporter": {
+        "version": 1,
+        "appSchemaVersion": 22,
+        "sqliteVersion": "3.53.4"
+      },
+      "file": {
+        "name": "dxfeed-aapl-equity-20m-2026-09-23.sqlite",
+        "sizeBytes": 1171439616,
+        "sha256": "f275bfcae670ecb05d851fea5fe365c5463859a654ddb6d873234b2214387a64",
+        "journalMode": "delete"
+      },
+      "tables": {
+        "dxfeed_capture_sessions": {
+          "rows": 17,
+          "sha256": "2ca85a7064ef3432d6147c6010819d63aa4aa33032aea2a4a0e9c8cb8ac05a6e"
+        },
+        "dxfeed_order_book_capture": {
+          "rows": 4664078,
+          "sha256": "7701c47d75ad4b54201859f4b261d87731b953d53331d6a26e4087f762ef9ac4"
+        },
+        "dxfeed_time_and_sales": {
+          "rows": 40018,
+          "sha256": "bb9d4fa1f359d6698907ddc3665d808174b0ec65a160021210df4c686241b14a"
+        },
+        "dxfeed_quotes": {
+          "rows": 4810,
+          "sha256": "0bfab853751b8a0861cf5d546fdd5429236e7eccb96e0bc08ce8c77f37fccdc3"
+        },
+        "dxfeed_trades": {
+          "rows": 6337,
+          "sha256": "b3123fbd61583fe02d70ad1e7586b8d181c07e8575822de895ea47fa695ccbfb"
+        },
+        "dxfeed_candles": {
+          "rows": 20,
+          "sha256": "1f62ce0bf0e845b2dfcce7f14afede35933fbe854002ec3457f924796ccac076"
+        }
+      },
+      "integrity": {
+        "quickCheck": "ok",
+        "foreignKeyViolations": 0
+      },
+      "stats": {
+        "windowMs": 1200000,
+        "orders": {
+          "inWindow": 617732,
+          "perSecond": 514.78,
+          "sinceAnchor": 4664078
+        },
+        "snapshotBegin": {
+          "fromAnchorToEnd": 2,
+          "gapMs": {
+            "mean": 23331637,
+            "p50": 23331637,
+            "p95": 23331637,
+            "max": 23331637
+          }
+        },
+        "tape": {
+          "inWindow": 40018,
+          "perSecond": 33.35
+        },
+        "quotes": {
+          "inWindow": 4810
+        }
+      },
+      "governance": {
+        "dataClass": "licensed-vendor-market-data",
+        "retention": "local-only-git-ignored",
+        "basis": "dxFeed/CME data already captured by the project's licensed collector for development use. Sliced from an existing database without opening any dxFeed connection; the rows stay in the git-ignored data directory and are never committed; the inventory records only hashes, counts and statistics."
+      }
+    },
+    {
+      "id": "dxfeed-nqz26-future-10m-2026-09-23",
+      "provider": "dxfeed",
+      "symbol": "/NQZ26:XCME",
+      "assetClass": "FUTURE",
+      "orderSource": "GLBX",
+      "window": {
+        "fromTs": 1790196900000,
+        "toTs": 1790197500000,
+        "anchorEventTime": 1790193574214,
+        "orderFromTs": 1790193574214,
+        "tapeFromTs": 1790196900000
+      },
+      "source": {
+        "basename": "dxfeed-market-data.sqlite",
+        "sizeBytes": 40947859456,
+        "schemaVersion": 22,
+        "journalMode": "wal",
+        "captureSpan": {
+          "fromTs": 1789909794531,
+          "toTs": 1790216073375
+        },
+        "maxIds": {
+          "dxfeed_order_book_capture": 141863496,
+          "dxfeed_time_and_sales": 16148118,
+          "dxfeed_quotes": 2591891
+        },
+        "sqliteVersion": "3.53.4",
+        "advancedDuringExport": true
+      },
+      "exporter": {
+        "version": 1,
+        "appSchemaVersion": 22,
+        "sqliteVersion": "3.53.4"
+      },
+      "file": {
+        "name": "dxfeed-nqz26-future-10m-2026-09-23.sqlite",
+        "sizeBytes": 73736192,
+        "sha256": "3997236e5bd58cf13a0bfeb00ff62f27a931709b801f8f405671b9e5117820ed",
+        "journalMode": "delete"
+      },
+      "tables": {
+        "dxfeed_capture_sessions": {
+          "rows": 4,
+          "sha256": "39d296ec5ad8a147c1e3d171a6bc0c9e72b17a3591d986b18fbd5f031242e1c2"
+        },
+        "dxfeed_order_book_capture": {
+          "rows": 255896,
+          "sha256": "1de112aa0af151515954705f74af19a2f822328ade0dbf527a973a1cd222b30a"
+        },
+        "dxfeed_time_and_sales": {
+          "rows": 447,
+          "sha256": "d45becdccda449324334c699d67afcd66a51e53aa61c63e0a70b3f101aa353fb"
+        },
+        "dxfeed_quotes": {
+          "rows": 834,
+          "sha256": "6ed480c4d669a1be218e93b8b1f9c8d851cdfb222abaa801533ad07eefa389c9"
+        },
+        "dxfeed_trades": {
+          "rows": 191,
+          "sha256": "ef001d914fb368b77e8ebca946d7e96a1cd5129133ec69865f69b226a30bcb69"
+        },
+        "dxfeed_candles": {
+          "rows": 5,
+          "sha256": "ac97c2730b7d785595a90c3cb7ad1e2a261d1ea954f69da64e92a32c585864c9"
+        }
+      },
+      "integrity": {
+        "quickCheck": "ok",
+        "foreignKeyViolations": 0
+      },
+      "stats": {
+        "windowMs": 600000,
+        "orders": {
+          "inWindow": 8293,
+          "perSecond": 13.82,
+          "sinceAnchor": 255896
+        },
+        "snapshotBegin": {
+          "fromAnchorToEnd": 1,
+          "gapMs": {
+            "mean": null,
+            "p50": null,
+            "p95": null,
+            "max": null
+          }
+        },
+        "tape": {
+          "inWindow": 447,
+          "perSecond": 0.75
+        },
+        "quotes": {
+          "inWindow": 834
+        }
+      },
+      "governance": {
+        "dataClass": "licensed-vendor-market-data",
+        "retention": "local-only-git-ignored",
+        "basis": "dxFeed/CME data already captured by the project's licensed collector for development use. Sliced from an existing database without opening any dxFeed connection; the rows stay in the git-ignored data directory and are never committed; the inventory records only hashes, counts and statistics."
+      }
+    }
+  ]
+}

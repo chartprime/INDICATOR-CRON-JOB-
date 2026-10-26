@@ -1,0 +1,304 @@
+{
+  "mutations": [
+    {
+      "id": "svp.warmup-atr-key-bare-symbol",
+      "file": "apps/runtime/src/server/market-data-server.js",
+      "find": "        prefetchedSeed,\n        key,\n      );\n      if (volumeProfileWarmAbandoned",
+      "replace": "        prefetchedSeed,\n        pairSymbol,\n      );\n      if (volumeProfileWarmAbandoned",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/server/market-data-server.test.js"
+      ],
+      "mustFail": [
+        "one key per instrument"
+      ]
+    },
+    {
+      "id": "svp.history-atr-key-bare-symbol",
+      "file": "apps/runtime/src/server/market-data-server.js",
+      "find": "        const atrReading = await volumeProfileAtr.getReading(\n          pairKey(pairSymbol, pairMarketKind),\n          {\n            readCandles: (options) => state.adapter",
+      "replace": "        const atrReading = await volumeProfileAtr.getReading(\n          pairSymbol,\n          {\n            readCandles: (options) => state.adapter",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/server/market-data-server.test.js"
+      ],
+      "mustFail": [
+        "one key per instrument"
+      ]
+    },
+    {
+      "id": "svp.rollover-atr-key-bare-symbol",
+      "file": "apps/runtime/src/server/market-data-server.js",
+      "find": "        instrument: key,",
+      "replace": "        instrument: pairSymbol,",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/server/market-data-server.test.js"
+      ],
+      "mustFail": [
+        "one key per instrument"
+      ]
+    },
+    {
+      "id": "svp.history-probes-despite-atr-range",
+      "file": "apps/runtime/src/indicators/volume-profile/volume-profile-history.js",
+      "find": "  if (referenceRange === null && typeof adapter.readPriceRange === \"function\") {",
+      "replace": "  if (typeof adapter.readPriceRange === \"function\") {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/indicators/volume-profile/volume-profile-history.test.js"
+      ],
+      "mustFail": [
+        "skips per-period price probes when the ATR reading carries a reference range"
+      ]
+    },
+    {
+      "id": "svp.history-one-failure-drops-the-batch",
+      "file": "apps/runtime/src/indicators/volume-profile/volume-profile-history.js",
+      "find": "  if (built.length === 0 && results.some((result) => result.unavailable === true))",
+      "replace": "  if (results.some((result) => result.unavailable === true))",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/indicators/volume-profile/volume-profile-history.test.js"
+      ],
+      "mustFail": [
+        "keeps readable periods when another period is unavailable"
+      ]
+    },
+    {
+      "id": "svp.history-all-failed-returns-empty",
+      "file": "apps/runtime/src/indicators/volume-profile/volume-profile-history.js",
+      "find": "  if (built.length === 0 && results.some((result) => result.unavailable === true))\n    return null;",
+      "replace": "  if (false)\n    return null;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/indicators/volume-profile/volume-profile-history.test.js"
+      ],
+      "mustFail": [
+        "reports null only when every readable period failed"
+      ]
+    },
+    {
+      "id": "svp.setup-probes-despite-atr-range",
+      "file": "apps/runtime/src/indicators/volume-profile/volume-profile-setup.js",
+      "find": "    atrReferenceRange === null\n      ? await adapter.readPriceRange(fromTs, toTs)",
+      "replace": "    true\n      ? await adapter.readPriceRange(fromTs, toTs)",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/indicators/volume-profile/volume-profile-setup.test.js"
+      ],
+      "mustFail": [
+        "an ATR reference range replaces the window probe"
+      ]
+    },
+    {
+      "id": "svp.atr-range-failure-drops-the-candles",
+      "file": "apps/runtime/src/indicators/volume-profile/volume-profile-atr.js",
+      "find": "      if (candlesOutcome.status === \"rejected\") {",
+      "replace": "      if (candlesOutcome.status === \"rejected\" || rangeOutcome.status === \"rejected\") {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/indicators/volume-profile/volume-profile-atr.test.js"
+      ],
+      "mustFail": [
+        "keeps the candle reading when only the reference range read fails"
+      ]
+    },
+    {
+      "id": "svp.binance-cursor-page-from-session-start",
+      "file": "apps/runtime/src/indicators/volume-profile/volume-profile-adapters.js",
+      "find": "        cursor === null ? fromTs : Math.max(fromTs, cursor.ts);\n      const result = await storageReader.readRecentTrades(",
+      "replace": "        fromTs;\n      const result = await storageReader.readRecentTrades(",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/indicators/volume-profile/volume-profile-adapters.test.js"
+      ],
+      "mustFail": [
+        "pages from the cursor's time, not from the session's start"
+      ]
+    },
+    {
+      "id": "svp.dxfeed-cursor-page-from-session-start",
+      "file": "apps/runtime/src/indicators/volume-profile/volume-profile-adapters.js",
+      "find": "          fromTs: cursor === null ? fromTs : Math.max(fromTs, cursor.ts),",
+      "replace": "          fromTs,",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/indicators/volume-profile/volume-profile-adapters.test.js"
+      ],
+      "mustFail": []
+    },
+    {
+      "id": "svp.delta.fixed-ranges-counted-as-closed-zones",
+      "file": "apps/web/src/lib/indicators/delta-profile/deltaProfilePrimitive.ts",
+      "find": "      this._historicalProfiles.filter(\n        (profile) => profile.delivery_scope === \"HISTORICAL\",\n      ).length <= MAX_LABELLED_HISTORICAL_PROFILES;",
+      "replace": "      this._historicalProfiles.length <= MAX_LABELLED_HISTORICAL_PROFILES;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/delta-profile/tests/deltaProfilePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "counts only closed session zones toward the legible count"
+      ]
+    },
+    {
+      "id": "svp.delta.labels-on-every-closed-zone",
+      "file": "apps/web/src/lib/indicators/delta-profile/deltaProfilePrimitive.ts",
+      "find": "      ).length <= MAX_LABELLED_HISTORICAL_PROFILES;",
+      "replace": "      ).length <= Infinity;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/delta-profile/tests/deltaProfilePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "prints no per-bin values once closed session zones exceed the legible count"
+      ]
+    },
+    {
+      "id": "svp.delta.live-profile-unlabelled",
+      "file": "apps/web/src/lib/indicators/delta-profile/deltaProfilePrimitive.ts",
+      "find": "  const showBinValues =\n    isLive ||\n    allowHistoricalBinValues ||",
+      "replace": "  const showBinValues =\n    (!isLive && allowHistoricalBinValues) ||",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/delta-profile/tests/deltaProfilePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "keeps the developing profile's per-bin values"
+      ]
+    },
+    {
+      "id": "svp.net-delta.fixed-ranges-counted-as-closed-zones",
+      "file": "apps/web/src/lib/indicators/net-delta-profile/netDeltaProfilePrimitive.ts",
+      "find": "      this._historicalProfiles.filter(\n        (profile) => profile.delivery_scope === \"HISTORICAL\",\n      ).length <= MAX_LABELLED_HISTORICAL_PROFILES;",
+      "replace": "      this._historicalProfiles.length <= MAX_LABELLED_HISTORICAL_PROFILES;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/net-delta-profile/tests/netDeltaProfilePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "counts only closed session zones toward the legible count"
+      ]
+    },
+    {
+      "id": "svp.net-delta.labels-on-every-closed-zone",
+      "file": "apps/web/src/lib/indicators/net-delta-profile/netDeltaProfilePrimitive.ts",
+      "find": "      ).length <= MAX_LABELLED_HISTORICAL_PROFILES;",
+      "replace": "      ).length <= Infinity;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/net-delta-profile/tests/netDeltaProfilePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "prints no per-bin values once closed session zones exceed the legible count"
+      ]
+    },
+    {
+      "id": "svp.net-delta.live-profile-unlabelled",
+      "file": "apps/web/src/lib/indicators/net-delta-profile/netDeltaProfilePrimitive.ts",
+      "find": "  const showBinValues =\n    isLive ||\n    allowHistoricalBinValues ||",
+      "replace": "  const showBinValues =\n    (!isLive && allowHistoricalBinValues) ||",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/net-delta-profile/tests/netDeltaProfilePrimitive.test.ts"
+      ],
+      "mustFail": [
+        "keeps the developing profile's per-bin values"
+      ]
+    },
+    {
+      "id": "svp.labels.formatter-drops-grouping",
+      "file": "apps/web/src/lib/indicators/volume-profile/profileLevelLabels.ts",
+      "find": "const WHOLE_NUMBER_FORMAT = new Intl.NumberFormat(\"en-US\");",
+      "replace": "const WHOLE_NUMBER_FORMAT = new Intl.NumberFormat(\"en-US\", { useGrouping: false });",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/volume-profile/tests/profileLevelLabels.test.ts"
+      ],
+      "mustFail": [
+        "formats whole bin values with thousands separators"
+      ]
+    },
+    {
+      "id": "svp.labels.linear-table-wrong-knee",
+      "file": "apps/web/src/lib/indicators/volume-profile/profileLevelLabels.ts",
+      "find": "  return scaled <= 0.03928\n    ? scaled / 12.92\n    : ((scaled + 0.055) / 1.055) ** 2.4;\n});",
+      "replace": "  return scaled <= 0.5\n    ? scaled / 12.92\n    : ((scaled + 0.055) / 1.055) ** 2.4;\n});",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/volume-profile/tests/profileLevelLabels.test.ts"
+      ],
+      "mustFail": [
+        "picks the same ink as the WCAG contrast formula"
+      ]
+    },
+    {
+      "id": "svp.levels.cache-ignores-value-area",
+      "file": "apps/web/src/lib/indicators/volume-profile/deltaProfileLevels.ts",
+      "find": "  const cached = byPercent?.get(valueAreaPct);",
+      "replace": "  const cached = byPercent?.values().next().value;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators"
+      ],
+      "mustFail": []
+    }
+  ]
+}

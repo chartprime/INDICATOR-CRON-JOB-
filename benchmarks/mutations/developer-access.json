@@ -1,0 +1,130 @@
+{
+  "mutations": [
+    {
+      "id": "doctor.unconfigured-layer-fails-the-run",
+      "file": "apps/runtime/scripts/verify/doctor.js",
+      "find": "  const ok = [node, config, local.liquidityStore, hostData, dxfeed].every((check) => check.status !== BROKEN);",
+      "replace": "  const ok = [node, config, local.liquidityStore, hostData, dxfeed].every((check) => check.status === WORKING);",
+      "command": ["npx", "jest", "test/scripts/verify/doctor.test.js"],
+      "mustFail": ["a repository-only developer passes with both layers not configured"],
+      "cwd": "apps/runtime"
+    },
+    {
+      "id": "doctor.mismatched-bearers-accepted",
+      "file": "apps/runtime/scripts/verify/doctor.js",
+      "find": "  if (bearer !== value(env, \"TT_LIVE_STORAGE_CLIENT_TOKEN\")) {",
+      "replace": "  if (false) {",
+      "command": ["npx", "jest", "test/scripts/verify/doctor.test.js"],
+      "mustFail": ["two different bearers are refused"],
+      "cwd": "apps/runtime"
+    },
+    {
+      "id": "doctor.refused-bearer-blamed-on-the-archive",
+      "file": "apps/runtime/scripts/verify/doctor.js",
+      "find": "  if (query.status === 401 || query.status === 403) {",
+      "replace": "  if (query.status === 401) {",
+      "command": ["npx", "jest", "test/scripts/verify/doctor.test.js"],
+      "mustFail": ["an archive 403 is a bearer failure"],
+      "cwd": "apps/runtime"
+    },
+    {
+      "id": "doctor.empty-archive-passes",
+      "file": "apps/runtime/scripts/verify/doctor.js",
+      "find": "  if (query.body.rows.length === 0) {",
+      "replace": "  if (query.body.rows.length < 0) {",
+      "command": ["npx", "jest", "test/scripts/verify/doctor.test.js"],
+      "mustFail": ["an archive with no row for the published probe day is an archive failure"],
+      "cwd": "apps/runtime"
+    },
+    {
+      "id": "doctor.live-storage-contract-unchecked",
+      "file": "apps/runtime/scripts/verify/doctor.js",
+      "find": "  if (age.status !== 200 || age.headers?.get?.(LIVE_STORAGE_CONTRACT_HEADER) !== LIVE_STORAGE_CONTRACT",
+      "replace": "  if (age.status !== 200",
+      "command": ["npx", "jest", "test/scripts/verify/doctor.test.js"],
+      "mustFail": ["a live-storage answer without its contract header is a live-storage failure"],
+      "cwd": "apps/runtime"
+    },
+    {
+      "id": "doctor.remote-live-ticks-allowed",
+      "file": "apps/runtime/scripts/verify/doctor.js",
+      "find": "    if (parsed.error || !isLoopback(parsed.url.hostname)) {",
+      "replace": "    if (parsed.error) {",
+      "command": ["npx", "jest", "test/scripts/verify/doctor.test.js"],
+      "mustFail": ["live ticks pointed at the host are refused even with no other layer"],
+      "cwd": "apps/runtime"
+    },
+    {
+      "id": "developer-access.reuses-a-revoked-address",
+      "file": "ops/linux-host/scripts/developer-access.cjs",
+      "find": "  for (const row of registryRows) used.add(hostOf(row.address));",
+      "replace": "",
+      "command": ["npx", "jest", "test/ops/developer-access.test.js"],
+      "mustFail": ["an address is never handed out again after its developer is revoked"],
+      "cwd": "apps/runtime"
+    },
+    {
+      "id": "developer-access.revoke-leaves-the-token",
+      "file": "ops/linux-host/scripts/developer-access.cjs",
+      "find": "  const token = removeToken(state.gatewayEnv, clientId);",
+      "replace": "  const token = { text: state.gatewayEnv, removed: false };",
+      "command": ["npx", "jest", "test/ops/developer-access.test.js"],
+      "mustFail": ["removes the peer and the token together and leaves everything else as it was"],
+      "cwd": "apps/runtime"
+    },
+    {
+      "id": "developer-access.no-rollback-when-gateway-fails",
+      "file": "ops/linux-host/scripts/developer-access.cjs",
+      "find": "    for (const { file, before } of touched.reverse()) system.writeFileAtomic(file, before);",
+      "replace": "",
+      "command": ["npx", "jest", "test/ops/developer-access.test.js"],
+      "mustFail": ["a gateway that does not come back restores both files and is restarted on the old ones"],
+      "cwd": "apps/runtime"
+    },
+    {
+      "id": "developer-access.dry-run-applies",
+      "file": "ops/linux-host/scripts/developer-access.cjs",
+      "find": "  if (options.dryRun) {\n    system.out([`dry run: issue",
+      "replace": "  if (false) {\n    system.out([`dry run: issue",
+      "command": ["npx", "jest", "test/ops/developer-access.test.js"],
+      "mustFail": ["a dry run writes nothing, restarts nothing and prints no bearer"],
+      "cwd": "apps/runtime"
+    },
+    {
+      "id": "developer-access.duplicate-key-admitted",
+      "file": "ops/linux-host/scripts/developer-access.cjs",
+      "find": "  if (conf.peers.some((peer) => peer.publicKey === publicKey)) throw",
+      "replace": "  if (false) throw",
+      "command": ["npx", "jest", "test/ops/developer-access.test.js"],
+      "mustFail": ["refuses an active name, a known key, and an existing token"],
+      "cwd": "apps/runtime"
+    },
+    {
+      "id": "developer-access.secret-too-short-for-the-gateway",
+      "file": "ops/linux-host/scripts/developer-access.cjs",
+      "find": "  return crypto.randomBytes(36).toString('base64url');",
+      "replace": "  return crypto.randomBytes(12).toString('base64url');",
+      "command": ["npx", "jest", "test/ops/developer-access.test.js"],
+      "mustFail": ["a generated secret is long, random and a valid bearer"],
+      "cwd": "apps/runtime"
+    },
+    {
+      "id": "developer-access.syncconf-reads-dev-stdin",
+      "file": "ops/linux-host/scripts/developer-access.cjs",
+      "find": "    runCommand('wg', ['syncconf', iface, file]);",
+      "replace": "    runCommand('wg', ['syncconf', iface, '/dev/stdin'], stripped);",
+      "command": ["npx", "jest", "test/ops/developer-access.test.js"],
+      "mustFail": ["syncconf gets a private file holding exactly the stripped config, never /dev/stdin, and the file is gone afterwards"],
+      "cwd": "apps/runtime"
+    },
+    {
+      "id": "developer-access.stripped-config-left-on-disk",
+      "file": "ops/linux-host/scripts/developer-access.cjs",
+      "find": "    fs.rmSync(directory, { recursive: true, force: true });",
+      "replace": "",
+      "command": ["npx", "jest", "test/ops/developer-access.test.js"],
+      "mustFail": ["the stripped config, which holds the server private key, is deleted even when syncconf fails"],
+      "cwd": "apps/runtime"
+    }
+  ]
+}

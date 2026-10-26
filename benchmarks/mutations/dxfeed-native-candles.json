@@ -1,0 +1,49 @@
+{
+  "mutations": [
+    {
+      "id": "native-candles.nan-token-aborts-the-run",
+      "file": "apps/runtime/src/providers/dxfeed/dxfeed-candle-adapter.js",
+      "find": "value === undefined || value === null || value === NAN_TOKEN || (typeof value === \"number\" && Number.isNaN(value))",
+      "replace": "value === undefined || value === null || (typeof value === \"number\" && Number.isNaN(value))",
+      "command": ["npx", "jest", "test/providers/dxfeed/dxfeed-candle-adapter.test.js", "test/scripts/collect/backfill-dxfeed-native-candles.test.js"],
+      "mustFail": ["treats the wire's NaN token as an unknown side, as the event normalizer does"],
+      "cwd": "apps/runtime"
+    },
+    {
+      "id": "native-candles.refusal-hides-the-value",
+      "file": "apps/runtime/src/providers/dxfeed/dxfeed-candle-adapter.js",
+      "find": "must be non-negative and finite (got ${describeValue(value)})",
+      "replace": "must be non-negative and finite",
+      "command": ["npx", "jest", "test/providers/dxfeed/dxfeed-candle-adapter.test.js", "test/scripts/collect/backfill-dxfeed-native-candles.test.js"],
+      "mustFail": ["names the offending value when a field is refused"],
+      "cwd": "apps/runtime"
+    },
+    {
+      "id": "native-candles.resume-skips-an-uncovered-window-start",
+      "file": "apps/runtime/scripts/collect/historical/backfill-dxfeed-native-candles.js",
+      "find": " || row.earliest > requestedFrom) {",
+      "replace": ") {",
+      "command": ["npx", "jest", "test/providers/dxfeed/dxfeed-candle-adapter.test.js", "test/scripts/collect/backfill-dxfeed-native-candles.test.js"],
+      "mustFail": ["refetches the whole window when native coverage does not reach its start"],
+      "cwd": "apps/runtime"
+    },
+    {
+      "id": "native-candles.empty-minute-becomes-a-bar-or-aborts",
+      "file": "apps/runtime/scripts/collect/historical/backfill-dxfeed-native-candles.js",
+      "find": "    if (isEmptyNativeCandle(item)) {",
+      "replace": "    if (false) {",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/providers/dxfeed/dxfeed-candle-adapter.test.js", "test/scripts/collect/backfill-dxfeed-native-candles.test.js"],
+      "mustFail": ["a minute in which nothing traded is skipped and counted, never stored as a bar"]
+    },
+    {
+      "id": "native-candles.partly-empty-candle-silently-skipped",
+      "file": "apps/runtime/src/providers/dxfeed/dxfeed-candle-adapter.js",
+      "find": "[\"open\", \"high\", \"low\", \"close\"].every((field) => isAbsent(raw?.[field]))",
+      "replace": "[\"open\", \"high\", \"low\", \"close\"].some((field) => isAbsent(raw?.[field]))",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/providers/dxfeed/dxfeed-candle-adapter.test.js", "test/scripts/collect/backfill-dxfeed-native-candles.test.js"],
+      "mustFail": ["a partly empty candle still fails closed and the error shows the whole candle"]
+    }
+  ]
+}

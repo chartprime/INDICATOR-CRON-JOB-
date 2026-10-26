@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "name": "o2-single-dxfeed-nq-2026-09-21",
+  "serverDelta": true,
+  "users": 1,
+  "rounds": 1,
+  "requests": [
+    { "route": "recent-candles", "body": { "provider": "dxfeed", "symbol": "/NQU26:XCME", "assetClass": "FUTURE", "options": { "windowMs": 604800000, "nowMs": 1789999200000 } } },
+    { "route": "trades-since", "body": { "provider": "dxfeed", "symbol": "/NQU26:XCME", "assetClass": "FUTURE", "options": { "fromTs": 1789995600000, "toTs": 1789999200000, "limit": 5000 } } },
+    { "route": "minute-rollup", "body": { "provider": "dxfeed", "symbol": "/NQU26:XCME", "assetClass": "FUTURE", "options": { "fromTs": 1789394400000, "toTs": 1789999200000, "tickSize": 0.25 } } },
+    { "route": "replay-page", "body": { "provider": "dxfeed", "symbol": "/NQU26:XCME", "assetClass": "FUTURE", "options": { "fromTs": 1789998000000, "toTs": 1789999200000, "tickSize": 0.25, "clusterTicks": 1, "rowClusters": 1, "windowRows": 200, "cursor": null, "bookMode": "sparse" } }, "paginate": { "maxPages": 20 } }
+  ]
+}

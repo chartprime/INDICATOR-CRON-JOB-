@@ -1,0 +1,350 @@
+{
+ "mutations": [
+  {
+   "id": "prime.default-square",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionSettings.ts",
+   "find": "export const DEFAULT_ABSORPTION_SHAPE: AbsorptionShape = \"circle\";",
+   "replace": "export const DEFAULT_ABSORPTION_SHAPE: AbsorptionShape = \"square\";",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionSettings.test.ts",
+    "src/lib/indicators/absorption-detector/tests/absorptionPrimitive.test.ts"
+   ],
+   "mustFail": [
+    "are opacity, the spheres' size, the two colours, the strong-only switch, the rule's three numbers, History and the shape",
+    "draws circles unless told otherwise, one arc a mark"
+   ]
+  },
+  {
+   "id": "prime.shape-not-a-default",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionSettings.ts",
+   "find": "  shape: DEFAULT_ABSORPTION_SHAPE,\n};",
+   "replace": "};",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionSettings.test.ts",
+    "src/lib/chart/tests/liveIndicatorExtras.test.ts"
+   ],
+   "mustFail": [
+    "are opacity, the spheres' size, the two colours, the strong-only switch, the rule's three numbers, History and the shape",
+    "gives an absorption entry saved before the marks had a shape circles, keeps a chosen shape, and drops an entry with a shape that is not one"
+   ]
+  },
+  {
+   "id": "prime.unknown-shape-kept",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionSettings.ts",
+   "find": "  return ABSORPTION_SHAPE_OPTIONS.some(([known]) => known === shape) ? (shape as AbsorptionShape) : DEFAULT_ABSORPTION_SHAPE;",
+   "replace": "  return shape === undefined ? DEFAULT_ABSORPTION_SHAPE : (shape as AbsorptionShape);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionSettings.test.ts"
+   ],
+   "mustFail": [
+    "are opacity, the spheres' size, the two colours, the strong-only switch, the rule's three numbers, History and the shape"
+   ]
+  },
+  {
+   "id": "prime.square-not-offered",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionSettings.ts",
+   "find": "[[\"circle\", \"Circle\"], [\"triangle\", \"Triangle\"], [\"square\", \"Square\"]]",
+   "replace": "[[\"circle\", \"Circle\"], [\"triangle\", \"Triangle\"]]",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionSettings.test.ts",
+    "src/lib/indicators/absorption-detector/tests/AbsorptionSettingsModal.test.tsx",
+    "src/lib/indicators/absorption-detector/tests/absorptionPrimitive.test.ts"
+   ],
+   "mustFail": [
+    "are opacity, the spheres' size, the two colours, the strong-only switch, the rule's three numbers, History and the shape",
+    "is titled Prime Absorption and lets the trader draw the marks as circles, triangles or squares, circles to begin with",
+    "draws squares the size of the mark, centred on it"
+   ]
+  },
+  {
+   "id": "prime.triangle-not-flipped",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionPrimitive.ts",
+   "find": "    const apex = side === \"bid\" ? -1 : 1;",
+   "replace": "    const apex = -1;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionPrimitive.test.ts"
+   ],
+   "mustFail": [
+    "draws triangles the size of the mark, a bid wall's pointing up and an ask wall's pointing down"
+   ]
+  },
+  {
+   "id": "prime.triangle-tall",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionPrimitive.ts",
+   "find": "    context.moveTo(x, y + apex * r);",
+   "replace": "    context.moveTo(x, y + 2 * apex * r);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionPrimitive.test.ts"
+   ],
+   "mustFail": [
+    "draws triangles the size of the mark, a bid wall's pointing up and an ask wall's pointing down"
+   ]
+  },
+  {
+   "id": "prime.triangle-wide",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionPrimitive.ts",
+   "find": "    context.lineTo(x + r, y - apex * r);",
+   "replace": "    context.lineTo(x + 2 * r, y - apex * r);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionPrimitive.test.ts"
+   ],
+   "mustFail": [
+    "draws triangles the size of the mark, a bid wall's pointing up and an ask wall's pointing down"
+   ]
+  },
+  {
+   "id": "prime.triangle-left-open",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionPrimitive.ts",
+   "find": "    context.lineTo(x - r, y - apex * r);\n    context.closePath();",
+   "replace": "    context.lineTo(x - r, y - apex * r);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionPrimitive.test.ts"
+   ],
+   "mustFail": [
+    "draws triangles the size of the mark, a bid wall's pointing up and an ask wall's pointing down"
+   ]
+  },
+  {
+   "id": "prime.circles-drawn-as-triangles",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionPrimitive.ts",
+   "find": "  if (shape === \"triangle\") {",
+   "replace": "  if (shape !== \"square\") {",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionPrimitive.test.ts"
+   ],
+   "mustFail": [
+    "draws circles unless told otherwise, one arc a mark"
+   ]
+  },
+  {
+   "id": "prime.square-off-centre",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionPrimitive.ts",
+   "find": "    context.rect(x - r, y - r, 2 * r, 2 * r);",
+   "replace": "    context.rect(x, y, 2 * r, 2 * r);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionPrimitive.test.ts"
+   ],
+   "mustFail": [
+    "draws squares the size of the mark, centred on it"
+   ]
+  },
+  {
+   "id": "prime.square-half-size",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionPrimitive.ts",
+   "find": "    context.rect(x - r, y - r, 2 * r, 2 * r);",
+   "replace": "    context.rect(x - r, y - r, r, r);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionPrimitive.test.ts"
+   ],
+   "mustFail": [
+    "draws squares the size of the mark, centred on it"
+   ]
+  },
+  {
+   "id": "prime.shape-ignored",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionPrimitive.ts",
+   "find": "          traceMark(context, shape, bubble.x, bubble.y, bubble.r, bubble.sphere.side);",
+   "replace": "          traceMark(context, \"circle\", bubble.x, bubble.y, bubble.r, bubble.sphere.side);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionPrimitive.test.ts"
+   ],
+   "mustFail": [
+    "draws triangles the size of the mark, a bid wall's pointing up and an ask wall's pointing down",
+    "draws squares the size of the mark, centred on it"
+   ]
+  },
+  {
+   "id": "prime.badge-loading-old-name",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionPrimitive.ts",
+   "find": "`PRIME ABSORPTION ",
+   "replace": "`ABSORPTION ",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionPrimitive.test.ts"
+   ],
+   "mustFail": [
+    "names the reach while the history loads, says so when the host refuses it, and shows nothing once it is drawn",
+    "is drawn in the absorption slot while the history loads"
+   ]
+  },
+  {
+   "id": "prime.badge-unavailable-old-name",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionPrimitive.ts",
+   "find": "return \"PRIME ABSORPTION ",
+   "replace": "return \"ABSORPTION ",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionPrimitive.test.ts"
+   ],
+   "mustFail": [
+    "names the reach while the history loads, says so when the host refuses it, and shows nothing once it is drawn"
+   ]
+  },
+  {
+   "id": "prime.label-old-name",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionIndicator.ts",
+   "find": "  label: \"Prime Absorption\",",
+   "replace": "  label: \"Absorption Detector\",",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/components/chart/tests/MainPanel.test.tsx"
+   ],
+   "mustFail": [
+    "hands the chart the rule's numbers for that instrument, keeps them per instrument, and shapes the walls by the market's heatmap settings"
+   ]
+  },
+  {
+   "id": "prime.dialog-title-old-name",
+   "file": "apps/web/src/lib/indicators/absorption-detector/AbsorptionSettingsModal.tsx",
+   "find": "title=\"Prime Absorption\"",
+   "replace": "title=\"Absorption Detector\"",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/AbsorptionSettingsModal.test.tsx"
+   ],
+   "mustFail": [
+    "is titled Prime Absorption and lets the trader draw the marks as circles, triangles or squares, circles to begin with"
+   ]
+  },
+  {
+   "id": "prime.dialog-aria-old-name",
+   "file": "apps/web/src/lib/indicators/absorption-detector/AbsorptionSettingsModal.tsx",
+   "find": "ariaLabel=\"Prime Absorption settings\"",
+   "replace": "ariaLabel=\"Absorption Detector settings\"",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/AbsorptionSettingsModal.test.tsx"
+   ],
+   "mustFail": [
+    "is titled Prime Absorption and lets the trader draw the marks as circles, triangles or squares, circles to begin with"
+   ]
+  },
+  {
+   "id": "prime.radio-stuck-on-circle",
+   "file": "apps/web/src/lib/indicators/absorption-detector/AbsorptionSettingsModal.tsx",
+   "find": "checked={absorptionShapeOf(settings) === shape}",
+   "replace": "checked={shape === \"circle\"}",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/AbsorptionSettingsModal.test.tsx"
+   ],
+   "mustFail": [
+    "is titled Prime Absorption and lets the trader draw the marks as circles, triangles or squares, circles to begin with"
+   ]
+  },
+  {
+   "id": "prime.choice-not-saved",
+   "file": "apps/web/src/lib/indicators/absorption-detector/AbsorptionSettingsModal.tsx",
+   "find": "onChange={() => update({ shape })}",
+   "replace": "onChange={() => undefined}",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/AbsorptionSettingsModal.test.tsx"
+   ],
+   "mustFail": [
+    "is titled Prime Absorption and lets the trader draw the marks as circles, triangles or squares, circles to begin with"
+   ]
+  },
+  {
+   "id": "prime.any-shape-string-saved",
+   "file": "apps/web/src/lib/chart/liveIndicatorExtras.ts",
+   "find": "  shape: [\"circle\", \"triangle\", \"square\"],\n",
+   "replace": "",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/chart/tests/liveIndicatorExtras.test.ts"
+   ],
+   "mustFail": [
+    "gives an absorption entry saved before the marks had a shape circles, keeps a chosen shape, and drops an entry with a shape that is not one"
+   ]
+  },
+  {
+   "id": "prime.old-entry-dropped",
+   "file": "apps/web/src/lib/chart/liveIndicatorExtras.ts",
+   "find": "\"timeframeWidening\", \"shape\", \"absorbedPercent\"",
+   "replace": "\"timeframeWidening\", \"absorbedPercent\"",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/chart/tests/liveIndicatorExtras.test.ts"
+   ],
+   "mustFail": [
+    "gives an absorption entry saved before the marks had a shape circles, keeps a chosen shape, and drops an entry with a shape that is not one"
+   ]
+  }
+ ]
+}

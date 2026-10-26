@@ -1,0 +1,40 @@
+{
+  "mutations": [
+    {
+      "id": "pool-wire.tie-at-the-cut-keeps-the-pool-over-its-cap",
+      "file": "apps/runtime/src/server/aggressive-pool.js",
+      "find": "    if (atOrAbove > maxPrints) {",
+      "replace": "    if (false) {",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/server/aggressive-pool.test.js"],
+      "mustFail": ["a tie too large to fit is omitted rather than claiming complete coverage of a partial size group"]
+    },
+    {
+      "id": "pool-wire.oversized-tie-group-kept-whole",
+      "file": "apps/runtime/src/server/aggressive-pool.js",
+      "find": "      if (above === undefined) {",
+      "replace": "      if (false) {",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/server/aggressive-pool.test.js"],
+      "mustFail": ["a tie too large to fit is omitted rather than claiming complete coverage of a partial size group"]
+    },
+    {
+      "id": "pool-wire.dropped-tie-group-leaves-the-floor-untouched",
+      "file": "apps/runtime/src/server/aggressive-pool.js",
+      "find": "        coverageFloor = Math.max(coverageFloor, floorAbove(threshold));\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/server/aggressive-pool.test.js"],
+      "mustFail": ["a tie too large to fit is omitted rather than claiming complete coverage of a partial size group"]
+    },
+    {
+      "id": "pool-wire.record-ignores-the-coverage-floor",
+      "file": "apps/runtime/src/server/aggressive-pool.js",
+      "find": "    if (trade.size < Math.max(floor, coverageFloor)) return false;",
+      "replace": "    if (trade.size < floor) return false;",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/server/aggressive-pool.test.js"],
+      "mustFail": ["a tie too large to fit is omitted rather than claiming complete coverage of a partial size group"]
+    }
+  ]
+}

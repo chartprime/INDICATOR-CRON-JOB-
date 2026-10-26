@@ -1,0 +1,58 @@
+{
+  "mutations": [
+    {
+      "id": "archive-reader.slice-width-approximated-instead-of-refused",
+      "file": "apps/runtime/src/storage/archive-storage-reader.js",
+      "find": "  if (!Number.isSafeInteger(value) || value <= 0 || value % unit !== 0) {",
+      "replace": "  if (!Number.isSafeInteger(value) || value <= 0) {",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/storage/archive-storage-reader.test.js"],
+      "mustFail": ["a slice narrower than the archived two seconds is refused"]
+    },
+    {
+      "id": "archive-reader.row-width-finer-than-the-tick-is-interpolated",
+      "file": "apps/runtime/src/storage/archive-storage-reader.js",
+      "find": "        if (rowWidth < level.tickSize) {",
+      "replace": "        if (false) {",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/storage/archive-storage-reader.test.js"],
+      "mustFail": ["a row narrower than the archived tick is refused"]
+    },
+    {
+      "id": "archive-reader.daily-notional-counts-one-side",
+      "file": "apps/runtime/src/storage/archive-storage-reader.js",
+      "find": "      const notional = finite(row.buy_notional, \"buy_notional\") + finite(row.sell_notional, \"sell_notional\");",
+      "replace": "      const notional = finite(row.buy_notional, \"buy_notional\");",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/storage/archive-storage-reader.test.js"],
+      "mustFail": ["readDailyNotional totals the same day"]
+    },
+    {
+      "id": "archive-reader.page-budget-exhaustion-returns-a-short-answer",
+      "file": "apps/runtime/src/storage/archive-storage-reader.js",
+      "find": "      if (!finished) throw new ArchiveReadUnavailable(\"PAGE_BUDGET_EXHAUSTED\");",
+      "replace": "      if (!finished) return;",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/storage/archive-storage-reader.test.js"],
+      "mustFail": ["a window that outruns the page budget is unavailable, never silently short"]
+    },
+    {
+      "id": "archive-reader.minute-rollup-ignores-the-requested-tick",
+      "file": "apps/runtime/src/storage/archive-storage-reader.js",
+      "find": "      if (tickSize < archivedTick) {",
+      "replace": "      if (false) {",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/storage/archive-storage-reader.test.js"],
+      "mustFail": ["a tick finer than the archived one is refused by the minute rollup"]
+    },
+    {
+      "id": "archive-reader.slice-anchored-on-the-opening-edge",
+      "file": "apps/runtime/src/storage/archive-storage-reader.js",
+      "find": "      entry.sliceTs = Math.max(entry.sliceTs, msOf(row.last_trade_ns, \"last_trade_ns\"));",
+      "replace": "      entry.sliceTs = Math.max(entry.sliceTs, openMs);",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/storage/archive-storage-reader.test.js"],
+      "mustFail": ["readSlicedNotional returns the same slices anchored on the same last execution"]
+    }
+  ]
+}

@@ -1,0 +1,357 @@
+{
+ "mutations": [
+  {
+   "id": "holes.behind-oldest-only",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatmapLayout.ts",
+   "find": "  const want: HistoryWant = { levelMs, rowFactor, fromTs: oldestLive - reachMs, toTs: askedTo, beforeTs: askedTo };",
+   "replace": "  const want: HistoryWant = { levelMs, rowFactor, fromTs: oldestLive - reachMs, toTs: oldestLive, beforeTs: oldestLive };",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatmapLayout.test.ts"
+   ],
+   "mustFail": [
+    "fills the holes in the runtime's columns from the host as well as the stretch behind them: the past tier holds the host's columns wherever the lane has none of its own, asked up to the live edge, the same array while nothing changes"
+   ]
+  },
+  {
+   "id": "holes.coverage-ignored",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatmapLayout.ts",
+   "find": "    if (!covered) out.push(column);",
+   "replace": "    out.push(column);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatmapLayout.test.ts"
+   ],
+   "mustFail": [
+    "fills the holes in the runtime's columns from the host as well as the stretch behind them: the past tier holds the host's columns wherever the lane has none of its own, asked up to the live edge, the same array while nothing changes"
+   ]
+  },
+  {
+   "id": "holes.slot-never-aligned",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatmapLayout.ts",
+   "find": "    const start = aligned ? Math.floor(column.ts / columnMs) * columnMs : column.ts;",
+   "replace": "    const start = column.ts;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatmapLayout.test.ts"
+   ],
+   "mustFail": [
+    "fills the holes in the runtime's columns from the host as well as the stretch behind them: the past tier holds the host's columns wherever the lane has none of its own, asked up to the live edge, the same array while nothing changes"
+   ]
+  },
+  {
+   "id": "holes.identity-lost",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatmapLayout.ts",
+   "find": "  const result = same ? cached.columns : out;",
+   "replace": "  const result = out;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatmapLayout.test.ts",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHistoryLayout.test.ts"
+   ],
+   "mustFail": [
+    "fills the holes in the runtime's columns from the host as well as the stretch behind them: the past tier holds the host's columns wherever the lane has none of its own, asked up to the live edge, the same array while nothing changes"
+   ]
+  },
+  {
+   "id": "holes.ask-every-column",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatmapLayout.ts",
+   "find": "  const askedTo = Math.floor((liveEdge - 1) / HISTORY_WINDOW_MS) * HISTORY_WINDOW_MS + HISTORY_WINDOW_MS;",
+   "replace": "  const askedTo = liveEdge;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatmapLayout.test.ts"
+   ],
+   "mustFail": [
+    "fills the holes in the runtime's columns from the host as well as the stretch behind them: the past tier holds the host's columns wherever the lane has none of its own, asked up to the live edge, the same array while nothing changes"
+   ]
+  },
+  {
+   "id": "holes.ask-window-start",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatmapLayout.ts",
+   "find": "  const askedTo = Math.floor((liveEdge - 1) / HISTORY_WINDOW_MS) * HISTORY_WINDOW_MS + HISTORY_WINDOW_MS;",
+   "replace": "  const askedTo = Math.floor((liveEdge - 1) / HISTORY_WINDOW_MS) * HISTORY_WINDOW_MS;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatmapLayout.test.ts"
+   ],
+   "mustFail": [
+    "fills the holes in the runtime's columns from the host as well as the stretch behind them: the past tier holds the host's columns wherever the lane has none of its own, asked up to the live edge, the same array while nothing changes"
+   ]
+  },
+  {
+   "id": "holes.live-edge-at-last-open",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatmapLayout.ts",
+   "find": "tier.columns[tier.columns.length - 1].ts + tier.columnMs : -Infinity",
+   "replace": "tier.columns[tier.columns.length - 1].ts : -Infinity",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHistoryLayout.test.ts"
+   ],
+   "mustFail": [
+    "with no store there is no history; with one, the reach is asked for even while the view sits inside the live span"
+   ]
+  },
+  {
+   "id": "holes.slot-end-inclusive",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatmapLayout.ts",
+   "find": "      return index < list.length && list[index].ts < start + columnMs;",
+   "replace": "      return index < list.length && list[index].ts <= start + columnMs;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatmapLayout.test.ts"
+   ],
+   "mustFail": [
+    "fills the holes in the runtime's columns from the host as well as the stretch behind them: the past tier holds the host's columns wherever the lane has none of its own, asked up to the live edge, the same array while nothing changes"
+   ]
+  },
+  {
+   "id": "holes.reads-past-a-lane-tier",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatmapLayout.ts",
+   "find": "      return index < list.length && list[index].ts < start + columnMs;",
+   "replace": "      return list[index].ts < start + columnMs;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatmapLayout.test.ts"
+   ],
+   "mustFail": [
+    "fills the holes in the runtime's columns from the host as well as the stretch behind them: the past tier holds the host's columns wherever the lane has none of its own, asked up to the live edge, the same array while nothing changes"
+   ]
+  },
+  {
+   "id": "holes.fine-tier-not-own",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatmapLayout.ts",
+   "find": "  const filler = fillHoles(laned, [drawn.deepColumns, drawn.columns], liveEdge, columnMs, cellMs > shown.levelMs);",
+   "replace": "  const filler = fillHoles(laned, [drawn.deepColumns], liveEdge, columnMs, cellMs > shown.levelMs);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatmapLayout.test.ts"
+   ],
+   "mustFail": [
+    "fills the holes in the runtime's columns from the host as well as the stretch behind them: the past tier holds the host's columns wherever the lane has none of its own, asked up to the live edge, the same array while nothing changes"
+   ]
+  },
+  {
+   "id": "holes.judged-by-own-minute",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatmapLayout.ts",
+   "find": "  const filler = fillHoles(laned, [drawn.deepColumns, drawn.columns], liveEdge, columnMs, cellMs > shown.levelMs);",
+   "replace": "  const filler = fillHoles(laned, [drawn.deepColumns, drawn.columns], liveEdge, shown.levelMs, cellMs > shown.levelMs);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatmapLayout.test.ts"
+   ],
+   "mustFail": [
+    "fills the holes in the runtime's columns from the host as well as the stretch behind them: the past tier holds the host's columns wherever the lane has none of its own, asked up to the live edge, the same array while nothing changes"
+   ]
+  },
+  {
+   "id": "holes.fold-reads-whole-reach",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatmapLayout.ts",
+   "find": "  const columns = cellMs > shown.levelMs ? foldHistory(filler, cellMs) : filler;",
+   "replace": "  const columns = cellMs > shown.levelMs ? foldHistory(laned, cellMs) : filler;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatmapLayout.test.ts"
+   ],
+   "mustFail": [
+    "fills the holes in the runtime's columns from the host as well as the stretch behind them: the past tier holds the host's columns wherever the lane has none of its own, asked up to the live edge, the same array while nothing changes"
+   ]
+  },
+  {
+   "id": "holes.plain-reads-whole-reach",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatmapLayout.ts",
+   "find": "  const columns = cellMs > shown.levelMs ? foldHistory(filler, cellMs) : filler;",
+   "replace": "  const columns = cellMs > shown.levelMs ? foldHistory(filler, cellMs) : laned;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatmapLayout.test.ts"
+   ],
+   "mustFail": [
+    "fills the holes in the runtime's columns from the host as well as the stretch behind them: the past tier holds the host's columns wherever the lane has none of its own, asked up to the live edge, the same array while nothing changes"
+   ]
+  },
+  {
+   "id": "holes.cache-ignores-key",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatmapLayout.ts",
+   "find": "  if (cached !== undefined && cached.key === key) return cached.columns;",
+   "replace": "  if (cached !== undefined) return cached.columns;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatmapLayout.test.ts"
+   ],
+   "mustFail": [
+    "fills the holes in the runtime's columns from the host as well as the stretch behind them: the past tier holds the host's columns wherever the lane has none of its own, asked up to the live edge, the same array while nothing changes"
+   ]
+  },
+  {
+   "id": "holes.filler-never-kept",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatmapLayout.ts",
+   "find": "  fillerHistory.set(columns, { key, columns: result });",
+   "replace": "",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatmapLayout.test.ts"
+   ],
+   "mustFail": [
+    "fills the holes in the runtime's columns from the host as well as the stretch behind them: the past tier holds the host's columns wherever the lane has none of its own, asked up to the live edge, the same array while nothing changes"
+   ]
+  },
+  {
+   "id": "holes.kept-list-any-length",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatmapLayout.ts",
+   "find": "cached.columns.length === out.length && ",
+   "replace": "",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatmapLayout.test.ts"
+   ],
+   "mustFail": [
+    "fills the holes in the runtime's columns from the host as well as the stretch behind them: the past tier holds the host's columns wherever the lane has none of its own, asked up to the live edge, the same array while nothing changes"
+   ]
+  },
+  {
+   "id": "holes.finder-feeds-tier-by-tier",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityRunFinder.ts",
+   "find": "        if (next === null || cursor.tier.columns[cursor.at].ts < next.tier.columns[next.at].ts) next = cursor;",
+   "replace": "        if (next === null) next = cursor;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityRunFinder.test.ts"
+   ],
+   "mustFail": [
+    "feeds the kept scan in time order across tiers: the host's columns filling a hole between the runtime's end a level where it left"
+   ]
+  },
+  {
+   "id": "holes.finder-tiers-from-their-start",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityRunFinder.ts",
+   "find": "at: liquidityIndexAtOrAfter(tier.columns, fromTs), stop:",
+   "replace": "at: 0, stop:",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityRunFinder.test.ts"
+   ],
+   "mustFail": [
+    "answers every frame as a scan of everything the chart ever held would, scanning the settled columns once"
+   ]
+  },
+  {
+   "id": "holes.finder-past-the-candle",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityRunFinder.ts",
+   "find": "stop: Math.min(tier.cutTs, toTs) }));",
+   "replace": "stop: tier.cutTs }));",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityRunFinder.test.ts"
+   ],
+   "mustFail": [
+    "answers every frame as a scan of everything the chart ever held would, scanning the settled columns once"
+   ]
+  },
+  {
+   "id": "holes.finder-runs-off-a-tier",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityRunFinder.ts",
+   "find": "        if (cursor.at >= cursor.tier.columns.length || cursor.tier.columns[cursor.at].ts >= cursor.stop) continue;",
+   "replace": "        if (cursor.at > cursor.tier.columns.length || cursor.tier.columns[cursor.at].ts >= cursor.stop) continue;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityRunFinder.test.ts"
+   ],
+   "mustFail": [
+    "feeds the kept scan in time order across tiers: the host's columns filling a hole between the runtime's end a level where it left"
+   ]
+  },
+  {
+   "id": "holes.runs-feed-tier-by-tier",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityRuns.ts",
+   "find": "      if (next === null || cursor.tier.columns[cursor.at].ts < next.tier.columns[next.at].ts) next = cursor;",
+   "replace": "      if (next === null) next = cursor;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityRuns.test.ts"
+   ],
+   "mustFail": [
+    "scans the tiers in time order whatever order they come in: the host's columns filling a hole between the runtime's are judged where they stand"
+   ]
+  },
+  {
+   "id": "holes.runs-past-scanto",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityRuns.ts",
+   "find": "      if (cursor.at >= cursor.tier.scanTo) continue;",
+   "replace": "      if (cursor.at > cursor.tier.scanTo) continue;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityRuns.test.ts"
+   ],
+   "mustFail": [
+    "scans the tiers in time order whatever order they come in: the host's columns filling a hole between the runtime's are judged where they stand"
+   ]
+  }
+ ]
+}

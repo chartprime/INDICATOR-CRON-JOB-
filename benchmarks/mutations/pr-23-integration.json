@@ -1,0 +1,53 @@
+{
+  "mutations": [
+    {
+      "id": "pr23-historical-asks-below-archive-floor",
+      "file": "apps/web/src/components/historical/HistoricalModePanel.tsx",
+      "find": "        ARCHIVE_MIN_BIN_SIZE_MULTIPLIER,\n      ),",
+      "replace": "        0,\n      ),",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/components/historical/HistoricalModePanel.test.tsx", "-t", "asks the archive for no finer a bin size"],
+      "mustFail": ["asks the archive for no finer a bin size than it accepts"],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "pr23-archive-floor-drifts-from-browser",
+      "file": "apps/web/src/lib/archive/archiveStudyClient.ts",
+      "find": "export const ARCHIVE_MIN_BIN_SIZE_MULTIPLIER = 0.1;",
+      "replace": "export const ARCHIVE_MIN_BIN_SIZE_MULTIPLIER = 0.05;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "test/contracts/ws-frame-contract-limits.test.js", "-t", "Historical Mode never asks the archive"],
+      "mustFail": ["Historical Mode never asks the archive for a bin size below the archive study's own floor"]
+    },
+    {
+      "id": "pr23-bin-ink-chosen-by-luma",
+      "file": "apps/web/src/lib/indicators/volume-profile/profileLevelLabels.ts",
+      "find": "    contrastRatio(DARK_BIN_VALUE_INK_RGBA, seen) >=\n    contrastRatio(LIGHT_BIN_VALUE_INK_RGBA, seen)",
+      "replace": "    relativeLuminance(seen) > 0.6",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/indicators/net-delta-profile/tests/netDeltaProfilePrimitive.test.ts", "-t", "always picks the ink with the higher WCAG contrast"],
+      "mustFail": ["always picks the ink with the higher WCAG contrast"],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "pr23-bin-size-not-persisted",
+      "file": "apps/web/src/lib/indicators/session-profile/sessionProfileIndicator.tsx",
+      "find": "      min: MIN_BIN_SIZE_MULTIPLIER,\n      max: MAX_BIN_SIZE_MULTIPLIER,",
+      "replace": "      min: 0,\n      max: MAX_BIN_SIZE_MULTIPLIER,",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/chart/historicalIndicatorPreferences.test.ts", "-t", "a chosen bin size and value-area line style survive"],
+      "mustFail": ["a chosen bin size and value-area line style survive a save and reload, and out-of-range values fall back"],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "pr23-net-delta-line-style-not-persisted",
+      "file": "apps/web/src/lib/indicators/session-profile/sessionProfileIndicator.tsx",
+      "find": "isValidPersistedValue: (value) => VAH_VAL_STYLES.has(value),",
+      "replace": "isValidPersistedValue: () => false,",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/chart/historicalIndicatorPreferences.test.ts", "-t", "a chosen bin size and value-area line style survive"],
+      "mustFail": ["a chosen bin size and value-area line style survive a save and reload, and out-of-range values fall back"],
+      "timeoutMs": 120000
+    }
+  ]
+}

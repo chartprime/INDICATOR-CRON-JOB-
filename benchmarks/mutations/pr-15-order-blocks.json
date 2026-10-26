@@ -1,0 +1,76 @@
+{
+  "mutations": [
+    {
+      "id": "pr15.classic-origin-instead-of-swing-time",
+      "file": "apps/web/src/lib/indicators/classic-order-blocks/orderBlockTracker.ts",
+      "find": "    pivotTime: pivot.time,",
+      "replace": "    pivotTime: origin.time,",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/classic-order-blocks/tests/orderBlockTracker.test.ts"],
+      "mustFail": ["forms a bullish block on the first close above a confirmed swing high"]
+    },
+    {
+      "id": "pr15.classic-active-cap-missing",
+      "file": "apps/web/src/lib/indicators/classic-order-blocks/orderBlockTracker.ts",
+      "find": "  if (state.activeBlocks.length > state.maxBlocks) {",
+      "replace": "  if (false) {",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/classic-order-blocks/tests/orderBlockTracker.test.ts"],
+      "mustFail": ["keeps the newest MAX_ORDER_BLOCKS blocks"]
+    },
+    {
+      "id": "pr15.institutional-drops-mitigated-grade",
+      "file": "apps/web/src/lib/indicators/institutional-order-blocks/institutionalTracker.ts",
+      "find": "  const retained = new Set([...state.classic.activeBlocks, ...state.classic.mitigatedBlocks]);",
+      "replace": "  const retained = new Set(state.classic.activeBlocks);",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/institutional-order-blocks/tests/institutionalTracker.test.ts"],
+      "mustFail": ["stops reading a zone once it is mitigated, keeping its last grade"]
+    },
+    {
+      "id": "pr15.institutional-hidden-zones-consume-slots",
+      "file": "apps/web/src/lib/indicators/institutional-order-blocks/institutionalRender.ts",
+      "find": "entries.filter((entry) => isShownInstitutional(entry, settings)).slice(-slots.length)",
+      "replace": "entries.slice(-slots.length).filter((entry) => isShownInstitutional(entry, settings))",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/institutional-order-blocks/tests/institutionalRender.test.ts"],
+      "mustFail": ["selects visible grades before applying the slot cap"]
+    },
+    {
+      "id": "pr15.l1-infers-missing-provider-sell",
+      "file": "apps/web/src/lib/indicators/l1-order-blocks/l1OrderBlocks.ts",
+      "find": "        ? bar.sell_volume ?? null",
+      "replace": "        ? Math.max(0, bar.volume - (bar.buy_volume ?? 0))",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/l1-order-blocks/tests/l1OrderBlocks.test.ts"],
+      "mustFail": ["does not infer the unrecorded dxFeed or Databento sell side from total volume"]
+    },
+    {
+      "id": "pr15.l1-invents-aged-pivot-base",
+      "file": "apps/web/src/lib/indicators/l1-order-blocks/l1OrderBlocks.ts",
+      "find": "        if (pivotIdx < 0) {\n          state.primaryHighs.splice(index, 1);",
+      "replace": "        if (false) {\n          state.primaryHighs.splice(index, 1);",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/l1-order-blocks/tests/l1OrderBlocks.test.ts"],
+      "mustFail": ["drops a broken pivot whose origin aged out instead of inventing a new base"]
+    },
+    {
+      "id": "pr15.card-margin-ignores-gap",
+      "file": "apps/web/src/lib/chart/draw/kernelPrimitive.ts",
+      "find": "paneWidthPx - box.x2 - CARD_GAP_PX",
+      "replace": "paneWidthPx - box.x2",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/chart/draw/tests/kernelPrimitive.test.ts"],
+      "mustFail": ["reserves the gap before fitting a card against the pane edge"]
+    },
+    {
+      "id": "pr15.liquidity-replays-all-indicators",
+      "file": "apps/web/src/lib/chart/indicatorRuntime.ts",
+      "find": "    for (const record of records.values()) {\n      if (!record.faulted && record.def.category === \"l2\") fullReplay(record, bars);",
+      "replace": "    for (const record of records.values()) {\n      if (!record.faulted) fullReplay(record, bars);",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/chart/tests/indicatorRuntime.test.ts"],
+      "mustFail": ["does not replay candle or trade indicators when only the L2 feed changes"]
+    }
+  ]
+}

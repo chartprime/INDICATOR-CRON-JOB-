@@ -1,0 +1,1199 @@
+{
+  "mutations": [
+    {
+      "id": "initiative.wire.channel-capability-name",
+      "file": "apps/runtime/src/server/initiative-channel.js",
+      "find": "const CAPABILITY = \"initiative_bands\";",
+      "replace": "const CAPABILITY = \"exhaustion_shades\";",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/initiative-channel.test.js"
+      ],
+      "mustFail": [
+        "the capability is initiative_bands; a client that declares it gets the snapshot page on subscribe"
+      ]
+    },
+    {
+      "id": "initiative.wire.channel-subscribe-needs-the-flag",
+      "file": "apps/runtime/src/server/initiative-channel.js",
+      "find": "    const wanted = flags.has(CAPABILITY);",
+      "replace": "    const wanted = true;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/initiative-channel.test.js"
+      ],
+      "mustFail": [
+        "the capability is initiative_bands; a client that declares it gets the snapshot page on subscribe"
+      ]
+    },
+    {
+      "id": "initiative.wire.channel-unsubscribe-drops-the-flag",
+      "file": "apps/runtime/src/server/initiative-channel.js",
+      "find": "      if (subscribers.has(client)) leave(client);\n      return;",
+      "replace": "      return;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/initiative-channel.test.js"
+      ],
+      "mustFail": [
+        "reselect resends the snapshot to every subscriber"
+      ]
+    },
+    {
+      "id": "initiative.wire.channel-snapshot-needs-a-pair",
+      "file": "apps/runtime/src/server/initiative-channel.js",
+      "find": "    if (!pair) return [];\n    try {",
+      "replace": "    try {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/initiative-channel.test.js"
+      ],
+      "mustFail": [
+        "reselect resends the snapshot to every subscriber"
+      ]
+    },
+    {
+      "id": "initiative.wire.channel-snapshot-null-is-empty",
+      "file": "apps/runtime/src/server/initiative-channel.js",
+      "find": "      if (!snap) return [];",
+      "replace": "      if (snap === undefined) return [];",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/initiative-channel.test.js"
+      ],
+      "mustFail": [
+        "reselect resends the snapshot to every subscriber"
+      ]
+    },
+    {
+      "id": "initiative.wire.channel-publish-active-pair-only",
+      "file": "apps/runtime/src/server/initiative-channel.js",
+      "find": "    if (!active || active.marketKind !== pair.marketKind || active.symbol !== pair.symbol) return 0;",
+      "replace": "    if (!active) return 0;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/initiative-channel.test.js"
+      ],
+      "mustFail": [
+        "an increment reaches subscribers for the active pair only"
+      ]
+    },
+    {
+      "id": "initiative.wire.channel-publish-needs-an-active-pair",
+      "file": "apps/runtime/src/server/initiative-channel.js",
+      "find": "    if (!active || active.marketKind !== pair.marketKind || active.symbol !== pair.symbol) return 0;",
+      "replace": "    if (active && (active.marketKind !== pair.marketKind || active.symbol !== pair.symbol)) return 0;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/initiative-channel.test.js"
+      ],
+      "mustFail": [
+        "an increment reaches subscribers for the active pair only"
+      ]
+    },
+    {
+      "id": "initiative.wire.channel-publish-needs-subscribers",
+      "file": "apps/runtime/src/server/initiative-channel.js",
+      "find": "    if (!Array.isArray(bands) || bands.length === 0 || subscribers.size === 0) return 0;",
+      "replace": "    if (!Array.isArray(bands) || bands.length === 0) return 0;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/initiative-channel.test.js"
+      ],
+      "mustFail": [
+        "reselect resends the snapshot to every subscriber"
+      ]
+    },
+    {
+      "id": "initiative.wire.channel-seq-rises-per-pair",
+      "file": "apps/runtime/src/server/initiative-channel.js",
+      "find": "    const seq = (seqByPair.get(key) ?? 0) + 1;",
+      "replace": "    const seq = 1;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/initiative-channel.test.js"
+      ],
+      "mustFail": [
+        "an increment reaches subscribers for the active pair only"
+      ]
+    },
+    {
+      "id": "initiative.wire.channel-chunked-at-the-cap",
+      "file": "apps/runtime/src/server/initiative-channel.js",
+      "find": "    for (let start = 0; start < bands.length; start += MAX_INITIATIVE_BANDS) {",
+      "replace": "    for (let start = 0; start < bands.length; start += MAX_INITIATIVE_BANDS * 2) {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/initiative-channel.test.js"
+      ],
+      "mustFail": [
+        "a long increment is chunked at the frame cap"
+      ]
+    },
+    {
+      "id": "initiative.wire.channel-invalid-increment-resends",
+      "file": "apps/runtime/src/server/initiative-channel.js",
+      "find": "        reselect();\n        return sent;",
+      "replace": "        return sent;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/initiative-channel.test.js"
+      ],
+      "mustFail": [
+        "an invalid increment is logged and the snapshot resent"
+      ]
+    },
+    {
+      "id": "initiative.wire.channel-reselect-every-subscriber",
+      "file": "apps/runtime/src/server/initiative-channel.js",
+      "find": "    for (const client of subscribers) replayer.start(client, frames);",
+      "replace": "    for (const client of [...subscribers].slice(0, 1)) replayer.start(client, frames);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/initiative-channel.test.js"
+      ],
+      "mustFail": [
+        "reselect resends the snapshot to every subscriber"
+      ]
+    },
+    {
+      "id": "initiative.wire.channel-stop-all-clears",
+      "file": "apps/runtime/src/server/initiative-channel.js",
+      "find": "    replayer.stopAll();\n    subscribers.clear();",
+      "replace": "    replayer.stopAll();",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/initiative-channel.test.js"
+      ],
+      "mustFail": [
+        "reselect resends the snapshot to every subscriber"
+      ]
+    },
+    {
+      "id": "initiative.wire.ask-type",
+      "file": "apps/runtime/src/server/initiative-channel.js",
+      "find": "  if (!message || typeof message !== \"object\" || message.type !== \"initiative_history\") return null;",
+      "replace": "  if (!message || typeof message !== \"object\") return null;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/initiative-channel.test.js"
+      ],
+      "mustFail": [
+        "an initiative_history ask is exactly type and a non-negative epoch-ms from_ts"
+      ]
+    },
+    {
+      "id": "initiative.wire.ask-exact-keys",
+      "file": "apps/runtime/src/server/initiative-channel.js",
+      "find": "  if (keys.length !== 2 || keys[0] !== \"from_ts\" || keys[1] !== \"type\") return null;",
+      "replace": "  if (keys[0] !== \"from_ts\" || keys[1] !== \"type\") return null;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/initiative-channel.test.js"
+      ],
+      "mustFail": [
+        "an initiative_history ask is exactly type and a non-negative epoch-ms from_ts"
+      ]
+    },
+    {
+      "id": "initiative.wire.ask-epoch-bounds",
+      "file": "apps/runtime/src/server/initiative-channel.js",
+      "find": "  if (!Number.isSafeInteger(fromTs) || fromTs < 0 || fromTs > MAX_VALID_EPOCH_MS) return null;",
+      "replace": "  if (!Number.isSafeInteger(fromTs) || fromTs < 0) return null;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/initiative-channel.test.js"
+      ],
+      "mustFail": [
+        "an initiative_history ask is exactly type and a non-negative epoch-ms from_ts"
+      ]
+    },
+    {
+      "id": "initiative.wire.ask-non-negative",
+      "file": "apps/runtime/src/server/initiative-channel.js",
+      "find": "  if (!Number.isSafeInteger(fromTs) || fromTs < 0 || fromTs > MAX_VALID_EPOCH_MS) return null;",
+      "replace": "  if (!Number.isSafeInteger(fromTs) || fromTs > MAX_VALID_EPOCH_MS) return null;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/initiative-channel.test.js"
+      ],
+      "mustFail": [
+        "an initiative_history ask is exactly type and a non-negative epoch-ms from_ts"
+      ]
+    },
+    {
+      "id": "initiative.wire.server-ask-reaches-the-indicator",
+      "file": "apps/runtime/src/server/market-data-server.js",
+      "find": "      if (initiativeEnabled) initiativeIndicator.requestHistory({ marketKind: activeMarketKind, symbol: activeSymbol }, fromTs);",
+      "replace": "      void fromTs;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/market-data-server.test.js",
+        "-t",
+        "Initiative Continuation channel"
+      ],
+      "mustFail": [
+        "a client that declares initiative_bands gets a reset page for the active pair"
+      ]
+    },
+    {
+      "id": "initiative.wire.server-ask-parsed",
+      "file": "apps/runtime/src/server/market-data-server.js",
+      "find": "        console.warn(\"market data server: dropped initiative_history request with unexpected fields\");\n        return;",
+      "replace": "        return;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/market-data-server.test.js",
+        "-t",
+        "Initiative Continuation channel"
+      ],
+      "mustFail": [
+        "a malformed initiative_history ask is dropped with a warning"
+      ]
+    },
+    {
+      "id": "initiative.wire.server-subscribes-the-channel",
+      "file": "apps/runtime/src/server/market-data-server.js",
+      "find": "      initiativeChannel.subscribe(client, flags);",
+      "replace": "      void flags;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/market-data-server.test.js",
+        "-t",
+        "Initiative Continuation channel"
+      ],
+      "mustFail": [
+        "a client that declares initiative_bands gets a reset page for the active pair",
+        "a client that never declares the flag is not sent initiative pages"
+      ]
+    },
+    {
+      "id": "initiative.wire.server-reselects-on-switch",
+      "file": "apps/runtime/src/server/market-data-server.js",
+      "find": "    initiativeChannel.reselect();",
+      "replace": "    void 0;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/market-data-server.test.js",
+        "-t",
+        "Initiative Continuation channel"
+      ],
+      "mustFail": [
+        "a client that declares initiative_bands gets a reset page for the active pair"
+      ]
+    },
+    {
+      "id": "initiative.wire.server-starts-the-indicator",
+      "file": "apps/runtime/src/server/market-data-server.js",
+      "find": "    initiativeIndicator.start();",
+      "replace": "    void 0;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/market-data-server.test.js",
+        "-t",
+        "Initiative Continuation channel"
+      ],
+      "mustFail": [
+        "a client that declares initiative_bands gets a reset page for the active pair"
+      ]
+    },
+    {
+      "id": "initiative.wire.server-ticks-the-active-pair-first",
+      "file": "apps/runtime/src/server/market-data-server.js",
+      "find": "          initiativeIndicator.tick(indicatorPairs(), now());",
+      "replace": "          initiativeIndicator.tick([], now());",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/market-data-server.test.js",
+        "-t",
+        "Initiative Continuation channel"
+      ],
+      "mustFail": [
+        "a client that declares initiative_bands gets a reset page for the active pair"
+      ]
+    },
+    {
+      "id": "initiative.wire.server-stops-the-indicator",
+      "file": "apps/runtime/src/server/market-data-server.js",
+      "find": "    try {\n      initiativeIndicator.stop();\n    } catch (error) {\n      errors.push(error);\n    }",
+      "replace": "    void initiativeIndicator;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/market-data-server.test.js",
+        "-t",
+        "Initiative Continuation channel"
+      ],
+      "mustFail": [
+        "a client that declares initiative_bands gets a reset page for the active pair"
+      ]
+    },
+    {
+      "id": "initiative.wire.eager-ask-reaches-the-indicator",
+      "file": "apps/runtime/src/server/dxfeed-eager-market-data-server.js",
+      "find": "      if (view && initiativeEnabled) initiativeIndicator.requestHistory({ marketKind: view.assetClass, symbol: view.symbol }, fromTs);",
+      "replace": "      void fromTs;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/dxfeed-eager-market-data-server.test.js",
+        "-t",
+        "Initiative Continuation channel"
+      ],
+      "mustFail": [
+        "a client that declares initiative_bands gets a reset page for the selected instrument"
+      ]
+    },
+    {
+      "id": "initiative.wire.eager-subscribes-the-channel",
+      "file": "apps/runtime/src/server/dxfeed-eager-market-data-server.js",
+      "find": "        initiativeChannel.subscribe(client, flags);",
+      "replace": "        void flags;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/dxfeed-eager-market-data-server.test.js",
+        "-t",
+        "Initiative Continuation channel"
+      ],
+      "mustFail": [
+        "a client that declares initiative_bands gets a reset page for the selected instrument"
+      ]
+    },
+    {
+      "id": "initiative.wire.eager-ticks-every-view",
+      "file": "apps/runtime/src/server/dxfeed-eager-market-data-server.js",
+      "find": "          initiativeIndicator.tick([...views.values()].map((view) => ({ marketKind: view.assetClass, symbol: view.symbol })), now());",
+      "replace": "          initiativeIndicator.tick([], now());",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/dxfeed-eager-market-data-server.test.js",
+        "-t",
+        "Initiative Continuation channel"
+      ],
+      "mustFail": [
+        "a client that declares initiative_bands gets a reset page for the selected instrument"
+      ]
+    },
+    {
+      "id": "initiative.wire.eager-stops-the-indicator",
+      "file": "apps/runtime/src/server/dxfeed-eager-market-data-server.js",
+      "find": "    try {\n      initiativeIndicator.stop();\n    } catch (error) {\n      errors.push(error);\n    }",
+      "replace": "    void initiativeIndicator;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/dxfeed-eager-market-data-server.test.js",
+        "-t",
+        "Initiative Continuation channel"
+      ],
+      "mustFail": [
+        "a client that declares initiative_bands gets a reset page for the selected instrument"
+      ]
+    },
+    {
+      "id": "initiative.wire.parser-band-key-count",
+      "file": "apps/web/src/types/frames.ts",
+      "find": "  if (Object.keys(entry).length !== INITIATIVE_BAND_KEYS) return null;",
+      "replace": "  if (Object.keys(entry).length < INITIATIVE_BAND_KEYS) return null;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/contracts/initiative-bands-contract.test.js"
+      ],
+      "mustFail": [
+        "the browser rejects what the builder refuses"
+      ]
+    },
+    {
+      "id": "initiative.wire.parser-id-length",
+      "file": "apps/web/src/types/frames.ts",
+      "find": "    entry.id.length > MAX_INITIATIVE_ID_LENGTH ||\n    typeof entry.candleMs !== \"number\" ||",
+      "replace": "    typeof entry.candleMs !== \"number\" ||",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/contracts/initiative-bands-contract.test.js"
+      ],
+      "mustFail": [
+        "the browser rejects what the builder refuses"
+      ]
+    },
+    {
+      "id": "initiative.wire.parser-candle-length",
+      "file": "apps/web/src/types/frames.ts",
+      "find": "    !INITIATIVE_CANDLE_MS.has(entry.candleMs) ||",
+      "replace": "    false ||",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/contracts/initiative-bands-contract.test.js"
+      ],
+      "mustFail": [
+        "the browser rejects what the builder refuses"
+      ]
+    },
+    {
+      "id": "initiative.wire.parser-side",
+      "file": "apps/web/src/types/frames.ts",
+      "find": "    !INITIATIVE_SIDES.has(entry.side) ||",
+      "replace": "    false ||",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/contracts/initiative-bands-contract.test.js"
+      ],
+      "mustFail": [
+        "the browser rejects what the builder refuses"
+      ]
+    },
+    {
+      "id": "initiative.wire.parser-dominant",
+      "file": "apps/web/src/types/frames.ts",
+      "find": "    !INITIATIVE_DOMINANTS.has(entry.dominant) ||",
+      "replace": "    false ||",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/contracts/initiative-bands-contract.test.js"
+      ],
+      "mustFail": [
+        "the browser rejects what the builder refuses"
+      ]
+    },
+    {
+      "id": "initiative.wire.parser-dominant-share",
+      "file": "apps/web/src/types/frames.ts",
+      "find": "    !isInitiativeUnit(entry.dominantShare) ||",
+      "replace": "    !isInitiativeUnitOrNull(entry.dominantShare) ||",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/contracts/initiative-bands-contract.test.js"
+      ],
+      "mustFail": [
+        "the browser rejects what the builder refuses"
+      ]
+    },
+    {
+      "id": "initiative.wire.parser-score-cap",
+      "file": "apps/web/src/types/frames.ts",
+      "find": "    entry.score > MAX_INITIATIVE_SCORE ||",
+      "replace": "    entry.score > MAX_INITIATIVE_SCORE + 1 ||",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/contracts/initiative-bands-contract.test.js"
+      ],
+      "mustFail": [
+        "the browser rejects what the builder refuses"
+      ]
+    },
+    {
+      "id": "initiative.wire.parser-window-at-least-one",
+      "file": "apps/web/src/types/frames.ts",
+      "find": "    entry.windowCandles < 1 ||",
+      "replace": "    entry.windowCandles < 0 ||",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/contracts/initiative-bands-contract.test.js"
+      ],
+      "mustFail": [
+        "the browser rejects what the builder refuses"
+      ]
+    },
+    {
+      "id": "initiative.wire.parser-window-cap",
+      "file": "apps/web/src/types/frames.ts",
+      "find": "    entry.windowCandles > MAX_INITIATIVE_WINDOW ||",
+      "replace": "    entry.windowCandles > MAX_INITIATIVE_WINDOW * 2 ||",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/contracts/initiative-bands-contract.test.js"
+      ],
+      "mustFail": [
+        "the browser rejects what the builder refuses"
+      ]
+    },
+    {
+      "id": "initiative.wire.parser-frozen-after-pivot",
+      "file": "apps/web/src/types/frames.ts",
+      "find": "    entry.frozenTs <= entry.pivotTs ||",
+      "replace": "    entry.frozenTs < entry.pivotTs ||",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/contracts/initiative-bands-contract.test.js"
+      ],
+      "mustFail": [
+        "the browser rejects what the builder refuses"
+      ]
+    },
+    {
+      "id": "initiative.wire.parser-extreme-not-before-frozen",
+      "file": "apps/web/src/types/frames.ts",
+      "find": "    entry.legExtremeTs < entry.frozenTs ||",
+      "replace": "    false ||",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/contracts/initiative-bands-contract.test.js"
+      ],
+      "mustFail": [
+        "the browser rejects what the builder refuses"
+      ]
+    },
+    {
+      "id": "initiative.wire.parser-leg-end-not-before-frozen",
+      "file": "apps/web/src/types/frames.ts",
+      "find": "    (entry.legEndTs !== null && (entry.legEndTs as number) < entry.frozenTs) ||",
+      "replace": "    false ||",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/contracts/initiative-bands-contract.test.js"
+      ],
+      "mustFail": [
+        "the browser rejects what the builder refuses"
+      ]
+    },
+    {
+      "id": "initiative.wire.parser-leg-end-epoch",
+      "file": "apps/web/src/types/frames.ts",
+      "find": "    (entry.legEndTs !== null && !isValidEpochTimestamp(entry.legEndTs)) ||",
+      "replace": "    false ||",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/contracts/initiative-bands-contract.test.js"
+      ],
+      "mustFail": [
+        "the browser rejects what the builder refuses"
+      ]
+    },
+    {
+      "id": "initiative.wire.parser-update-not-before-frozen",
+      "file": "apps/web/src/types/frames.ts",
+      "find": "    entry.updatedAt < entry.frozenTs ||",
+      "replace": "    false ||",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/contracts/initiative-bands-contract.test.js"
+      ],
+      "mustFail": [
+        "the browser rejects what the builder refuses"
+      ]
+    },
+    {
+      "id": "initiative.wire.parser-prices-positive",
+      "file": "apps/web/src/types/frames.ts",
+      "find": "    !isPositiveFiniteNumber(entry.pivotPrice) ||",
+      "replace": "    false ||",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/contracts/initiative-bands-contract.test.js"
+      ],
+      "mustFail": [
+        "the browser rejects what the builder refuses"
+      ]
+    },
+    {
+      "id": "initiative.wire.parser-atr-positive",
+      "file": "apps/web/src/types/frames.ts",
+      "find": "    !isPositiveFiniteNumber(entry.legExtremePrice) ||\n    !isPositiveFiniteNumber(entry.atr) ||",
+      "replace": "    !isPositiveFiniteNumber(entry.legExtremePrice) ||",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/contracts/initiative-bands-contract.test.js"
+      ],
+      "mustFail": [
+        "the browser rejects what the builder refuses"
+      ]
+    },
+    {
+      "id": "initiative.wire.parser-origin",
+      "file": "apps/web/src/types/frames.ts",
+      "find": "    !INITIATIVE_ORIGINS.has(entry.origin)\n  ) {",
+      "replace": "    false\n  ) {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/contracts/initiative-bands-contract.test.js"
+      ],
+      "mustFail": [
+        "the browser rejects what the builder refuses"
+      ]
+    },
+    {
+      "id": "initiative.wire.parser-exactly-five-facts",
+      "file": "apps/web/src/types/frames.ts",
+      "find": "  if (own.length !== INITIATIVE_FACTS.length || INITIATIVE_FACTS.some((key) => !(key in entry))) return null;",
+      "replace": "  if (INITIATIVE_FACTS.some((key) => !(key in entry))) return null;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/contracts/initiative-bands-contract.test.js"
+      ],
+      "mustFail": [
+        "the browser rejects what the builder refuses"
+      ]
+    },
+    {
+      "id": "initiative.wire.parser-exact-fact-keys",
+      "file": "apps/web/src/types/frames.ts",
+      "find": "  if (own.length !== keys.length || keys.some((key) => !(key in entry)) || typeof entry.yes !== \"boolean\") return null;",
+      "replace": "  if (keys.some((key) => !(key in entry)) || typeof entry.yes !== \"boolean\") return null;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/contracts/initiative-bands-contract.test.js"
+      ],
+      "mustFail": [
+        "the browser rejects what the builder refuses"
+      ]
+    },
+    {
+      "id": "initiative.wire.parser-yes-is-boolean",
+      "file": "apps/web/src/types/frames.ts",
+      "find": "  if (own.length !== keys.length || keys.some((key) => !(key in entry)) || typeof entry.yes !== \"boolean\") return null;",
+      "replace": "  if (own.length !== keys.length || keys.some((key) => !(key in entry))) return null;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/contracts/initiative-bands-contract.test.js"
+      ],
+      "mustFail": [
+        "the browser rejects what the builder refuses"
+      ]
+    },
+    {
+      "id": "initiative.wire.parser-strong-closes-within-window",
+      "file": "apps/web/src/types/frames.ts",
+      "find": "    closes.value > windowCandles ||",
+      "replace": "    false ||",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/contracts/initiative-bands-contract.test.js"
+      ],
+      "mustFail": [
+        "the browser rejects what the builder refuses"
+      ]
+    },
+    {
+      "id": "initiative.wire.parser-closes-integer",
+      "file": "apps/web/src/types/frames.ts",
+      "find": "    !isNonNegativeSafeInteger(closes.value) ||",
+      "replace": "    typeof closes.value !== \"number\" ||",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/contracts/initiative-bands-contract.test.js"
+      ],
+      "mustFail": [
+        "the browser rejects what the builder refuses"
+      ]
+    },
+    {
+      "id": "initiative.wire.parser-unit-range",
+      "file": "apps/web/src/types/frames.ts",
+      "find": "function isInitiativeUnit(value: unknown): value is number {\n  return typeof value === \"number\" && Number.isFinite(value) && value >= 0 && value <= 1;",
+      "replace": "function isInitiativeUnit(value: unknown): value is number {\n  return typeof value === \"number\" && Number.isFinite(value);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/contracts/initiative-bands-contract.test.js"
+      ],
+      "mustFail": [
+        "the browser rejects what the builder refuses"
+      ]
+    },
+    {
+      "id": "initiative.wire.parser-amount-cap",
+      "file": "apps/web/src/types/frames.ts",
+      "find": "  return value === null || (typeof value === \"number\" && Number.isFinite(value) && value >= 0 && value <= MAX_INITIATIVE_VALUE);",
+      "replace": "  return value === null || (typeof value === \"number\" && Number.isFinite(value) && value >= 0);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/contracts/initiative-bands-contract.test.js"
+      ],
+      "mustFail": [
+        "the browser rejects what the builder refuses"
+      ]
+    },
+    {
+      "id": "initiative.wire.parser-amount-non-negative",
+      "file": "apps/web/src/types/frames.ts",
+      "find": "  return value === null || (typeof value === \"number\" && Number.isFinite(value) && value >= 0 && value <= MAX_INITIATIVE_VALUE);",
+      "replace": "  return value === null || (typeof value === \"number\" && Number.isFinite(value) && value <= MAX_INITIATIVE_VALUE);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/contracts/initiative-bands-contract.test.js"
+      ],
+      "mustFail": [
+        "the browser rejects what the builder refuses"
+      ]
+    },
+    {
+      "id": "initiative.wire.parser-frame-exact-keys",
+      "file": "apps/web/src/types/frames.ts",
+      "find": "    !hasExactFrameKeys(raw, identity, [\"ts\", \"seq\", \"reset\", \"bands\", \"liveSince\", \"loading\"]) ||",
+      "replace": "    false ||",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/contracts/initiative-bands-contract.test.js"
+      ],
+      "mustFail": [
+        "the browser rejects what the builder refuses"
+      ]
+    },
+    {
+      "id": "initiative.wire.parser-loading-epoch",
+      "file": "apps/web/src/types/frames.ts",
+      "find": "\"bands\", \"liveSince\", \"loading\"]) ||\n    !isValidEpochTimestamp(raw.ts) ||\n    !isValidEpochTimestamp(raw.liveSince) ||\n    (raw.loading !== null && !isValidEpochTimestamp(raw.loading)) ||",
+      "replace": "\"bands\", \"liveSince\", \"loading\"]) ||\n    !isValidEpochTimestamp(raw.ts) ||\n    !isValidEpochTimestamp(raw.liveSince) ||",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/contracts/initiative-bands-contract.test.js"
+      ],
+      "mustFail": [
+        "the browser rejects what the builder refuses"
+      ]
+    },
+    {
+      "id": "initiative.wire.parser-live-since-epoch",
+      "file": "apps/web/src/types/frames.ts",
+      "find": "\"bands\", \"liveSince\", \"loading\"]) ||\n    !isValidEpochTimestamp(raw.ts) ||\n    !isValidEpochTimestamp(raw.liveSince) ||\n    (raw.loading !== null && !isValidEpochTimestamp(raw.loading)) ||",
+      "replace": "\"bands\", \"liveSince\", \"loading\"]) ||\n    !isValidEpochTimestamp(raw.ts) ||\n    (raw.loading !== null && !isValidEpochTimestamp(raw.loading)) ||",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/contracts/initiative-bands-contract.test.js"
+      ],
+      "mustFail": [
+        "the browser rejects what the builder refuses"
+      ]
+    },
+    {
+      "id": "initiative.wire.parser-reset-boolean",
+      "file": "apps/web/src/types/frames.ts",
+      "find": "    typeof raw.reset !== \"boolean\" ||\n    !Array.isArray(raw.bands) ||",
+      "replace": "    !Array.isArray(raw.bands) ||",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/contracts/initiative-bands-contract.test.js"
+      ],
+      "mustFail": [
+        "the browser rejects what the builder refuses"
+      ]
+    },
+    {
+      "id": "initiative.wire.parser-page-cap",
+      "file": "apps/web/src/types/frames.ts",
+      "find": "    raw.bands.length > MAX_INITIATIVE_BANDS ||",
+      "replace": "    raw.bands.length > MAX_INITIATIVE_BANDS * 2 ||",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/contracts/initiative-bands-contract.test.js"
+      ],
+      "mustFail": [
+        "the browser rejects what the builder refuses"
+      ]
+    },
+    {
+      "id": "initiative.wire.parser-increment-not-empty",
+      "file": "apps/web/src/types/frames.ts",
+      "find": "    (!raw.reset && raw.bands.length === 0)\n  ) {\n    return null;\n  }\n  const bands: InitiativeBand[] = [];",
+      "replace": "    false\n  ) {\n    return null;\n  }\n  const bands: InitiativeBand[] = [];",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/contracts/initiative-bands-contract.test.js"
+      ],
+      "mustFail": [
+        "the browser rejects what the builder refuses"
+      ]
+    },
+    {
+      "id": "initiative.wire.parser-unique-ids-in-pivot-order",
+      "file": "apps/web/src/types/frames.ts",
+      "find": "    if (!band || ids.has(band.id) || (bands.length > 0 && initiativeBandBefore(band, bands[bands.length - 1]))) return null;",
+      "replace": "    if (!band) return null;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/contracts/initiative-bands-contract.test.js"
+      ],
+      "mustFail": [
+        "the browser rejects what the builder refuses"
+      ]
+    },
+    {
+      "id": "initiative.wire.parser-dispatch",
+      "file": "apps/web/src/types/frames.ts",
+      "find": "  if (record.type === \"initiative_bands\") {\n    return parseInitiativeBandsFrame(record, context);\n  }\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/contracts/initiative-bands-contract.test.js"
+      ],
+      "mustFail": [
+        "the browser parser admits the builder's output"
+      ]
+    },
+    {
+      "id": "initiative.wire.book-increment-before-reset-ignored",
+      "file": "apps/web/src/lib/l2/initiativeBook.ts",
+      "find": "    } else if (!this._synced) {\n      return \"ignored\";\n    }",
+      "replace": "    }",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/l2/initiativeBook.test.ts"
+      ],
+      "mustFail": [
+        "an increment before any reset is ignored; a reset replaces and syncs"
+      ]
+    },
+    {
+      "id": "initiative.wire.book-keeps-the-newest-update",
+      "file": "apps/web/src/lib/l2/initiativeBook.ts",
+      "find": "      if (known !== undefined && known.updatedAt > band.updatedAt) continue;",
+      "replace": "      if (known !== undefined && known.updatedAt < band.updatedAt) continue;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/l2/initiativeBook.test.ts"
+      ],
+      "mustFail": [
+        "an increment before any reset is ignored; a reset replaces and syncs"
+      ]
+    },
+    {
+      "id": "initiative.wire.book-reset-replaces",
+      "file": "apps/web/src/lib/l2/initiativeBook.ts",
+      "find": "    if (frame.reset) {\n      this._byId = new Map();",
+      "replace": "    if (frame.reset) {",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/l2/initiativeBook.test.ts"
+      ],
+      "mustFail": [
+        "markUntrusted keeps the bands but flags the book"
+      ]
+    },
+    {
+      "id": "initiative.wire.book-list-in-pivot-order",
+      "file": "apps/web/src/lib/l2/initiativeBook.ts",
+      "find": "  return a.pivotTs - b.pivotTs || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);",
+      "replace": "  return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/l2/initiativeBook.test.ts"
+      ],
+      "mustFail": [
+        "the list is in pivot order then id"
+      ]
+    },
+    {
+      "id": "initiative.wire.book-loading-change-counts",
+      "file": "apps/web/src/lib/l2/initiativeBook.ts",
+      "find": "    if (outcome === \"ignored\" && frame.loading === this._loading) return outcome;",
+      "replace": "    if (outcome === \"ignored\") return outcome;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/l2/initiativeBook.test.ts"
+      ],
+      "mustFail": [
+        "loading follows the frames"
+      ]
+    },
+    {
+      "id": "initiative.wire.book-untrusted-until-reset",
+      "file": "apps/web/src/lib/l2/initiativeBook.ts",
+      "find": "    return this._synced && !this._untrusted;",
+      "replace": "    return this._synced;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/l2/initiativeBook.test.ts"
+      ],
+      "mustFail": [
+        "markUntrusted keeps the bands but flags the book"
+      ]
+    },
+    {
+      "id": "initiative.wire.book-never-drops-old-bands",
+      "file": "apps/web/src/lib/l2/initiativeBook.ts",
+      "find": "    const horizon = frame.ts - INITIATIVE_BOOK_KEEP_MS;",
+      "replace": "    const horizon = -Infinity;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/l2/initiativeBook.test.ts"
+      ],
+      "mustFail": [
+        "a band frozen more than a week before the frame's clock is dropped"
+      ]
+    },
+    {
+      "id": "initiative.wire.book-keeps-old-bands-already-held",
+      "file": "apps/web/src/lib/l2/initiativeBook.ts",
+      "find": "      if (band.frozenTs >= horizon) continue;\n      this._byId.delete(id);",
+      "replace": "      continue;\n      this._byId.delete(id);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/l2/initiativeBook.test.ts"
+      ],
+      "mustFail": [
+        "a band frozen more than a week before the frame's clock is dropped"
+      ]
+    },
+    {
+      "id": "initiative.wire.book-drop-not-applied",
+      "file": "apps/web/src/lib/l2/initiativeBook.ts",
+      "find": "      this._byId.delete(id);\n      if (outcome === \"ignored\") outcome = \"applied\";",
+      "replace": "      this._byId.delete(id);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/l2/initiativeBook.test.ts"
+      ],
+      "mustFail": [
+        "a band frozen more than a week before the frame's clock is dropped"
+      ]
+    },
+    {
+      "id": "initiative.wire.hook-frames-of-the-live-pair-only",
+      "file": "apps/web/src/hooks/useMarketData.ts",
+      "find": "      if (frame.type === \"initiative_bands\") {\n        if (!frameMatchesLivePair(frame.symbol, frame)) return;",
+      "replace": "      if (frame.type === \"initiative_bands\") {",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/hooks/useMarketData.initiative.test.tsx"
+      ],
+      "mustFail": [
+        "ignores another pair's pages"
+      ]
+    },
+    {
+      "id": "initiative.wire.hook-flush-publishes-the-book",
+      "file": "apps/web/src/hooks/useMarketData.ts",
+      "find": "      if (initiativesDirty) {\n        initiativesDirty = false;\n        setInitiatives(initiativeBook);\n        setInitiativesVersion((prev) => prev + 1);\n      }",
+      "replace": "      if (initiativesDirty) {\n        initiativesDirty = false;\n      }",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/hooks/useMarketData.initiative.test.tsx"
+      ],
+      "mustFail": [
+        "a reset page becomes the book at the next frame flush"
+      ]
+    },
+    {
+      "id": "initiative.wire.hook-switch-clears-the-book",
+      "file": "apps/web/src/hooks/useMarketData.ts",
+      "find": "        if (keepLiquidity) initiativeBook.markUntrusted();\n        else initiativeBook.clear();\n        setInitiativesVersion((version) => version + 1);",
+      "replace": "        setInitiativesVersion((version) => version + 1);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/hooks/useMarketData.initiative.test.tsx"
+      ],
+      "mustFail": [
+        "a pair switch clears the book",
+        "a dropped socket keeps the bands but untrusted"
+      ]
+    },
+    {
+      "id": "initiative.wire.hook-drop-marks-untrusted",
+      "file": "apps/web/src/hooks/useMarketData.ts",
+      "find": "        if (keepLiquidity) initiativeBook.markUntrusted();\n        else initiativeBook.clear();\n        setInitiativesVersion((version) => version + 1);",
+      "replace": "        initiativeBook.clear();\n        setInitiativesVersion((version) => version + 1);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/hooks/useMarketData.initiative.test.tsx"
+      ],
+      "mustFail": [
+        "a dropped socket keeps the bands but untrusted"
+      ]
+    },
+    {
+      "id": "initiative.wire.hook-ask-reaches-the-worker",
+      "file": "apps/web/src/hooks/useMarketData.ts",
+      "find": "      postWorkerControl({ kind: \"initiative_history\", from_ts: fromTs }, \"initiative history request\");",
+      "replace": "      void fromTs;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/hooks/useMarketData.initiative.test.tsx"
+      ],
+      "mustFail": [
+        "requestInitiativeHistory posts an initiative_history control message"
+      ]
+    },
+    {
+      "id": "initiative.wire.worker-ask-sent",
+      "file": "apps/web/src/workers/marketDataWorker.ts",
+      "find": "      ws.send(JSON.stringify({ type: \"initiative_history\", from_ts: fromTs }));",
+      "replace": "      void fromTs;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/workers/marketDataWorker.test.ts"
+      ],
+      "mustFail": [
+        "forwards an initiative_history request as a ws.send()"
+      ]
+    },
+    {
+      "id": "initiative.wire.worker-ask-validated",
+      "file": "apps/web/src/workers/marketDataWorker.ts",
+      "find": "    if (!hasExactKeys(msg, [\"from_ts\", \"kind\"]) || !isSafeIntegerValue(fromTs) || fromTs < 0) {\n      console.warn(\"marketDataWorker: dropped malformed initiative_history request\");",
+      "replace": "    if (false) {\n      console.warn(\"marketDataWorker: dropped malformed initiative_history request\");",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/workers/marketDataWorker.test.ts"
+      ],
+      "mustFail": [
+        "forwards an initiative_history request as a ws.send()"
+      ]
+    }
+  ]
+}

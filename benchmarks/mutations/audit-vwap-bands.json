@@ -1,0 +1,174 @@
+{
+  "mutations": [
+    {
+      "id": "audit-vwap-bands.uncovered-window-counted",
+      "file": "apps/web/src/lib/indicators/vwap-bands/vwapBands.ts",
+      "find": "  if (coverage === \"none\") return { contribution: NO_CONTRIBUTION, source: \"none\" };\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/vwap-bands",
+        "src/lib/chart/tests/indicatorTicks.test.ts"
+      ],
+      "mustFail": [
+        "adds nothing at all for a window the store does not cover"
+      ]
+    },
+    {
+      "id": "audit-vwap-bands.thin-reported-as-prints",
+      "file": "apps/web/src/lib/indicators/vwap-bands/vwapBands.ts",
+      "find": "    source: coverage === \"all\" ? \"prints\" : \"thin\",",
+      "replace": "    source: \"prints\",",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/vwap-bands",
+        "src/lib/chart/tests/indicatorTicks.test.ts"
+      ],
+      "mustFail": [
+        "marks a bar priced by floor-filtered history as thin"
+      ]
+    },
+    {
+      "id": "audit-vwap-bands.bar-window-short",
+      "file": "apps/web/src/lib/indicators/vwap-bands/vwapBands.ts",
+      "find": "  const toTs = bar.ts_open + bar.interval_ms;\n  const coverage",
+      "replace": "  const toTs = bar.ts_open + bar.interval_ms - 1000;\n  const coverage",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/vwap-bands",
+        "src/lib/chart/tests/indicatorTicks.test.ts"
+      ],
+      "mustFail": [
+        "only counts the prints inside the bar's own window"
+      ]
+    },
+    {
+      "id": "audit-vwap-bands.replaced-other-bar-removed",
+      "file": "apps/web/src/lib/indicators/vwap-bands/vwapBands.ts",
+      "find": "      if (state.bar.tsOpen === bar.ts_open) removeVwapSample(sums, state.bar);",
+      "replace": "      removeVwapSample(sums, state.bar);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/vwap-bands",
+        "src/lib/chart/tests/indicatorTicks.test.ts"
+      ],
+      "mustFail": [
+        "a bar that opened with no prints and then trades takes nothing of the bar before it back out"
+      ]
+    },
+    {
+      "id": "audit-vwap-bands.replaced-counted-twice",
+      "file": "apps/web/src/lib/indicators/vwap-bands/vwapBands.ts",
+      "find": "      if (state.bar.tsOpen === bar.ts_open) removeVwapSample(sums, state.bar);",
+      "replace": "      void 0;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/vwap-bands",
+        "src/lib/chart/tests/indicatorTicks.test.ts"
+      ],
+      "mustFail": [
+        "takes the developing bar's earlier numbers back out when it is re-delivered"
+      ]
+    },
+    {
+      "id": "audit-vwap-bands.long-bar-hides",
+      "file": "apps/web/src/lib/indicators/vwap-bands/vwapBands.ts",
+      "find": "      bar.interval_ms <= periodMs &&\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/vwap-bands",
+        "src/lib/chart/tests/indicatorTicks.test.ts"
+      ],
+      "mustFail": [
+        "leaves a bar alone when it is longer than the session itself"
+      ]
+    },
+    {
+      "id": "audit-vwap-bands.lookback-hides",
+      "file": "apps/web/src/lib/indicators/vwap-bands/vwapBands.ts",
+      "find": "      !lookback &&\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/vwap-bands",
+        "src/lib/chart/tests/indicatorTicks.test.ts"
+      ],
+      "mustFail": [
+        "hides no session join, because a lookback window is not a session"
+      ]
+    },
+    {
+      "id": "audit-vwap-bands.prints-window-end-inclusive",
+      "file": "apps/web/src/lib/chart/indicatorTicks.ts",
+      "find": "    if (print.ts >= toTs) break;",
+      "replace": "    if (print.ts > toTs) break;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/vwap-bands",
+        "src/lib/chart/tests/indicatorTicks.test.ts"
+      ],
+      "mustFail": [
+        "only counts the prints inside the bar's own window"
+      ]
+    },
+    {
+      "id": "audit-vwap-bands.bad-print-counted",
+      "file": "apps/web/src/lib/chart/indicatorTicks.ts",
+      "find": "    if (!Number.isFinite(price) || price <= 0 || !Number.isFinite(size) || size <= 0) continue;",
+      "replace": "    void 0;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/vwap-bands",
+        "src/lib/chart/tests/indicatorTicks.test.ts"
+      ],
+      "mustFail": [
+        "ignores a print that is not a positive finite price and size"
+      ]
+    },
+    {
+      "id": "audit-vwap-bands.price-unweighted",
+      "file": "apps/web/src/lib/chart/indicatorTicks.ts",
+      "find": "    priceVolume += price * size;",
+      "replace": "    priceVolume += price;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/vwap-bands",
+        "src/lib/chart/tests/indicatorTicks.test.ts"
+      ],
+      "mustFail": [
+        "weights each print by its own size and squares its own price"
+      ]
+    }
+  ]
+}

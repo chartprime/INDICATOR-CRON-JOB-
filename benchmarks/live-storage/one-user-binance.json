@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "name": "o2-binance-one-user-2026-09-18",
+  "users": 1,
+  "rounds": 5,
+  "requests": [
+    {
+      "route": "recording-age",
+      "body": { "symbol": "BTCUSDT", "marketKind": "SPOT", "options": { "nowMs": 1789689600000 } }
+    },
+    {
+      "route": "recent-candles",
+      "body": { "symbol": "BTCUSDT", "marketKind": "SPOT", "options": { "intervalMs": 60000, "windowMs": 604800000, "nowMs": 1789689600000 } }
+    },
+    {
+      "route": "recent-trades",
+      "body": { "symbol": "BTCUSDT", "marketKind": "SPOT", "options": { "windowMs": 600000, "nowMs": 1789689600000, "limit": 5000 } }
+    },
+    {
+      "route": "minute-rollup",
+      "body": { "symbol": "BTCUSDT", "marketKind": "SPOT", "options": { "fromTs": 1789084800000, "toTs": 1789689600000, "tickSize": 0.32 } }
+    }
+  ]
+}

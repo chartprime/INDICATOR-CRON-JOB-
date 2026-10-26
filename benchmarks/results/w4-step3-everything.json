@@ -1,0 +1,268 @@
+{
+  "generatedAt": "2026-09-24T16:40:31.639Z",
+  "rows": 400,
+  "bars": 10080,
+  "liveBars": true,
+  "liquidityFrames": 17,
+  "phases": {
+    "loadSeconds": 20,
+    "steadySeconds": 20,
+    "hoverSeconds": 10,
+    "panSettleSeconds": 3
+  },
+  "results": [
+    {
+      "scenario": "everything",
+      "favorites": [
+        "rsi",
+        "ema",
+        "bollinger",
+        "sma",
+        "largeTradeBubbles",
+        "killzones",
+        "orderFlow",
+        "largeTradeDetector",
+        "deltaDivergence",
+        "volumeProfile",
+        "deltaProfile",
+        "sessionDeltaProfile",
+        "vpinCloud",
+        "volumeDeltaProfileOhlc",
+        "pivotPoints",
+        "pivotSupportResistance",
+        "passiveLiquidity",
+        "marketStructure",
+        "swingAlphabetProfile",
+        "aggressiveOrders",
+        "absorptionDetector",
+        "fvgBoxes",
+        "l2SupportResistance",
+        "l2BookMap",
+        "fvgDelta",
+        "classicOrderBlocks",
+        "institutionalOrderBlocks",
+        "institutionalOrderBlocksV2",
+        "l1OrderBlocks"
+      ],
+      "pageState": {
+        "chartCanvas": true,
+        "ohlcReadout": true,
+        "liveBadge": true,
+        "indicatorRows": 29,
+        "hiddenIndicatorRows": 0,
+        "liquidityLoaded": true
+      },
+      "phases": {
+        "load": {
+          "longTaskMs": {
+            "count": 143,
+            "p50": 119,
+            "p95": 242,
+            "p99": 267,
+            "max": 1204
+          },
+          "frameIntervalMs": {
+            "count": 175,
+            "p50": 100,
+            "p95": 233.4,
+            "p99": 283.3,
+            "max": 1316.6
+          }
+        },
+        "steady": {
+          "longTaskMs": {
+            "count": 165,
+            "p50": 103,
+            "p95": 174,
+            "p99": 205,
+            "max": 356
+          },
+          "frameIntervalMs": {
+            "count": 171,
+            "p50": 100.1,
+            "p95": 183.3,
+            "p99": 233.3,
+            "max": 366.7
+          }
+        },
+        "hover": {
+          "longTaskMs": {
+            "count": 71,
+            "p50": 130,
+            "p95": 221,
+            "p99": 231,
+            "max": 237
+          },
+          "frameIntervalMs": {
+            "count": 73,
+            "p50": 116.7,
+            "p95": 216.7,
+            "p99": 233.3,
+            "max": 233.4
+          }
+        },
+        "pan": {
+          "longTaskMs": {
+            "count": 82,
+            "p50": 213,
+            "p95": 237,
+            "p99": 260,
+            "max": 260
+          },
+          "frameIntervalMs": {
+            "count": 83,
+            "p50": 216.6,
+            "p95": 250,
+            "p99": 266.6,
+            "max": 266.6
+          }
+        }
+      },
+      "mainThreadBusySeconds": {
+        "steady": 20.0031,
+        "hover": 10.044,
+        "pan": 15.6387
+      },
+      "hoverMoves": 71,
+      "heapUsedMb": 114.3,
+      "domNodes": 1454,
+      "pageErrors": [],
+      "profileTop": [
+        {
+          "name": "? node_modules/lightweight-charts/dist/lightweight-charts.production.mjs:7",
+          "ms": 9615.6,
+          "share": 47.3
+        },
+        {
+          "name": "(program) :0:0",
+          "ms": 2257.2,
+          "share": 11.1
+        },
+        {
+          "name": "? src/lib/indicators/passive-liquidity/liquidityRuns.ts:185",
+          "ms": 1458.1,
+          "share": 7.2
+        },
+        {
+          "name": "? src/lib/chart/draw/kernelPrimitive.ts:142",
+          "ms": 1408.3,
+          "share": 6.9
+        },
+        {
+          "name": "(garbage collector) :0:0",
+          "ms": 1300.6,
+          "share": 6.4
+        },
+        {
+          "name": "? src/lib/indicators/l2-book-map/l2BookMapPrimitive.ts:464",
+          "ms": 467.6,
+          "share": 2.3
+        },
+        {
+          "name": "? src/lib/chart/draw/kernelPrimitive.ts:691",
+          "ms": 389,
+          "share": 1.9
+        },
+        {
+          "name": "fillRect :0:0",
+          "ms": 309,
+          "share": 1.5
+        },
+        {
+          "name": "? src/lib/indicators/session-delta-profile/sessionDeltaProfilePrimitive.ts:182",
+          "ms": 280.8,
+          "share": 1.4
+        },
+        {
+          "name": "? src/lib/chart/draw/kernelPrimitive.ts:337",
+          "ms": 226.5,
+          "share": 1.1
+        },
+        {
+          "name": "? src/lib/indicators/killzones/killzones.ts:113",
+          "ms": 167.7,
+          "share": 0.8
+        },
+        {
+          "name": "? src/lib/indicators/session-delta-profile/sessionDeltaProfilePrimitive.ts:461",
+          "ms": 163.1,
+          "share": 0.8
+        },
+        {
+          "name": "? src/lib/chart/draw/registry.ts:120",
+          "ms": 161.6,
+          "share": 0.8
+        },
+        {
+          "name": "fillText :0:0",
+          "ms": 156.9,
+          "share": 0.8
+        },
+        {
+          "name": "? src/lib/chart/chartData.ts:200",
+          "ms": 123.5,
+          "share": 0.6
+        },
+        {
+          "name": "? src/lib/indicators/passive-liquidity/liquidityHeatmapLayout.ts:158",
+          "ms": 87.3,
+          "share": 0.4
+        },
+        {
+          "name": "measureText :0:0",
+          "ms": 71.3,
+          "share": 0.4
+        },
+        {
+          "name": "? src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts:39",
+          "ms": 70.2,
+          "share": 0.3
+        },
+        {
+          "name": "? src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts:76",
+          "ms": 69.5,
+          "share": 0.3
+        },
+        {
+          "name": "? src/lib/chart/draw/kernelPrimitive.ts:501",
+          "ms": 52.3,
+          "share": 0.3
+        }
+      ]
+    }
+  ],
+  "verdict": {
+    "budgets": {
+      "steadyLongTaskMaxMs": 100,
+      "frameIntervalP95Ms": 33,
+      "perIndicatorAddedP95Ms": 8
+    },
+    "checks": [
+      {
+        "scenario": "everything",
+        "check": "steady long task ≤ 100 ms",
+        "value": 356,
+        "pass": false
+      },
+      {
+        "scenario": "everything",
+        "check": "steady frame interval p95 ≤ 33 ms",
+        "value": 183.3,
+        "pass": false
+      },
+      {
+        "scenario": "everything",
+        "check": "hover frame interval p95 ≤ 33 ms",
+        "value": 216.7,
+        "pass": false
+      },
+      {
+        "scenario": "everything",
+        "check": "no page errors",
+        "value": 0,
+        "pass": true
+      }
+    ],
+    "pass": false
+  }
+}

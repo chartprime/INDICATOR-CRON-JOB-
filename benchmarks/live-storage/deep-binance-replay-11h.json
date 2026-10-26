@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "name": "o0-deep-binance-replay-11h-60-page-ceiling-2026-09-18",
+  "serverDelta": true,
+  "users": 1,
+  "rounds": 1,
+  "requests": [
+    {
+      "route": "replay-page",
+      "body": {
+        "symbol": "BTCUSDT",
+        "marketKind": "SPOT",
+        "options": {
+          "fromTs": 1789650000000,
+          "toTs": 1789689600000,
+          "tickSize": 0.01,
+          "clusterTicks": 50,
+          "rowClusters": 8,
+          "windowRows": 1023,
+          "cursor": null,
+          "bookMode": "sparse"
+        }
+      },
+      "paginate": { "maxPages": 60 }
+    }
+  ]
+}

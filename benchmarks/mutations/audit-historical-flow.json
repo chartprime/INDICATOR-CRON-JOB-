@@ -1,0 +1,116 @@
+{
+  "mutations": [
+    {
+      "id": "audit-flow.bucket-is-the-raw-interval",
+      "file": "apps/web/src/lib/archive/archiveStudyPlan.ts",
+      "find": "  return intervalMs > DAY_MS ? DAY_MS : intervalMs;",
+      "replace": "  return intervalMs;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/archive/archiveStudyPlan.test.ts"
+      ],
+      "mustFail": [
+        "asks for daily flow above 1D"
+      ]
+    },
+    {
+      "id": "audit-flow.span-not-widened",
+      "file": "apps/web/src/lib/archive/archiveStudyPlan.ts",
+      "find": "  if (timeframe === null || !(visibleToMs > visibleFromMs)) return { fromTs: visibleFromMs, toTs: visibleToMs };",
+      "replace": "  return { fromTs: visibleFromMs, toTs: visibleToMs };",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/archive/archiveStudyPlan.test.ts"
+      ],
+      "mustFail": [
+        "widens the span it asks for to whole weeks and months"
+      ]
+    },
+    {
+      "id": "audit-flow.partial-week-shown",
+      "file": "apps/web/src/lib/archive/archiveStudyPlan.ts",
+      "find": "      return covered(ranges, fromTs, toTs);",
+      "replace": "      return true;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/archive/archiveStudyPlan.test.ts"
+      ],
+      "mustFail": [
+        "once every day of each has loaded"
+      ]
+    },
+    {
+      "id": "audit-flow.archive-edge-not-clipped",
+      "file": "apps/web/src/lib/archive/archiveStudyPlan.ts",
+      "find": "      const fromTs = Math.max(candle.ts_open, Math.ceil(coverage.fromTs / DAY_MS) * DAY_MS);",
+      "replace": "      const fromTs = candle.ts_open;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/archive/archiveStudyPlan.test.ts"
+      ],
+      "mustFail": [
+        "counts a week the archive starts or ends inside"
+      ]
+    },
+    {
+      "id": "audit-flow.month-as-thirty-days",
+      "file": "apps/web/src/lib/archive/archiveStudyPlan.ts",
+      "find": "  if (timeframe.bucket !== \"month\") return openMs + timeframe.intervalMs;\n  const date",
+      "replace": "  return openMs + timeframe.intervalMs;\n  const date",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/archive/archiveStudyPlan.test.ts"
+      ],
+      "mustFail": [
+        "widens the span it asks for to whole weeks and months"
+      ]
+    },
+    {
+      "id": "audit-flow.hook-skips-the-rollup",
+      "file": "apps/web/src/lib/archive/useArchiveStudies.ts",
+      "find": "chartFlowBars([...flow.values()], intervalMs, span)",
+      "replace": "[...flow.values()].flatMap((chunk) => chunk.bars)",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/archive/useArchiveStudies.test.tsx"
+      ],
+      "mustFail": [
+        "on 1W asks for daily flow and feeds the chart whole Monday weeks"
+      ]
+    },
+    {
+      "id": "audit-flow.hook-span-not-widened",
+      "file": "apps/web/src/lib/archive/useArchiveStudies.ts",
+      "find": "        const wantedSpan = flowSpan(visible.fromMs, visible.toMs, intervalMs);",
+      "replace": "        const wantedSpan = { fromTs: visible.fromMs, toTs: visible.toMs };",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/archive/useArchiveStudies.test.tsx"
+      ],
+      "mustFail": [
+        "on 1W asks for the whole of the first week on screen"
+      ]
+    }
+  ]
+}

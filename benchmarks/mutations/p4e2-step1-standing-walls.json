@@ -1,0 +1,243 @@
+{
+  "mutations": [
+    {
+      "id": "p4e2.tracker.extend-born-before-candidate",
+      "file": "apps/runtime/src/indicators/passive_liquidity/large-level-tracker.js",
+      "find": "|| level.startTs <= candidate.startTs) continue;",
+      "replace": "|| false) continue;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/passive_liquidity/large-level-tracker.test.js",
+        "-t",
+        "extend"
+      ],
+      "mustFail": [
+        "extend: a wall standing at the end of a replayed window hands its birth to the wall born there, live or ended"
+      ]
+    },
+    {
+      "id": "p4e2.tracker.extend-ignores-tolerance",
+      "file": "apps/runtime/src/indicators/passive_liquidity/large-level-tracker.js",
+      "find": "if (Math.abs(level.startTs - until) > toleranceMs) continue;",
+      "replace": "if (false) continue;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/passive_liquidity/large-level-tracker.test.js",
+        "-t",
+        "extend"
+      ],
+      "mustFail": [
+        "extend: a wall standing at the end of a replayed window hands its birth to the wall born there, live or ended"
+      ]
+    },
+    {
+      "id": "p4e2.tracker.extend-other-side",
+      "file": "apps/runtime/src/indicators/passive_liquidity/large-level-tracker.js",
+      "find": "if (level.side !== candidate.side || !overlaps(level, candidate)",
+      "replace": "if (false || !overlaps(level, candidate)",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/passive_liquidity/large-level-tracker.test.js",
+        "-t",
+        "extend"
+      ],
+      "mustFail": [
+        "extend: a wall standing at the end of a replayed window hands its birth to the wall born there, live or ended"
+      ]
+    },
+    {
+      "id": "p4e2.tracker.extend-no-overlap",
+      "file": "apps/runtime/src/indicators/passive_liquidity/large-level-tracker.js",
+      "find": "|| !overlaps(level, candidate) ||",
+      "replace": "|| false ||",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/passive_liquidity/large-level-tracker.test.js",
+        "-t",
+        "extend"
+      ],
+      "mustFail": [
+        "extend: a wall standing at the end of a replayed window hands its birth to the wall born there, live or ended"
+      ]
+    },
+    {
+      "id": "p4e2.tracker.extend-keeps-lower-peak",
+      "file": "apps/runtime/src/indicators/passive_liquidity/large-level-tracker.js",
+      "find": "if (peak > best.peak) best.peak = peak;",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/passive_liquidity/large-level-tracker.test.js",
+        "-t",
+        "extend"
+      ],
+      "mustFail": [
+        "extend: a wall standing at the end of a replayed window hands its birth to the wall born there, live or ended"
+      ]
+    },
+    {
+      "id": "p4e2.tracker.extend-forgets-traded",
+      "file": "apps/runtime/src/indicators/passive_liquidity/large-level-tracker.js",
+      "find": "if (Number.isFinite(candidate.eaten) && candidate.eaten > 0) best.tradedSeen += candidate.eaten * peak;",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/passive_liquidity/large-level-tracker.test.js",
+        "-t",
+        "extend"
+      ],
+      "mustFail": [
+        "extend: a wall standing at the end of a replayed window hands its birth to the wall born there, live or ended"
+      ]
+    },
+    {
+      "id": "p4e2.tracker.extend-silent-on-the-wire",
+      "file": "apps/runtime/src/indicators/passive_liquidity/large-level-tracker.js",
+      "find": "changed = dirty;\n    dirty = false;",
+      "replace": "changed = false;\n    dirty = false;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/passive_liquidity/large-level-tracker.test.js",
+        "-t",
+        "extend"
+      ],
+      "mustFail": [
+        "extend: a wall standing at the end of a replayed window hands its birth to the wall born there, live or ended"
+      ]
+    },
+    {
+      "id": "p4e2.wall-service.extend-keeps-old-life",
+      "file": "apps/runtime/src/indicators/l2-memory/wall-service.js",
+      "find": "own.startTs = startTs;",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/wall-service.test.js",
+        "-t",
+        "extend"
+      ],
+      "mustFail": [
+        "an earlier birth from a replayed window moves the wall"
+      ]
+    },
+    {
+      "id": "p4e2.wall-service.extend-keeps-old-repeats",
+      "file": "apps/runtime/src/indicators/l2-memory/wall-service.js",
+      "find": "      own.repeats = repeats;\n      own.repeatsComplete = observingSince !== null && startTs - observingSince >= REPEAT_WINDOW_MS;",
+      "replace": "      own.repeatsComplete = observingSince !== null && startTs - observingSince >= REPEAT_WINDOW_MS;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/wall-service.test.js",
+        "-t",
+        "extend"
+      ],
+      "mustFail": [
+        "an earlier birth from a replayed window moves the wall"
+      ]
+    },
+    {
+      "id": "p4e2.wall-service.extend-claims-full-evidence",
+      "file": "apps/runtime/src/indicators/l2-memory/wall-service.js",
+      "find": "      own.evidenceGap = true;\n      let repeats = 1;",
+      "replace": "      let repeats = 1;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/wall-service.test.js",
+        "-t",
+        "extend"
+      ],
+      "mustFail": [
+        "an earlier birth from a replayed window moves the wall"
+      ]
+    },
+    {
+      "id": "p4e2.lane-rebuild.standing-walls-dropped",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane-rebuild.js",
+      "find": "for (const level of levels) if (!level.endedBy) state.standing.push({ level, until, toleranceMs: columnMs });",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/passive_liquidity/liquidity-publisher.test.js",
+        "-t",
+        "standing"
+      ],
+      "mustFail": [
+        "window after window"
+      ]
+    },
+    {
+      "id": "p4e2.lane-rebuild.settle-once-only",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane-rebuild.js",
+      "find": "        settled += 1;\n        progress = true;",
+      "replace": "        settled += 1;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/passive_liquidity/liquidity-publisher.test.js",
+        "-t",
+        "standing"
+      ],
+      "mustFail": [
+        "window after window"
+      ]
+    },
+    {
+      "id": "p4e2.lane-store.stale-standing-dropped",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane-store.js",
+      "find": "state.standing.push({ level, until: saved.savedAt, toleranceMs: storeMs + deepColumnMs + columnMs });",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/passive_liquidity/liquidity-publisher.test.js",
+        "-t",
+        "standing"
+      ],
+      "mustFail": [
+        "standing in a stale store"
+      ]
+    },
+    {
+      "id": "p4e2.engine-walls.open-band-keeps-later-birth",
+      "file": "apps/web/src/lib/indicators/institutional-order-blocks-v2/engineWalls.ts",
+      "find": "} else if (band.started < wall.startTs) {",
+      "replace": "} else if (false) {",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/institutional-order-blocks-v2/tests/engineWalls.test.ts",
+        "-t",
+        "birth the engine moves back"
+      ],
+      "mustFail": [
+        "birth the engine moves back"
+      ]
+    }
+  ]
+}

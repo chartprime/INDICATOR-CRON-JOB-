@@ -1,0 +1,79 @@
+{
+  "version": 1,
+  "probedAtUtc": "2026-09-20T03:14:00Z",
+  "method": "Read-only sqlite3 aggregate queries on the production capture host's live databases: schema version, MIN/MAX and row-id ranges, and COUNT/AVG over single one-hour index ranges. No rows were exported and no full-table scans were run.",
+  "binance": {
+    "database": {
+      "sizeBytes": 95201759232,
+      "walBytes": 3105009192,
+      "schemaVersion": 16,
+      "rowIdRanges": {
+        "l2_depth_events": 34101200,
+        "trades": 120419203,
+        "l2_depth_snapshots": 18153,
+        "candles": 58872
+      },
+      "captureSpan": { "fromTs": 1788973795614, "toTs": 1789866811214 },
+      "captureSessions": 13
+    },
+    "hourlyReferences": {
+      "binance-btcusdt-spot-hour": {
+        "symbol": "BTCUSDT",
+        "marketKind": "SPOT",
+        "window": { "fromTs": 1789845260000, "toTs": 1789848860000 },
+        "events": 35993,
+        "levelsPerEventMean": 14.28,
+        "trades": 44797,
+        "snapshots": 3
+      },
+      "binance-btcusdt-perpetual-hour": {
+        "symbol": "BTCUSDT",
+        "marketKind": "PERPETUAL",
+        "window": { "fromTs": 1789845260000, "toTs": 1789848860000 },
+        "events": 35269,
+        "levelsPerEventMean": 58.98,
+        "trades": 42881,
+        "snapshots": 12
+      }
+    }
+  },
+  "dxfeed": {
+    "database": {
+      "sizeBytes": 8720068608,
+      "schemaVersion": 21,
+      "rowIdRanges": {
+        "dxfeed_order_book_capture": 31198698,
+        "dxfeed_time_and_sales": 3066699,
+        "dxfeed_quotes": 608167,
+        "dxfeed_candles": 4260
+      },
+      "symbols": ["/ESU26:XCME", "/NQU26:XCME", "AAPL", "NVDA", "TSLA"]
+    },
+    "hourlyReferences": {
+      "dxfeed-aapl-equity-hour": {
+        "symbol": "AAPL",
+        "assetClass": "EQUITY",
+        "window": { "fromTs": 1789740000000, "toTs": 1789743600000 },
+        "orderBookRows": 707461,
+        "timeAndSales": 117251,
+        "quotes": 17304,
+        "sessionsStartedInHour": 2
+      },
+      "dxfeed-nq-future-hour": {
+        "symbol": "/NQU26:XCME",
+        "assetClass": "FUTURE",
+        "acceptance": "at-least",
+        "window": { "fromTs": 1789732800000, "toTs": 1789736400000 },
+        "orderBookRows": 269740,
+        "timeAndSales": 316,
+        "quotes": null,
+        "sessionsStartedInHour": null
+      }
+    },
+    "observations": [
+      "NQ futures time-and-sales is nearly absent in the host database: 2,501 rows in total against 2,330,041 order-book rows, and 316 in the busiest probed hour against 117,251 for AAPL in a comparable hour.",
+      "Futures collection in the host database ends at 2026-09-18T13:29Z and equities at 2026-09-19T01:37Z; the dxFeed collector is not running.",
+      "Snapshot-begin rows (event_flags & 4) are rare: 62 for AAPL across roughly two days, so a replay window must be chosen with its anchor in mind."
+    ]
+  }
+}

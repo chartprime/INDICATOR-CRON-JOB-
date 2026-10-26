@@ -1,0 +1,360 @@
+{
+ "mutations": [
+  {
+   "id": "layout.iob-recording-label-back",
+   "file": "apps/web/src/lib/indicators/institutional-order-blocks/institutionalRender.ts",
+   "find": "  return [title, wall, `Traded ${amount(evidence.hit, unit)}`, `${signed(evidence.delta)} Delta`];",
+   "replace": "  return [title, ...(entry.historical ? [\"from the recording\"] : []), wall, `Traded ${amount(evidence.hit, unit)}`, `${signed(evidence.delta)} Delta`];",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/institutional-order-blocks/tests/institutionalRender.test.ts"
+   ],
+   "mustFail": [
+    "reads the same whether the grade came from the recording or the live book, holes in the recording included"
+   ]
+  },
+  {
+   "id": "layout.iob-recording-label-back-no-wall",
+   "file": "apps/web/src/lib/indicators/institutional-order-blocks/institutionalRender.ts",
+   "find": "  if (!evidence.held) return [title, \"no wall stood here\", `${signed(evidence.delta)} Delta`];",
+   "replace": "  if (!evidence.held) return [title, ...(entry.historical ? [\"from the recording\"] : []), \"no wall stood here\", `${signed(evidence.delta)} Delta`];",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/institutional-order-blocks/tests/institutionalRender.test.ts"
+   ],
+   "mustFail": [
+    "reads the same whether the grade came from the recording or the live book, holes in the recording included"
+   ]
+  },
+  {
+   "id": "layout.fpb-chip-carries-the-side-twice",
+   "file": "apps/web/src/lib/indicators/liquidity-voids/liquidityVoidsRender.ts",
+   "find": "  return [`${head} · ${ageText(nowTs - box.endTs)}`, head];",
+   "replace": "  return [`${head} · ${ageText(nowTs - box.endTs)}`, head, head];",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/liquidity-voids/tests/liquidityVoidsRender.test.ts"
+   ],
+   "mustFail": [
+    "writes the chip as the side and the age only, the side alone to fall back on: the move and the volume stay off it"
+   ]
+  },
+  {
+   "id": "layout.fpb-chip-without-the-age",
+   "file": "apps/web/src/lib/indicators/liquidity-voids/liquidityVoidsRender.ts",
+   "find": "  return [`${head} · ${ageText(nowTs - box.endTs)}`, head];",
+   "replace": "  return [head, head];",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/liquidity-voids/tests/liquidityVoidsRender.test.ts"
+   ],
+   "mustFail": [
+    "writes the chip as the side and the age only, the side alone to fall back on: the move and the volume stay off it"
+   ]
+  },
+  {
+   "id": "layout.fpb-chip-age-from-the-start",
+   "file": "apps/web/src/lib/indicators/liquidity-voids/liquidityVoidsRender.ts",
+   "find": "  return [`${head} · ${ageText(nowTs - box.endTs)}`, head];",
+   "replace": "  return [`${head} · ${ageText(nowTs - box.startTs)}`, head];",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/liquidity-voids/tests/liquidityVoidsRender.test.ts"
+   ],
+   "mustFail": [
+    "writes the chip as the side and the age only, the side alone to fall back on: the move and the volume stay off it"
+   ]
+  },
+  {
+   "id": "layout.fpb-chip-volume-back",
+   "file": "apps/web/src/lib/indicators/liquidity-voids/liquidityVoidsRender.ts",
+   "find": "  const head = SIDE_LABEL[box.side];",
+   "replace": "  const head = box.volume === null ? SIDE_LABEL[box.side] : `${SIDE_LABEL[box.side]} · ${box.volume} bought`;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/liquidity-voids/tests/liquidityVoidsRender.test.ts"
+   ],
+   "mustFail": [
+    "writes the chip as the side and the age only, the side alone to fall back on: the move and the volume stay off it"
+   ]
+  },
+  {
+   "id": "depth.lanes-ignored",
+   "file": "apps/web/src/lib/indicators/live-order-book-profile/bookProfileSource.ts",
+   "find": "  for (const lane of wider) {\n    const laneLo",
+   "replace": "  for (const lane of wider.slice(0, 0)) {\n    const laneLo",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/live-order-book-profile/tests/bookProfileDepth.test.ts"
+   ],
+   "mustFail": [
+    "reads the finest column inside its window and the wider lanes beyond it, the finest lane that reaches a price first, in price order",
+    "reads the lanes the chart gives it, moves its version with theirs, and reads only the lanes whose rows are a whole multiple of the grid's"
+   ]
+  },
+  {
+   "id": "depth.lane-overwrites-the-finest",
+   "file": "apps/web/src/lib/indicators/live-order-book-profile/bookProfileSource.ts",
+   "find": "  const outside = (from: number, to: number) => to < coveredLo || from > coveredHi;",
+   "replace": "  const outside = (from: number, to: number) => to < coveredLo || from > coveredHi || true;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/live-order-book-profile/tests/bookProfileDepth.test.ts"
+   ],
+   "mustFail": [
+    "never lets a wider lane overwrite a price the finest column covers, even where the lane holds something there"
+   ]
+  },
+  {
+   "id": "depth.wider-lane-overwrites-the-finer",
+   "file": "apps/web/src/lib/indicators/live-order-book-profile/bookProfileSource.ts",
+   "find": "    coveredLo = Math.min(coveredLo, laneLo);\n    coveredHi = Math.max(coveredHi, laneHi);",
+   "replace": "    coveredLo = Math.min(coveredLo, laneLo);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/live-order-book-profile/tests/bookProfileDepth.test.ts"
+   ],
+   "mustFail": [
+    "reads the finest column inside its window and the wider lanes beyond it, the finest lane that reaches a price first, in price order"
+   ]
+  },
+  {
+   "id": "depth.wider-lane-overwrites-the-finer-below",
+   "file": "apps/web/src/lib/indicators/live-order-book-profile/bookProfileSource.ts",
+   "find": "    coveredLo = Math.min(coveredLo, laneLo);\n    coveredHi = Math.max(coveredHi, laneHi);",
+   "replace": "    coveredHi = Math.max(coveredHi, laneHi);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/live-order-book-profile/tests/bookProfileDepth.test.ts"
+   ],
+   "mustFail": [
+    "reads the finest column inside its window and the wider lanes beyond it, the finest lane that reaches a price first, in price order"
+   ]
+  },
+  {
+   "id": "depth.divisible-lane-reads-one-row",
+   "file": "apps/web/src/lib/indicators/live-order-book-profile/bookProfileSource.ts",
+   "find": "        push(index, priceAt(index, step), priceAt(index + 1, step), style.bandSizes(lane.latest, index, laneRows));",
+   "replace": "        push(index, priceAt(index, step), priceAt(index + 1, step), style.bandSizes(lane.latest, index * laneRows, 1));",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/live-order-book-profile/tests/bookProfileDepth.test.ts"
+   ],
+   "mustFail": [
+    "reads the finest column inside its window and the wider lanes beyond it, the finest lane that reaches a price first, in price order"
+   ]
+  },
+  {
+   "id": "depth.odd-lane-rows-at-finest-prices",
+   "file": "apps/web/src/lib/indicators/live-order-book-profile/bookProfileSource.ts",
+   "find": "        push(clusterIndex(row * lane.factor, rows), priceAt(row, laneStep), priceAt(row + 1, laneStep), style.bandSizes(lane.latest, row, 1));",
+   "replace": "        push(clusterIndex(row * lane.factor, rows), priceAt(row * lane.factor, rowWidth), priceAt(row * lane.factor + 1, rowWidth), style.bandSizes(lane.latest, row, 1));",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/live-order-book-profile/tests/bookProfileDepth.test.ts"
+   ],
+   "mustFail": [
+    "on a cluster the lane's rows do not divide, draws the lane's own rows at their own prices"
+   ]
+  },
+  {
+   "id": "depth.odd-lane-treated-as-divisible",
+   "file": "apps/web/src/lib/indicators/live-order-book-profile/bookProfileSource.ts",
+   "find": "    if (rows % lane.factor === 0) {",
+   "replace": "    if (rows % lane.factor >= 0) {",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/live-order-book-profile/tests/bookProfileDepth.test.ts"
+   ],
+   "mustFail": [
+    "on a cluster the lane's rows do not divide, draws the lane's own rows at their own prices"
+   ]
+  },
+  {
+   "id": "depth.bands-out-of-price-order",
+   "file": "apps/web/src/lib/indicators/live-order-book-profile/bookProfileSource.ts",
+   "find": "  return bands.sort((a, b) => a.price - b.price);",
+   "replace": "  return bands;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/live-order-book-profile/tests/bookProfileDepth.test.ts"
+   ],
+   "mustFail": [
+    "reads the finest column inside its window and the wider lanes beyond it, the finest lane that reaches a price first, in price order"
+   ]
+  },
+  {
+   "id": "depth.index-lane-sums",
+   "file": "apps/web/src/lib/indicators/live-order-book-profile/bookProfileSource.ts",
+   "find": "        push(clusterIndex(row * lane.factor, rows), priceAt(row, laneStep), priceAt(row + 1, laneStep), style.bandSizes(lane.latest, row, 1));",
+   "replace": "        push(clusterIndex(row * lane.factor, rows), priceAt(row, laneStep), priceAt(row + 1, laneStep), { bid: lane.latest.bid[row - lane.latest.lo] * 2, ask: lane.latest.ask[row - lane.latest.lo] * 2 });",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/live-order-book-profile/tests/bookProfileDepth.test.ts"
+   ],
+   "mustFail": [
+    "on a cluster the lane's rows do not divide, draws the lane's own rows at their own prices"
+   ]
+  },
+  {
+   "id": "depth.extent-ignores-the-lanes",
+   "file": "apps/web/src/lib/indicators/live-order-book-profile/bookProfileSource.ts",
+   "find": "  for (const lane of wider) {\n    const own = columnExtent(lane.latest);",
+   "replace": "  for (const lane of wider.slice(0, 0)) {\n    const own = columnExtent(lane.latest);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/live-order-book-profile/tests/bookProfileDepth.test.ts"
+   ],
+   "mustFail": [
+    "stretches the extent over the lanes' rows, in the finest rows",
+    "reads the lanes the chart gives it, moves its version with theirs, and reads only the lanes whose rows are a whole multiple of the grid's"
+   ]
+  },
+  {
+   "id": "depth.extent-in-lane-rows",
+   "file": "apps/web/src/lib/indicators/live-order-book-profile/bookProfileSource.ts",
+   "find": "    const lowRow = own.lowRow * lane.factor;\n    const highRow = (own.highRow + 1) * lane.factor - 1;",
+   "replace": "    const lowRow = own.lowRow;\n    const highRow = own.highRow;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/live-order-book-profile/tests/bookProfileDepth.test.ts"
+   ],
+   "mustFail": [
+    "stretches the extent over the lanes' rows, in the finest rows"
+   ]
+  },
+  {
+   "id": "depth.source-version-without-the-lanes",
+   "file": "apps/web/src/lib/indicators/live-order-book-profile/bookProfileSource.ts",
+   "find": "    return this._grid.version + this._bookMarks + this._lanesVersion();",
+   "replace": "    return this._grid.version + this._bookMarks;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/live-order-book-profile/tests/bookProfileDepth.test.ts"
+   ],
+   "mustFail": [
+    "reads the lanes the chart gives it, moves its version with theirs, and reads only the lanes whose rows are a whole multiple of the grid's"
+   ]
+  },
+  {
+   "id": "depth.bands-cached-across-a-lane-move",
+   "file": "apps/web/src/lib/indicators/live-order-book-profile/bookProfileSource.ts",
+   "find": "    const version = grid.version + this._lanesVersion();",
+   "replace": "    const version = grid.version;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/live-order-book-profile/tests/bookProfileDepth.test.ts"
+   ],
+   "mustFail": [
+    "reads the lanes the chart gives it, moves its version with theirs, and reads only the lanes whose rows are a whole multiple of the grid's"
+   ]
+  },
+  {
+   "id": "depth.set-lanes-ignored",
+   "file": "apps/web/src/lib/indicators/live-order-book-profile/bookProfileSource.ts",
+   "find": "  setLanes(lanes: HeatLanes | null): void {\n    this._lanes = lanes;\n  }",
+   "replace": "  setLanes(_lanes: HeatLanes | null): void {\n  }",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/live-order-book-profile/tests/bookProfileDepth.test.ts"
+   ],
+   "mustFail": [
+    "reads the lanes the chart gives it, moves its version with theirs, and reads only the lanes whose rows are a whole multiple of the grid's"
+   ]
+  },
+  {
+   "id": "depth.odd-width-lane-read",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatmapLayout.ts",
+   "find": "    if (factor < 2 || Math.abs(laneGrid.rowWidth - factor * grid.rowWidth) > 1e-9 * grid.rowWidth) continue;",
+   "replace": "    if (factor < 2) continue;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/live-order-book-profile/tests/bookProfileDepth.test.ts",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatmapLayout.test.ts"
+   ],
+   "mustFail": [
+    "reads the lanes the chart gives it, moves its version with theirs, and reads only the lanes whose rows are a whole multiple of the grid's"
+   ]
+  },
+  {
+   "id": "depth.main-panel-without-the-lanes",
+   "file": "apps/web/src/components/chart/MainPanel.tsx",
+   "find": "new BookProfileSource(liquidity, l2?.lanes ?? null)), [liquidity, l2]);",
+   "replace": "new BookProfileSource(liquidity, null)), [liquidity, l2]);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/components/chart/tests/MainPanel.test.tsx"
+   ],
+   "mustFail": [
+    "hands the Live Order Book Profile the L2 store's lanes, so the book goes as deep as the heatmap"
+   ],
+   "timeoutMs": 300000
+  }
+ ]
+}

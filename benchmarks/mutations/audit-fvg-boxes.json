@@ -1,0 +1,212 @@
+{
+  "mutations": [
+    {
+      "id": "audit-fvg.bull-mitigation-strict",
+      "file": "apps/web/src/lib/indicators/fvg-boxes/fvgBoxes.ts",
+      "find": "          ? bar.low <= event.mitigationPrice\n",
+      "replace": "          ? bar.low < event.mitigationPrice\n",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/fvg-boxes"
+      ],
+      "mustFail": [
+        "mitigates a bullish zone the instant price exactly touches its near (upper) edge"
+      ]
+    },
+    {
+      "id": "audit-fvg.bear-mitigation-low",
+      "file": "apps/web/src/lib/indicators/fvg-boxes/fvgBoxes.ts",
+      "find": "          : bar.high >= event.mitigationPrice;",
+      "replace": "          : bar.low >= event.mitigationPrice;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/fvg-boxes"
+      ],
+      "mustFail": [
+        "mitigates a bearish zone the instant price exactly touches its near (lower) edge"
+      ]
+    },
+    {
+      "id": "audit-fvg.open-bar-forms-gap",
+      "file": "apps/web/src/lib/indicators/fvg-boxes/fvgBoxes.ts",
+      "find": "    if (!bar.closed) return;\n\n    for (const event of state.events) {",
+      "replace": "\n    for (const event of state.events) {",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/fvg-boxes"
+      ],
+      "mustFail": [
+        "waits for the third candle to close before making a zone"
+      ]
+    },
+    {
+      "id": "audit-fvg.touching-gap-counts",
+      "file": "apps/web/src/lib/indicators/fvg-boxes/fvgBoxes.ts",
+      "find": "    if (settings.showBullishFVG && bullishGap > 0) {",
+      "replace": "    if (settings.showBullishFVG && bullishGap >= 0) {",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/fvg-boxes"
+      ],
+      "mustFail": [
+        "draws nothing for a gap of no size"
+      ]
+    },
+    {
+      "id": "audit-fvg.bear-gap-wrong-bars",
+      "file": "apps/web/src/lib/indicators/fvg-boxes/fvgBoxes.ts",
+      "find": "    const bearishGap = state.lows[leftIndex] - state.highs[rightIndex];",
+      "replace": "    const bearishGap = state.lows[leftIndex] - state.highs[leftIndex + 1];",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/fvg-boxes"
+      ],
+      "mustFail": [
+        "mitigates a bearish zone the instant price exactly touches its near (lower) edge"
+      ]
+    },
+    {
+      "id": "audit-fvg.bear-top-bottom-swapped",
+      "file": "apps/web/src/lib/indicators/fvg-boxes/fvgBoxes.ts",
+      "find": "        top: state.lows[leftIndex],\n        bottom: state.highs[rightIndex],",
+      "replace": "        top: state.highs[rightIndex],\n        bottom: state.lows[leftIndex],",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/fvg-boxes"
+      ],
+      "mustFail": [
+        "places a bearish zone between the left candle's low and the right candle's high"
+      ]
+    },
+    {
+      "id": "audit-fvg.overlap-not-hidden",
+      "file": "apps/web/src/lib/indicators/fvg-boxes/fvgBoxes.ts",
+      "find": "        settings.hideOverlappedFVGs &&\n",
+      "replace": "        false &&\n",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/fvg-boxes"
+      ],
+      "mustFail": [
+        "rejects a candidate fully inside an existing active zone"
+      ]
+    },
+    {
+      "id": "audit-fvg.overlap-includes-mitigated",
+      "file": "apps/web/src/lib/indicators/fvg-boxes/fvgBoxes.ts",
+      "find": "            event.active &&\n            candidate.bottom <= event.levelTop &&",
+      "replace": "            candidate.bottom <= event.levelTop &&",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/fvg-boxes"
+      ],
+      "mustFail": [
+        "lets a mitigated zone no longer hide a new zone overlapping it"
+      ]
+    },
+    {
+      "id": "audit-fvg.volume-filter-ignored",
+      "file": "apps/web/src/lib/indicators/fvg-boxes/fvgBoxes.ts",
+      "find": "      if (volumeRatioToRollingHigh < normalizedVolumeThreshold(settings))\n        continue;",
+      "replace": "      void 0;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/fvg-boxes"
+      ],
+      "mustFail": [
+        "still filters a low-relative-volume candidate during warm-up"
+      ]
+    },
+    {
+      "id": "audit-fvg.rolling-high-window-short",
+      "file": "apps/web/src/lib/indicators/fvg-boxes/fvgBoxes.ts",
+      "find": "  const from = Math.max(0, uptoIndex - VOLUME_LOOKBACK + 1);",
+      "replace": "  const from = Math.max(0, uptoIndex - 1);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/fvg-boxes"
+      ],
+      "mustFail": [
+        "still filters a low-relative-volume candidate during warm-up"
+      ]
+    },
+    {
+      "id": "audit-fvg.duplicate-event-kept",
+      "file": "apps/web/src/lib/indicators/fvg-boxes/fvgBoxes.ts",
+      "find": "      if (state.events.some((event) => event.id === id)) continue;",
+      "replace": "      void 0;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/fvg-boxes"
+      ],
+      "mustFail": [
+        "counts a re-delivered candle once"
+      ]
+    },
+    {
+      "id": "audit-fvg.evicts-active-first",
+      "file": "apps/web/src/lib/indicators/fvg-boxes/fvgBoxes.ts",
+      "find": "        const staleIndex = state.events.findIndex((event) => !event.active);",
+      "replace": "        const staleIndex = -1;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/fvg-boxes"
+      ],
+      "mustFail": [
+        "when the store is full, drops a mitigated zone before any live one"
+      ]
+    },
+    {
+      "id": "audit-fvg.replace-pushes",
+      "file": "apps/web/src/lib/indicators/fvg-boxes/fvgBoxes.ts",
+      "find": "    if (!replace) {\n      state.barTimes.push(bar.ts_open);",
+      "replace": "    if (true) {\n      state.barTimes.push(bar.ts_open);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/fvg-boxes"
+      ],
+      "mustFail": [
+        "counts a re-delivered candle once"
+      ]
+    }
+  ]
+}

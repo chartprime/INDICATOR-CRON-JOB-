@@ -1,0 +1,58 @@
+{
+  "mutations": [
+    {
+      "id": "fa-6.background-save-overwrites-shutdown-save",
+      "file": "apps/runtime/src/indicators/l2-memory/liquidity-store.js",
+      "find": "    if (fs.existsSync(file)) await fs.promises.copyFile(file, `${file}.prev`);\n    if (!shouldCommit()) return { ok: false, reason: \"SUPERSEDED\", bytes };\n    fs.renameSync(temporary, file);",
+      "replace": "    if (fs.existsSync(file)) await fs.promises.copyFile(file, `${file}.prev`);\n    fs.renameSync(temporary, file);",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/indicators/l2-memory/liquidity-store.test.js", "--runInBand"],
+      "mustFail": ["a shutdown save during the backup copy cannot be replaced"]
+    },
+    {
+      "id": "fa-6.short-background-write-truncates-store",
+      "file": "apps/runtime/src/indicators/l2-memory/liquidity-store.js",
+      "find": "        const { bytesWritten } = await handle.write(buffer, offset, buffer.length - offset);\n        if (bytesWritten <= 0) throw new Error(\"liquidity-store: background write made no progress\");\n        offset += bytesWritten;",
+      "replace": "        await handle.write(buffer, offset, buffer.length - offset);\n        offset = buffer.length;",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/indicators/l2-memory/liquidity-store.test.js", "--runInBand"],
+      "mustFail": ["completes every chunk when the underlying file write is short"]
+    },
+    {
+      "id": "fa-9.lazy-first-minute-closes-before-seed",
+      "file": "apps/runtime/src/server/dxfeed-market-data-server.js",
+      "find": "      activeSession.seedPending = Boolean(storageReader && typeof storageReader.readTradesSince === \"function\" && now() % 60_000 !== 0);",
+      "replace": "      activeSession.seedPending = false;",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/server/dxfeed-market-data-server.test.js", "--runInBand", "-t", "does not close a partial first minute"],
+      "mustFail": ["does not close a partial first minute while its stored seed is still reading"]
+    },
+    {
+      "id": "fa-9.eager-first-minute-closes-before-seed",
+      "file": "apps/runtime/src/server/dxfeed-eager-market-data-server.js",
+      "find": "      if (activeSession.seedPendingKeys.has(key)) {",
+      "replace": "      if (false) {",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/server/dxfeed-eager-market-data-server.test.js", "--runInBand", "-t", "does not close a partial first minute"],
+      "mustFail": ["does not close a partial first minute while its stored seed is still reading"]
+    },
+    {
+      "id": "fa-9.pending-symbol-finalized-prematurely",
+      "file": "apps/runtime/src/providers/dxfeed/dxfeed-bar-aggregator.js",
+      "find": "      if (!canFinalize(bucket.symbol, bucket.assetClass)) continue;\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/providers/dxfeed/dxfeed-bar-aggregator.test.js", "--runInBand", "-t", "finalizes ready instruments without closing another instrument"],
+      "mustFail": ["finalizes ready instruments without closing another instrument whose first-minute seed is pending"]
+    },
+    {
+      "id": "o-6.stopped-profile-read-emits-late-transition",
+      "file": "apps/runtime/src/server/market-data-server.js",
+      "find": "    if (stopped) return true;\n    if (!warmPairs.has(key)) {",
+      "replace": "    if (false) return true;\n    if (!warmPairs.has(key)) {",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/server/market-data-server.test.js", "--runInBand", "-t", "read finishing after stop"],
+      "mustFail": ["a volume profile read finishing after stop makes no late readiness transition"]
+    }
+  ]
+}

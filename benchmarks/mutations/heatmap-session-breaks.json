@@ -1,0 +1,368 @@
+{
+ "mutations": [
+  {
+   "id": "gaps.not-found",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/chartTime.ts",
+   "find": "    if (previous !== null && ms - previous > 2 * intervalMs) gaps.push({ start: previous + 2 * intervalMs, end: ms });",
+   "replace": "",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/chartTime.test.ts",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatmapLayout.test.ts"
+   ],
+   "mustFail": [
+    "finds the stretches the chart has no bar for",
+    "knows the holes in the chart's bars, and reads the pane's edges in wall time through them"
+   ]
+  },
+  {
+   "id": "gaps.chart-ms-ignores-holes",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/chartTime.ts",
+   "find": "    if (gap.start >= at) skipped += gap.end - gap.start;",
+   "replace": "    if (gap.start >= at) skipped += 0;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/chartTime.test.ts",
+    "src/lib/indicators/passive-liquidity/tests/heatRasterHarness.test.ts"
+   ],
+   "mustFail": [
+    "maps wall time to the chart's time by skipping the holes after it, collapses a time inside a hole to the hole's end, and maps back exactly",
+    "paints a column from before a session break where the chart draws its bar: two bars before the bar after the break"
+   ]
+  },
+  {
+   "id": "gaps.inside-not-collapsed",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/chartTime.ts",
+   "find": "      if (gap.end > at) at = gap.end;\n",
+   "replace": "",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/chartTime.test.ts"
+   ],
+   "mustFail": [
+    "maps wall time to the chart's time by skipping the holes after it, collapses a time inside a hole to the hole's end, and maps back exactly"
+   ]
+  },
+  {
+   "id": "gaps.wall-ms-ignores-holes",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/chartTime.ts",
+   "find": "    if (chartMs >= gap.end + skipped) return chartMs - skipped;\n    skipped += gap.end - gap.start;",
+   "replace": "    if (chartMs >= gap.end + skipped) return chartMs - skipped;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/chartTime.test.ts",
+    "src/lib/indicators/passive-liquidity/tests/liquidityBandHover.test.ts"
+   ],
+   "mustFail": [
+    "maps wall time to the chart's time by skipping the holes after it, collapses a time inside a hole to the hole's end, and maps back exactly",
+    "reads the time under the cursor through the chart's holes: a column before a session break is found where the chart draws it, two bars before the bar after the break"
+   ]
+  },
+  {
+   "id": "gaps.layout-edges-linear",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatmapLayout.ts",
+   "find": "  const msAt = (x: number) => wallMsOf(originChart + (x - originX) / pxPerMs, gaps);",
+   "replace": "  const msAt = (x: number) => originMs + (x - originX) / pxPerMs;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatmapLayout.test.ts"
+   ],
+   "mustFail": [
+    "knows the holes in the chart's bars, and reads the pane's edges in wall time through them: a column before a session break lies two bars left of the one after it"
+   ]
+  },
+  {
+   "id": "gaps.interval-from-last-step",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatmapLayout.ts",
+   "find": "  for (let i = bars.length - 1; i > 0 && i > bars.length - 1 - INTERVAL_SAMPLE_BARS; i -= 1) {",
+   "replace": "  for (let i = bars.length - 1; i > 0 && i > bars.length - 2; i -= 1) {",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatmapLayout.test.ts",
+    "src/lib/indicators/passive-liquidity/tests/heatRasterHarness.test.ts"
+   ],
+   "mustFail": [
+    "knows the holes in the chart's bars, and reads the pane's edges in wall time through them: a column before a session break lies two bars left of the one after it",
+    "paints a column from before a session break where the chart draws its bar: two bars before the bar after the break"
+   ]
+  },
+  {
+   "id": "gaps.renderer-x-linear",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": "  return Math.round((mapping.originX + (chartMsOf(ms, mapping.gaps) - mapping.originChart) * mapping.pxPerMs) * mapping.ratio) + mapping.shift;",
+   "replace": "  return Math.round((mapping.originX + (ms - mapping.originMs) * mapping.pxPerMs) * mapping.ratio) + mapping.shift;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/heatRasterHarness.test.ts"
+   ],
+   "mustFail": [
+    "paints a column from before a session break where the chart draws its bar: two bars before the bar after the break"
+   ]
+  },
+  {
+   "id": "gaps.hover-linear",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityBandHover.ts",
+   "find": "  const ms = wallMsOf(chartMsOf(layout.originMs, layout.gaps) + (x - layout.originX) / layout.pxPerMs, layout.gaps);",
+   "replace": "  const ms = layout.originMs + (x - layout.originX) / layout.pxPerMs;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityBandHover.test.ts"
+   ],
+   "mustFail": [
+    "reads the time under the cursor through the chart's holes: a column before a session break is found where the chart draws it, two bars before the bar after the break"
+   ]
+  },
+  {
+   "id": "ladder.rows-capped",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatmapLayout.ts",
+   "find": "  const ladderBands = sameRows && bands.length > 0 ? bands : ladderBandsOf(series, grid.rowWidth, fineClusterRows, Number(priceTop), Number(priceBottom));",
+   "replace": "  const ladderBands = sameRows ? bands : bandsOf(visibleRows(series, grid.rowWidth, Number(priceTop), Number(priceBottom)), fineClusterRows);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityLanes.test.ts"
+   ],
+   "mustFail": [
+    "keeps the ladder when the price axis shows more of lane 0's rows than the heat can draw: the axis bands straight from the price range, on lane 0's rows"
+   ]
+  },
+  {
+   "id": "ladder.bands-uncut",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatmapLayout.ts",
+   "find": "    const yTop = series.priceToCoordinate(Math.min((band + 1) * rows, rowHi + 1) * rowWidth);\n    const yBottom = series.priceToCoordinate(Math.max(band * rows, rowLo) * rowWidth);",
+   "replace": "    const yTop = series.priceToCoordinate((band + 1) * rows * rowWidth);\n    const yBottom = series.priceToCoordinate(band * rows * rowWidth);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatmapLayout.test.ts"
+   ],
+   "mustFail": [
+    "reads the coarse tier on its own rows from 4h up when the grid holds one, bands it by the same price as the fine rows would, folds it to the bar, and keeps the ladder on the fine rows"
+   ]
+  },
+  {
+   "id": "gaps.one-bar-step-a-hole",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/chartTime.ts",
+   "find": "ms - previous > 2 * intervalMs",
+   "replace": "ms - previous >= 2 * intervalMs",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/chartTime.test.ts"
+   ],
+   "mustFail": [
+    "finds the stretches the chart has no bar for"
+   ]
+  },
+  {
+   "id": "gaps.hole-starts-at-last-open",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/chartTime.ts",
+   "find": "gaps.push({ start: previous + 2 * intervalMs, end: ms })",
+   "replace": "gaps.push({ start: previous + intervalMs, end: ms })",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/chartTime.test.ts"
+   ],
+   "mustFail": [
+    "finds the stretches the chart has no bar for"
+   ]
+  },
+  {
+   "id": "gaps.unreadable-bar-bridged",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/chartTime.ts",
+   "find": "      previous = null;\n      continue;",
+   "replace": "      continue;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/chartTime.test.ts"
+   ],
+   "mustFail": [
+    "finds the stretches the chart has no bar for"
+   ]
+  },
+  {
+   "id": "gaps.wall-ms-hole-end-to-start",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/chartTime.ts",
+   "find": "    if (chartMs >= gap.end + skipped) return chartMs - skipped;",
+   "replace": "    if (chartMs > gap.end + skipped) return chartMs - skipped;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/chartTime.test.ts"
+   ],
+   "mustFail": [
+    "maps wall time to the chart's time by skipping the holes after it, collapses a time inside a hole to the hole's end, and maps back exactly"
+   ]
+  },
+  {
+   "id": "gaps.wall-ms-before-every-hole",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/chartTime.ts",
+   "find": "  }\n  return chartMs - skipped;\n}",
+   "replace": "  }\n  return chartMs;\n}",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/chartTime.test.ts",
+    "src/lib/indicators/passive-liquidity/tests/liquidityBandHover.test.ts"
+   ],
+   "mustFail": [
+    "maps wall time to the chart's time by skipping the holes after it, collapses a time inside a hole to the hole's end, and maps back exactly",
+    "reads the time under the cursor through the chart's holes: a column before a session break is found where the chart draws it, two bars before the bar after the break"
+   ]
+  },
+  {
+   "id": "gaps.interval-reads-before-first-bar",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatmapLayout.ts",
+   "find": "  for (let i = bars.length - 1; i > 0 && i > bars.length - 1 - INTERVAL_SAMPLE_BARS; i -= 1) {",
+   "replace": "  for (let i = bars.length - 1; i > bars.length - 1 - INTERVAL_SAMPLE_BARS; i -= 1) {",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatmapLayout.test.ts"
+   ],
+   "mustFail": [
+    "knows the holes in the chart's bars, and reads the pane's edges in wall time through them: a column before a session break lies two bars left of the one after it"
+   ]
+  },
+  {
+   "id": "gaps.layout-gaps-dropped",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatmapLayout.ts",
+   "find": "    bars: ohlc,\n    gaps,\n",
+   "replace": "    bars: ohlc,\n    gaps: [],\n",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatmapLayout.test.ts",
+    "src/lib/indicators/passive-liquidity/tests/heatRasterHarness.test.ts"
+   ],
+   "mustFail": [
+    "knows the holes in the chart's bars, and reads the pane's edges in wall time through them: a column before a session break lies two bars left of the one after it",
+    "paints a column from before a session break where the chart draws its bar: two bars before the bar after the break"
+   ]
+  },
+  {
+   "id": "gaps.renderer-ms-linear",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": "  return wallMsOf(mapping.originChart + ((x - mapping.shift) / mapping.ratio - mapping.originX) / mapping.pxPerMs, mapping.gaps);",
+   "replace": "  return mapping.originChart + ((x - mapping.shift) / mapping.ratio - mapping.originX) / mapping.pxPerMs;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/heatRasterHarness.test.ts"
+   ],
+   "mustFail": [
+    "paints a column from before a session break where the chart draws its bar: two bars before the bar after the break"
+   ]
+  },
+  {
+   "id": "gaps.renderer-mapping-without-gaps",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": "gaps: layout.gaps, pxPerMs: layout.pxPerMs",
+   "replace": "gaps: [], pxPerMs: layout.pxPerMs",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/heatRasterHarness.test.ts"
+   ],
+   "mustFail": [
+    "paints a column from before a session break where the chart draws its bar: two bars before the bar after the break"
+   ]
+  },
+  {
+   "id": "ladder.same-rows-empty-kept",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatmapLayout.ts",
+   "find": "  const ladderBands = sameRows && bands.length > 0 ? bands :",
+   "replace": "  const ladderBands = sameRows ? bands :",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityLanes.test.ts"
+   ],
+   "mustFail": [
+    "keeps the ladder when the price axis shows more of lane 0's rows than the heat can draw: the axis bands straight from the price range, on lane 0's rows"
+   ]
+  },
+  {
+   "id": "ladder.band-top-uncut",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatmapLayout.ts",
+   "find": "    const yTop = series.priceToCoordinate(Math.min((band + 1) * rows, rowHi + 1) * rowWidth);",
+   "replace": "    const yTop = series.priceToCoordinate((band + 1) * rows * rowWidth);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatmapLayout.test.ts"
+   ],
+   "mustFail": [
+    "reads the coarse tier on its own rows from 4h up when the grid holds one, bands it by the same price as the fine rows would, folds it to the bar, and keeps the ladder on the fine rows"
+   ]
+  },
+  {
+   "id": "ladder.band-bottom-uncut",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatmapLayout.ts",
+   "find": "    const yBottom = series.priceToCoordinate(Math.max(band * rows, rowLo) * rowWidth);",
+   "replace": "    const yBottom = series.priceToCoordinate(band * rows * rowWidth);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatmapLayout.test.ts"
+   ],
+   "mustFail": [
+    "reads the coarse tier on its own rows from 4h up when the grid holds one, bands it by the same price as the fine rows would, folds it to the bar, and keeps the ladder on the fine rows"
+   ]
+  }
+ ]
+}

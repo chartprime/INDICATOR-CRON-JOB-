@@ -1,0 +1,193 @@
+{
+  "mutations": [
+    {
+      "id": "ge-19.unchanged-draw-write-still-copies-and-repaints",
+      "file": "apps/web/src/lib/chart/draw/registry.ts",
+      "find": "  if (!changed) return;\n  record.data = { ...record.data, ...fields };",
+      "replace": "  record.data = { ...record.data, ...fields };",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/chart/tests/replayWrites.test.ts"],
+      "mustFail": ["does not repaint or copy for a write that changes nothing"]
+    },
+    {
+      "id": "ge-19.deferred-repaint-never-requested",
+      "file": "apps/web/src/lib/chart/draw/registry.ts",
+      "find": "      for (const ownerId of owners) requestUpdateByOwner.get(ownerId)?.();",
+      "replace": "      void owners;",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/chart/tests/replayWrites.test.ts"],
+      "mustFail": ["asks the chart to repaint once for a whole replay"]
+    },
+    {
+      "id": "ge-19.draw-now-misses-the-last-closed-bar",
+      "file": "apps/web/src/lib/chart/indicatorRuntime.ts",
+      "find": "makeCtx(record, bar, false, true, index >= lastClosed, index, replayBars.length)",
+      "replace": "makeCtx(record, bar, false, true, index > lastClosed, index, replayBars.length)",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/chart/tests/drawNowEquivalence.test.ts"],
+      "mustFail": ["classicOrderBlocks draws exactly what drawing every bar drew"]
+    },
+    {
+      "id": "ge-19.snapshot-replays-a-new-indicator-twice",
+      "file": "apps/web/src/lib/chart/indicatorRuntime.ts",
+      "find": "    setActive(ids, settingsById, []);\n    onSnapshot(bars);",
+      "replace": "    setActive(ids, settingsById, bars);\n    onSnapshot(bars);",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/chart/tests/replayWrites.test.ts"],
+      "mustFail": ["replays each indicator exactly once for a snapshot that also activates it"]
+    },
+    {
+      "id": "l-w4-8.book-indicators-ignore-an-advancing-book",
+      "file": "apps/web/src/lib/chart/indicatorRuntime.ts",
+      "find": "      if (record.faulted || record.def.category !== \"l2\" || record.lastTailTsOpen !== bar.ts_open) continue;",
+      "replace": "      if (record.faulted || record.def.category === \"l2\" || record.lastTailTsOpen !== bar.ts_open) continue;",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/chart/tests/liquidityAdvance.test.ts"],
+      "mustFail": ["draws the walls a partial book hid, once the rest of the book has arrived"]
+    },
+    {
+      "id": "steady.fill-window-keeps-everything-when-the-view-is-past-the-band",
+      "file": "apps/web/src/lib/chart/draw/fill.ts",
+      "find": "  if (first === -1) first = points.length;\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/chart/draw/tests/fill.test.ts"],
+      "mustFail": ["keeps the points that carry the band across a view with none inside"]
+    },
+    {
+      "id": "ge-18.book-map-paint-survives-new-candles",
+      "file": "apps/web/src/lib/indicators/l2-book-map/l2BookMapPrimitive.ts",
+      "find": "cached.settings === this._settings && cached.opens === geometry.barOpensMs && cached.key === key",
+      "replace": "cached.settings === this._settings && cached.key === key",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/l2-book-map/tests/l2BookMapPrimitive.test.ts"],
+      "mustFail": ["repaints a mouse move from its finished paint"]
+    },
+    {
+      "id": "steady.book-map-rebuilds-on-every-price-tick",
+      "file": "apps/web/src/lib/indicators/l2-book-map/l2BookMapPrimitive.ts",
+      "find": "    if (this._l2 === l2 && this._grid === grid) {\n      this.refresh();\n      return;\n    }\n    this._columnCells.clear();",
+      "replace": "    this._columnCells.clear();",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/l2-book-map/tests/l2BookMapPrimitive.test.ts"],
+      "mustFail": ["does not rebuild its cells on every price tick"]
+    },
+    {
+      "id": "steady.l2-levels-rebuild-on-every-price-tick",
+      "file": "apps/web/src/lib/indicators/l2-support-resistance/l2SupportResistancePrimitive.ts",
+      "find": "    if (this._grid === grid) {\n      this.refresh();\n      return;\n    }\n    this._grid = grid;",
+      "replace": "    this._grid = grid;",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/l2-support-resistance/tests/l2SupportResistancePrimitive.test.ts"],
+      "mustFail": ["does not rebuild its levels when the chart hands it the grid it already has"]
+    },
+    {
+      "id": "steady.heat-bitmap-reused-after-a-colour-change",
+      "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+      "find": "        settings, host.bidRgb, host.askRgb, horizontalPixelRatio, verticalPixelRatio, width, height,",
+      "replace": "        settings, host.askRgb, horizontalPixelRatio, verticalPixelRatio, width, height,",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/passive-liquidity/tests/liquidityHeatCache.test.ts"],
+      "mustFail": ["paints the view again on a zoom step, a colour change and a candle close"]
+    },
+    {
+      "id": "steady.heat-bitmap-never-reused",
+      "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+      "find": "      let raster = this._raster !== null && this._raster.key === key && sameBands(this._raster.bands, bands) ? this._raster : null;",
+      "replace": "      let raster = this._raster !== null && this._raster.key === key && sameBands(this._raster.bands, bands) && key === \"\" ? this._raster : null;",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/passive-liquidity/tests/liquidityHeatCache.test.ts"],
+      "mustFail": ["paints no raster pixel for a live column that changes no settled run"]
+    },
+    {
+      "id": "steady.heat-layout-rebuilds-every-candle",
+      "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatmapLayout.ts",
+      "find": "  const bars = chartRows ?? series.data();",
+      "replace": "  const bars = series.data();",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/passive-liquidity/tests/liquidityHeatmapLayout.test.ts"],
+      "mustFail": ["lays out exactly as from series.data(), without asking the series to rebuild every candle"]
+    },
+    {
+      "id": "steady.kernel-reuses-placements-after-new-candles",
+      "file": "apps/web/src/lib/chart/draw/kernelPrimitive.ts",
+      "find": "      this._barTimesRevision(), logical?.from ?? \"\",",
+      "replace": "      logical?.from ?? \"\",",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/chart/draw/tests/kernelPrimitive.test.ts"],
+      "mustFail": ["places nothing again until an object, the view or the candles change"]
+    },
+    {
+      "id": "steady.kernel-looks-up-every-shared-time-again",
+      "file": "apps/web/src/lib/chart/draw/kernelPrimitive.ts",
+      "find": "        xByTime.set(time, x);\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/chart/draw/tests/kernelPrimitive.test.ts"],
+      "mustFail": ["places a hundred boxes that share two times and two prices with two lookups each"]
+    },
+    {
+      "id": "steady.cvd-tick-ignores-a-session-gap",
+      "file": "apps/web/src/lib/indicators/order-flow/orderFlow.ts",
+      "find": "  return (continues ? previousCvd ?? 0 : 0) + delta;",
+      "replace": "  return (previousCvd ?? 0) + delta;",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/order-flow/tests/orderFlow.test.ts"],
+      "mustFail": ["advances one bar at a time exactly as the whole-history calculation"]
+    },
+    {
+      "id": "ge-18.bar-times-include-bars-the-series-does-not-draw",
+      "file": "apps/web/src/lib/chart/chartData.ts",
+      "find": "  return bars.filter((_, index) => renderableBar(index, bars));",
+      "replace": "  return bars.slice();",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/chart/tests/chartData.test.ts"],
+      "mustFail": ["is exactly the bars the candle series draws, across a session gap and an unclosed bar"]
+    },
+    {
+      "id": "steady.kernel-view-cache-never-hits",
+      "file": "apps/web/src/lib/chart/draw/kernelPrimitive.ts",
+      "find": "    if (viewKey === this._viewKey && fills.length",
+      "replace": "    if (viewKey === \"\" && viewKey === this._viewKey && fills.length",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/chart/draw/tests/kernelPrimitive.test.ts"],
+      "mustFail": ["places nothing again until an object, the view or the candles change"]
+    },
+    {
+      "id": "l-w4-6.live-preferences-overwrite-historical-ones",
+      "file": "apps/web/src/lib/chart/historicalIndicatorPreferences.ts",
+      "find": "export const LIVE_INDICATOR_PREFERENCES_STORAGE_KEY = \"terminal.live-indicators.preferences.v1\";",
+      "replace": "export const LIVE_INDICATOR_PREFERENCES_STORAGE_KEY = \"terminal.historical-indicators.preferences.v1\";",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/chart/historicalIndicatorPreferences.test.ts"],
+      "mustFail": ["remembers live settings, visibility, and killzones across a reload under their own key, apart from Historical Mode's"]
+    },
+    {
+      "id": "l-w4-6.live-panel-forgets-hidden-indicators-on-reload",
+      "file": "apps/web/src/components/chart/MainPanel.tsx",
+      "find": "  >(savedPreferences.visibility);",
+      "replace": "  >({});",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/components/chart/tests/MainPanel.test.tsx", "-t", "survive a reload"],
+      "mustFail": ["brings back a hidden indicator still hidden after the panel is torn down and mounted again"]
+    },
+    {
+      "id": "owner-audit.same-indicators-new-settings-leave-the-old-plot",
+      "file": "apps/web/src/components/chart/ChartPanel.tsx",
+      "find": "            if (changed) recomputeIndicators();",
+      "replace": "            void changed;",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/components/chart/tests/ChartPanel.lifecycle.test.tsx", "-t", "applies changed settings when the requested indicator IDs stay the same"],
+      "mustFail": ["applies changed settings when the requested indicator IDs stay the same"]
+    },
+    {
+      "id": "owner-audit.released-owner-keeps-its-revision-stamp",
+      "file": "apps/web/src/lib/chart/draw/registry.ts",
+      "find": "    changedAtByOwner.delete(ownerId);",
+      "replace": "    void ownerId;",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/chart/draw/tests/registry.test.ts"],
+      "mustFail": ["owner turnover releases empty ownership entries and callbacks"]
+    }
+  ]
+}

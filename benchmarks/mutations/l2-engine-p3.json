@@ -1,0 +1,224 @@
+{
+  "mutations": [
+    {
+      "id": "l2p3a.store-drops-walls",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane-store.js",
+      "find": "      levels: state.tracker.levels(),",
+      "replace": "      levels: [],",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/passive_liquidity/liquidity-publisher-golden.test.js", "-t", "reproduces every frame"],
+      "mustFail": ["reproduces every frame"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "l2p3a.live-walls-only-on-reset",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane-frames.js",
+      "find": "...(reset || levelsChanged ? { levels: state.tracker.levels() } : {}),",
+      "replace": "...(reset ? { levels: state.tracker.levels() } : {}),",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/passive_liquidity/liquidity-publisher-golden.test.js", "-t", "reproduces every frame"],
+      "mustFail": ["reproduces every frame"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "l2p3a.coarse-rows-off-by-one",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane.js",
+      "find": "const finished = state.coarseFolder.feed(coarsenColumn(column, coarseRows));",
+      "replace": "const finished = state.coarseFolder.feed(coarsenColumn(column, coarseRows + 1));",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/passive_liquidity/liquidity-publisher-golden.test.js", "-t", "reproduces every frame"],
+      "mustFail": ["reproduces every frame"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "l2p3a.deep-frame-dropped-live",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane-frames.js",
+      "find": "return deepFrame ? [...coarseFrames, deepFrame, frame] : frame;",
+      "replace": "return deepFrame ? [...coarseFrames, frame] : frame;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/passive_liquidity/liquidity-publisher-golden.test.js", "-t", "reproduces every frame"],
+      "mustFail": ["reproduces every frame"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "l2p3a.aggressive-events-never-sent",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane-frames.js",
+      "find": "...(state.aggressive && (reset || aggressiveChanged) ? { aggressive: state.aggressive.events() } : {}),",
+      "replace": "...(false ? { aggressive: state.aggressive.events() } : {}),",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/passive_liquidity/liquidity-publisher-golden.test.js", "-t", "reproduces every frame"],
+      "mustFail": ["reproduces every frame"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "l2p3c.lane-sampling-disturbs-lane-zero",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane.js",
+      "find": "  function pushPrint(state, print) {\n    state.flow.push(print);",
+      "replace": "  function pushPrint(state, print) {\n    if (state.lanes.length === 0) state.flow.push(print);",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/passive_liquidity/liquidity-publisher-golden.test.js", "-t", "with lanes on sends exactly the lane-0 frames"],
+      "mustFail": ["with lanes on sends exactly the lane-0 frames"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "l2p3c.lane-sampling-outside-the-reset-guard",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane-frames.js",
+      "find": "    const reset = prev === null || state.forceReset;\n    try {\n      const landed = lane.sampleLanes(state, snapshot, ts);",
+      "replace": "    const landed = lane.sampleLanes(state, snapshot, ts);\n    const reset = prev === null || state.forceReset;\n    try {",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/compact-lanes.test.js", "-t", "does not break the client's chain"],
+      "mustFail": ["does not break the client's chain"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "l2p3c.lane-factor-not-doubled",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane-geometry.js",
+      "find": "const factor = 2 ** k;",
+      "replace": "const factor = 3 ** k;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/compact-lanes.test.js", "-t", "each lane doubles"],
+      "mustFail": ["each lane doubles"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "l2p3c.lanes-past-the-window",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane-geometry.js",
+      "find": "    if (LANE_ROWS * laneRowWidth >= reach) break;",
+      "replace": "    if (false) break;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/compact-lanes.test.js", "-t", "each lane doubles"],
+      "mustFail": ["each lane doubles"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "l2p3c.lane-when-lane-zero-reaches",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane-geometry.js",
+      "find": "  if (windowRows * rowWidth >= reach) return [];",
+      "replace": "  if (false) return [];",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/compact-lanes.test.js", "-t", "no lane when lane 0 already reaches"],
+      "mustFail": ["no lane when lane 0 already reaches"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "l2p3c.lane-time-fold-dropped",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane.js",
+      "find": "timeFolder: createDeepFolder({ deepColumnMs: geometry.columnMs }),",
+      "replace": "timeFolder: createDeepFolder({ deepColumnMs: columnMs }),",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/compact-lanes.test.js", "-t", "at 2 s columns"],
+      "mustFail": ["at 2 s columns"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "l2p3c.live-lane-flow-missing",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane.js",
+      "find": "    for (const lane of state.lanes) lane.flow.push(print);",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/liquidity-backfill-equivalence.test.js", "-t", "one replay pass gives every lane"],
+      "mustFail": ["one replay pass gives every lane"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "l2p3c.backfill-lanes-mixed",
+      "file": "apps/runtime/src/indicators/l2-memory/liquidity-backfill.js",
+      "find": "            if (laneOut) onLaneColumn(index, laneOut);",
+      "replace": "            if (laneOut) onLaneColumn(0, laneOut);",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/liquidity-backfill.test.js", "-t", "samples every lane in the same pass"],
+      "mustFail": ["samples every lane in the same pass"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "l2p3c.worker-drops-lane-batch",
+      "file": "apps/runtime/src/indicators/l2-memory/liquidity-backfill.js",
+      "find": "          for (const entry of message.batch) onLaneColumn(entry.lane, entry.column);",
+      "replace": "          void message;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/liquidity-backfill.test.js", "-t", "samples every lane in the same pass"],
+      "mustFail": ["samples every lane in the same pass"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "l2p3c.recent-pass-lanes-unmerged",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane-rebuild.js",
+      "find": "        lane.finishLanePass(state);\n        state.backfillStatus = { status: \"COMPLETE\", reason: result?.reason ?? null };",
+      "replace": "        state.backfillStatus = { status: \"COMPLETE\", reason: result?.reason ?? null };",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/compact-lanes.test.js", "-t", "the recent pass hands each lane"],
+      "mustFail": ["the recent pass hands each lane"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "l2p3c.store-drops-lanes",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane-store.js",
+      "find": "      ...(state.lanes.length > 0 ? { lanes:",
+      "replace": "      ...(false ? { lanes:",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/compact-lanes.test.js", "-t", "lanes come back after a restart"],
+      "mustFail": ["lanes come back after a restart"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "l2p3c.store-lane-geometry-unchecked",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane-store.js",
+      "find": "        if (!target || !sameLaneGeometry({ ...lane.laneGeometry(target), fold: laneFoldFor(state.marketKind) }, savedLane)) continue;",
+      "replace": "        if (!target) continue;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/compact-lanes.test.js", "-t", "geometry no longer matches"],
+      "mustFail": ["geometry no longer matches"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "l2p3c.store-lanes-unvalidated",
+      "file": "apps/runtime/src/indicators/l2-memory/liquidity-store.js",
+      "find": " || !validLanes(saved.lanes)) return reject(\"MALFORMED\");",
+      "replace": ") return reject(\"MALFORMED\");",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/compact-lanes.test.js", "-t", "malformed lanes reject the file"],
+      "mustFail": ["malformed lanes reject the file"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "l2p3c.config-window-unbounded",
+      "file": "apps/runtime/src/providers/binance/binance-config.js",
+      "find": "l2.windowPct > 0 && l2.windowPct <= 100",
+      "replace": "l2.windowPct > 0",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/providers/binance/binance-config.test.js", "-t", "optional heatmap window"],
+      "mustFail": ["optional heatmap window"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "l2p3d.ladder-unsorted-in-band",
+      "file": "apps/runtime/src/indicators/l2-memory/level-ledger.js",
+      "find": "      levels.sort((a, b) => better(a[0], b[0]));",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/ladder.test.js", "-t", "banded records give back every exact price"],
+      "mustFail": ["banded records give back every exact price"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "l2p3d.ladder-depth-ignored",
+      "file": "apps/runtime/src/indicators/l2-memory/level-ledger.js",
+      "find": "        if (out.length >= depth) return;",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/ladder.test.js", "-t", "banded records give back every exact price"],
+      "mustFail": ["banded records give back every exact price"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "l2p3d.ladder-includes-the-wrong-side-of-best",
+      "file": "apps/runtime/src/indicators/l2-memory/level-ledger.js",
+      "find": "better(bestKey, record.key) <= 0",
+      "replace": "better(bestKey, record.key) >= 0",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/ladder.test.js", "-t", "not whole numbers"],
+      "mustFail": ["not whole numbers"],
+      "timeoutMs": 60000
+    }
+  ]
+}

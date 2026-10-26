@@ -1,0 +1,174 @@
+{
+  "mutations": [
+    {
+      "id": "p4f.binance-trade-side-flipped",
+      "file": "apps/runtime/src/indicators/l2-memory/live-binding.js",
+      "find": "isBuyerMaker ? \"sell\" : \"buy\"",
+      "replace": "isBuyerMaker ? \"buy\" : \"sell\"",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "test/indicators/l2-memory/live-binding.test.js", "test/indicators/l2-memory/l2-live-path-golden.test.js", "--runInBand", "--silent"],
+      "mustFail": ["a TRADE envelope becomes a trade frame whose side is the aggressor", "binanceLive reproduces the frozen engine events, ledger and ladder"],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "p4f.binance-delta-taken-from-the-state",
+      "file": "apps/runtime/src/indicators/l2-memory/live-binding.js",
+      "find": "{ bids: envelope.payload.bids, asks: envelope.payload.asks }",
+      "replace": "{ bids: bookState.book?.bids ?? [], asks: bookState.book?.asks ?? [] }",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "test/indicators/l2-memory/live-binding.test.js", "test/indicators/l2-memory/l2-live-path-golden.test.js", "--runInBand", "--silent"],
+      "mustFail": ["a DEPTH envelope becomes a book frame", "binanceLive reproduces the frozen engine events, ledger and ladder"],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "p4f.binance-light-status-always-fetches-the-full-book",
+      "file": "apps/runtime/src/indicators/l2-memory/live-binding.js",
+      "find": "if (!engine.seeded || !engine.live) {",
+      "replace": "if (true) {",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "test/indicators/l2-memory/live-binding.test.js", "--runInBand", "--silent", "-t", "a pair off screen arrives as a light status"],
+      "mustFail": ["a pair off screen arrives as a light status"],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "p4f.binance-unavailable-envelope-not-a-gap",
+      "file": "apps/runtime/src/indicators/l2-memory/live-binding.js",
+      "find": "if (!envelope || envelope.state === \"UNAVAILABLE\" || !bookState) return gapFrame();",
+      "replace": "if (!envelope || !bookState) return gapFrame();",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "test/indicators/l2-memory/live-binding.test.js", "--runInBand", "--silent", "-t", "an unavailable envelope, a missing state"],
+      "mustFail": ["an unavailable envelope, a missing state or no envelope at all is a gap, never a book"],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "p4f.binance-prune-moved-off-the-wall-clock",
+      "file": "apps/runtime/src/indicators/l2-memory/live-binding.js",
+      "find": "prune: { mode: \"timer\", everyMs: pruneIntervalMs }",
+      "replace": "prune: { mode: \"book\", everyMs: pruneIntervalMs }",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "test/indicators/l2-memory/live-binding.test.js", "--runInBand", "--silent", "-t", "timers prune on schedule"],
+      "mustFail": ["timers prune on schedule and print debug output when enabled"],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "p4f.engine-gap-cause-dropped",
+      "file": "apps/runtime/src/indicators/l2-memory/memory-engine.js",
+      "find": "markUnavailable(frame.cause);",
+      "replace": "markUnavailable();",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "test/indicators/l2-memory/l2-input-binding.test.js", "--runInBand", "--silent", "-t", "routes book, trade, gap and anchor"],
+      "mustFail": ["routes book, trade, gap and anchor frames into the engine"],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "p4f.engine-anchor-mis-routed",
+      "file": "apps/runtime/src/indicators/l2-memory/memory-engine.js",
+      "find": "markUnavailable(\"ANCHOR\");",
+      "replace": "markUnavailable();",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "test/indicators/l2-memory/l2-input-binding.test.js", "--runInBand", "--silent", "-t", "routes book, trade, gap and anchor"],
+      "mustFail": ["routes book, trade, gap and anchor frames into the engine"],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "p4f.binding-registry-drops-the-scope",
+      "file": "apps/runtime/src/indicators/l2-memory/l2-input-binding.js",
+      "find": "return `${scope}:${symbol}`;",
+      "replace": "return `${symbol}`;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "test/indicators/l2-memory/l2-input-binding.test.js", "--runInBand", "--silent", "-t", "creates an engine only when the factory can"],
+      "mustFail": ["creates an engine only when the factory can, keeps it per scope and symbol"],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "p4f.binding-book-prune-every-book",
+      "file": "apps/runtime/src/indicators/l2-memory/l2-input-binding.js",
+      "find": "if (at - (prunedAt.get(key) ?? 0) < prune.everyMs) return;",
+      "replace": "if (false) return;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "test/indicators/l2-memory/l2-input-binding.test.js", "--runInBand", "--silent", "-t", "book-mode prune"],
+      "mustFail": ["book-mode prune runs after a READY book at most once per interval"],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "p4f.dxfeed-never-prunes",
+      "file": "apps/runtime/src/indicators/passive_liquidity/dxfeed-liquidity-binding.js",
+      "find": "prune: { mode: \"book\", everyMs: PRUNE_EVERY_MS }",
+      "replace": "prune: { mode: \"timer\", everyMs: PRUNE_EVERY_MS }",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "test/indicators/l2-memory/l2-live-path-golden.test.js", "--runInBand", "--silent"],
+      "mustFail": ["dxfeedLive reproduces the frozen engine events, ledger and ladder"],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "p4f.dxfeed-snapshot-restart-not-resynced",
+      "file": "apps/runtime/src/indicators/passive_liquidity/dxfeed-liquidity-binding.js",
+      "find": "if (!engine.seeded || !engine.live || entry.lastSnapshot !== snapshot) {",
+      "replace": "if (!engine.seeded || !engine.live) {",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "test/indicators/l2-memory/l2-live-path-golden.test.js", "test/indicators/passive_liquidity/dxfeed-liquidity-binding.test.js", "--runInBand", "--silent"],
+      "mustFail": ["dxfeedLive reproduces the frozen engine events, ledger and ladder"],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "p4f.dxfeed-trailing-flush-dropped",
+      "file": "apps/runtime/src/indicators/passive_liquidity/dxfeed-liquidity-binding.js",
+      "find": "entry.timer = setTimer(() => flush(entry), coalesceMs);",
+      "replace": "entry.timer = setTimer(() => {}, coalesceMs);",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "test/indicators/passive_liquidity/dxfeed-liquidity-binding.test.js", "--runInBand", "--silent", "-t", "coalesces a burst of order events"],
+      "mustFail": ["coalesces a burst of order events into one look at the book"],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "p4f.dxfeed-live-claims-the-replay-batching",
+      "file": "apps/runtime/src/indicators/passive_liquidity/dxfeed-liquidity-binding.js",
+      "find": "const BATCHING = DXFEED_BATCHING.LIVE;",
+      "replace": "const BATCHING = DXFEED_BATCHING.REPLAY;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "test/indicators/passive_liquidity/dxfeed-liquidity-binding.test.js", "--runInBand", "--silent", "-t", "share one 250 ms batching window"],
+      "mustFail": ["share one 250 ms batching window and name their different batching policies"],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "p4f.audit-stale-tick-resolution-recreates-released-pair",
+      "file": "apps/runtime/src/indicators/l2-memory/live-binding.js",
+      "find": "const request = {};",
+      "replace": "const request = undefined;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "test/indicators/l2-memory/live-binding.test.js", "--runInBand", "--silent", "-t", "a released pair cannot be recreated"],
+      "mustFail": ["a released pair cannot be recreated by its stale tick-size lookup"],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "p4f.audit-stopped-binding-accepts-trade",
+      "file": "apps/runtime/src/indicators/l2-memory/l2-input-binding.js",
+      "find": "if (stopped) return false;",
+      "replace": "if (false) return false;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "test/indicators/l2-memory/l2-input-binding.test.js", "--runInBand", "--silent", "-t", "a stopped binding cannot create or apply"],
+      "mustFail": ["a stopped binding cannot create or apply another engine input"],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "p4f.audit-nonfinite-frame-accepted",
+      "file": "apps/runtime/src/indicators/l2-memory/input-frames.js",
+      "find": "return Number.isFinite(number) ? number : NaN;",
+      "replace": "return number;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "test/indicators/l2-memory/input-frames.test.js", "--runInBand", "--silent", "-t", "every malformed frame is named"],
+      "mustFail": ["every malformed frame is named"],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "p4f.audit-sync-tick-resolution-strands-pair",
+      "file": "apps/runtime/src/indicators/l2-memory/live-binding.js",
+      "find": "resolving.delete(key);\n      throw error;",
+      "replace": "throw error;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "test/indicators/l2-memory/live-binding.test.js", "--runInBand", "--silent", "-t", "a synchronous tick-size resolver failure"],
+      "mustFail": ["a synchronous tick-size resolver failure does not strand the pair"],
+      "timeoutMs": 120000
+    }
+  ]
+}

@@ -1,0 +1,1223 @@
+{
+  "generatedAt": "2026-09-06T06:40:06.549Z",
+  "datasetRanges": {
+    "GLBX.MDP3": {
+      "start": "2010-06-06T00:00:00.000000000Z",
+      "end": "2026-09-06T06:20:00.000000000Z",
+      "maxAgeDays": 5936
+    },
+    "XNAS.ITCH": {
+      "start": "2018-05-01T00:00:00.000000000Z",
+      "end": "2026-09-05T00:00:00.000000000Z",
+      "maxAgeDays": 3050
+    }
+  },
+  "results": [
+    {
+      "dataset": "GLBX.MDP3",
+      "name": "ES",
+      "schema": "mbo",
+      "method": "full_search",
+      "boundaries": [
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2026-08-04",
+          "firstDateInToState": "2026-08-03",
+          "sampleCostUsd": 1.012937830389
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2025-09-21",
+          "firstDateInToState": "2025-09-20",
+          "sampleCostUsd": 0.008799308538
+        },
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2025-09-13",
+          "firstDateInToState": "2025-09-12",
+          "sampleCostUsd": 0.569663228095
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2024-10-13",
+          "firstDateInToState": "2024-10-12",
+          "sampleCostUsd": 0.010867801309
+        },
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2024-10-05",
+          "firstDateInToState": "2024-10-04",
+          "sampleCostUsd": 1.016691045463
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2022-11-13",
+          "firstDateInToState": "2022-11-12",
+          "sampleCostUsd": 0.01595698446
+        },
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2022-11-05",
+          "firstDateInToState": "2022-11-04",
+          "sampleCostUsd": 1.923885279894
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2017-05-21",
+          "firstDateInToState": "2017-05-20",
+          "sampleCostUsd": 0.004279772937
+        }
+      ]
+    },
+    {
+      "dataset": "GLBX.MDP3",
+      "name": "NQ",
+      "schema": "mbo",
+      "method": "mismatch_full_search",
+      "boundaries": [
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2026-08-04",
+          "firstDateInToState": "2026-08-03",
+          "sampleCostUsd": 2.018892878294
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2025-09-21",
+          "firstDateInToState": "2025-09-20",
+          "sampleCostUsd": 0.013326448202
+        },
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2025-09-13",
+          "firstDateInToState": "2025-09-12",
+          "sampleCostUsd": 0.854473766685
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2024-10-13",
+          "firstDateInToState": "2024-10-12",
+          "sampleCostUsd": 0.013699798286
+        },
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2024-10-05",
+          "firstDateInToState": "2024-10-04",
+          "sampleCostUsd": 1.314098699391
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2022-11-13",
+          "firstDateInToState": "2022-11-12",
+          "sampleCostUsd": 0.0119955495
+        },
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2022-11-05",
+          "firstDateInToState": "2022-11-04",
+          "sampleCostUsd": 1.552460338175
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2017-05-21",
+          "firstDateInToState": "2017-05-20",
+          "sampleCostUsd": 0.002296708524
+        }
+      ]
+    },
+    {
+      "dataset": "GLBX.MDP3",
+      "name": "ES",
+      "schema": "mbp-10",
+      "method": "full_search",
+      "boundaries": [
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2026-08-04",
+          "firstDateInToState": "2026-08-03",
+          "sampleCostUsd": 1.414950639009
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2025-09-21",
+          "firstDateInToState": "2025-09-20",
+          "sampleCostUsd": 0.009439893067
+        },
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2025-09-13",
+          "firstDateInToState": "2025-09-12",
+          "sampleCostUsd": 0.819327779114
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2024-10-13",
+          "firstDateInToState": "2024-10-12",
+          "sampleCostUsd": 0.013747625053
+        },
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2024-10-05",
+          "firstDateInToState": "2024-10-04",
+          "sampleCostUsd": 1.438223838806
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2022-11-13",
+          "firstDateInToState": "2022-11-12",
+          "sampleCostUsd": 0.018701739609
+        },
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2022-11-05",
+          "firstDateInToState": "2022-11-04",
+          "sampleCostUsd": 2.773094497621
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2017-02-05",
+          "firstDateInToState": "2017-02-04",
+          "sampleCostUsd": 0.002817556262
+        },
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2017-02-04",
+          "firstDateInToState": "2017-02-03",
+          "sampleCostUsd": 0.42994979769
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2010-07-25",
+          "firstDateInToState": "2010-07-24",
+          "sampleCostUsd": 0.003660492599
+        }
+      ]
+    },
+    {
+      "dataset": "GLBX.MDP3",
+      "name": "NQ",
+      "schema": "mbp-10",
+      "method": "mismatch_full_search",
+      "boundaries": [
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2026-08-04",
+          "firstDateInToState": "2026-08-03",
+          "sampleCostUsd": 2.97556835413
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2025-09-21",
+          "firstDateInToState": "2025-09-20",
+          "sampleCostUsd": 0.018630109727
+        },
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2025-09-13",
+          "firstDateInToState": "2025-09-12",
+          "sampleCostUsd": 1.265940606594
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2024-10-13",
+          "firstDateInToState": "2024-10-12",
+          "sampleCostUsd": 0.018731042743
+        },
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2024-10-05",
+          "firstDateInToState": "2024-10-04",
+          "sampleCostUsd": 1.827381275594
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2022-11-13",
+          "firstDateInToState": "2022-11-12",
+          "sampleCostUsd": 0.015523120761
+        },
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2022-11-05",
+          "firstDateInToState": "2022-11-04",
+          "sampleCostUsd": 2.068068988621
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2017-02-05",
+          "firstDateInToState": "2017-02-04",
+          "sampleCostUsd": 0.001712091267
+        },
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2017-02-04",
+          "firstDateInToState": "2017-02-03",
+          "sampleCostUsd": 0.291328839958
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2010-07-25",
+          "firstDateInToState": "2010-07-24",
+          "sampleCostUsd": 0.002198420465
+        }
+      ]
+    },
+    {
+      "dataset": "GLBX.MDP3",
+      "name": "ES",
+      "schema": "mbp-1",
+      "method": "full_search",
+      "boundaries": []
+    },
+    {
+      "dataset": "GLBX.MDP3",
+      "name": "NQ",
+      "schema": "mbp-1",
+      "method": "confirmed_matching_primary",
+      "boundaries": []
+    },
+    {
+      "dataset": "GLBX.MDP3",
+      "name": "ES",
+      "schema": "tbbo",
+      "method": "full_search",
+      "boundaries": []
+    },
+    {
+      "dataset": "GLBX.MDP3",
+      "name": "NQ",
+      "schema": "tbbo",
+      "method": "confirmed_matching_primary",
+      "boundaries": []
+    },
+    {
+      "dataset": "GLBX.MDP3",
+      "name": "ES",
+      "schema": "trades",
+      "method": "full_search",
+      "boundaries": []
+    },
+    {
+      "dataset": "GLBX.MDP3",
+      "name": "NQ",
+      "schema": "trades",
+      "method": "confirmed_matching_primary",
+      "boundaries": []
+    },
+    {
+      "dataset": "GLBX.MDP3",
+      "name": "ES",
+      "schema": "ohlcv-1s",
+      "method": "spot_check_2_points",
+      "boundaries": [],
+      "alwaysFree": true
+    },
+    {
+      "dataset": "GLBX.MDP3",
+      "name": "NQ",
+      "schema": "ohlcv-1s",
+      "method": "spot_check_2_points",
+      "boundaries": [],
+      "alwaysFree": true
+    },
+    {
+      "dataset": "GLBX.MDP3",
+      "name": "ES",
+      "schema": "definition",
+      "method": "spot_check_2_points",
+      "boundaries": [],
+      "alwaysFree": true
+    },
+    {
+      "dataset": "GLBX.MDP3",
+      "name": "NQ",
+      "schema": "definition",
+      "method": "spot_check_2_points",
+      "boundaries": [],
+      "alwaysFree": true
+    },
+    {
+      "dataset": "GLBX.MDP3",
+      "name": "ES",
+      "schema": "statistics",
+      "method": "spot_check_2_points",
+      "boundaries": [],
+      "alwaysFree": true
+    },
+    {
+      "dataset": "GLBX.MDP3",
+      "name": "NQ",
+      "schema": "statistics",
+      "method": "spot_check_2_points",
+      "boundaries": [],
+      "alwaysFree": true
+    },
+    {
+      "dataset": "GLBX.MDP3",
+      "name": "ES",
+      "schema": "status",
+      "method": "spot_check_2_points",
+      "boundaries": [],
+      "alwaysFree": true
+    },
+    {
+      "dataset": "GLBX.MDP3",
+      "name": "NQ",
+      "schema": "status",
+      "method": "spot_check_2_points",
+      "boundaries": [],
+      "alwaysFree": true
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "name": "AAPL",
+      "schema": "mbo",
+      "method": "full_search",
+      "boundaries": [
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2026-07-03",
+          "firstDateInToState": "2026-07-02",
+          "sampleCostUsd": 0.747887590528
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2025-11-24",
+          "firstDateInToState": "2025-11-23",
+          "sampleCostUsd": 0.363283807039
+        },
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2025-10-18",
+          "firstDateInToState": "2025-10-17",
+          "sampleCostUsd": 0.398699837923
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2025-09-22",
+          "firstDateInToState": "2025-09-21",
+          "sampleCostUsd": 0.389629286528
+        },
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2025-09-13",
+          "firstDateInToState": "2025-09-12",
+          "sampleCostUsd": 0.282525095344
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2024-12-09",
+          "firstDateInToState": "2024-12-08",
+          "sampleCostUsd": 0.226268863678
+        },
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2024-10-05",
+          "firstDateInToState": "2024-10-04",
+          "sampleCostUsd": 0.367391565442
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2023-12-11",
+          "firstDateInToState": "2023-12-10",
+          "sampleCostUsd": 0.224320220947
+        },
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2023-10-14",
+          "firstDateInToState": "2023-10-13",
+          "sampleCostUsd": 0.310565623641
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2023-01-09",
+          "firstDateInToState": "2023-01-08",
+          "sampleCostUsd": 0.268931722641
+        },
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2022-01-08",
+          "firstDateInToState": "2022-01-07",
+          "sampleCostUsd": 0.304798427224
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2018-07-16",
+          "firstDateInToState": "2018-07-15",
+          "sampleCostUsd": 0.065684017539
+        }
+      ]
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "name": "TSLA",
+      "schema": "mbo",
+      "method": "mismatch_full_search",
+      "boundaries": [
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2026-07-03",
+          "firstDateInToState": "2026-07-02",
+          "sampleCostUsd": 0.442068216205
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2025-11-24",
+          "firstDateInToState": "2025-11-23",
+          "sampleCostUsd": 0.648894274235
+        },
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2025-10-18",
+          "firstDateInToState": "2025-10-17",
+          "sampleCostUsd": 0.428610339761
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2025-09-22",
+          "firstDateInToState": "2025-09-21",
+          "sampleCostUsd": 0.549603679776
+        },
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2025-09-13",
+          "firstDateInToState": "2025-09-12",
+          "sampleCostUsd": 0.714129057527
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2024-12-09",
+          "firstDateInToState": "2024-12-08",
+          "sampleCostUsd": 0.501540246606
+        },
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2024-10-05",
+          "firstDateInToState": "2024-10-04",
+          "sampleCostUsd": 0.513942942023
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2023-12-11",
+          "firstDateInToState": "2023-12-10",
+          "sampleCostUsd": 0.480388686061
+        },
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2023-10-14",
+          "firstDateInToState": "2023-10-13",
+          "sampleCostUsd": 0.698763656616
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2023-01-09",
+          "firstDateInToState": "2023-01-08",
+          "sampleCostUsd": 0.528991100192
+        },
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2022-01-08",
+          "firstDateInToState": "2022-01-07",
+          "sampleCostUsd": 0.248593828082
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2018-07-16",
+          "firstDateInToState": "2018-07-15",
+          "sampleCostUsd": 0.040241074562
+        }
+      ]
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "name": "AAPL",
+      "schema": "mbp-10",
+      "method": "full_search",
+      "boundaries": [
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2026-07-03",
+          "firstDateInToState": "2026-07-02",
+          "sampleCostUsd": 0.444820606709
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2025-11-24",
+          "firstDateInToState": "2025-11-23",
+          "sampleCostUsd": 0.305605840683
+        },
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2025-10-18",
+          "firstDateInToState": "2025-10-17",
+          "sampleCostUsd": 0.263959473372
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2025-09-22",
+          "firstDateInToState": "2025-09-21",
+          "sampleCostUsd": 0.318026393652
+        },
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2025-09-13",
+          "firstDateInToState": "2025-09-12",
+          "sampleCostUsd": 0.205264508724
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2024-12-09",
+          "firstDateInToState": "2024-12-08",
+          "sampleCostUsd": 0.181476533413
+        },
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2024-10-05",
+          "firstDateInToState": "2024-10-04",
+          "sampleCostUsd": 0.329332399368
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2023-12-11",
+          "firstDateInToState": "2023-12-10",
+          "sampleCostUsd": 0.262388139963
+        },
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2023-10-14",
+          "firstDateInToState": "2023-10-13",
+          "sampleCostUsd": 0.331274425983
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2023-01-09",
+          "firstDateInToState": "2023-01-08",
+          "sampleCostUsd": 0.405400592089
+        },
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2022-01-08",
+          "firstDateInToState": "2022-01-07",
+          "sampleCostUsd": 0.49727396965
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2018-07-16",
+          "firstDateInToState": "2018-07-15",
+          "sampleCostUsd": 0.110041594505
+        }
+      ]
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "name": "TSLA",
+      "schema": "mbp-10",
+      "method": "mismatch_full_search",
+      "boundaries": [
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2026-07-03",
+          "firstDateInToState": "2026-07-02",
+          "sampleCostUsd": 0.393041318655
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2025-11-24",
+          "firstDateInToState": "2025-11-23",
+          "sampleCostUsd": 0.516644334793
+        },
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2025-10-18",
+          "firstDateInToState": "2025-10-17",
+          "sampleCostUsd": 0.400389105082
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2025-09-22",
+          "firstDateInToState": "2025-09-21",
+          "sampleCostUsd": 0.4744135499
+        },
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2025-09-13",
+          "firstDateInToState": "2025-09-12",
+          "sampleCostUsd": 0.542551594973
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2024-12-09",
+          "firstDateInToState": "2024-12-08",
+          "sampleCostUsd": 0.276666682959
+        },
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2024-10-05",
+          "firstDateInToState": "2024-10-04",
+          "sampleCostUsd": 0.383502411842
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2023-12-11",
+          "firstDateInToState": "2023-12-10",
+          "sampleCostUsd": 0.282419145107
+        },
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2023-10-14",
+          "firstDateInToState": "2023-10-13",
+          "sampleCostUsd": 0.396695744991
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2023-01-09",
+          "firstDateInToState": "2023-01-08",
+          "sampleCostUsd": 0.761641836166
+        },
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2022-01-08",
+          "firstDateInToState": "2022-01-07",
+          "sampleCostUsd": 0.237809288502
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2018-07-16",
+          "firstDateInToState": "2018-07-15",
+          "sampleCostUsd": 0.064364075661
+        }
+      ]
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "name": "AAPL",
+      "schema": "mbp-1",
+      "method": "full_search",
+      "boundaries": [
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2025-09-04",
+          "firstDateInToState": "2025-09-03",
+          "sampleCostUsd": 0.101750582457
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2024-12-09",
+          "firstDateInToState": "2024-12-08",
+          "sampleCostUsd": 0.071159273386
+        },
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2024-10-05",
+          "firstDateInToState": "2024-10-04",
+          "sampleCostUsd": 0.117602348328
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2023-12-11",
+          "firstDateInToState": "2023-12-10",
+          "sampleCostUsd": 0.111784636974
+        },
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2023-10-14",
+          "firstDateInToState": "2023-10-13",
+          "sampleCostUsd": 0.144434452057
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2023-01-09",
+          "firstDateInToState": "2023-01-08",
+          "sampleCostUsd": 0.174291282892
+        },
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2022-01-08",
+          "firstDateInToState": "2022-01-07",
+          "sampleCostUsd": 0.201821386814
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2018-07-16",
+          "firstDateInToState": "2018-07-15",
+          "sampleCostUsd": 0.027774184942
+        }
+      ]
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "name": "TSLA",
+      "schema": "mbp-1",
+      "method": "mismatch_full_search",
+      "boundaries": [
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2025-09-04",
+          "firstDateInToState": "2025-09-03",
+          "sampleCostUsd": 0.183023929596
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2024-12-09",
+          "firstDateInToState": "2024-12-08",
+          "sampleCostUsd": 0.09546688199
+        },
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2024-10-05",
+          "firstDateInToState": "2024-10-04",
+          "sampleCostUsd": 0.114055752754
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2023-12-11",
+          "firstDateInToState": "2023-12-10",
+          "sampleCostUsd": 0.086055546999
+        },
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2023-10-14",
+          "firstDateInToState": "2023-10-13",
+          "sampleCostUsd": 0.133921712637
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2023-01-09",
+          "firstDateInToState": "2023-01-08",
+          "sampleCostUsd": 0.295887172222
+        },
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2022-01-08",
+          "firstDateInToState": "2022-01-07",
+          "sampleCostUsd": 0.072481781244
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2018-07-16",
+          "firstDateInToState": "2018-07-15",
+          "sampleCostUsd": 0.010339647532
+        }
+      ]
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "name": "AAPL",
+      "schema": "tbbo",
+      "method": "full_search",
+      "boundaries": [
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2025-09-04",
+          "firstDateInToState": "2025-09-03",
+          "sampleCostUsd": 0.095837116241
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2024-12-09",
+          "firstDateInToState": "2024-12-08",
+          "sampleCostUsd": 0.054143518209
+        },
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2024-10-05",
+          "firstDateInToState": "2024-10-04",
+          "sampleCostUsd": 0.048825591803
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2023-12-11",
+          "firstDateInToState": "2023-12-10",
+          "sampleCostUsd": 0.05192399025
+        },
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2023-10-14",
+          "firstDateInToState": "2023-10-13",
+          "sampleCostUsd": 0.035906732082
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2023-01-09",
+          "firstDateInToState": "2023-01-08",
+          "sampleCostUsd": 0.059303641319
+        },
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2022-01-08",
+          "firstDateInToState": "2022-01-07",
+          "sampleCostUsd": 0.061507076025
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2018-07-16",
+          "firstDateInToState": "2018-07-15",
+          "sampleCostUsd": 0.014156699181
+        }
+      ]
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "name": "TSLA",
+      "schema": "tbbo",
+      "method": "mismatch_full_search",
+      "boundaries": [
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2025-09-04",
+          "firstDateInToState": "2025-09-03",
+          "sampleCostUsd": 0.136663019657
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2024-12-09",
+          "firstDateInToState": "2024-12-08",
+          "sampleCostUsd": 0.128640979528
+        },
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2024-10-05",
+          "firstDateInToState": "2024-10-04",
+          "sampleCostUsd": 0.102342814207
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2023-12-11",
+          "firstDateInToState": "2023-12-10",
+          "sampleCostUsd": 0.073847919703
+        },
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2023-10-14",
+          "firstDateInToState": "2023-10-13",
+          "sampleCostUsd": 0.081343352795
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2023-01-09",
+          "firstDateInToState": "2023-01-08",
+          "sampleCostUsd": 0.198528170586
+        },
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2022-01-08",
+          "firstDateInToState": "2022-01-07",
+          "sampleCostUsd": 0.083020180464
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2018-07-16",
+          "firstDateInToState": "2018-07-15",
+          "sampleCostUsd": 0.013556331396
+        }
+      ]
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "name": "AAPL",
+      "schema": "trades",
+      "method": "full_search",
+      "boundaries": [
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2025-09-04",
+          "firstDateInToState": "2025-09-03",
+          "sampleCostUsd": 0.057502269745
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2024-12-09",
+          "firstDateInToState": "2024-12-08",
+          "sampleCostUsd": 0.032486110926
+        },
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2024-10-05",
+          "firstDateInToState": "2024-10-04",
+          "sampleCostUsd": 0.029295355082
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2023-12-11",
+          "firstDateInToState": "2023-12-10",
+          "sampleCostUsd": 0.03115439415
+        },
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2023-10-14",
+          "firstDateInToState": "2023-10-13",
+          "sampleCostUsd": 0.021544039249
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2023-01-09",
+          "firstDateInToState": "2023-01-08",
+          "sampleCostUsd": 0.035582184792
+        },
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2022-01-08",
+          "firstDateInToState": "2022-01-07",
+          "sampleCostUsd": 0.036904245615
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2018-07-16",
+          "firstDateInToState": "2018-07-15",
+          "sampleCostUsd": 0.008494019508
+        }
+      ]
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "name": "TSLA",
+      "schema": "trades",
+      "method": "mismatch_full_search",
+      "boundaries": [
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2025-09-04",
+          "firstDateInToState": "2025-09-03",
+          "sampleCostUsd": 0.081997811794
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2024-12-09",
+          "firstDateInToState": "2024-12-08",
+          "sampleCostUsd": 0.077184587717
+        },
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2024-10-05",
+          "firstDateInToState": "2024-10-04",
+          "sampleCostUsd": 0.061405688524
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2023-12-11",
+          "firstDateInToState": "2023-12-10",
+          "sampleCostUsd": 0.044308751822
+        },
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2023-10-14",
+          "firstDateInToState": "2023-10-13",
+          "sampleCostUsd": 0.048806011677
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2023-01-09",
+          "firstDateInToState": "2023-01-08",
+          "sampleCostUsd": 0.119116902351
+        },
+        {
+          "fromState": "free",
+          "toState": "paid",
+          "lastDateInFromState": "2022-01-08",
+          "firstDateInToState": "2022-01-07",
+          "sampleCostUsd": 0.049812108278
+        },
+        {
+          "fromState": "paid",
+          "toState": "free",
+          "lastDateInFromState": "2018-07-16",
+          "firstDateInToState": "2018-07-15",
+          "sampleCostUsd": 0.008133798838
+        }
+      ]
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "name": "AAPL",
+      "schema": "ohlcv-1s",
+      "method": "spot_check_2_points",
+      "boundaries": [],
+      "alwaysFree": true
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "name": "TSLA",
+      "schema": "ohlcv-1s",
+      "method": "spot_check_2_points",
+      "boundaries": [],
+      "alwaysFree": true
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "name": "AAPL",
+      "schema": "definition",
+      "method": "spot_check_2_points",
+      "boundaries": [],
+      "alwaysFree": true
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "name": "TSLA",
+      "schema": "definition",
+      "method": "spot_check_2_points",
+      "boundaries": [],
+      "alwaysFree": true
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "name": "AAPL",
+      "schema": "statistics",
+      "method": "spot_check_2_points",
+      "boundaries": [],
+      "alwaysFree": true
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "name": "TSLA",
+      "schema": "statistics",
+      "method": "spot_check_2_points",
+      "boundaries": [],
+      "alwaysFree": true
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "name": "AAPL",
+      "schema": "status",
+      "method": "spot_check_2_points",
+      "boundaries": [],
+      "alwaysFree": true
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "name": "TSLA",
+      "schema": "status",
+      "method": "spot_check_2_points",
+      "boundaries": [],
+      "alwaysFree": true
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "mutations": [
+    {
+      "id": "pr18-memo-ignores-timeframe-clocks",
+      "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityRunFinder.ts",
+      "find": "  return JSON.stringify([layout.rowWidth, layout.clusterRows, layout.intervalMs, layout.clocks, settings, grid.epoch]);",
+      "replace": "  return JSON.stringify([layout.rowWidth, layout.clusterRows, layout.intervalMs, settings, grid.epoch]);",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/indicators/passive-liquidity/tests/liquidityRunFinder.test.ts"],
+      "mustFail": ["judges the runs by the layout's clocks"]
+    },
+    {
+      "id": "pr18-band-reply-wrong-price",
+      "file": "apps/web/src/lib/chart/bandHistory.ts",
+      "find": "frame.price_lo !== entry.want.priceLo || frame.price_hi !== entry.want.priceHi ||",
+      "replace": "false ||",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/chart/tests/bandHistory.test.ts"],
+      "mustFail": ["ignores a reply it did not ask for or that does not match the piece"]
+    },
+    {
+      "id": "pr18-relay-rejects-valid-band-response",
+      "file": "apps/runtime/src/server/live-storage-relay.js",
+      "find": "\"aggressive-prints\": 4_000_000, \"band-history\": 4_000_000",
+      "replace": "\"aggressive-prints\": 4_000_000",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "test/server/live-storage-relay.test.js"],
+      "mustFail": ["band-history relay accepts the same bounded response size"]
+    }
+  ]
+}

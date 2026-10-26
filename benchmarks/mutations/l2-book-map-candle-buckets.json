@@ -1,0 +1,134 @@
+{
+ "mutations": [
+  {
+   "id": "bookmap55.bucket-ignores-the-candle",
+   "file": "apps/web/src/lib/indicators/l2-book-map/l2BookMapPrimitive.ts",
+   "find": "    const timeBucketMs = Math.max(1, this.intervalMs);",
+   "replace": "    const timeBucketMs = 30_000;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/l2-book-map/tests/l2BookMapPrimitive.test.ts"
+   ],
+   "mustFail": [
+    "counts its window in candles of the chart's timeframe, not in seconds",
+    "rebuilds its buckets when the chart's timeframe changes under the same feed"
+   ]
+  },
+  {
+   "id": "bookmap55.window-ignores-the-bucket",
+   "file": "apps/web/src/lib/indicators/l2-book-map/l2BookMapPrimitive.ts",
+   "find": "    const windowMs = settings.windowBuckets * timeBucketMs;",
+   "replace": "    const windowMs = settings.windowBuckets * 1_000;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/l2-book-map/tests/l2BookMapPrimitive.test.ts"
+   ],
+   "mustFail": [
+    "counts its window in candles of the chart's timeframe, not in seconds"
+   ]
+  },
+  {
+   "id": "bookmap55.identity-ignores-the-timeframe",
+   "file": "apps/web/src/lib/indicators/l2-book-map/l2BookMapPrimitive.ts",
+   "find": "view.deep?.columnMs ?? 0}:${this.intervalMs}`;",
+   "replace": "view.deep?.columnMs ?? 0}`;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/l2-book-map/tests/l2BookMapPrimitive.test.ts"
+   ],
+   "mustFail": [
+    "rebuilds its buckets when the chart's timeframe changes under the same feed"
+   ]
+  },
+  {
+   "id": "bookmap55.paint-key-from-the-probe",
+   "file": "apps/web/src/lib/indicators/l2-book-map/l2BookMapPrimitive.ts",
+   "find": "      : `${priceRange.from}:${priceRange.to}`;",
+   "replace": "      : `${probe === null ? \"\" : yOf(probe.priceHi)}:${probe === null ? \"\" : yOf(probe.priceLo)}`;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/l2-book-map/tests/l2BookMapPrimitive.test.ts"
+   ],
+   "mustFail": [
+    "repaints when the visible price range moves even though the first cell in view sits off the price scale"
+   ]
+  },
+  {
+   "id": "bookmap55.lane-without-deep-kept",
+   "file": "apps/web/src/lib/indicators/l2-book-map/l2BookMapPrimitive.ts",
+   "find": "        if (candidate === null || candidate.deep === null || candidate.deep.columns.length === 0) return false;",
+   "replace": "        if (candidate === null) return false;\n        if (candidate.deep === null || candidate.deep.columns.length === 0) return true;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/l2-book-map/tests/l2BookMapPrimitive.test.ts"
+   ],
+   "mustFail": [
+    "keeps a lane's deep history when the price scale asks for a lane that has none, so a zoom-out never drops the past"
+   ]
+  },
+  {
+   "id": "bookmap55.holed-lane-kept",
+   "file": "apps/web/src/lib/indicators/l2-book-map/l2BookMapPrimitive.ts",
+   "find": "        return gap <= Math.max(6 * candidate.deep.columnMs, 2 * 60_000);",
+   "replace": "        return true;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/l2-book-map/tests/l2BookMapPrimitive.test.ts"
+   ],
+   "mustFail": [
+    "moves off a lane whose deep tier has a hole, so a holed lane cannot cut the past out of the map"
+   ]
+  },
+  {
+   "id": "bookmap55.fallback-ignores-history",
+   "file": "apps/web/src/lib/indicators/l2-book-map/l2BookMapPrimitive.ts",
+   "find": "          if (!holdsHistory(candidate)) continue;\n",
+   "replace": "          if (candidate === null) continue;\n",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/l2-book-map/tests/l2BookMapPrimitive.test.ts"
+   ],
+   "mustFail": [
+    "moves off a lane whose deep tier has a hole, so a holed lane cannot cut the past out of the map"
+   ]
+  },
+  {
+   "id": "bookmap55.fallback-not-taken",
+   "file": "apps/web/src/lib/indicators/l2-book-map/l2BookMapPrimitive.ts",
+   "find": "        if (best !== null) {\n          lane = best.info.lane;",
+   "replace": "        if (best !== null && false) {\n          lane = best.info.lane;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/l2-book-map/tests/l2BookMapPrimitive.test.ts"
+   ],
+   "mustFail": [
+    "keeps a lane's deep history when the price scale asks for a lane that has none, so a zoom-out never drops the past",
+    "moves off a lane whose deep tier has a hole, so a holed lane cannot cut the past out of the map"
+   ]
+  }
+ ]
+}

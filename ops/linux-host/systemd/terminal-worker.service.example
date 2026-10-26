@@ -1,0 +1,38 @@
+# Template only. W6.05 supplies the actual collector command and restart policy.
+# Do not install/enable this example as a production service.
+[Unit]
+Description=Terminal worker template (configure before use)
+Wants=network-online.target
+After=network-online.target
+RequiresMountsFor=/srv/terminal-data
+
+[Service]
+Type=simple
+User=ttcollect
+Group=ttcollect
+Slice=terminal.slice
+WorkingDirectory=/opt/terminal-l1-l2/current/apps/runtime
+EnvironmentFile=/etc/terminal-l1-l2/collect/service.env
+# Fails rather than writing onto the OS disk when the data mount is absent.
+ExecStartPre=/usr/bin/mountpoint -q /srv/terminal-data
+# Deliberate fail-closed placeholder, replace with the qualified worker in W6.05.
+ExecStart=/usr/bin/false
+Restart=no
+UMask=0077
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+CapabilityBoundingSet=
+ReadWritePaths=/srv/terminal-data/capture /var/lib/terminal-l1-l2/collect
+StandardOutput=journal
+StandardError=journal
+TimeoutStopSec=60
+
+[Install]
+WantedBy=multi-user.target

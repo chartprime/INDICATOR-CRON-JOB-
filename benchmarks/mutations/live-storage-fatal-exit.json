@@ -1,0 +1,6 @@
+{
+  "mutations": [
+    {"id":"live-storage.fatal.waits-on-shutdown","file":"apps/runtime/scripts/serve/run-live-storage-service.js","find":"    setTimeout(() => processImpl.exit(1), FATAL_EXIT_TIMEOUT_MS).unref?.();\n","replace":"","cwd":"apps/runtime","command":["npx","jest","test/server/live-storage-service.test.js"],"mustFail":["a fatal error exits with 1 even when the shutdown never finishes"]},
+    {"id":"live-storage.fatal.exit-code-zero","file":"apps/runtime/scripts/serve/run-live-storage-service.js","find":"    setTimeout(() => processImpl.exit(1), FATAL_EXIT_TIMEOUT_MS).unref?.();","replace":"    setTimeout(() => processImpl.exit(0), FATAL_EXIT_TIMEOUT_MS).unref?.();","cwd":"apps/runtime","command":["npx","jest","test/server/live-storage-service.test.js"],"mustFail":["a fatal error exits with 1 even when the shutdown never finishes"]}
+  ]
+}

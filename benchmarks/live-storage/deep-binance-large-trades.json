@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "name": "o0-deep-binance-large-trades-45k-and-bucketed-7d-2026-09-18",
+  "users": 1,
+  "rounds": 1,
+  "requests": [
+    {
+      "route": "large-trades",
+      "body": { "symbol": "BTCUSDT", "marketKind": "SPOT", "options": { "nowMs": 1789689600000, "limit": 45000 } }
+    },
+    {
+      "route": "large-trades",
+      "body": {
+        "symbol": "BTCUSDT",
+        "marketKind": "SPOT",
+        "options": { "nowMs": 1789689600000, "limit": 45000, "fromMs": 1789084800000, "bucketMs": 3600000, "perBucketSideLimit": 50 }
+      }
+    }
+  ]
+}

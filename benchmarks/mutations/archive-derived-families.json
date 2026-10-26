@@ -1,0 +1,58 @@
+{
+  "mutations": [
+    {
+      "id": "archive-derived.projection-drops-a-sort-key-column",
+      "file": "apps/runtime/conversion/archive_reader.py",
+      "find": "    selected = \"*\" if wire_fields is None else \", \".join(dict.fromkeys((*wire_fields, *SORT_KEY)))",
+      "replace": "    selected = \"*\" if wire_fields is None else \", \".join(dict.fromkeys(wire_fields))",
+      "cwd": "apps/runtime/conversion",
+      "command": ["uv", "run", "--frozen", "pytest", "-q", "tests/test_archive_reader.py", "-k", "omits_the_sort_key"],
+      "mustFail": ["test_a_projection_that_omits_the_sort_key_still_pages_without_losing_a_row"]
+    },
+    {
+      "id": "archive-derived.projection-applied-to-every-family",
+      "file": "apps/runtime/conversion/archive_query.py",
+      "find": "    return DERIVED_WIRE_FIELDS.get(family)",
+      "replace": "    return DERIVED_WIRE_FIELDS.get(family, (\"event_ns\",))",
+      "cwd": "apps/runtime/conversion",
+      "command": ["uv", "run", "--frozen", "pytest", "-q", "tests/test_archive_query_discovery.py", "-k", "declares_its_wire_fields"],
+      "mustFail": ["test_a_derived_family_declares_its_wire_fields_and_the_others_declare_none"]
+    },
+    {
+      "id": "archive-derived.level-window-widened-to-the-minute-cap",
+      "file": "apps/runtime/conversion/archive_query.py",
+      "find": "    \"trade_level_1m\": 7 * _DAY_NS,",
+      "replace": "    \"trade_level_1m\": 31 * _DAY_NS,",
+      "cwd": "apps/runtime/conversion",
+      "command": ["uv", "run", "--frozen", "pytest", "-q", "tests/test_archive_query_discovery.py", "tests/test_archive_query_reconciliation.py", "-k", "window"],
+      "mustFail": ["test_the_window_is_bounded_in_time_per_family[trade_level_1m-8-True]"]
+    },
+    {
+      "id": "archive-derived.estimate-borrowed-from-trade",
+      "file": "apps/runtime/conversion/archive_query.py",
+      "find": "    \"trade_level_1m\": 47,",
+      "replace": "    \"trade_level_1m\": 60,",
+      "cwd": "apps/runtime/conversion",
+      "command": ["uv", "run", "--frozen", "pytest", "-q", "tests/test_archive_query_discovery.py", "tests/test_archive_query_reconciliation.py", "-k", "estimate or bytes_per_row"],
+      "mustFail": ["test_every_derived_family_is_estimated_from_its_own_measurement"]
+    },
+    {
+      "id": "archive-derived.service-serves-the-full-envelope",
+      "file": "apps/runtime/conversion/archive_service.py",
+      "find": "        wire_fields = _archive_query.wire_fields(found[\"family\"])",
+      "replace": "        wire_fields = None",
+      "cwd": "apps/runtime/conversion",
+      "command": ["uv", "run", "--frozen", "pytest", "-q", "tests/test_archive_service.py", "-k", "derived_family"],
+      "mustFail": ["test_a_derived_family_serves_its_payload_and_not_the_identity_envelope"]
+    },
+    {
+      "id": "archive-derived.family-missing-from-the-gateway-list",
+      "file": "apps/runtime/src/server/archive-route.js",
+      "find": "  \"trade_minute_1m\", \"trade_level_1m\", \"trade_slice_2s\", \"trade_prints_1m\",",
+      "replace": "  \"trade_minute_1m\", \"trade_level_1m\", \"trade_slice_2s\",",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/archive/archiveContract.test.ts"],
+      "mustFail": ["archiveContract"]
+    }
+  ]
+}

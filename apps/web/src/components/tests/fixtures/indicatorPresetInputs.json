@@ -1,0 +1,2556 @@
+{
+  "absorptionDetector": [
+    {
+      "key": "absorbedPercent",
+      "kind": "slider",
+      "min": 50,
+      "max": 500,
+      "step": 10,
+      "clamp": true
+    },
+    {
+      "key": "strongPercent",
+      "kind": "slider",
+      "min": 150,
+      "max": 1000,
+      "step": 10,
+      "clamp": true
+    },
+    {
+      "key": "absorbedMultiple",
+      "kind": "slider",
+      "min": 3,
+      "max": 200,
+      "step": 1,
+      "clamp": true
+    },
+    {
+      "key": "showBroken",
+      "kind": "boolean"
+    },
+    {
+      "key": "historyDays",
+      "kind": "select",
+      "options": [
+        0,
+        1,
+        3,
+        5,
+        7
+      ]
+    },
+    {
+      "key": "shape",
+      "kind": "select",
+      "options": [
+        "circle",
+        "triangle",
+        "square"
+      ]
+    },
+    {
+      "key": "bubbleScale",
+      "kind": "slider",
+      "min": 0.5,
+      "max": 2.5,
+      "step": 0,
+      "clamp": true
+    },
+    {
+      "key": "opacity",
+      "kind": "slider",
+      "min": 0.15,
+      "max": 1,
+      "step": 0,
+      "clamp": true
+    },
+    {
+      "key": "bidColor",
+      "kind": "color"
+    },
+    {
+      "key": "askColor",
+      "kind": "color"
+    }
+  ],
+  "aggressiveOrders": [
+    {
+      "key": "minVolume",
+      "kind": "numeric",
+      "min": 0,
+      "max": 9007199254740991,
+      "step": 0
+    },
+    {
+      "key": "sizeReference",
+      "kind": "numeric",
+      "min": 0,
+      "max": 9007199254740991,
+      "step": 0
+    },
+    {
+      "key": "clusterWidth",
+      "kind": "numeric",
+      "min": 0,
+      "max": 9007199254740991,
+      "step": 0
+    },
+    {
+      "key": "clusterGapMs",
+      "kind": "numeric",
+      "min": 0,
+      "max": 600000,
+      "step": 1,
+      "clamp": true
+    },
+    {
+      "key": "clusterMaxMs",
+      "kind": "numeric",
+      "min": 0,
+      "max": 600000,
+      "step": 1,
+      "clamp": true
+    },
+    {
+      "key": "bubbleScale",
+      "kind": "slider",
+      "min": 0.5,
+      "max": 2.5,
+      "step": 0,
+      "clamp": true
+    },
+    {
+      "key": "opacity",
+      "kind": "slider",
+      "min": 0.2,
+      "max": 1,
+      "step": 0,
+      "clamp": true
+    },
+    {
+      "key": "showBuyers",
+      "kind": "boolean"
+    },
+    {
+      "key": "showSellers",
+      "kind": "boolean"
+    }
+  ],
+  "aggressiveOrdersProfile": [
+    {
+      "key": "floor",
+      "kind": "numeric",
+      "min": 0,
+      "max": 9007199254740991,
+      "step": 0
+    },
+    {
+      "key": "profileView",
+      "kind": "select",
+      "options": [
+        "delta",
+        "sides"
+      ]
+    },
+    {
+      "key": "outlierFrom",
+      "kind": "slider",
+      "min": 0,
+      "max": 5,
+      "step": 0.5,
+      "clamp": true
+    },
+    {
+      "key": "buyColor",
+      "kind": "color"
+    },
+    {
+      "key": "sellColor",
+      "kind": "color"
+    }
+  ],
+  "classicOrderBlocks": [
+    {
+      "key": "pivotLength",
+      "kind": "numeric",
+      "min": 1,
+      "max": 50,
+      "step": 1
+    },
+    {
+      "key": "widthMultiplier",
+      "kind": "numeric",
+      "min": 0.1,
+      "max": 3,
+      "step": 0.1
+    },
+    {
+      "key": "maxBlocks",
+      "kind": "numeric",
+      "min": 1,
+      "max": 200,
+      "step": 1
+    },
+    {
+      "key": "stackPivots",
+      "kind": "boolean"
+    },
+    {
+      "key": "showSecondary",
+      "kind": "boolean"
+    },
+    {
+      "key": "showMitigated",
+      "kind": "boolean"
+    },
+    {
+      "key": "bullishColor",
+      "kind": "color"
+    },
+    {
+      "key": "bearishColor",
+      "kind": "color"
+    }
+  ],
+  "cvdDivergence": [
+    {
+      "key": "period",
+      "kind": "slider",
+      "min": 1,
+      "max": 200,
+      "step": 1,
+      "clamp": true
+    },
+    {
+      "key": "pivotPeriods",
+      "kind": "slider",
+      "min": 1,
+      "max": 20,
+      "step": 1
+    },
+    {
+      "key": "pivotsOnPrice",
+      "kind": "boolean"
+    },
+    {
+      "key": "minPivotDistance",
+      "kind": "slider",
+      "min": 1,
+      "max": 100,
+      "step": 1,
+      "clamp": true
+    },
+    {
+      "key": "maxPivotDistance",
+      "kind": "slider",
+      "min": 1,
+      "max": 100,
+      "step": 1,
+      "clamp": true
+    },
+    {
+      "key": "showLabels",
+      "kind": "boolean"
+    },
+    {
+      "key": "showCumulativeCvd",
+      "kind": "boolean"
+    },
+    {
+      "key": "cumulativeCvdDisplayMode",
+      "kind": "radioGroup",
+      "options": [
+        "line",
+        "candles"
+      ]
+    },
+    {
+      "key": "showCumulativeDivergences",
+      "kind": "boolean"
+    },
+    {
+      "key": "cumulativeMinPivotDistance",
+      "kind": "slider",
+      "min": 1,
+      "max": 100,
+      "step": 1,
+      "clamp": true
+    },
+    {
+      "key": "cumulativeMaxPivotDistance",
+      "kind": "slider",
+      "min": 1,
+      "max": 100,
+      "step": 1,
+      "clamp": true
+    },
+    {
+      "key": "oscillatorTrendFilterEnabled",
+      "kind": "boolean"
+    },
+    {
+      "key": "oscillatorTrendFilterSmaLength",
+      "kind": "slider",
+      "min": 2,
+      "max": 100,
+      "step": 1,
+      "clamp": true
+    },
+    {
+      "key": "oscillatorTrendFilterInverted",
+      "kind": "boolean"
+    },
+    {
+      "key": "cumulativeTrendFilterEnabled",
+      "kind": "boolean"
+    },
+    {
+      "key": "cumulativeTrendFilterSmaLength",
+      "kind": "slider",
+      "min": 2,
+      "max": 100,
+      "step": 1,
+      "clamp": true
+    },
+    {
+      "key": "cumulativeTrendFilterInverted",
+      "kind": "boolean"
+    }
+  ],
+  "deltaDivergence": [
+    {
+      "key": "swingLength",
+      "kind": "custom"
+    }
+  ],
+  "emptyOrderbook": [
+    {
+      "key": "thinPctCrypto",
+      "kind": "slider",
+      "min": 10,
+      "max": 100,
+      "step": 5
+    },
+    {
+      "key": "thinPctIndex",
+      "kind": "slider",
+      "min": 10,
+      "max": 100,
+      "step": 5
+    },
+    {
+      "key": "refillPctCrypto",
+      "kind": "slider",
+      "min": 100,
+      "max": 300,
+      "step": 10
+    },
+    {
+      "key": "refillPctIndex",
+      "kind": "slider",
+      "min": 100,
+      "max": 300,
+      "step": 10
+    },
+    {
+      "key": "fixedHeight",
+      "kind": "boolean"
+    },
+    {
+      "key": "heightRows",
+      "kind": "slider",
+      "min": 1,
+      "max": 20,
+      "step": 1
+    },
+    {
+      "key": "clearRows",
+      "kind": "slider",
+      "min": 0,
+      "max": 20,
+      "step": 1
+    },
+    {
+      "key": "zoneLengthMin",
+      "kind": "slider",
+      "min": 1,
+      "max": 240,
+      "step": 1
+    },
+    {
+      "key": "levelsBy",
+      "kind": "radioGroup",
+      "options": [
+        "nearest",
+        "furthest"
+      ]
+    },
+    {
+      "key": "zonesPerSide",
+      "kind": "slider",
+      "min": 1,
+      "max": 8,
+      "step": 1
+    },
+    {
+      "key": "showFlash",
+      "kind": "boolean"
+    },
+    {
+      "key": "askColor",
+      "kind": "color"
+    },
+    {
+      "key": "bidColor",
+      "kind": "color"
+    }
+  ],
+  "exhaustion": [
+    {
+      "key": "legAtr",
+      "kind": "slider",
+      "min": 2,
+      "max": 40,
+      "step": 1,
+      "clamp": true
+    },
+    {
+      "key": "legReverseAtr",
+      "kind": "slider",
+      "min": 1,
+      "max": 10,
+      "step": 0.5,
+      "clamp": true
+    },
+    {
+      "key": "legEfficiency",
+      "kind": "slider",
+      "min": 0.2,
+      "max": 0.95,
+      "step": 0.05,
+      "clamp": true
+    },
+    {
+      "key": "minScore",
+      "kind": "slider",
+      "min": 3,
+      "max": 6,
+      "step": 1,
+      "clamp": true
+    },
+    {
+      "key": "zoneScale",
+      "kind": "slider",
+      "min": 1,
+      "max": 5,
+      "step": 0.5,
+      "clamp": true
+    },
+    {
+      "key": "zonesOnly",
+      "kind": "boolean"
+    },
+    {
+      "key": "showLegs",
+      "kind": "boolean"
+    },
+    {
+      "key": "hideNestedLegs",
+      "kind": "boolean"
+    },
+    {
+      "key": "showBroken",
+      "kind": "boolean"
+    },
+    {
+      "key": "showMonitor",
+      "kind": "boolean"
+    },
+    {
+      "key": "historyDays",
+      "kind": "select",
+      "options": [
+        0,
+        1,
+        3,
+        5,
+        7
+      ]
+    },
+    {
+      "key": "buyerColor",
+      "kind": "color"
+    },
+    {
+      "key": "sellerColor",
+      "kind": "color"
+    },
+    {
+      "key": "opacity",
+      "kind": "slider",
+      "min": 0.15,
+      "max": 1,
+      "step": 0.05,
+      "clamp": true
+    }
+  ],
+  "fvgBoxes": [
+    {
+      "key": "maxDisplayedFVGs",
+      "kind": "numeric",
+      "min": 1,
+      "max": 100,
+      "step": 1
+    },
+    {
+      "key": "volumeThreshold",
+      "kind": "numeric",
+      "min": 0,
+      "max": 1,
+      "step": 0.05
+    },
+    {
+      "key": "showMeanLine",
+      "kind": "boolean"
+    },
+    {
+      "key": "meanLineStyle",
+      "kind": "select",
+      "options": [
+        "solid",
+        "dashed",
+        "dotted"
+      ]
+    },
+    {
+      "key": "showTradingActivity",
+      "kind": "boolean"
+    },
+    {
+      "key": "hideOverlappedFVGs",
+      "kind": "boolean"
+    },
+    {
+      "key": "showBullishFVG",
+      "kind": "boolean"
+    },
+    {
+      "key": "showBearishFVG",
+      "kind": "boolean"
+    },
+    {
+      "key": "bullishColor",
+      "kind": "color"
+    },
+    {
+      "key": "bearishColor",
+      "kind": "color"
+    }
+  ],
+  "fvgDelta": [
+    {
+      "key": "atrLength",
+      "kind": "numeric",
+      "min": 1,
+      "max": 200,
+      "step": 1
+    },
+    {
+      "key": "atrMultiplier",
+      "kind": "numeric",
+      "min": 0,
+      "max": 10,
+      "step": 0.1
+    },
+    {
+      "key": "maxDisplayedLevels",
+      "kind": "numeric",
+      "min": 1,
+      "max": 100,
+      "step": 1
+    },
+    {
+      "key": "displayMode",
+      "kind": "select",
+      "options": [
+        "boxes",
+        "lines"
+      ]
+    },
+    {
+      "key": "showBullishFVG",
+      "kind": "boolean"
+    },
+    {
+      "key": "showBearishFVG",
+      "kind": "boolean"
+    },
+    {
+      "key": "bullishColor",
+      "kind": "color"
+    },
+    {
+      "key": "bearishColor",
+      "kind": "color"
+    }
+  ],
+  "icebergDetector": [
+    {
+      "key": "historyDays",
+      "kind": "select",
+      "options": [
+        0,
+        1,
+        3,
+        5
+      ]
+    },
+    {
+      "key": "sizeTopPercent",
+      "kind": "slider",
+      "min": 1,
+      "max": 100,
+      "step": 1,
+      "clamp": true
+    },
+    {
+      "key": "minTranches",
+      "kind": "slider",
+      "min": 1,
+      "max": 10,
+      "step": 1,
+      "clamp": true
+    },
+    {
+      "key": "showPulled",
+      "kind": "boolean"
+    },
+    {
+      "key": "labels",
+      "kind": "boolean"
+    },
+    {
+      "key": "placement",
+      "kind": "select",
+      "options": [
+        "price",
+        "candle"
+      ]
+    },
+    {
+      "key": "markShape",
+      "kind": "select",
+      "options": [
+        "auto",
+        "dot",
+        "triangle",
+        "circle"
+      ]
+    },
+    {
+      "key": "bidColor",
+      "kind": "color"
+    },
+    {
+      "key": "askColor",
+      "kind": "color"
+    },
+    {
+      "key": "markScale",
+      "kind": "slider",
+      "min": 0.5,
+      "max": 2.5,
+      "step": 0.1,
+      "clamp": true
+    }
+  ],
+  "initiative": [
+    {
+      "key": "minScore",
+      "kind": "slider",
+      "min": 0,
+      "max": 5,
+      "step": 1,
+      "clamp": true
+    },
+    {
+      "key": "minLegAtr",
+      "kind": "slider",
+      "min": 3,
+      "max": 10,
+      "step": 0.5,
+      "clamp": true
+    },
+    {
+      "key": "historyDays",
+      "kind": "select",
+      "options": [
+        0,
+        1,
+        3,
+        5,
+        7
+      ]
+    },
+    {
+      "key": "showShade",
+      "kind": "boolean"
+    },
+    {
+      "key": "showLabels",
+      "kind": "boolean"
+    },
+    {
+      "key": "buyerColor",
+      "kind": "color"
+    },
+    {
+      "key": "sellerColor",
+      "kind": "color"
+    },
+    {
+      "key": "opacity",
+      "kind": "slider",
+      "min": 0.15,
+      "max": 1,
+      "step": 0.05,
+      "clamp": true
+    }
+  ],
+  "institutionalOrderBlocks": [
+    {
+      "key": "bandRows",
+      "kind": "numeric",
+      "min": 0,
+      "max": 64,
+      "step": 1
+    },
+    {
+      "key": "pivotLength",
+      "kind": "numeric",
+      "min": 1,
+      "max": 50,
+      "step": 1
+    },
+    {
+      "key": "widthMultiplier",
+      "kind": "numeric",
+      "min": 0.1,
+      "max": 3,
+      "step": 0.1
+    },
+    {
+      "key": "maxBlocks",
+      "kind": "numeric",
+      "min": 1,
+      "max": 200,
+      "step": 1
+    },
+    {
+      "key": "stackPivots",
+      "kind": "boolean"
+    },
+    {
+      "key": "showSecondary",
+      "kind": "boolean"
+    },
+    {
+      "key": "showWeak",
+      "kind": "boolean"
+    },
+    {
+      "key": "showUnverifiable",
+      "kind": "boolean"
+    },
+    {
+      "key": "showRejected",
+      "kind": "boolean"
+    },
+    {
+      "key": "showMitigated",
+      "kind": "boolean"
+    },
+    {
+      "key": "bullishColor",
+      "kind": "color"
+    },
+    {
+      "key": "bearishColor",
+      "kind": "color"
+    }
+  ],
+  "institutionalOrderBlocksV2": [
+    {
+      "key": "source",
+      "kind": "radioGroup",
+      "options": [
+        "engine",
+        "tracker",
+        "both"
+      ]
+    },
+    {
+      "key": "showWeak",
+      "kind": "boolean"
+    },
+    {
+      "key": "showMitigated",
+      "kind": "boolean"
+    },
+    {
+      "key": "minSizeByInstrument",
+      "kind": "custom",
+      "byInstrument": true
+    },
+    {
+      "key": "levelsBy",
+      "kind": "radioGroup",
+      "options": [
+        "nearest",
+        "largest",
+        "furthest"
+      ]
+    },
+    {
+      "key": "levelsPerSide",
+      "kind": "numeric",
+      "min": 0,
+      "max": 64,
+      "step": 1
+    },
+    {
+      "key": "bullishColor",
+      "kind": "color"
+    },
+    {
+      "key": "bearishColor",
+      "kind": "color"
+    },
+    {
+      "key": "bandThicknessPx",
+      "kind": "numeric",
+      "min": 0,
+      "max": 60,
+      "step": 2
+    },
+    {
+      "key": "historyHours",
+      "kind": "numeric",
+      "min": 0,
+      "max": 168,
+      "step": 1
+    }
+  ],
+  "killzones": [
+    {
+      "key": "sessions",
+      "kind": "checkboxList",
+      "options": [
+        "asia",
+        "london",
+        "nyam",
+        "nylunch",
+        "nypm",
+        "rth"
+      ]
+    }
+  ],
+  "l1OrderBlocks": [
+    {
+      "key": "pivotLength",
+      "kind": "numeric",
+      "min": 1,
+      "max": 50,
+      "step": 1
+    },
+    {
+      "key": "widthMultiplier",
+      "kind": "numeric",
+      "min": 0.1,
+      "max": 3,
+      "step": 0.1
+    },
+    {
+      "key": "maxBlocks",
+      "kind": "numeric",
+      "min": 1,
+      "max": 100,
+      "step": 1
+    },
+    {
+      "key": "showMitigated",
+      "kind": "boolean"
+    },
+    {
+      "key": "showTradingActivity",
+      "kind": "boolean"
+    },
+    {
+      "key": "showMeanLine",
+      "kind": "boolean"
+    },
+    {
+      "key": "bullishColor",
+      "kind": "color"
+    },
+    {
+      "key": "bearishColor",
+      "kind": "color"
+    }
+  ],
+  "l2BookMap": [
+    {
+      "key": "priceBinRows",
+      "kind": "numeric",
+      "min": 0,
+      "max": 50,
+      "step": 1,
+      "clamp": true
+    },
+    {
+      "key": "verticalRangeRows",
+      "kind": "numeric",
+      "min": 0,
+      "max": 5000,
+      "step": 1,
+      "clamp": true
+    },
+    {
+      "key": "windowBuckets",
+      "kind": "numeric",
+      "min": 1,
+      "max": 5000,
+      "step": 1,
+      "clamp": true
+    },
+    {
+      "key": "minVolume",
+      "kind": "numeric",
+      "min": 0,
+      "max": 9007199254740991,
+      "step": 0
+    },
+    {
+      "key": "showProfile",
+      "kind": "boolean"
+    },
+    {
+      "key": "showBidPoc",
+      "kind": "boolean"
+    },
+    {
+      "key": "showAskPoc",
+      "kind": "boolean"
+    },
+    {
+      "key": "profileBidColor",
+      "kind": "color"
+    },
+    {
+      "key": "profileAskColor",
+      "kind": "color"
+    },
+    {
+      "key": "lowVolumeColor",
+      "kind": "color"
+    },
+    {
+      "key": "midVolumeColor",
+      "kind": "color"
+    },
+    {
+      "key": "highVolumeColor",
+      "kind": "color"
+    }
+  ],
+  "l2SupportResistance": [
+    {
+      "key": "maxLevels",
+      "kind": "numeric",
+      "min": 1,
+      "max": 20,
+      "step": 1,
+      "clamp": true
+    },
+    {
+      "key": "minimumDistanceRows",
+      "kind": "numeric",
+      "min": 1,
+      "max": 100,
+      "step": 1,
+      "clamp": true
+    },
+    {
+      "key": "lookbackMinutes",
+      "kind": "numeric",
+      "min": 1,
+      "max": 120,
+      "step": 1,
+      "clamp": true
+    },
+    {
+      "key": "minimumLiquiditySize",
+      "kind": "numeric",
+      "min": 0,
+      "max": 9007199254740991,
+      "step": 0
+    },
+    {
+      "key": "bidColor",
+      "kind": "color"
+    },
+    {
+      "key": "askColor",
+      "kind": "color"
+    }
+  ],
+  "largeTradeBubbles": [
+    {
+      "key": "multiplier",
+      "kind": "numeric",
+      "min": 1,
+      "max": 10,
+      "step": 0.5
+    }
+  ],
+  "largeTradeDetector@CONTRACTS": [
+    {
+      "key": "mode",
+      "kind": "radioGroup",
+      "options": [
+        "topPercent",
+        "size"
+      ]
+    },
+    {
+      "key": "topFraction",
+      "kind": "numeric",
+      "min": 0.0000125,
+      "max": 0.02,
+      "step": 0,
+      "clamp": true
+    },
+    {
+      "key": "threshold",
+      "kind": "numeric",
+      "min": 1,
+      "max": 400,
+      "step": 1,
+      "clamp": true
+    },
+    {
+      "key": "clusterMode",
+      "kind": "radioGroup",
+      "options": [
+        "delta",
+        "buySell"
+      ]
+    },
+    {
+      "key": "minDeltaPercent",
+      "kind": "numeric",
+      "min": 0,
+      "max": 100,
+      "step": 0,
+      "clamp": true
+    }
+  ],
+  "largeTradeDetector@historical:CONTRACTS": [
+    {
+      "key": "threshold",
+      "kind": "numeric",
+      "min": 1,
+      "max": 400,
+      "step": 1,
+      "clamp": true
+    },
+    {
+      "key": "clusterMode",
+      "kind": "radioGroup",
+      "options": [
+        "delta",
+        "buySell"
+      ]
+    },
+    {
+      "key": "minDeltaPercent",
+      "kind": "numeric",
+      "min": 0,
+      "max": 100,
+      "step": 0,
+      "clamp": true
+    }
+  ],
+  "largeTradeDetector@historical:USD": [
+    {
+      "key": "threshold",
+      "kind": "numeric",
+      "min": 20000,
+      "max": 50000000,
+      "step": 0,
+      "clamp": true
+    },
+    {
+      "key": "clusterMode",
+      "kind": "radioGroup",
+      "options": [
+        "delta",
+        "buySell"
+      ]
+    },
+    {
+      "key": "minDeltaPercent",
+      "kind": "numeric",
+      "min": 0,
+      "max": 100,
+      "step": 0,
+      "clamp": true
+    }
+  ],
+  "largeTradeDetector@USD": [
+    {
+      "key": "mode",
+      "kind": "radioGroup",
+      "options": [
+        "topPercent",
+        "size"
+      ]
+    },
+    {
+      "key": "topFraction",
+      "kind": "numeric",
+      "min": 0.0000125,
+      "max": 0.02,
+      "step": 0,
+      "clamp": true
+    },
+    {
+      "key": "threshold",
+      "kind": "numeric",
+      "min": 20000,
+      "max": 50000000,
+      "step": 0,
+      "clamp": true
+    },
+    {
+      "key": "clusterMode",
+      "kind": "radioGroup",
+      "options": [
+        "delta",
+        "buySell"
+      ]
+    },
+    {
+      "key": "minDeltaPercent",
+      "kind": "numeric",
+      "min": 0,
+      "max": 100,
+      "step": 0,
+      "clamp": true
+    }
+  ],
+  "liquidityVoids": [
+    {
+      "key": "sensitivity",
+      "kind": "radioGroup",
+      "options": [
+        "low",
+        "normal",
+        "high"
+      ]
+    },
+    {
+      "key": "thresholdsIndex",
+      "kind": "radioGroup",
+      "options": [
+        "fixed",
+        "learned"
+      ]
+    },
+    {
+      "key": "thresholdsOther",
+      "kind": "radioGroup",
+      "options": [
+        "fixed",
+        "learned"
+      ]
+    },
+    {
+      "key": "maxTradedByInstrument",
+      "kind": "custom",
+      "byInstrument": true
+    },
+    {
+      "key": "windowS",
+      "kind": "numeric",
+      "min": 5,
+      "max": 300,
+      "step": 5
+    },
+    {
+      "key": "levelsBy",
+      "kind": "radioGroup",
+      "options": [
+        "nearest",
+        "furthest"
+      ]
+    },
+    {
+      "key": "boxesPerSide",
+      "kind": "numeric",
+      "min": 1,
+      "max": 8,
+      "step": 1
+    },
+    {
+      "key": "historyHours",
+      "kind": "numeric",
+      "min": 0,
+      "max": 168,
+      "step": 1
+    },
+    {
+      "key": "askColor",
+      "kind": "color"
+    },
+    {
+      "key": "bidColor",
+      "kind": "color"
+    }
+  ],
+  "liveDeltaProfile": [
+    {
+      "key": "windowMode",
+      "kind": "select",
+      "options": [
+        "auto",
+        "week",
+        "day",
+        "session",
+        "rolling",
+        "visible"
+      ]
+    },
+    {
+      "key": "rollingHours",
+      "kind": "numeric",
+      "min": 0.5,
+      "max": 24,
+      "step": 0,
+      "clamp": true
+    },
+    {
+      "key": "rowFactor",
+      "kind": "select",
+      "options": [
+        0,
+        1,
+        4,
+        12,
+        24,
+        40,
+        80,
+        160
+      ]
+    },
+    {
+      "key": "widthShare",
+      "kind": "slider",
+      "min": 0.05,
+      "max": 0.6,
+      "step": 0,
+      "clamp": true
+    },
+    {
+      "key": "showNumbers",
+      "kind": "boolean"
+    },
+    {
+      "key": "buyColor",
+      "kind": "color"
+    },
+    {
+      "key": "sellColor",
+      "kind": "color"
+    },
+    {
+      "key": "markerColor",
+      "kind": "color"
+    },
+    {
+      "key": "opacity",
+      "kind": "slider",
+      "min": 0.2,
+      "max": 1,
+      "step": 0,
+      "clamp": true
+    }
+  ],
+  "liveOrderBookProfile": [
+    {
+      "key": "rowFactor",
+      "kind": "select",
+      "options": [
+        0,
+        1,
+        2,
+        4,
+        8,
+        16,
+        32
+      ]
+    },
+    {
+      "key": "widthShare",
+      "kind": "slider",
+      "min": 0.05,
+      "max": 0.6,
+      "step": 0,
+      "clamp": true
+    },
+    {
+      "key": "showNumbers",
+      "kind": "boolean"
+    },
+    {
+      "key": "showResting",
+      "kind": "boolean"
+    },
+    {
+      "key": "restingMinSize",
+      "kind": "numeric",
+      "min": 0,
+      "max": 9007199254740991,
+      "step": 0
+    },
+    {
+      "key": "restingStandS",
+      "kind": "slider",
+      "min": 3,
+      "max": 120,
+      "step": 1,
+      "clamp": true
+    },
+    {
+      "key": "restingShare",
+      "kind": "slider",
+      "min": 0.01,
+      "max": 0.5,
+      "step": 0,
+      "clamp": true
+    },
+    {
+      "key": "bidColor",
+      "kind": "color"
+    },
+    {
+      "key": "askColor",
+      "kind": "color"
+    },
+    {
+      "key": "spreadColor",
+      "kind": "color"
+    },
+    {
+      "key": "opacity",
+      "kind": "slider",
+      "min": 0.2,
+      "max": 1,
+      "step": 0,
+      "clamp": true
+    }
+  ],
+  "liveRangeControl": [
+    {
+      "key": "rangeMode",
+      "kind": "radioGroup",
+      "options": [
+        "visible",
+        "selected",
+        "live"
+      ]
+    },
+    {
+      "key": "bigPrint",
+      "kind": "numeric",
+      "min": 0,
+      "max": 50000,
+      "step": 0.5,
+      "clamp": true
+    },
+    {
+      "key": "verdictSensitivity",
+      "kind": "radioGroup",
+      "options": [
+        "high",
+        "normal",
+        "strict"
+      ]
+    },
+    {
+      "key": "zoneColor",
+      "kind": "color"
+    },
+    {
+      "key": "zoneOpacity",
+      "kind": "slider",
+      "min": 1,
+      "max": 50,
+      "step": 1
+    },
+    {
+      "key": "bidColor",
+      "kind": "color"
+    },
+    {
+      "key": "askColor",
+      "kind": "color"
+    },
+    {
+      "key": "cardSize",
+      "kind": "radioGroup",
+      "options": [
+        "small",
+        "medium",
+        "large"
+      ]
+    },
+    {
+      "key": "showZone",
+      "kind": "boolean"
+    },
+    {
+      "key": "showVolumeRow",
+      "kind": "boolean"
+    },
+    {
+      "key": "showDeltaRow",
+      "kind": "boolean"
+    },
+    {
+      "key": "showPrintsRow",
+      "kind": "boolean"
+    },
+    {
+      "key": "showMinutesRow",
+      "kind": "boolean"
+    },
+    {
+      "key": "showImpactRow",
+      "kind": "boolean"
+    },
+    {
+      "key": "showTips",
+      "kind": "boolean"
+    }
+  ],
+  "marketStructure": [
+    {
+      "key": "swingLength",
+      "kind": "numeric",
+      "min": 1,
+      "max": 50,
+      "step": 1
+    },
+    {
+      "key": "showBOS",
+      "kind": "boolean"
+    },
+    {
+      "key": "showCHoCH",
+      "kind": "boolean"
+    },
+    {
+      "key": "showProjections",
+      "kind": "boolean"
+    },
+    {
+      "key": "bullishColor",
+      "kind": "color"
+    },
+    {
+      "key": "bearishColor",
+      "kind": "color"
+    }
+  ],
+  "orderFlow": [
+    {
+      "key": "displayMode",
+      "kind": "radioGroup",
+      "options": [
+        "line",
+        "candles"
+      ]
+    }
+  ],
+  "passiveLiquidity": [
+    {
+      "key": "clusterRows",
+      "kind": "numeric",
+      "min": 1,
+      "max": 50,
+      "step": 1,
+      "clamp": true
+    },
+    {
+      "key": "timeframeWidening",
+      "kind": "numeric",
+      "min": 0.0078125,
+      "max": 8,
+      "step": 0,
+      "clamp": true
+    },
+    {
+      "key": "quietBands",
+      "kind": "numeric",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "clamp": true
+    },
+    {
+      "key": "minBandSize",
+      "kind": "numeric",
+      "min": 0,
+      "max": 9007199254740991,
+      "step": 0
+    },
+    {
+      "key": "historyDays",
+      "kind": "select",
+      "options": [
+        1,
+        3,
+        5,
+        7
+      ]
+    },
+    {
+      "key": "levelFilter",
+      "kind": "select",
+      "options": [
+        "all",
+        "resting",
+        "consumed"
+      ]
+    },
+    {
+      "key": "showPulled",
+      "kind": "boolean"
+    },
+    {
+      "key": "scaleMode",
+      "kind": "select",
+      "options": [
+        "auto",
+        "fixed"
+      ]
+    },
+    {
+      "key": "scaleSize",
+      "kind": "numeric",
+      "min": 0,
+      "max": 9007199254740991,
+      "step": 0
+    },
+    {
+      "key": "maxOpacity",
+      "kind": "slider",
+      "min": 0,
+      "max": 1,
+      "step": 0,
+      "clamp": true
+    },
+    {
+      "key": "heatFloor",
+      "kind": "slider",
+      "min": 0,
+      "max": 1,
+      "step": 0,
+      "clamp": true
+    },
+    {
+      "key": "bidColor",
+      "kind": "color"
+    },
+    {
+      "key": "askColor",
+      "kind": "color"
+    },
+    {
+      "key": "showLadder",
+      "kind": "boolean"
+    },
+    {
+      "key": "ladderReach",
+      "kind": "slider",
+      "min": 0.05,
+      "max": 0.8,
+      "step": 0,
+      "clamp": true
+    },
+    {
+      "key": "lane",
+      "kind": "select",
+      "options": [
+        "auto",
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6"
+      ]
+    }
+  ],
+  "pivotPoints": [
+    {
+      "key": "leftBars",
+      "kind": "numeric",
+      "min": 1,
+      "max": 20,
+      "step": 1
+    },
+    {
+      "key": "rightBars",
+      "kind": "numeric",
+      "min": 1,
+      "max": 20,
+      "step": 1
+    },
+    {
+      "key": "upperColor",
+      "kind": "radioGroup",
+      "options": [
+        "red",
+        "orange",
+        "blue",
+        "purple",
+        "green"
+      ]
+    },
+    {
+      "key": "lowerColor",
+      "kind": "radioGroup",
+      "options": [
+        "green",
+        "blue",
+        "red",
+        "orange",
+        "purple"
+      ]
+    }
+  ],
+  "pivotSupportResistance": [
+    {
+      "key": "leftBars",
+      "kind": "numeric",
+      "min": 1,
+      "max": 20,
+      "step": 1
+    },
+    {
+      "key": "rightBars",
+      "kind": "numeric",
+      "min": 1,
+      "max": 20,
+      "step": 1
+    },
+    {
+      "key": "maxLevels",
+      "kind": "numeric",
+      "min": 1,
+      "max": 100,
+      "step": 1
+    },
+    {
+      "key": "supportColor",
+      "kind": "color"
+    },
+    {
+      "key": "resistanceColor",
+      "kind": "color"
+    },
+    {
+      "key": "lineStyle",
+      "kind": "select",
+      "options": [
+        "solid",
+        "dashed",
+        "dotted"
+      ]
+    }
+  ],
+  "sessionDeltaProfile": [
+    {
+      "key": "sessionPeriodMs",
+      "kind": "select",
+      "options": [
+        3600000,
+        7200000,
+        10800000,
+        14400000,
+        21600000,
+        43200000,
+        86400000,
+        172800000,
+        259200000,
+        604800000
+      ]
+    },
+    {
+      "key": "maxDisplaySessions",
+      "kind": "numeric",
+      "min": 1,
+      "max": 50,
+      "step": 1
+    },
+    {
+      "key": "maxBarWidthPx",
+      "kind": "slider",
+      "min": 40,
+      "max": 300,
+      "step": 10
+    },
+    {
+      "key": "rowWidth",
+      "kind": "slider",
+      "min": 1,
+      "max": 10,
+      "step": 1
+    },
+    {
+      "key": "valueAreaPercent",
+      "kind": "slider",
+      "min": 0.1,
+      "max": 1,
+      "step": 0.05
+    },
+    {
+      "key": "buyColor",
+      "kind": "color"
+    },
+    {
+      "key": "sellColor",
+      "kind": "color"
+    },
+    {
+      "key": "showBuyPoc",
+      "kind": "boolean"
+    },
+    {
+      "key": "showSellPoc",
+      "kind": "boolean"
+    },
+    {
+      "key": "showValueAreaLines",
+      "kind": "boolean"
+    },
+    {
+      "key": "buyPocColor",
+      "kind": "color"
+    },
+    {
+      "key": "sellPocColor",
+      "kind": "color"
+    },
+    {
+      "key": "vahValColor",
+      "kind": "color"
+    },
+    {
+      "key": "buyPocStyle",
+      "kind": "select",
+      "options": [
+        "solid",
+        "dashed",
+        "dotted"
+      ]
+    },
+    {
+      "key": "sellPocStyle",
+      "kind": "select",
+      "options": [
+        "solid",
+        "dashed",
+        "dotted"
+      ]
+    },
+    {
+      "key": "showSessionHighLow",
+      "kind": "boolean"
+    },
+    {
+      "key": "sessionHighLowColor",
+      "kind": "color"
+    },
+    {
+      "key": "smallRowOpacity",
+      "kind": "slider",
+      "min": 0,
+      "max": 1,
+      "step": 0.05
+    },
+    {
+      "key": "developingOpacity",
+      "kind": "slider",
+      "min": 0,
+      "max": 1,
+      "step": 0.05
+    }
+  ],
+  "sessionLevels": [
+    {
+      "key": "sessions",
+      "kind": "checkboxList",
+      "options": [
+        "asia",
+        "london",
+        "nyam",
+        "nylunch",
+        "nypm",
+        "rth"
+      ]
+    },
+    {
+      "key": "sessionLevels",
+      "kind": "boolean"
+    },
+    {
+      "key": "windows",
+      "kind": "checkboxList",
+      "options": [
+        5,
+        15,
+        30
+      ]
+    },
+    {
+      "key": "showSwept",
+      "kind": "boolean"
+    },
+    {
+      "key": "asiaColor",
+      "kind": "color"
+    },
+    {
+      "key": "londonColor",
+      "kind": "color"
+    },
+    {
+      "key": "nyamColor",
+      "kind": "color"
+    },
+    {
+      "key": "nylunchColor",
+      "kind": "color"
+    },
+    {
+      "key": "nypmColor",
+      "kind": "color"
+    },
+    {
+      "key": "rthColor",
+      "kind": "color"
+    },
+    {
+      "key": "orb5Color",
+      "kind": "color"
+    },
+    {
+      "key": "orb15Color",
+      "kind": "color"
+    },
+    {
+      "key": "orb30Color",
+      "kind": "color"
+    }
+  ],
+  "sessionVolumeProfile": [
+    {
+      "key": "view",
+      "kind": "select",
+      "options": [
+        "volumeProfile",
+        "netDeltaProfile",
+        "deltaProfile"
+      ]
+    },
+    {
+      "key": "mode",
+      "kind": "radioGroup",
+      "options": [
+        "continuous",
+        "per_candle"
+      ]
+    },
+    {
+      "key": "periodMs",
+      "kind": "select",
+      "options": [
+        300000,
+        900000,
+        1800000,
+        3600000,
+        14400000,
+        43200000,
+        86400000,
+        172800000,
+        259200000,
+        604800000
+      ]
+    },
+    {
+      "key": "binSizeMultiplier",
+      "kind": "slider",
+      "min": 0.02,
+      "max": 10,
+      "step": 0.01
+    },
+    {
+      "key": "valueAreaPercent",
+      "kind": "slider",
+      "min": 0.1,
+      "max": 1,
+      "step": 0.05
+    },
+    {
+      "key": "buyColor",
+      "kind": "color"
+    },
+    {
+      "key": "buyValueAreaColor",
+      "kind": "color"
+    },
+    {
+      "key": "sellColor",
+      "kind": "color"
+    },
+    {
+      "key": "sellValueAreaColor",
+      "kind": "color"
+    },
+    {
+      "key": "pocColor",
+      "kind": "color"
+    },
+    {
+      "key": "vahValColor",
+      "kind": "color"
+    },
+    {
+      "key": "showPocLine",
+      "kind": "boolean"
+    },
+    {
+      "key": "showValueAreaLines",
+      "kind": "boolean"
+    },
+    {
+      "key": "vahValStyle",
+      "kind": "custom"
+    }
+  ],
+  "sessionVwap": [
+    {
+      "key": "anchor",
+      "kind": "select",
+      "options": [
+        "session",
+        "lookback"
+      ]
+    },
+    {
+      "key": "sessionPeriodMs",
+      "kind": "select",
+      "options": [
+        3600000,
+        7200000,
+        10800000,
+        14400000,
+        21600000,
+        43200000,
+        86400000,
+        172800000,
+        259200000,
+        604800000
+      ]
+    },
+    {
+      "key": "lookbackBars",
+      "kind": "slider",
+      "min": 10,
+      "max": 500,
+      "step": 1
+    },
+    {
+      "key": "band1Sigma",
+      "kind": "slider",
+      "min": 0.5,
+      "max": 4,
+      "step": 0.5
+    },
+    {
+      "key": "band2Sigma",
+      "kind": "slider",
+      "min": 0.5,
+      "max": 4,
+      "step": 0.5
+    },
+    {
+      "key": "showBands",
+      "kind": "boolean"
+    },
+    {
+      "key": "vwapColor",
+      "kind": "color"
+    },
+    {
+      "key": "band1Color",
+      "kind": "color"
+    },
+    {
+      "key": "band2Color",
+      "kind": "color"
+    },
+    {
+      "key": "showFill",
+      "kind": "boolean"
+    },
+    {
+      "key": "fillColor",
+      "kind": "color"
+    },
+    {
+      "key": "showRingFill",
+      "kind": "boolean"
+    },
+    {
+      "key": "ringFillColor",
+      "kind": "color"
+    }
+  ],
+  "sma": [
+    {
+      "key": "length",
+      "kind": "numeric",
+      "min": 2,
+      "max": 500,
+      "step": 1
+    },
+    {
+      "key": "color",
+      "kind": "radioGroup",
+      "options": [
+        "purple",
+        "blue",
+        "green"
+      ]
+    }
+  ],
+  "swingAlphabetProfile": [
+    {
+      "key": "swingLength",
+      "kind": "slider",
+      "min": 10,
+      "max": 500,
+      "step": 1
+    },
+    {
+      "key": "maxSwingLines",
+      "kind": "numeric",
+      "min": 1,
+      "max": 200,
+      "step": 1
+    },
+    {
+      "key": "profileResolution",
+      "kind": "slider",
+      "min": 0.05,
+      "max": 1,
+      "step": 0.01
+    },
+    {
+      "key": "profileWidthLen",
+      "kind": "slider",
+      "min": 5,
+      "max": 50,
+      "step": 1
+    },
+    {
+      "key": "maxProfileBins",
+      "kind": "numeric",
+      "min": 1,
+      "max": 5000,
+      "step": 1
+    },
+    {
+      "key": "valueAreaPercent",
+      "kind": "slider",
+      "min": 1,
+      "max": 100,
+      "step": 1
+    },
+    {
+      "key": "valueAreaLineWidth",
+      "kind": "slider",
+      "min": 1,
+      "max": 10,
+      "step": 1
+    },
+    {
+      "key": "pocLineWidth",
+      "kind": "slider",
+      "min": 1,
+      "max": 10,
+      "step": 1
+    },
+    {
+      "key": "bubbleMinPercent",
+      "kind": "slider",
+      "min": 1,
+      "max": 100,
+      "step": 1
+    },
+    {
+      "key": "showSwings",
+      "kind": "boolean"
+    },
+    {
+      "key": "swingLineColor",
+      "kind": "color"
+    },
+    {
+      "key": "showProfile",
+      "kind": "boolean"
+    },
+    {
+      "key": "profileTextColor",
+      "kind": "color"
+    },
+    {
+      "key": "showValueArea",
+      "kind": "boolean"
+    },
+    {
+      "key": "valueAreaColor",
+      "kind": "color"
+    },
+    {
+      "key": "showPoc",
+      "kind": "boolean"
+    },
+    {
+      "key": "pocColor",
+      "kind": "color"
+    },
+    {
+      "key": "showBubbles",
+      "kind": "boolean"
+    },
+    {
+      "key": "bullBubbleColor",
+      "kind": "color"
+    },
+    {
+      "key": "bearBubbleColor",
+      "kind": "color"
+    }
+  ],
+  "volumeDeltaProfileOhlc": [
+    {
+      "key": "buyColor",
+      "kind": "color"
+    },
+    {
+      "key": "sellColor",
+      "kind": "color"
+    },
+    {
+      "key": "minOpacity",
+      "kind": "slider",
+      "min": 0,
+      "max": 1,
+      "step": 0.05
+    },
+    {
+      "key": "maxOpacity",
+      "kind": "slider",
+      "min": 0,
+      "max": 1,
+      "step": 0.05
+    },
+    {
+      "key": "profileWidth",
+      "kind": "slider",
+      "min": 50,
+      "max": 300,
+      "step": 10
+    },
+    {
+      "key": "binCount",
+      "kind": "slider",
+      "min": 20,
+      "max": 500,
+      "step": 10
+    },
+    {
+      "key": "pocVisible",
+      "kind": "boolean"
+    },
+    {
+      "key": "pocColor",
+      "kind": "color"
+    },
+    {
+      "key": "pocLineStyle",
+      "kind": "select",
+      "options": [
+        "solid",
+        "dashed",
+        "dotted"
+      ]
+    },
+    {
+      "key": "vahValVisible",
+      "kind": "boolean"
+    },
+    {
+      "key": "vahValPercent",
+      "kind": "slider",
+      "min": 10,
+      "max": 99,
+      "step": 1
+    },
+    {
+      "key": "vahColor",
+      "kind": "color"
+    },
+    {
+      "key": "valColor",
+      "kind": "color"
+    },
+    {
+      "key": "vahLineStyle",
+      "kind": "select",
+      "options": [
+        "solid",
+        "dashed",
+        "dotted"
+      ]
+    },
+    {
+      "key": "valLineStyle",
+      "kind": "select",
+      "options": [
+        "solid",
+        "dashed",
+        "dotted"
+      ]
+    },
+    {
+      "key": "vahValLineWidth",
+      "kind": "slider",
+      "min": 1,
+      "max": 10,
+      "step": 1
+    }
+  ],
+  "volumeDeltaProfileTick": [
+    {
+      "key": "buyColor",
+      "kind": "color"
+    },
+    {
+      "key": "sellColor",
+      "kind": "color"
+    },
+    {
+      "key": "binBorderVisible",
+      "kind": "boolean"
+    },
+    {
+      "key": "binBorderColor",
+      "kind": "color"
+    },
+    {
+      "key": "binBorderOpacity",
+      "kind": "slider",
+      "min": 0,
+      "max": 1,
+      "step": 0.05
+    },
+    {
+      "key": "binVolumeVisible",
+      "kind": "boolean"
+    },
+    {
+      "key": "minOpacity",
+      "kind": "slider",
+      "min": 0,
+      "max": 1,
+      "step": 0.05
+    },
+    {
+      "key": "maxOpacity",
+      "kind": "slider",
+      "min": 0,
+      "max": 1,
+      "step": 0.05
+    },
+    {
+      "key": "profileWidth",
+      "kind": "slider",
+      "min": 50,
+      "max": 1000,
+      "step": 10
+    },
+    {
+      "key": "binCount",
+      "kind": "slider",
+      "min": 20,
+      "max": 1500,
+      "step": 10
+    },
+    {
+      "key": "fixedRowCount",
+      "kind": "boolean"
+    },
+    {
+      "key": "pocVisible",
+      "kind": "boolean"
+    },
+    {
+      "key": "pocColor",
+      "kind": "color"
+    },
+    {
+      "key": "pocLineStyle",
+      "kind": "select",
+      "options": [
+        "solid",
+        "dashed",
+        "dotted"
+      ]
+    },
+    {
+      "key": "pocLineWidth",
+      "kind": "slider",
+      "min": 1,
+      "max": 10,
+      "step": 1
+    },
+    {
+      "key": "vahValVisible",
+      "kind": "boolean"
+    },
+    {
+      "key": "vahValPercent",
+      "kind": "slider",
+      "min": 10,
+      "max": 99,
+      "step": 1
+    },
+    {
+      "key": "vahColor",
+      "kind": "color"
+    },
+    {
+      "key": "valColor",
+      "kind": "color"
+    },
+    {
+      "key": "vahLineStyle",
+      "kind": "select",
+      "options": [
+        "solid",
+        "dashed",
+        "dotted"
+      ]
+    },
+    {
+      "key": "valLineStyle",
+      "kind": "select",
+      "options": [
+        "solid",
+        "dashed",
+        "dotted"
+      ]
+    },
+    {
+      "key": "vahValLineWidth",
+      "kind": "slider",
+      "min": 1,
+      "max": 10,
+      "step": 1
+    }
+  ],
+  "vpinCloud": [
+    {
+      "key": "sensitivity",
+      "kind": "numeric",
+      "min": 0.3,
+      "max": 4,
+      "step": 0,
+      "clamp": true
+    }
+  ],
+  "vwapBands": [
+    {
+      "key": "anchor",
+      "kind": "select",
+      "options": [
+        "session",
+        "lookback"
+      ]
+    },
+    {
+      "key": "sessionPeriodMs",
+      "kind": "select",
+      "options": [
+        3600000,
+        7200000,
+        10800000,
+        14400000,
+        21600000,
+        43200000,
+        86400000,
+        172800000,
+        259200000,
+        604800000
+      ]
+    },
+    {
+      "key": "lookbackBars",
+      "kind": "slider",
+      "min": 10,
+      "max": 500,
+      "step": 1
+    },
+    {
+      "key": "band1Sigma",
+      "kind": "slider",
+      "min": 0.5,
+      "max": 4,
+      "step": 0.5
+    },
+    {
+      "key": "band2Sigma",
+      "kind": "slider",
+      "min": 0.5,
+      "max": 4,
+      "step": 0.5
+    },
+    {
+      "key": "showBands",
+      "kind": "boolean"
+    },
+    {
+      "key": "vwapColor",
+      "kind": "color"
+    },
+    {
+      "key": "band1Color",
+      "kind": "color"
+    },
+    {
+      "key": "band2Color",
+      "kind": "color"
+    },
+    {
+      "key": "showFill",
+      "kind": "boolean"
+    },
+    {
+      "key": "fillColor",
+      "kind": "color"
+    },
+    {
+      "key": "showRingFill",
+      "kind": "boolean"
+    },
+    {
+      "key": "ringFillColor",
+      "kind": "color"
+    }
+  ],
+  "whaleLimitOrderHeatmap": [
+    {
+      "key": "hours",
+      "kind": "select",
+      "options": [
+        12,
+        24,
+        48,
+        168
+      ]
+    },
+    {
+      "key": "cutBasis",
+      "kind": "select",
+      "options": [
+        "usd",
+        "ratio"
+      ]
+    },
+    {
+      "key": "cutPreset",
+      "kind": "numeric",
+      "min": 0,
+      "max": 4,
+      "step": 1,
+      "clamp": true
+    },
+    {
+      "key": "ratioMin",
+      "kind": "numeric",
+      "min": 1,
+      "max": 1000,
+      "step": 0,
+      "clamp": true
+    },
+    {
+      "key": "fills",
+      "kind": "boolean"
+    },
+    {
+      "key": "sideFilter",
+      "kind": "select",
+      "options": [
+        "both",
+        "bid",
+        "ask"
+      ]
+    },
+    {
+      "key": "thickness",
+      "kind": "slider",
+      "min": 2,
+      "max": 8,
+      "step": 1,
+      "clamp": true
+    },
+    {
+      "key": "outcomeMask",
+      "kind": "numeric",
+      "min": 0,
+      "max": 31,
+      "step": 1
+    },
+    {
+      "key": "liveView",
+      "kind": "select",
+      "options": [
+        "ladder",
+        "rays",
+        "both",
+        "off"
+      ]
+    },
+    {
+      "key": "labels",
+      "kind": "boolean"
+    }
+  ]
+}

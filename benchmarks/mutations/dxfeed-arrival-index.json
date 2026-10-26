@@ -1,0 +1,54 @@
+{
+  "mutations": [
+    {
+      "id": "dxarrival.bounds-one-select",
+      "file": "apps/runtime/src/indicators/l2-memory/dxfeed-replay-source.js",
+      "find": "conn.prepare(\"SELECT (SELECT MIN(id) FROM dxfeed_order_book_capture) AS lo, (SELECT MAX(id) FROM dxfeed_order_book_capture) AS hi\")",
+      "replace": "conn.prepare(\"SELECT MIN(id) AS lo, MAX(id) AS hi FROM dxfeed_order_book_capture\")",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/dxfeed-replay-source.test.js", "-t", "scans the whole capture table"],
+      "mustFail": ["scans the whole capture table"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "dxarrival.hint-always-scan",
+      "file": "apps/runtime/src/indicators/l2-memory/dxfeed-replay-source.js",
+      "find": "return present ? `INDEXED BY ${ORDER_BOOK_ARRIVAL_INDEX}` : \"NOT INDEXED\";",
+      "replace": "return \"NOT INDEXED\";",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/dxfeed-replay-source.test.js", "-t", "arrival index"],
+      "mustFail": ["arrival index"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "dxarrival.hint-ignores-absence",
+      "file": "apps/runtime/src/indicators/l2-memory/dxfeed-replay-source.js",
+      "find": "return present ? `INDEXED BY ${ORDER_BOOK_ARRIVAL_INDEX}` : \"NOT INDEXED\";",
+      "replace": "return `INDEXED BY ${ORDER_BOOK_ARRIVAL_INDEX}`;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/dxfeed-replay-source.test.js", "-t", "arrival index"],
+      "mustFail": ["arrival index"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "dxarrival.index-without-source",
+      "file": "apps/runtime/src/storage/dxfeed/dxfeed-storage-db.js",
+      "find": "ON dxfeed_order_book_capture(symbol, asset_class, source);` }),",
+      "replace": "ON dxfeed_order_book_capture(symbol, asset_class);` }),",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/dxfeed-replay-source.test.js", "-t", "arrival index"],
+      "mustFail": ["arrival index"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "dxarrival.index-not-required",
+      "file": "apps/runtime/src/storage/dxfeed/dxfeed-storage-db.js",
+      "find": "const REQUIRED_INDEXES = Object.freeze(INDEX_DEFINITIONS.map((index) => index.name));",
+      "replace": "const REQUIRED_INDEXES = Object.freeze(INDEX_DEFINITIONS.map((index) => index.name).filter((name) => name !== ORDER_BOOK_ARRIVAL_INDEX));",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/storage/dxfeed/dxfeed-storage-db.test.js", "-t", "before the arrival index"],
+      "mustFail": ["before the arrival index"],
+      "timeoutMs": 180000
+    }
+  ]
+}

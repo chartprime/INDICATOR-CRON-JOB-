@@ -1,0 +1,100 @@
+{
+  "mutations": [
+    {
+      "id": "audit-runtime.l2-advance-runs-other-indicators",
+      "file": "apps/web/src/lib/chart/indicatorRuntime.ts",
+      "find": "      if (record.faulted || record.def.category !== \"l2\" || record.lastTailTsOpen !== bar.ts_open) continue;",
+      "replace": "      if (record.faulted || record.lastTailTsOpen !== bar.ts_open) continue;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/chart/tests/indicatorL2.test.ts"
+      ],
+      "mustFail": [
+        "re-runs only the forming bar of an L2 indicator when the feed advances"
+      ]
+    },
+    {
+      "id": "audit-runtime.l2-source-replays-every-indicator",
+      "file": "apps/web/src/lib/chart/indicatorRuntime.ts",
+      "find": "    for (const record of records.values()) {\n      if (!record.faulted && record.def.category === \"l2\") fullReplay(record, bars);",
+      "replace": "    for (const record of records.values()) {\n      if (!record.faulted) fullReplay(record, bars);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/chart/tests/indicatorL2.test.ts"
+      ],
+      "mustFail": [
+        "replays an L2 indicator when the source changes, never when the same source is set again, and never a non-L2 one"
+      ]
+    },
+    {
+      "id": "audit-runtime.l2-source-not-replayed",
+      "file": "apps/web/src/lib/chart/indicatorRuntime.ts",
+      "cwd": "apps/web",
+      "find": "record.l2 = next;\n    replayL2Indicators(bars);",
+      "replace": "record.l2 = next;",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/chart/tests/indicatorL2.test.ts"
+      ],
+      "mustFail": [
+        "replays an L2 indicator when the source changes"
+      ]
+    },
+    {
+      "id": "audit-runtime.liquidity-source-not-replayed",
+      "file": "apps/web/src/lib/chart/indicatorRuntime.ts",
+      "cwd": "apps/web",
+      "find": "record.liquidity = next;\n    replayL2Indicators(bars);",
+      "replace": "record.liquidity = next;",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/chart/tests/indicatorRuntime.test.ts"
+      ],
+      "mustFail": [
+        "re-runs every bar when the book arrives"
+      ]
+    },
+    {
+      "id": "audit-runtime.l2-advance-not-wired",
+      "file": "apps/web/src/lib/chart/indicatorRuntime.ts",
+      "cwd": "apps/web",
+      "find": "    onL2Advanced: refreshL2Tail,",
+      "replace": "    onL2Advanced: () => undefined,",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/chart/tests/indicatorL2.test.ts"
+      ],
+      "mustFail": [
+        "re-runs only the forming bar of an L2 indicator when the feed advances"
+      ]
+    },
+    {
+      "id": "audit-runtime.liquidity-advance-not-wired",
+      "file": "apps/web/src/lib/chart/indicatorRuntime.ts",
+      "cwd": "apps/web",
+      "find": "    onLiquidityAdvanced: refreshL2Tail,",
+      "replace": "    onLiquidityAdvanced: () => undefined,",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/chart/tests/liquidityAdvance.test.ts"
+      ],
+      "mustFail": [
+        "draws the walls a partial book hid, once the rest of the book has arrived"
+      ]
+    }
+  ]
+}

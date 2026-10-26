@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "binance": [
+    { "group": "Crypto", "label": "BTC Spot", "symbol": "BTC-USDT", "marketKind": "SPOT", "l2": { "clusterTicks": 50, "minSliceSize": 0.01 } },
+    { "group": "Crypto", "label": "BTC Perp", "symbol": "BTC-USDT", "marketKind": "PERPETUAL", "l2": { "clusterTicks": 5, "minSliceSize": 0.01 } },
+    { "group": "Crypto", "label": "ETH Spot", "symbol": "ETH-USDT", "marketKind": "SPOT", "l2": { "clusterTicks": 2, "minSliceSize": 0.3 } },
+    { "group": "Crypto", "label": "ETH Perp", "symbol": "ETH-USDT", "marketKind": "PERPETUAL", "l2": { "clusterTicks": 2, "minSliceSize": 0.3 } }
+  ],
+  "dxfeed": [
+    { "group": "Futures", "label": "NQ", "symbol": "/NQZ26:XCME", "assetClass": "FUTURE", "orderSource": "GLBX", "tickSize": 0.25 },
+    { "group": "Futures", "label": "ES", "symbol": "/ESZ26:XCME", "assetClass": "FUTURE", "orderSource": "GLBX", "tickSize": 0.25 },
+    { "group": "Equities", "label": "AAPL", "symbol": "AAPL", "assetClass": "EQUITY", "orderSource": "NTV", "tickSize": 0.01 },
+    { "group": "Equities", "label": "TSLA", "symbol": "TSLA", "assetClass": "EQUITY", "orderSource": "NTV", "tickSize": 0.01 },
+    { "group": "Equities", "label": "NVDA", "symbol": "NVDA", "assetClass": "EQUITY", "orderSource": "NTV", "tickSize": 0.01 }
+  ]
+}

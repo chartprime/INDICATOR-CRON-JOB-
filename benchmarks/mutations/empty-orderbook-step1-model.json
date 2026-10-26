@@ -1,0 +1,1120 @@
+{
+  "mutations": [
+    {
+      "id": "empty-book.min-height-ignored",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "  return runs.filter(([lo, hi]) => hi - lo + 1 >= minRows);",
+      "replace": "  return runs.filter(([lo, hi]) => hi - lo + 1 >= 1);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "under the minimum height"
+      ],
+      "mustFail": [
+        "ignores a run of thin rows under the minimum height"
+      ]
+    },
+    {
+      "id": "empty-book.thin-share-ignored",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "  const thin = rules.thinShare * state.typical;",
+      "replace": "  const thin = state.typical;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "counts a row thin only"
+      ],
+      "mustFail": [
+        "counts a row thin only under 75 % of the typical row"
+      ]
+    },
+    {
+      "id": "empty-book.average-not-needed",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "      if (average !== null && average < thin) members.add(row);",
+      "replace": "      if (average !== null) members.add(row);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "needs the average of the window"
+      ],
+      "mustFail": [
+        "needs the average of the window under the thin line, not only the size right now"
+      ]
+    },
+    {
+      "id": "empty-book.average-over-half-the-window",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "  while (state.samples[0].ts <= ts - rules.averageMs) dropOldest(state);",
+      "replace": "  while (state.samples[0].ts <= ts - rules.averageMs / 2) dropOldest(state);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "needs the average of the window"
+      ],
+      "mustFail": [
+        "needs the average of the window under the thin line, not only the size right now"
+      ]
+    },
+    {
+      "id": "empty-book.average-from-a-partial-window",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "  if (count !== state.samples.length) return null;",
+      "replace": "  if (!(count > 0)) return null;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "waits for a full window"
+      ],
+      "mustFail": [
+        "waits for a full window on rows it starts watching after price moves, before counting them thin"
+      ]
+    },
+    {
+      "id": "empty-book.leaving-column-not-taken-off-the-sums",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "      state.sums[side][index] = state.knownCounts[side][index] <= 0 ? 0 : state.sums[side][index] - sample[side][i];",
+      "replace": "      state.sums[side][index] = state.knownCounts[side][index] <= 0 ? 0 : state.sums[side][index];",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "needs the average of the window"
+      ],
+      "mustFail": [
+        "needs the average of the window under the thin line, not only the size right now"
+      ]
+    },
+    {
+      "id": "empty-book.leaving-column-not-taken-off-the-counts",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "    state.counts[index] = count;",
+      "replace": "    state.counts[index] = count + 1;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "needs the average of the window"
+      ],
+      "mustFail": [
+        "needs the average of the window under the thin line, not only the size right now"
+      ]
+    },
+    {
+      "id": "empty-book.size-now-not-needed",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "      if (!Number.isFinite(now[side][row - now.lo]) || now[side][row - now.lo] >= thin) continue;",
+      "replace": "      if (!Number.isFinite(now[side][row - now.lo])) continue;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "needs the size right now"
+      ],
+      "mustFail": [
+        "needs the size right now under the thin line too, not only the average"
+      ]
+    },
+    {
+      "id": "empty-book.judged-before-the-window-is-full",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "  if (full) {",
+      "replace": "  if (state.samples.length > 0) {",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "judges nothing until"
+      ],
+      "mustFail": [
+        "judges nothing until the average has its full window of columns"
+      ]
+    },
+    {
+      "id": "empty-book.shown-at-once",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "shown: ts - since >= rules.showMs };",
+      "replace": "shown: true };",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "marks a run of thin rows"
+      ],
+      "mustFail": [
+        "marks a run of thin rows at least the minimum height tall, once it has lasted the show time"
+      ]
+    },
+    {
+      "id": "empty-book.typical-from-the-whole-book",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "  const typicalRows = Math.max(bands(rules.typicalBp), TYPICAL_MIN_ROWS);",
+      "replace": "  const typicalRows = Infinity;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "takes the typical row"
+      ],
+      "mustFail": [
+        "takes the typical row from the rows near price, whatever rests far away"
+      ]
+    },
+    {
+      "id": "empty-book.typical-not-smoothed",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "    state.typical = state.typical <= 0 ? median : median + keep * (state.typical - median);",
+      "replace": "    state.typical = median;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "smooths the typical row"
+      ],
+      "mustFail": [
+        "smooths the typical row, by a tenth of the way each second"
+      ]
+    },
+    {
+      "id": "empty-book.typical-smoothing-ignores-spacing",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "    const keep = TYPICAL_KEEP_PER_SECOND ** (Math.max(step, 1) / 1_000);",
+      "replace": "    const keep = TYPICAL_KEEP_PER_SECOND;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "smooths the typical row"
+      ],
+      "mustFail": [
+        "smooths the typical row, by a tenth of the way each second"
+      ]
+    },
+    {
+      "id": "empty-book.row-size-not-passed-to-the-sizing",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "    const sizes = rules.bandSizes(column, lo + i, rows);",
+      "replace": "    const sizes = rules.bandSizes(column, lo + i, 1);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "sizes a row like the profile"
+      ],
+      "mustFail": [
+        "sizes a row like the profile at the heatmap's row size: summed on crypto, the biggest order on indexes"
+      ]
+    },
+    {
+      "id": "empty-book.zone-rows-one-row-short",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "rowHi: (zone.hi + 1) * clusterRows - 1 };",
+      "replace": "rowHi: zone.hi * clusterRows };",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "sizes a row like the profile"
+      ],
+      "mustFail": [
+        "sizes a row like the profile at the heatmap's row size: summed on crypto, the biggest order on indexes"
+      ]
+    },
+    {
+      "id": "empty-book.price-room-ignored-on-leave",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "    if (distance <= rules.clearRows || distance > limit) {",
+      "replace": "    if (distance <= 0 || distance > limit) {",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "stays clear of price"
+      ],
+      "mustFail": [
+        "stays clear of price: a row joins from the sixth row out and leaves when price comes within four rows"
+      ]
+    },
+    {
+      "id": "empty-book.joins-next-to-price",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "    for (let distance = rules.clearRows + 2; distance <= limit; distance += 1) {",
+      "replace": "    for (let distance = 1; distance <= limit; distance += 1) {",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "stays clear of price"
+      ],
+      "mustFail": [
+        "stays clear of price: a row joins from the sixth row out and leaves when price comes within four rows"
+      ]
+    },
+    {
+      "id": "empty-book.no-margin-on-the-price-room",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "    for (let distance = rules.clearRows + 2; distance <= limit; distance += 1) {",
+      "replace": "    for (let distance = rules.clearRows + 1; distance <= limit; distance += 1) {",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "stays clear of price"
+      ],
+      "mustFail": [
+        "stays clear of price: a row joins from the sixth row out and leaves when price comes within four rows"
+      ]
+    },
+    {
+      "id": "empty-book.refill-size-ignored",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "  const refill = rules.refillMultiple * state.typical;",
+      "replace": "  const refill = state.typical;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "flashes a row that comes back"
+      ],
+      "mustFail": [
+        "flashes a row that comes back to the refill size, a typical row by default, and takes it off the zone's edge"
+      ]
+    },
+    {
+      "id": "empty-book.refill-without-a-flash",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "    if (zone !== undefined) state.flashes.push({ side, row, ts, zone: zone.id, since: zone.since });\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "flashes a row that comes back"
+      ],
+      "mustFail": [
+        "flashes a row that comes back to the refill size, a typical row by default, and takes it off the zone's edge"
+      ]
+    },
+    {
+      "id": "empty-book.size-now-never-a-refill",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "    if (now[side][row - now.lo] < refill && (average === null || average < release)) continue;",
+      "replace": "    if (average === null || average < release) continue;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "flashes a row that comes back"
+      ],
+      "mustFail": [
+        "flashes a row that comes back to the refill size, a typical row by default, and takes it off the zone's edge"
+      ]
+    },
+    {
+      "id": "empty-book.flash-without-its-zone-age",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "state.flashes.push({ side, row, ts, zone: zone.id, since: zone.since });",
+      "replace": "state.flashes.push({ side, row, ts, zone: zone.id, since: ts });",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "flashes a row that comes back"
+      ],
+      "mustFail": [
+        "flashes a row that comes back to the refill size, a typical row by default, and takes it off the zone's edge"
+      ]
+    },
+    {
+      "id": "empty-book.refilled-row-stays-in-the-zone",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "    members.delete(row);\n    refilled.set(row, ts);",
+      "replace": "    refilled.set(row, ts);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "flashes a row that comes back"
+      ],
+      "mustFail": [
+        "flashes a row that comes back to the refill size, a typical row by default, and takes it off the zone's edge"
+      ]
+    },
+    {
+      "id": "empty-book.flash-in-an-unshown-zone",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "find((candidate) => candidate.shown && row >= candidate.lo",
+      "replace": "find((candidate) => row >= candidate.lo",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "not shown yet"
+      ],
+      "mustFail": [
+        "does not flash a refill in a zone that is not shown yet"
+      ]
+    },
+    {
+      "id": "empty-book.no-cool-down-after-a-refill",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "      if (members.has(row) || refilled.has(row) || !covers(now, row)) continue;",
+      "replace": "      if (members.has(row) || !covers(now, row)) continue;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "keeps a refilled row out"
+      ],
+      "mustFail": [
+        "keeps a refilled row out until it has stayed thin for the pause, starting the pause over when the row fills again, then lets it join the same zone again"
+      ]
+    },
+    {
+      "id": "empty-book.cool-down-never-ends",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "    else if (ts - at >= rules.rejoinMs) refilled.delete(row);",
+      "replace": "    else if (ts - at >= Infinity) refilled.delete(row);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "keeps a refilled row out"
+      ],
+      "mustFail": [
+        "keeps a refilled row out until it has stayed thin for the pause, starting the pause over when the row fills again, then lets it join the same zone again"
+      ]
+    },
+    {
+      "id": "empty-book.pause-from-the-window",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "    else if (ts - at >= rules.rejoinMs) refilled.delete(row);",
+      "replace": "    else if (ts - at >= rules.averageMs) refilled.delete(row);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "keeps a refilled row out"
+      ],
+      "mustFail": [
+        "keeps a refilled row out until it has stayed thin for the pause, starting the pause over when the row fills again, then lets it join the same zone again"
+      ]
+    },
+    {
+      "id": "empty-book.pause-not-started-over",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "    if (now[side][row - now.lo] >= thin) refilled.set(row, ts);",
+      "replace": "    if (false) refilled.set(row, ts);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "keeps a refilled row out"
+      ],
+      "mustFail": [
+        "keeps a refilled row out until it has stayed thin for the pause, starting the pause over when the row fills again, then lets it join the same zone again"
+      ]
+    },
+    {
+      "id": "empty-book.pause-started-over-only-on-a-refill",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "    if (now[side][row - now.lo] >= thin) refilled.set(row, ts);",
+      "replace": "    if (now[side][row - now.lo] >= refill) refilled.set(row, ts);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "keeps a refilled row out"
+      ],
+      "mustFail": [
+        "keeps a refilled row out until it has stayed thin for the pause, starting the pause over when the row fills again, then lets it join the same zone again"
+      ]
+    },
+    {
+      "id": "empty-book.flash-kept-for-ever",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "  state.flashes = state.flashes.filter((flash) => ts - flash.ts < rules.flashMs);\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "drops a flash after its time"
+      ],
+      "mustFail": [
+        "drops a flash after its time"
+      ]
+    },
+    {
+      "id": "empty-book.slow-fill-never-leaves",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "    if (now[side][row - now.lo] < refill && (average === null || average < release)) continue;",
+      "replace": "    if (now[side][row - now.lo] < refill) continue;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "fills slowly"
+      ],
+      "mustFail": [
+        "flashes a row that fills slowly too, once its average is halfway from the thin line to the refill size"
+      ]
+    },
+    {
+      "id": "empty-book.slow-fill-leaves-at-the-thin-line",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "  const release = (thin + refill) / 2;",
+      "replace": "  const release = thin;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "fills slowly"
+      ],
+      "mustFail": [
+        "flashes a row that fills slowly too, once its average is halfway from the thin line to the refill size"
+      ]
+    },
+    {
+      "id": "empty-book.slow-fill-waits-for-the-refill-size",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "  const release = (thin + refill) / 2;",
+      "replace": "  const release = refill;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "fills slowly"
+      ],
+      "mustFail": [
+        "flashes a row that fills slowly too, once its average is halfway from the thin line to the refill size"
+      ]
+    },
+    {
+      "id": "empty-book.split-part-loses-its-age",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "      if (zone.since < since) since = zone.since;",
+      "replace": "      if (zone.id === ids[index] && zone.since < since) since = zone.since;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "splits a zone refilled in its middle"
+      ],
+      "mustFail": [
+        "splits a zone refilled in its middle: both parts keep the age and the zone's group, the bigger part keeps the id"
+      ]
+    },
+    {
+      "id": "empty-book.id-to-the-first-part",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "      if (ids[index] === null && shared > most) {",
+      "replace": "      if (ids[index] === null && shared > 0 && best < 0) {",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "splits a zone refilled in its middle"
+      ],
+      "mustFail": [
+        "splits a zone refilled in its middle: both parts keep the age and the zone's group, the bigger part keeps the id"
+      ]
+    },
+    {
+      "id": "empty-book.merge-keeps-the-newer-zone",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": ".sort((a, b) => a.since - b.since || a.id - b.id);",
+      "replace": ".sort((a, b) => b.since - a.since || b.id - a.id);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "joins two zones"
+      ],
+      "mustFail": [
+        "joins two zones through a row that turns thin, keeping the older zone's id, group and age"
+      ]
+    },
+    {
+      "id": "empty-book.bid-side-not-mirrored",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "  const direction = side === \"ask\" ? 1 : -1;",
+      "replace": "  const direction = 1;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "keeps each side apart"
+      ],
+      "mustFail": [
+        "keeps each side apart, with the bid side mirrored below price"
+      ]
+    },
+    {
+      "id": "empty-book.bid-edge-from-the-ask",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "    bid: Math.floor(Math.min(touch.bid, touch.ask - 1) / rows),",
+      "replace": "    bid: Math.floor(Math.max(touch.ask, touch.bid + 1) / rows),",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "keeps each side apart"
+      ],
+      "mustFail": [
+        "keeps each side apart, with the bid side mirrored below price"
+      ]
+    },
+    {
+      "id": "empty-book.joins-beyond-the-reach",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "distance <= limit; distance += 1) {",
+      "replace": "distance <= limit * 2; distance += 1) {",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "looks no further than its reach"
+      ],
+      "mustFail": [
+        "looks no further than its reach from price, and lets go of rows that fall out of it"
+      ]
+    },
+    {
+      "id": "empty-book.rows-out-of-reach-kept",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "    if (distance <= rules.clearRows || distance > limit) {",
+      "replace": "    if (distance <= rules.clearRows) {",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "looks no further than its reach"
+      ],
+      "mustFail": [
+        "looks no further than its reach from price, and lets go of rows that fall out of it"
+      ]
+    },
+    {
+      "id": "empty-book.gap-not-a-fresh-start",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "  if (state.lastTs !== null && column.ts - state.lastTs > rules.gapMs) resetEmptyBook(state, rules.clusterRows);\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "after a long gap"
+      ],
+      "mustFail": [
+        "starts over after a long gap in the columns"
+      ]
+    },
+    {
+      "id": "empty-book.short-gap-starts-over",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "column.ts - state.lastTs > rules.gapMs)",
+      "replace": "column.ts - state.lastTs > 1_000)",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "rides through a short gap"
+      ],
+      "mustFail": [
+        "rides through a short gap in the columns: the zones stay, with their age"
+      ]
+    },
+    {
+      "id": "empty-book.window-clock-restarts-every-column",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "  state.startedTs ??= column.ts;",
+      "replace": "  state.startedTs = column.ts;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "marks a run of thin rows"
+      ],
+      "mustFail": [
+        "marks a run of thin rows at least the minimum height tall, once it has lasted the show time"
+      ]
+    },
+    {
+      "id": "empty-book.full-window-one-column-late",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "  const full = ts - state.startedTs >= rules.averageMs - columnMs;",
+      "replace": "  const full = ts - state.startedTs >= rules.averageMs;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "judges nothing until"
+      ],
+      "mustFail": [
+        "judges nothing until the average has its full window of columns"
+      ]
+    },
+    {
+      "id": "empty-book.row-size-change-not-a-fresh-start",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "  if (rules.clusterRows !== state.clusterRows) resetEmptyBook(state, rules.clusterRows);\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "when the row size changes"
+      ],
+      "mustFail": [
+        "starts over when the row size changes"
+      ]
+    },
+    {
+      "id": "empty-book.older-column-stepped",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "  if (state.lastTs !== null && column.ts <= state.lastTs) return;\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "not newer than the last one"
+      ],
+      "mustFail": [
+        "ignores a column that is not newer than the last one"
+      ]
+    },
+    {
+      "id": "empty-book.typical-window-not-widened",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "  const typicalRows = Math.max(bands(rules.typicalBp), TYPICAL_MIN_ROWS);",
+      "replace": "  const typicalRows = bands(rules.typicalBp);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "at least ten rows each side"
+      ],
+      "mustFail": [
+        "takes the typical row from at least ten rows each side of price, however coarse the rows"
+      ]
+    },
+    {
+      "id": "empty-book.whole-book-not-the-default",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "  reachBp: Infinity,",
+      "replace": "  reachBp: 100,",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookRules.test.ts",
+        "-t",
+        "builds the model's rules"
+      ],
+      "mustFail": [
+        "builds the model's rules from the heatmap's row size and the minimum height, on the fixed numbers"
+      ]
+    },
+    {
+      "id": "empty-book.refill-default-twice",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "  refillMultiple: 1,",
+      "replace": "  refillMultiple: 2,",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookRules.test.ts",
+        "-t",
+        "builds the model's rules"
+      ],
+      "mustFail": [
+        "builds the model's rules from the heatmap's row size and the minimum height, on the fixed numbers"
+      ]
+    },
+    {
+      "id": "empty-book.rejoin-pause-default-a-window",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "  rejoinMs: 15_000,",
+      "replace": "  rejoinMs: 120_000,",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookRules.test.ts",
+        "-t",
+        "builds the model's rules"
+      ],
+      "mustFail": [
+        "builds the model's rules from the heatmap's row size and the minimum height, on the fixed numbers"
+      ]
+    },
+    {
+      "id": "empty-book.rules-ignore-refill",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookRules.ts",
+      "find": "thinShare: thin, refillMultiple: refill };",
+      "replace": "thinShare: thin };",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookRules.test.ts",
+        "-t",
+        "builds the model's rules"
+      ],
+      "mustFail": [
+        "builds the model's rules from the heatmap's row size and the minimum height, on the fixed numbers"
+      ]
+    },
+    {
+      "id": "empty-book.refill-under-the-thin-line",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookRules.ts",
+      "find": "  const refill = Math.max(thin, Number.isFinite(refillMultiple) ? refillMultiple : DEFAULT_EMPTY_BOOK_RULES.refillMultiple);",
+      "replace": "  const refill = Number.isFinite(refillMultiple) ? refillMultiple : DEFAULT_EMPTY_BOOK_RULES.refillMultiple;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookRules.test.ts",
+        "-t",
+        "builds the model's rules"
+      ],
+      "mustFail": [
+        "builds the model's rules from the heatmap's row size and the minimum height, on the fixed numbers"
+      ]
+    },
+    {
+      "id": "empty-book.refill-nan-taken",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookRules.ts",
+      "find": "Number.isFinite(refillMultiple) ? refillMultiple : DEFAULT_EMPTY_BOOK_RULES.refillMultiple",
+      "replace": "refillMultiple",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookRules.test.ts",
+        "-t",
+        "builds the model's rules"
+      ],
+      "mustFail": [
+        "builds the model's rules from the heatmap's row size and the minimum height, on the fixed numbers"
+      ]
+    },
+    {
+      "id": "empty-book.book-edge-not-a-limit",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "  const limit = Math.min(reach, Math.max(0, side === \"ask\" ? now.hi - edge : edge - now.lo));",
+      "replace": "  const limit = Math.min(reach, Math.max(0, side === \"ask\" ? now.hi - edge - 3 : edge - now.lo - 3));",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "looks as far as the book goes"
+      ],
+      "mustFail": [
+        "with no reach set, looks as far as the book goes and stops at its edge"
+      ]
+    },
+    {
+      "id": "empty-book.bid-window-ties-not-nearest",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "  if (zone.side === \"bid\") starts.reverse();",
+      "replace": "  if (false) starts.reverse();",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "finds the emptiest window"
+      ],
+      "mustFail": [
+        "finds the emptiest window of a zone on the 2-minute average, the one nearest price among equals"
+      ]
+    },
+    {
+      "id": "empty-book.height-in-lane-rows",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookRules.ts",
+      "find": "  const height = rowWidth * clusterRows;",
+      "replace": "  const height = rowWidth;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookRules.test.ts",
+        "-t",
+        "turns the sensitivity into a minimum height"
+      ],
+      "mustFail": [
+        "turns the sensitivity into a minimum height in heatmap rows: BTC 70 / 50 / 30 USD over 8 USD rows"
+      ]
+    },
+    {
+      "id": "empty-book.timeframe-ignored",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookRules.ts",
+      "find": "minMoveOf(settings, identity, price, intervalMs)",
+      "replace": "minMoveOf(settings, identity, price, 60_000)",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookRules.test.ts",
+        "-t",
+        "scales the minimum height with the timeframe"
+      ],
+      "mustFail": [
+        "scales the minimum height with the timeframe like Order Flow Gaps, over that timeframe's rows"
+      ]
+    },
+    {
+      "id": "empty-book.counts-not-kept-when-the-rows-move",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "    counts.set(state.counts.subarray(start - state.base, end - state.base), start - base);\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "keeps every row's 2-minute average on both sides"
+      ],
+      "mustFail": [
+        "keeps every row's 2-minute average on both sides when price moves far enough to move the rows it keeps"
+      ]
+    },
+    {
+      "id": "empty-book.ask-sums-not-kept-when-the-rows-move",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "    ask.set(state.sums.ask.subarray(start - state.base, end - state.base), start - base);\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "keeps every row's 2-minute average on both sides"
+      ],
+      "mustFail": [
+        "keeps every row's 2-minute average on both sides when price moves far enough to move the rows it keeps"
+      ]
+    },
+    {
+      "id": "empty-book.bid-sums-not-kept-when-the-rows-move",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "    bid.set(state.sums.bid.subarray(start - state.base, end - state.base), start - base);\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "keeps every row's 2-minute average on both sides"
+      ],
+      "mustFail": [
+        "keeps every row's 2-minute average on both sides when price moves far enough to move the rows it keeps"
+      ]
+    },
+    {
+      "id": "empty-book.older-samples-left-out-of-the-rows",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookModel.ts",
+      "find": "  for (const sample of state.samples) {",
+      "replace": "  for (const sample of [] as Sample[]) {",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookModel.test.ts",
+        "-t",
+        "moves away from them and back"
+      ],
+      "mustFail": [
+        "keeps the rows' averages right when price moves away from them and back within the window"
+      ]
+    },
+    {
+      "id": "empty-book.one-row-zones",
+      "file": "apps/web/src/lib/indicators/empty-orderbook/emptyBookRules.ts",
+      "find": "  return Math.max(MIN_ZONE_ROWS, Math.round(",
+      "replace": "  return Math.max(1, Math.round(",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/empty-orderbook/tests/emptyBookRules.test.ts",
+        "-t",
+        "fewer than two rows"
+      ],
+      "mustFail": [
+        "never asks for fewer than two rows, whatever the row size"
+      ]
+    }
+  ]
+}

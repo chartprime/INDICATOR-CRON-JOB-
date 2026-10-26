@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "name": "o2-single-binance-spot-2026-09-21",
+  "serverDelta": true,
+  "users": 1,
+  "rounds": 1,
+  "requests": [
+    { "route": "recording-age", "body": { "symbol": "BTCUSDT", "marketKind": "SPOT", "options": { "nowMs": 1789999200000 } } },
+    { "route": "recent-candles", "body": { "symbol": "BTCUSDT", "marketKind": "SPOT", "options": { "intervalMs": 60000, "windowMs": 604800000, "nowMs": 1789999200000 } } },
+    { "route": "recent-trades", "body": { "symbol": "BTCUSDT", "marketKind": "SPOT", "options": { "windowMs": 600000, "nowMs": 1789999200000, "limit": 5000 } } },
+    { "route": "minute-rollup", "body": { "symbol": "BTCUSDT", "marketKind": "SPOT", "options": { "fromTs": 1789394400000, "toTs": 1789999200000, "tickSize": 0.32 } } },
+    { "route": "replay-page", "body": { "symbol": "BTCUSDT", "marketKind": "SPOT", "options": { "fromTs": 1789998000000, "toTs": 1789999200000, "tickSize": 0.01, "clusterTicks": 50, "rowClusters": 8, "windowRows": 1023, "cursor": null, "bookMode": "sparse" } }, "paginate": { "maxPages": 20 } }
+  ]
+}

@@ -1,0 +1,2 @@
+# The mutation ledger is append-only: a merge keeps the lines both sides added.
+benchmarks/mutation-ledger.jsonl merge=union

@@ -1,0 +1,112 @@
+{
+  "mutations": [
+    {
+      "id": "j1.wall-stream-warms-only-visible-window",
+      "file": "apps/runtime/src/indicators/l2-memory/historical-wall-stream.js",
+      "find": "const sample = projection.sample(String(nextSample));",
+      "replace": "const sample = nextSample < from ? null : projection.sample(String(nextSample));",
+      "cwd": "apps/runtime",
+      "command": [
+        "node",
+        "../../node_modules/jest/bin/jest.js",
+        "test/indicators/l2-memory/historical-wall-stream.test.js",
+        "--runInBand",
+        "--silent"
+      ],
+      "mustFail": [
+        "a later display window warms the entire earlier prefix"
+      ],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "j1.wall-stream-samples-at-future-boundary",
+      "file": "apps/runtime/src/indicators/l2-memory/historical-wall-stream.js",
+      "find": "while (nextSample < boundary)",
+      "replace": "while (nextSample <= boundary)",
+      "cwd": "apps/runtime",
+      "command": [
+        "node",
+        "../../node_modules/jest/bin/jest.js",
+        "test/indicators/l2-memory/historical-wall-stream.test.js",
+        "--runInBand",
+        "--silent"
+      ],
+      "mustFail": [
+        "uniform samples, including quiet intervals and timestamp ties"
+      ],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "j1.wall-stream-ignores-missing-input",
+      "file": "apps/runtime/src/indicators/l2-memory/historical-wall-stream.js",
+      "find": "if (count !== expectedRows)",
+      "replace": "if (false)",
+      "cwd": "apps/runtime",
+      "command": [
+        "node",
+        "../../node_modules/jest/bin/jest.js",
+        "test/indicators/l2-memory/historical-wall-stream.test.js",
+        "--runInBand",
+        "--silent"
+      ],
+      "mustFail": [
+        "truncated input and an absent terminal closure"
+      ],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "j1.wall-stream-certifies-async-output",
+      "file": "apps/runtime/src/indicators/l2-memory/historical-wall-stream.js",
+      "find": "typeof result.then === \"function\"",
+      "replace": "false",
+      "cwd": "apps/runtime",
+      "command": [
+        "node",
+        "../../node_modules/jest/bin/jest.js",
+        "test/indicators/l2-memory/historical-wall-stream.test.js",
+        "--runInBand",
+        "--silent"
+      ],
+      "mustFail": [
+        "an asynchronous onSample callback"
+      ],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "j1.wall-stream-reuses-closed-segment",
+      "file": "apps/runtime/src/indicators/l2-memory/historical-wall-stream.js",
+      "find": "projection = null;\n    } else {",
+      "replace": "projection = projection;\n    } else {",
+      "cwd": "apps/runtime",
+      "command": [
+        "node",
+        "../../node_modules/jest/bin/jest.js",
+        "test/indicators/l2-memory/historical-wall-stream.test.js",
+        "--runInBand",
+        "--silent"
+      ],
+      "mustFail": [
+        "separate segments reset wall evidence"
+      ],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "j1.wall-projection-admits-unapplied-next-record",
+      "file": "apps/runtime/src/indicators/l2-memory/historical-wall-projection.js",
+      "find": "known >= sealedBefore",
+      "replace": "known > sealedBefore",
+      "cwd": "apps/runtime",
+      "command": [
+        "node",
+        "../../node_modules/jest/bin/jest.js",
+        "test/indicators/l2-memory/historical-wall-stream.test.js",
+        "--runInBand",
+        "--silent"
+      ],
+      "mustFail": [
+        "a quiet time is admitted only below a contiguous next-record boundary"
+      ],
+      "timeoutMs": 120000
+    }
+  ]
+}

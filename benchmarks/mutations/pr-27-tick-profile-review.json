@@ -1,0 +1,114 @@
+{
+  "mutations": [
+    {
+      "id": "pr27-tick-profile-not-an-axis-occupant",
+      "file": "apps/web/src/components/chart/ChartPanel.tsx",
+      "find": "if (enabled.has(\"volumeDeltaProfileTick\") && visible.has(\"volumeDeltaProfileTick\")) {",
+      "replace": "if (false) {",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/components/chart/tests/ChartPanel.lifecycle.test.tsx", "-t", "beside the ladder, and keeps room at the axis for both"],
+      "mustFail": ["beside the ladder, and keeps room at the axis for both"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "pr27-tick-profile-footprint-ignores-its-neighbour",
+      "file": "apps/web/src/components/chart/ChartPanel.tsx",
+      "find": "widthPx: (paneWidth) => axisInsetPx(beside, paneWidth) + widthPx,",
+      "replace": "widthPx: () => widthPx,",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/components/chart/tests/ChartPanel.lifecycle.test.tsx", "-t", "past the ladder"],
+      "mustFail": ["past the ladder"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "pr27-tick-profile-inset-counts-itself",
+      "file": "apps/web/src/components/chart/ChartPanel.tsx",
+      "find": "return axisInsetPx(tick < 0 ? occupants : occupants.slice(0, tick), paneWidth);",
+      "replace": "return axisInsetPx(occupants, paneWidth);",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/components/chart/tests/ChartPanel.lifecycle.test.tsx", "-t", "beside the ladder, and keeps room at the axis for both"],
+      "mustFail": ["beside the ladder, and keeps room at the axis for both"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "pr27-tick-profile-drawn-against-the-pane-edge",
+      "file": "apps/web/src/lib/indicators/volume-delta-profile-tick/volumeDeltaProfileTickPrimitive.ts",
+      "find": "Math.max(0, this.rightInset?.(mediaSize.width) ?? 0);",
+      "replace": "0;",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/indicators/volume-delta-profile-tick/tests/volumeDeltaProfileTickPrimitive.test.ts", "-t", "sits left of whatever holds the axis"],
+      "mustFail": ["sits left of whatever holds the axis"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "pr27-tick-value-area-lines-cross-the-axis-occupants",
+      "file": "apps/web/src/lib/indicators/volume-delta-profile-tick/volumeDeltaProfileTickPrimitive.ts",
+      "find": "              vahY,\n              rightEdge,",
+      "replace": "              vahY,\n              mediaSize.width,",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/indicators/volume-delta-profile-tick/tests/volumeDeltaProfileTickPrimitive.test.ts", "-t", "sits left of whatever holds the axis"],
+      "mustFail": ["sits left of whatever holds the axis"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "pr27-tick-rows-thinner-than-a-heatmap-row",
+      "file": "apps/web/src/lib/indicators/volume-delta-profile-tick/volumeDeltaProfileTick.ts",
+      "find": "const thinnerThanARow = !fixedRowCount && range / requested < rowWidth;",
+      "replace": "const thinnerThanARow = false;",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/indicators/volume-delta-profile-tick/tests/volumeDeltaProfileTick.test.ts", "-t", "draws one source row as one bucket holding all of its volume, not a flat fill over thinner ones"],
+      "mustFail": ["draws one source row as one bucket holding all of its volume, not a flat fill over thinner ones"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "pr27-tick-row-floor-applied-to-coarse-buckets",
+      "file": "apps/web/src/lib/indicators/volume-delta-profile-tick/volumeDeltaProfileTick.ts",
+      "find": "const thinnerThanARow = !fixedRowCount && range / requested < rowWidth;",
+      "replace": "const thinnerThanARow = !fixedRowCount;",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/indicators/volume-delta-profile-tick/tests/volumeDeltaProfileTick.test.ts", "-t", "keeps the requested count when buckets are coarser"],
+      "mustFail": ["keeps the requested count when buckets are coarser"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "pr27-tick-whole-row-buckets-off-the-row-grid",
+      "file": "apps/web/src/lib/indicators/volume-delta-profile-tick/volumeDeltaProfileTick.ts",
+      "find": "? Math.floor(minPrice / rowWidth + 1e-9) * rowWidth",
+      "replace": "? minPrice",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/indicators/volume-delta-profile-tick/tests/volumeDeltaProfileTick.test.ts", "-t", "own row grid when the domain starts between rows"],
+      "mustFail": ["own row grid when the domain starts between rows"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "pr27-ohlc-settings-not-persisted",
+      "file": "apps/web/src/lib/indicators/volume-delta-profile-ohlc/volumeDeltaProfileOhlc.ts",
+      "find": "  persistenceSchema: VOLUME_DELTA_PROFILE_OHLC_PERSISTENCE_SCHEMA,\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/chart/historicalIndicatorPreferences.test.ts", "-t", "keeps Volume Profile OHLC settings"],
+      "mustFail": ["keeps Volume Profile OHLC settings"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "pr27-ohlc-thickness-not-persisted",
+      "file": "apps/web/src/lib/indicators/volume-delta-profile-ohlc/volumeDeltaProfileOhlc.ts",
+      "find": "    { kind: \"slider\", key: \"vahValLineWidth\", label: \"VAH / VAL thickness\", min: 1, max: 10, step: 1, affects: \"cosmetic\" },\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/chart/historicalIndicatorPreferences.test.ts", "-t", "keeps Volume Profile OHLC settings"],
+      "mustFail": ["keeps Volume Profile OHLC settings"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "pr27-tick-min-opacity-can-pass-the-max",
+      "file": "apps/web/src/lib/indicators/volume-delta-profile-tick/VolumeDeltaProfileTickSettingsModal.tsx",
+      "find": "                    minOpacity: Math.min(\n                      Number(e.target.value),\n                      settings.maxOpacity,\n                    ),",
+      "replace": "                    minOpacity: Number(e.target.value),",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/indicators/volume-delta-profile-tick/tests/VolumeDeltaProfileTickSettingsModal.test.tsx", "-t", "never lets the minimum opacity pass the maximum"],
+      "mustFail": ["never lets the minimum opacity pass the maximum"],
+      "timeoutMs": 180000
+    }
+  ]
+}

@@ -1,0 +1,352 @@
+{
+  "mutations": [
+    {
+      "id": "p4e2.history-frames.walls-out-of-order-admitted",
+      "file": "apps/runtime/src/server/history-frames.js",
+      "find": "if (previous !== null && (checked.end_ts < previous.end_ts || (checked.end_ts === previous.end_ts && checked.hid <= previous.hid))) throw new Error(`wallHistoryFrame.walls[${index}]: walls must be in order of ending`);",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/history-request-handler.test.js",
+        "-t",
+        "wall_history frame echoes"
+      ],
+      "mustFail": [
+        "a wall_history frame echoes the request"
+      ]
+    },
+    {
+      "id": "p4e2.history-frames.incomplete-with-walls",
+      "file": "apps/runtime/src/server/history-frames.js",
+      "find": "if (!complete && walls.length > 0) throw new Error(\"wallHistoryFrame: an incomplete reply carries no walls\");",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/history-request-handler.test.js",
+        "-t",
+        "wall_history frame echoes"
+      ],
+      "mustFail": [
+        "a wall_history frame echoes the request"
+      ]
+    },
+    {
+      "id": "p4e2.history-frames.rowless-reason-with-width",
+      "file": "apps/runtime/src/server/history-frames.js",
+      "find": "  } else if (rowWidth !== null) {\n    throw new Error(`${field}.rowWidth: must be null when the geometry is unavailable`);\n  }",
+      "replace": "  }",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/history-request-handler.test.js",
+        "-t",
+        "wall_history frame echoes"
+      ],
+      "mustFail": [
+        "a wall_history frame echoes the request"
+      ]
+    },
+    {
+      "id": "p4e2.history-frames.event-rows-out-of-order",
+      "file": "apps/runtime/src/server/history-frames.js",
+      "find": "    if (wireTrades[index][0] < wireTrades[index - 1][0]) throw new Error(`eventHistoryFrame.trades[${index}]: rows must be in time order`);",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/history-request-handler.test.js",
+        "-t",
+        "l2_event_history frame carries"
+      ],
+      "mustFail": [
+        "an l2_event_history frame carries both series"
+      ]
+    },
+    {
+      "id": "p4e2.history-frames.request-window-unbounded",
+      "file": "apps/runtime/src/server/history-frames.js",
+      "find": "  if (toMs - fromMs > MAX_HISTORY_WINDOW_MS) return \"window is longer than eight days\";",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/history-request-handler.test.js",
+        "-t",
+        "request parsers take exactly"
+      ],
+      "mustFail": [
+        "the request parsers take exactly the documented keys"
+      ]
+    },
+    {
+      "id": "p4e2.history-frames.request-extra-keys",
+      "file": "apps/runtime/src/server/history-frames.js",
+      "find": "  if (!hasExactKeys(parsed, withCursor ? keysWithCursor : keys)) return \"unexpected fields\";",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/history-request-handler.test.js",
+        "-t",
+        "request parsers take exactly"
+      ],
+      "mustFail": [
+        "the request parsers take exactly the documented keys"
+      ]
+    },
+    {
+      "id": "p4e2.history-handler.rows-ignored",
+      "file": "apps/runtime/src/server/history-request-handler.js",
+      "find": "const page = history.query({ fromTs: request.fromMs, toTs: request.toMs, rowLo: rows.rowLo, rowHi: rows.rowHi, limit: MAX_HISTORY_WALLS, cursor: request.cursor });",
+      "replace": "const page = history.query({ fromTs: request.fromMs, toTs: request.toMs, limit: MAX_HISTORY_WALLS, cursor: request.cursor });",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/history-request-handler.test.js",
+        "-t",
+        "answers a wall_history request"
+      ],
+      "mustFail": [
+        "answers a wall_history request with the walls"
+      ]
+    },
+    {
+      "id": "p4e2.history-handler.cursor-ignored",
+      "file": "apps/runtime/src/server/history-request-handler.js",
+      "find": "limit: MAX_HISTORY_WALLS, cursor: request.cursor });",
+      "replace": "limit: MAX_HISTORY_WALLS, cursor: null });",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/history-request-handler.test.js",
+        "-t",
+        "answers a wall_history request"
+      ],
+      "mustFail": [
+        "answers a wall_history request with the walls"
+      ]
+    },
+    {
+      "id": "p4e2.history-handler.event-rows-ignored",
+      "file": "apps/runtime/src/server/history-request-handler.js",
+      "find": "const trades = history.queryTrades({ fromTs: request.fromMs, toTs: request.toMs, rowLo: rows.rowLo, rowHi: rows.rowHi, limit: MAX_HISTORY_EVENTS, cursor: cursor.trades });",
+      "replace": "const trades = history.queryTrades({ fromTs: request.fromMs, toTs: request.toMs, limit: MAX_HISTORY_EVENTS, cursor: cursor.trades });",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/history-request-handler.test.js",
+        "-t",
+        "answers an l2_event_history request"
+      ],
+      "mustFail": [
+        "answers an l2_event_history request with both series"
+      ]
+    },
+    {
+      "id": "p4e2.history-handler.no-rate-budget",
+      "file": "apps/runtime/src/server/history-request-handler.js",
+      "find": "    if (fresh.length >= rateLimit.max) {",
+      "replace": "    if (false) {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/history-request-handler.test.js",
+        "-t",
+        "bad request is refused"
+      ],
+      "mustFail": [
+        "a bad request is refused with BAD_REQUEST"
+      ]
+    },
+    {
+      "id": "p4e2.history-handler.bad-request-dropped-silently",
+      "file": "apps/runtime/src/server/history-request-handler.js",
+      "find": "      if (refuse(client, kind, instrument, parsed, \"BAD_REQUEST\")) return;",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/history-request-handler.test.js",
+        "-t",
+        "bad request is refused"
+      ],
+      "mustFail": [
+        "a bad request is refused with BAD_REQUEST"
+      ]
+    },
+    {
+      "id": "p4e2.history-handler.answers-after-dispose",
+      "file": "apps/runtime/src/server/history-request-handler.js",
+      "find": "    if (disposed || !instrument || !parsed || typeof parsed !== \"object\") return;",
+      "replace": "    if (!instrument || !parsed || typeof parsed !== \"object\") return;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/history-request-handler.test.js",
+        "-t",
+        "bad request is refused"
+      ],
+      "mustFail": [
+        "a bad request is refused with BAD_REQUEST"
+      ]
+    },
+    {
+      "id": "p4e2.web.history-ids-collide-with-live",
+      "file": "apps/web/src/lib/l2/history.ts",
+      "find": "    id: -wire.hid,",
+      "replace": "    id: wire.hid,",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/chart/tests/indicatorL2.test.ts",
+        "-t",
+        "wallHistory and eventHistory go through the requester"
+      ],
+      "mustFail": [
+        "wallHistory and eventHistory go through the requester"
+      ]
+    },
+    {
+      "id": "p4e2.web.history-answers-an-incomplete-reply",
+      "file": "apps/web/src/lib/l2/history.ts",
+      "find": "export function wallHistoryOf(frame: WallHistoryFrame): L2WallHistory | null {\n  if (!frame.complete || frame.row_width === null) return null;",
+      "replace": "export function wallHistoryOf(frame: WallHistoryFrame): L2WallHistory | null {\n  if (frame.row_width === null) return null;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/chart/tests/indicatorL2.test.ts",
+        "-t",
+        "wallHistory and eventHistory go through the requester"
+      ],
+      "mustFail": [
+        "wallHistory and eventHistory go through the requester"
+      ]
+    },
+    {
+      "id": "p4e2.web.history-cursor-dropped",
+      "file": "apps/web/src/lib/l2/history.ts",
+      "find": "...(cursor === undefined || cursor === null ? {} : { cursor }) };",
+      "replace": "};",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/chart/tests/indicatorL2.test.ts",
+        "-t",
+        "wallHistory and eventHistory go through the requester"
+      ],
+      "mustFail": [
+        "wallHistory and eventHistory go through the requester"
+      ]
+    },
+    {
+      "id": "p4e2.web.adopt-history-takes-live-ids",
+      "file": "apps/web/src/lib/indicators/institutional-order-blocks-v2/engineWalls.ts",
+      "find": "  closeAdopted(state, adoptEnded(state, walls.filter((wall) => wall.id < 0), rules, rows), closes);",
+      "replace": "  closeAdopted(state, adoptEnded(state, walls, rules, rows), closes);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/institutional-order-blocks-v2/tests/engineWalls.test.ts",
+        "-t",
+        "adopts past walls from the history"
+      ],
+      "mustFail": [
+        "adopts past walls from the history"
+      ]
+    },
+    {
+      "id": "p4e2.web.backfill-keeps-old-cover",
+      "file": "apps/web/src/lib/indicators/absorption-detector/engineAbsorption.ts",
+      "find": "    this._coveredFrom = fromTs;\n    this._cache = new WeakMap();",
+      "replace": "    this._cache = new WeakMap();",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/engineAbsorption.test.ts",
+        "-t",
+        "backfills the stretch"
+      ],
+      "mustFail": [
+        "backfills the stretch before it started watching"
+      ]
+    },
+    {
+      "id": "p4e2.web.backfill-keeps-stale-cache",
+      "file": "apps/web/src/lib/indicators/absorption-detector/engineAbsorption.ts",
+      "find": "    this._coveredFrom = fromTs;\n    this._cache = new WeakMap();\n    return added;",
+      "replace": "    this._coveredFrom = fromTs;\n    return added;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/engineAbsorption.test.ts",
+        "-t",
+        "backfills the stretch"
+      ],
+      "mustFail": [
+        "backfills the stretch before it started watching"
+      ]
+    },
+    {
+      "id": "p4e2.web.backfill-takes-watched-stretch",
+      "file": "apps/web/src/lib/indicators/absorption-detector/engineAbsorption.ts",
+      "find": "      if (trade.ts < fromTs || trade.ts >= this._coveredFrom) continue;",
+      "replace": "      if (trade.ts < fromTs) continue;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/engineAbsorption.test.ts",
+        "-t",
+        "backfills the stretch"
+      ],
+      "mustFail": [
+        "backfills the stretch before it started watching"
+      ]
+    },
+    {
+      "id": "p4e2.web.backfill-takes-any-width",
+      "file": "apps/web/src/lib/indicators/absorption-detector/engineAbsorption.ts",
+      "find": "      const tier = trade.columnMs === bucketMs ? this._fine : trade.columnMs === deepMs ? this._deep : null;\n      if (tier === null) continue;",
+      "replace": "      const tier = trade.columnMs === bucketMs ? this._fine : this._deep;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/engineAbsorption.test.ts",
+        "-t",
+        "backfills the stretch"
+      ],
+      "mustFail": [
+        "backfills the stretch before it started watching"
+      ]
+    }
+  ]
+}

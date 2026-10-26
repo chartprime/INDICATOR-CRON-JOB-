@@ -1,0 +1,49 @@
+{
+  "mutations": [
+    {
+      "id": "pr19-cache-old-grain-not-invalidated",
+      "file": "apps/runtime/src/indicators/volume-profile/volume-profile-cache.js",
+      "find": "const CACHE_SCHEMA_VERSION = 3;",
+      "replace": "const CACHE_SCHEMA_VERSION = 2;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "test/indicators/volume-profile/volume-profile-cache.test.js"],
+      "mustFail": ["version 2 rollups are discarded when the tick grain changes"]
+    },
+    {
+      "id": "pr19-dxfeed-lazy-drops-early-setting",
+      "file": "apps/runtime/src/server/dxfeed-market-data-server.js",
+      "find": "if (requestedProfileConfig) handleProfileConfigMessage(requestedProfileConfig, null);",
+      "replace": "if (false) handleProfileConfigMessage(requestedProfileConfig, null);",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "test/server/dxfeed-market-data-server.test.js", "-t", "a profile setting sent while the initial session is warming"],
+      "mustFail": ["a profile setting sent while the initial session is warming is applied after warm-up"]
+    },
+    {
+      "id": "pr19-dxfeed-eager-drops-early-setting",
+      "file": "apps/runtime/src/server/dxfeed-eager-market-data-server.js",
+      "find": "if (view.requestedProfileConfig && isSelectedView(view)) handleProfileConfigMessage(view.requestedProfileConfig, null);",
+      "replace": "if (false) handleProfileConfigMessage(view.requestedProfileConfig, null);",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "test/server/dxfeed-eager-market-data-server.test.js", "-t", "a profile setting sent during initial warm-up"],
+      "mustFail": ["a profile setting sent during initial warm-up is not lost"]
+    },
+    {
+      "id": "pr19-legacy-host-overflows-old-browser",
+      "file": "apps/runtime/src/server/archive-study.js",
+      "find": "      options?.ticksPerRow !== undefined\n        ? LEGACY_MAX_PROFILE_BUCKETS\n        : undefined,",
+      "replace": "      false\n        ? LEGACY_MAX_PROFILE_BUCKETS\n        : undefined,",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "test/server/archive-study-route.test.js", "-t", "legacy requests stay under the older browser"],
+      "mustFail": ["legacy requests stay under the older browser's 300-bucket wire limit"]
+    },
+    {
+      "id": "pr19-binance-drops-early-setting",
+      "file": "apps/runtime/src/server/market-data-server.js",
+      "find": "if (requested) handleProfileConfigMessage(requested, null);",
+      "replace": "if (false) handleProfileConfigMessage(requested, null);",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "test/server/market-data-server.test.js", "-t", "a profile setting sent before warm-up completes"],
+      "mustFail": ["a profile setting sent before warm-up completes is retained"]
+    }
+  ]
+}

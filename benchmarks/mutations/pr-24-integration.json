@@ -1,0 +1,62 @@
+{
+  "mutations": [
+    {
+      "id": "pr24-live-delta-profile-not-an-axis-occupant",
+      "file": "apps/web/src/components/chart/ChartPanel.tsx",
+      "find": "            const frame = deltaPrimitiveRef.current?.frame;\n            return frame ? frame.width - frame.right + frame.reach : 0;",
+      "replace": "            const frame = deltaPrimitiveRef.current?.frame;\n            return 0;",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/components/chart/tests/ChartPanel.lifecycle.test.tsx", "-t", "keeps room at the price axis for the Live Delta Profile"],
+      "mustFail": ["keeps room at the price axis for the Live Delta Profile as far in as it draws"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "pr24-profile-neighbour-uses-the-ladder-setting-not-its-drawn-width",
+      "file": "apps/web/src/components/chart/ChartPanel.tsx",
+      "find": "widthPx: (paneWidth) => liquidityPrimitiveRef.current?.ladderWidthPx(paneWidth) ?? 0,",
+      "replace": "widthPx: (paneWidth) => Math.max(44, (latestLiquiditySettingsRef.current?.ladderReach ?? 0) * paneWidth),",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/components/chart/tests/ChartPanel.lifecycle.test.tsx", "-t", "sits the Live Delta Profile beside the ladder"],
+      "mustFail": ["sits the Live Delta Profile beside the ladder as wide as the heatmap draws it"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "pr24-delta-history-sent-as-incremental",
+      "file": "apps/runtime/src/server/frames.js",
+      "find": "  delta_profile: FRAME_KIND_BULK_HISTORY,",
+      "replace": "  delta_profile_unregistered: FRAME_KIND_BULK_HISTORY,",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "test/server/frames.test.js", "-t", "delta profile's history as bulk history"],
+      "mustFail": ["sends a delta profile's history as bulk history"]
+    },
+    {
+      "id": "pr24-evicted-live-minutes-never-asked-of-the-host",
+      "file": "apps/web/src/lib/indicators/live-delta-profile/deltaProfileStore.ts",
+      "find": "    this._liveFrom = cut;",
+      "replace": "    void cut;",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/indicators/live-delta-profile/tests/deltaProfileStore.test.ts", "-t", "past MAX_LIVE_SLICES hands its oldest live minutes"],
+      "mustFail": ["past MAX_LIVE_SLICES hands its oldest live minutes to the host"],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "pr24-cut-on-the-browser-clock",
+      "file": "apps/web/src/lib/indicators/live-delta-profile/deltaProfileStore.ts",
+      "find": "this._liveFrom = this._lastSeen === null ? nowMs : this._lastSeen + 1;",
+      "replace": "this._liveFrom = nowMs;",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/indicators/live-delta-profile/tests/deltaProfileStore.test.ts", "-t", "sets the cut just after the newest print"],
+      "mustFail": ["sets the cut just after the newest print it has been shown, on the exchange's clock"],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "pr24-read-timeout-ends-the-request-as-unavailable",
+      "file": "apps/runtime/src/server/delta-profile.js",
+      "find": "\"QUEUE_TIMEOUT\", \"READ_TIMEOUT\"]",
+      "replace": "\"QUEUE_TIMEOUT\"]",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "test/server/delta-profile.test.js", "-t", "a busy archive, or a read that ran out of time"],
+      "mustFail": ["a busy archive, or a read that ran out of time, answers OVERLOADED"]
+    }
+  ]
+}

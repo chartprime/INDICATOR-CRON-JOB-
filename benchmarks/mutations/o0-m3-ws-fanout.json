@@ -1,0 +1,422 @@
+{
+  "mutations": [
+    {
+      "id": "o0-m3.ws.gaps-counted-before-measured-window",
+      "file": "apps/runtime/scripts/bench/ws-fanout-load.js",
+      "find": "const expected = Math.max(lastTradeId, measureFloor) + 1;",
+      "replace": "const expected = lastTradeId + 1;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/scripts/bench/ws-fanout-load.test.js",
+        "-t",
+        "gap accounting"
+      ],
+      "mustFail": [
+        "ids missing before the measured window are never counted as loss"
+      ]
+    },
+    {
+      "id": "o0-m3.ws.producer-rate-check-off-by-one",
+      "file": "apps/runtime/scripts/bench/ws-fanout-load.js",
+      "find": "return achievedTradesPerSecond >= Math.round(nominalTradesPerSecond * PRODUCER_KEPT_UP_FRACTION);",
+      "replace": "return achievedTradesPerSecond > Math.round(nominalTradesPerSecond * PRODUCER_KEPT_UP_FRACTION);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/scripts/bench/ws-fanout-load.test.js",
+        "-t",
+        "producer rate check"
+      ],
+      "mustFail": [
+        "achieved 950 of nominal 1000 trades per second is kept up: true"
+      ]
+    },
+    {
+      "id": "o0-m3.ws.producer-rate-is-tick-count-not-elapsed-time",
+      "file": "apps/runtime/scripts/bench/ws-fanout-load.js",
+      "find": "const due = Math.floor((pulseAt - producerStartedAt) * nominalTradesPerSecond / 1000) - sent;",
+      "replace": "const due = upstream.tradesPerPulse;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/scripts/bench/ws-fanout-load.test.js",
+        "-t",
+        "the producer emits the nominal rate"
+      ],
+      "mustFail": [
+        "the producer emits the nominal rate even when timer ticks arrive late"
+      ]
+    },
+    {
+      "id": "o0-m3.ws.eviction-not-observed-on-the-server",
+      "file": "apps/runtime/scripts/bench/ws-fanout-load.js",
+      "find": "if (record.serverClose === null) record.serverClose = {",
+      "replace": "if (false) record.serverClose = {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/scripts/bench/ws-fanout-load.test.js",
+        "-t",
+        "a slow client is evicted"
+      ],
+      "mustFail": [
+        "a slow client is evicted by the server with 1013"
+      ]
+    },
+    {
+      "id": "o0-m3.ws.run-does-not-stop-after-eviction",
+      "file": "apps/runtime/scripts/bench/ws-fanout-load.js",
+      "find": "await untilElapsed(durationMs, () => stopAfterEviction && allSlowEvicted());",
+      "replace": "await untilElapsed(durationMs, () => false);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/scripts/bench/ws-fanout-load.test.js",
+        "-t",
+        "a slow client is evicted"
+      ],
+      "mustFail": [
+        "a slow client is evicted by the server with 1013"
+      ]
+    },
+    {
+      "id": "o0-m3.ws.stalled-client-never-resumed",
+      "file": "apps/runtime/scripts/bench/ws-fanout-load.js",
+      "find": "record.socket.resume();",
+      "replace": "void 0;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/scripts/bench/ws-fanout-load.test.js",
+        "-t",
+        "stalls briefly and resumes"
+      ],
+      "mustFail": [
+        "a client that stalls briefly and resumes under the production thresholds is not evicted"
+      ]
+    },
+    {
+      "id": "o0-m3.ws.resumed-client-catch-up-not-awaited",
+      "file": "apps/runtime/scripts/bench/ws-fanout-load.js",
+      "find": "const catchingUp = [...healthy, ...resumedSlow];",
+      "replace": "const catchingUp = [...healthy];",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/scripts/bench/ws-fanout-load.test.js",
+        "-t",
+        "resumes at the very end"
+      ],
+      "mustFail": [
+        "the run waits for a client that resumes at the very end to catch up before it reports"
+      ]
+    },
+    {
+      "id": "o0-m3.ws.resume-at-the-end-of-the-window-left-to-a-timer",
+      "file": "apps/runtime/scripts/bench/ws-fanout-load.js",
+      "find": "if (resumeAfterMs !== undefined) resumeSlowClients();",
+      "replace": "void 0;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/scripts/bench/ws-fanout-load.test.js",
+        "-t",
+        "resumes at the very end"
+      ],
+      "mustFail": [
+        "the run waits for a client that resumes at the very end to catch up before it reports"
+      ]
+    },
+    {
+      "id": "o0-m3.ws.duplicates-not-detected",
+      "file": "apps/runtime/scripts/bench/ws-fanout-load.js",
+      "find": "duplicateOrReordered: tradeId <= lastTradeId,",
+      "replace": "duplicateOrReordered: false,",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/scripts/bench/ws-fanout-load.test.js",
+        "-t",
+        "trade sequence observation"
+      ],
+      "mustFail": [
+        "a repeated trade id is a duplicate",
+        "an older trade id arriving late is a reorder"
+      ]
+    },
+    {
+      "id": "o0-m3.ws.repeated-id-not-a-duplicate",
+      "file": "apps/runtime/scripts/bench/ws-fanout-load.js",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/scripts/bench/ws-fanout-load.test.js",
+        "-t",
+        "trade sequence observation"
+      ],
+      "find": "duplicateOrReordered: tradeId <= lastTradeId,",
+      "replace": "duplicateOrReordered: tradeId < lastTradeId,",
+      "mustFail": [
+        "a repeated trade id is a duplicate"
+      ]
+    },
+    {
+      "id": "o0-m3.ws.high-water-mark-can-move-backwards",
+      "file": "apps/runtime/scripts/bench/ws-fanout-load.js",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/scripts/bench/ws-fanout-load.test.js",
+        "-t",
+        "trade sequence observation"
+      ],
+      "find": "lastTradeId: Math.max(lastTradeId, tradeId),",
+      "replace": "lastTradeId: tradeId,",
+      "mustFail": [
+        "an older trade id arriving late is a reorder and never lowers the mark"
+      ]
+    },
+    {
+      "id": "o0-m3.ws.gap-counted-outside-measured-window",
+      "file": "apps/runtime/scripts/bench/ws-fanout-load.js",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/scripts/bench/ws-fanout-load.test.js",
+        "-t",
+        "trade sequence observation"
+      ],
+      "find": "gap: measured ? gapBefore(lastTradeId, tradeId, measureFloor) : 0,",
+      "replace": "gap: gapBefore(lastTradeId, tradeId, measureFloor),",
+      "mustFail": [
+        "skipped ids are only a gap once the trade is inside the measured window"
+      ]
+    },
+    {
+      "id": "o0-m3.ws.trade-stream-is-constant",
+      "file": "apps/runtime/scripts/bench/ws-fanout-load.js",
+      "find": "price = Math.max(1, price + Math.round((random() - 0.5) * 6));",
+      "replace": "price = BASE_PRICE;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/scripts/bench/ws-fanout-load.test.js",
+        "-t",
+        "synthetic trade stream"
+      ],
+      "mustFail": [
+        "looks like a market rather than a constant"
+      ]
+    },
+    {
+      "id": "o0-m3.ws.seed-ignored",
+      "file": "apps/runtime/scripts/bench/ws-fanout-load.js",
+      "find": "let state = seed >>> 0;",
+      "replace": "let state = 1;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/scripts/bench/ws-fanout-load.test.js",
+        "-t",
+        "synthetic trade stream"
+      ],
+      "mustFail": [
+        "is deterministic for a seed and differs across seeds"
+      ]
+    },
+    {
+      "id": "o0-m3.ws.slow-clients-may-exceed-the-clients",
+      "file": "apps/runtime/scripts/bench/ws-fanout-load.js",
+      "find": "boundedInteger(value.slowClients.count, 1, value.clients - 1,",
+      "replace": "boundedInteger(value.slowClients.count, 1, value.clients,",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/scripts/bench/ws-fanout-load.test.js",
+        "-t",
+        "manifest validation"
+      ],
+      "mustFail": [
+        "rejects every client slow"
+      ]
+    },
+    {
+      "id": "o0-m3.ws.main-leaves-console-redirected",
+      "file": "apps/runtime/scripts/bench/ws-fanout-load.js",
+      "find": "    console.log = log;\n    console.info = info;",
+      "replace": "    console.info = info;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/scripts/bench/ws-fanout-load.test.js",
+        "-t",
+        "command line"
+      ],
+      "mustFail": [
+        "writes the report atomically, pins the runner and manifest bytes, and keeps stdout clean"
+      ]
+    },
+    {
+      "id": "o0-m3.app.binance-server-misses-client-buffer-options",
+      "file": "apps/runtime/src/server/app.js",
+      "find": "volumeProfileCache, ...clientBufferOptions, ...(tickSizeResolver",
+      "replace": "volumeProfileCache, ...(tickSizeResolver",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/app-client-buffer.test.js"
+      ],
+      "mustFail": [
+        "forwards the three thresholds to the Binance and dxFeed servers"
+      ]
+    },
+    {
+      "id": "o0-m3.app.dxfeed-servers-miss-client-buffer-options",
+      "file": "apps/runtime/src/server/app.js",
+      "find": "    brokerUrl: dxfeedBrokerUrl,\n    ...clientBufferOptions,",
+      "replace": "    brokerUrl: dxfeedBrokerUrl,",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/app-client-buffer.test.js"
+      ],
+      "mustFail": [
+        "forwards them to the eager dxFeed server",
+        "forwards the three thresholds to the Binance and dxFeed servers"
+      ]
+    },
+    {
+      "id": "o0-m3.app.unset-thresholds-passed-as-undefined",
+      "file": "apps/runtime/src/server/app.js",
+      "find": "...(clientBufferSoftBytes === undefined ? {} : { clientBufferSoftBytes }),",
+      "replace": "...{ clientBufferSoftBytes },",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/app-client-buffer.test.js"
+      ],
+      "mustFail": [
+        "passes nothing when they are not set",
+        "passes only the thresholds that were set"
+      ]
+    },
+    {
+      "id": "o0-m3.manifests.fanout-rate-exceeds-the-rig-ceiling",
+      "file": "benchmarks/ws/fanout-8-clients-1k-trades.json",
+      "find": "\"upstream\": { \"tradesPerPulse\": 20, \"pulseMs\": 20 }",
+      "replace": "\"upstream\": { \"tradesPerPulse\": 400, \"pulseMs\": 20 }",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/scripts/bench/manifests.test.js"
+      ],
+      "mustFail": [
+        "the workloads stay inside the rate the single-process rig can sustain"
+      ]
+    },
+    {
+      "id": "o0-m3.manifests.eviction-workload-loses-its-thresholds",
+      "file": "benchmarks/ws/slow-client-eviction.json",
+      "find": "\"clientBufferSoftBytes\": 300000",
+      "replace": "\"clientBufferSoftBytes\": 30000",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/scripts/bench/manifests.test.js"
+      ],
+      "mustFail": [
+        "the eviction workload shrinks the thresholds"
+      ]
+    },
+    {
+      "id": "o0-m3.ws.histogram-percentile-rank-rounds-down",
+      "file": "apps/runtime/scripts/bench/ws-fanout-load.js",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/scripts/bench/ws-fanout-load.test.js",
+        "-t",
+        "latency histogram"
+      ],
+      "find": "const rank = (fraction) => Math.max(1, Math.ceil(samples * fraction));",
+      "replace": "const rank = (fraction) => Math.max(1, Math.floor(samples * fraction));",
+      "mustFail": [
+        "matches the exact nearest-rank summary of the raw samples"
+      ]
+    },
+    {
+      "id": "o0-m3.ws.histogram-overflow-reported-as-the-cap",
+      "file": "apps/runtime/scripts/bench/ws-fanout-load.js",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/scripts/bench/ws-fanout-load.test.js",
+        "-t",
+        "latency histogram"
+      ],
+      "find": "if (seen >= target) return index > maxMs ? max : index;",
+      "replace": "if (seen >= target) return index;",
+      "mustFail": [
+        "counts samples beyond the cap in an overflow bucket and still reports the exact maximum"
+      ]
+    },
+    {
+      "id": "o0-m3.ws.histogram-merge-loses-the-maximum",
+      "file": "apps/runtime/scripts/bench/ws-fanout-load.js",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/scripts/bench/ws-fanout-load.test.js",
+        "-t",
+        "latency histogram"
+      ],
+      "find": "if (snapshot.max !== null && (max === null || snapshot.max > max)) max = snapshot.max;",
+      "replace": "void 0;",
+      "mustFail": [
+        "merging equals recording everything into one histogram"
+      ]
+    },
+    {
+      "id": "o0-m3.ws.histogram-negative-latency-not-clamped",
+      "file": "apps/runtime/scripts/bench/ws-fanout-load.js",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/scripts/bench/ws-fanout-load.test.js",
+        "-t",
+        "latency histogram"
+      ],
+      "find": "const ms = value < 0 ? 0 : Math.round(value);",
+      "replace": "const ms = Math.round(value);",
+      "mustFail": [
+        "negative values are clamped to zero"
+      ]
+    }
+  ]
+}

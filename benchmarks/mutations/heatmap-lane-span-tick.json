@@ -1,0 +1,651 @@
+{
+ "mutations": [
+  {
+   "id": "lanecap.two-hour-window",
+   "file": "apps/web/src/lib/l2/laneGrids.ts",
+   "find": "      grid = new LiquidityGrid(Math.ceil(DEFAULT_LIQUIDITY_CAPACITY / factor), Math.ceil(DEFAULT_LIQUIDITY_DEEP_CAPACITY / factor));",
+   "replace": "      grid = new LiquidityGrid(Math.ceil(1_200_000 / (1_000 * factor)), Math.ceil(7_200_000 / (10_000 * factor)));",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/l2/l2Store.test.ts"
+   ],
+   "mustFail": [
+    "a lane holds the span lane 0 holds: its capacity is lane 0's divided by the lane's factor, on both tiers, so a zoom never shows a shorter past"
+   ]
+  },
+  {
+   "id": "lanecap.not-divided",
+   "file": "apps/web/src/lib/l2/laneGrids.ts",
+   "find": "      grid = new LiquidityGrid(Math.ceil(DEFAULT_LIQUIDITY_CAPACITY / factor), Math.ceil(DEFAULT_LIQUIDITY_DEEP_CAPACITY / factor));",
+   "replace": "      grid = new LiquidityGrid(DEFAULT_LIQUIDITY_CAPACITY, DEFAULT_LIQUIDITY_DEEP_CAPACITY);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/l2/l2Store.test.ts"
+   ],
+   "mustFail": [
+    "a lane holds the span lane 0 holds: its capacity is lane 0's divided by the lane's factor, on both tiers, so a zoom never shows a shorter past"
+   ]
+  },
+  {
+   "id": "tick.sampler-max-sums",
+   "file": "apps/runtime/src/indicators/passive_liquidity/liquidity-sampler.js",
+   "find": "    if (fold === \"max\") target[row - lo] = Math.max(target[row - lo], level.size);",
+   "replace": "    if (false) target[row - lo] = Math.max(target[row - lo], level.size);",
+   "cwd": "apps/runtime",
+   "command": [
+    "npx",
+    "jest",
+    "test/indicators/passive_liquidity/liquidity-sampler.test.js"
+   ],
+   "mustFail": [
+    "a max fold keeps each row's biggest tick where the default sums them, and only sum and max are folds"
+   ]
+  },
+  {
+   "id": "tick.sampler-any-fold",
+   "file": "apps/runtime/src/indicators/passive_liquidity/liquidity-sampler.js",
+   "find": "  if (!FOLDS.includes(fold)) throw new Error(\"liquidity-sampler: fold must be sum or max\");",
+   "replace": "",
+   "cwd": "apps/runtime",
+   "command": [
+    "npx",
+    "jest",
+    "test/indicators/passive_liquidity/liquidity-sampler.test.js"
+   ],
+   "mustFail": [
+    "a max fold keeps each row's biggest tick where the default sums them, and only sum and max are folds"
+   ]
+  },
+  {
+   "id": "tick.fold-futures-only",
+   "file": "apps/runtime/src/indicators/passive_liquidity/liquidity-sampler.js",
+   "find": "const BIGGEST_ROW_MARKETS = new Set([\"FUTURE\", \"EQUITY\"]);",
+   "replace": "const BIGGEST_ROW_MARKETS = new Set([\"FUTURE\"]);",
+   "cwd": "apps/runtime",
+   "command": [
+    "npx",
+    "jest",
+    "test/indicators/passive_liquidity/liquidity-sampler.test.js"
+   ],
+   "mustFail": [
+    "futures and equity books fold their lanes by the biggest tick, crypto books by the sum"
+   ]
+  },
+  {
+   "id": "tick.live-lane-sums",
+   "file": "apps/runtime/src/indicators/l2-memory/compact/lane.js",
+   "find": "sizeDigits, fold: laneFoldFor(state.marketKind) });",
+   "replace": "sizeDigits });",
+   "cwd": "apps/runtime",
+   "command": [
+    "npx",
+    "jest",
+    "test/indicators/l2-memory/compact-lanes.test.js"
+   ],
+   "mustFail": [
+    "a futures pair's lane holds each row's biggest tick, so a band reads the same as on lane 0; a crypto pair's lane still sums"
+   ]
+  },
+  {
+   "id": "tick.live-lane-always-max",
+   "file": "apps/runtime/src/indicators/l2-memory/compact/lane.js",
+   "find": "sizeDigits, fold: laneFoldFor(state.marketKind) });",
+   "replace": "sizeDigits, fold: \"max\" });",
+   "cwd": "apps/runtime",
+   "command": [
+    "npx",
+    "jest",
+    "test/indicators/l2-memory/compact-lanes.test.js"
+   ],
+   "mustFail": [
+    "a futures pair's lane holds each row's biggest tick, so a band reads the same as on lane 0; a crypto pair's lane still sums"
+   ]
+  },
+  {
+   "id": "tick.rebuild-lane-sums",
+   "file": "apps/runtime/src/indicators/l2-memory/liquidity-backfill.js",
+   "find": "windowRows: lane.windowRows, fold: laneFoldFor(marketKind),",
+   "replace": "windowRows: lane.windowRows,",
+   "cwd": "apps/runtime",
+   "command": [
+    "npx",
+    "jest",
+    "test/indicators/l2-memory/liquidity-backfill.test.js"
+   ],
+   "mustFail": [
+    "a rebuild folds a futures pair's lanes by the biggest tick and a crypto pair's by the sum, like the live lanes"
+   ]
+  },
+  {
+   "id": "tick.history-max-sums",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/heatmapHistoryDecode.ts",
+   "find": "      if (fold === \"max\") {\n        bid[at] = Math.max(bid[at], column.bid[row - column.lo]);",
+   "replace": "      if (false) {\n        bid[at] = Math.max(bid[at], column.bid[row - column.lo]);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/heatmapHistoryDecode.test.ts"
+   ],
+   "mustFail": [
+    "on an index market keeps each wider row's biggest tick and lane 0's own yardstick, so a band reads the same on every lane; the flow still sums"
+   ]
+  },
+  {
+   "id": "tick.history-yardstick-remeasured",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/heatmapHistoryDecode.ts",
+   "find": "    if (fold === \"max\") {\n      // A band read",
+   "replace": "    if (false) {\n      // A band read",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/heatmapHistoryDecode.test.ts"
+   ],
+   "mustFail": [
+    "on an index market keeps each wider row's biggest tick and lane 0's own yardstick, so a band reads the same on every lane; the flow still sums"
+   ]
+  },
+  {
+   "id": "tick.style-fold-always-sum",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityStyle.ts",
+   "find": "  return liquidityStyleFor(provider, symbol, marketKind).market === \"index\" ? \"max\" : \"sum\";",
+   "replace": "  return liquidityStyleFor(provider, symbol, marketKind).market === \"index\" ? \"sum\" : \"sum\";",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityLanes.test.ts"
+   ],
+   "mustFail": [
+    "on an index market reads the yardstick from lane 0, since a lane row is the biggest tick and not a sum; a crypto lane keeps its own",
+    "on an index market a fixed scale is the trader's size on every lane, the lane's row being the biggest tick and not a sum",
+    "on an index market folds the host's history into a lane by the biggest tick with lane 0's yardstick; on crypto it sums"
+   ]
+  },
+  {
+   "id": "tick.layout-history-sums",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatmapLayout.ts",
+   "find": "shown.levelMs, laneFoldFor(base.provider, base.symbol, base.marketKind));",
+   "replace": "shown.levelMs, \"sum\");",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityLanes.test.ts"
+   ],
+   "mustFail": [
+    "on an index market folds the host's history into a lane by the biggest tick with lane 0's yardstick; on crypto it sums"
+   ]
+  },
+  {
+   "id": "tick.layout-fixed-doubled-on-index",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatmapLayout.ts",
+   "find": "laneGrid === null || laneFoldFor(grid.provider, grid.symbol, grid.marketKind) === \"max\" ? 1 : 2 ** lane),",
+   "replace": "laneGrid === null ? 1 : 2 ** lane),",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityLanes.test.ts"
+   ],
+   "mustFail": [
+    "on an index market a fixed scale is the trader's size on every lane, the lane's row being the biggest tick and not a sum"
+   ]
+  },
+  {
+   "id": "tick.lane-view-own-reference",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityLanes.ts",
+   "find": "    get referenceSize() { return biggestTick ? base.referenceSize : lane.referenceSize; },",
+   "replace": "    get referenceSize() { return lane.referenceSize; },",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityLanes.test.ts"
+   ],
+   "mustFail": [
+    "on an index market reads the yardstick from lane 0, since a lane row is the biggest tick and not a sum; a crypto lane keeps its own"
+   ]
+  },
+  {
+   "id": "tick.lane-yardstick-skipped",
+   "file": "apps/web/src/lib/l2/laneGrids.ts",
+   "find": "        column.reference = own.reference;\n        column.median = own.median;",
+   "replace": "",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/l2/l2Store.test.ts"
+   ],
+   "mustFail": [
+    "on an index market a lane's columns carry lane 0's yardstick at their time and tier; a crypto lane keeps the one measured on its own rows"
+   ]
+  },
+  {
+   "id": "tick.lane-yardstick-on-crypto",
+   "file": "apps/web/src/lib/l2/laneGrids.ts",
+   "find": "frame.assetClass) === \"max\") {",
+   "replace": "frame.assetClass) !== \"never\") {",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/l2/l2Store.test.ts"
+   ],
+   "mustFail": [
+    "on an index market a lane's columns carry lane 0's yardstick at their time and tier; a crypto lane keeps the one measured on its own rows"
+   ]
+  },
+  {
+   "id": "tick.lane-yardstick-wrong-tier",
+   "file": "apps/web/src/lib/l2/laneGrids.ts",
+   "find": "const own = yardstick(column.ts, frame.tier === \"deep\");",
+   "replace": "const own = yardstick(column.ts, false);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/l2/l2Store.test.ts"
+   ],
+   "mustFail": [
+    "on an index market a lane's columns carry lane 0's yardstick at their time and tier; a crypto lane keeps the one measured on its own rows"
+   ]
+  },
+  {
+   "id": "tick.grid-yardstick-next-column",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityGrid.ts",
+   "find": "    const column = index < list.length && list[index].ts === ts ? list[index] : list[index - 1];",
+   "replace": "    const column = index < list.length ? list[index] : list[index - 1];",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityGrid.test.ts"
+   ],
+   "mustFail": [
+    "hands a zoom lane its yardstick at a time: the column at that time or the one before it, on the tier asked, and nothing where none has one"
+   ]
+  },
+  {
+   "id": "tick.grid-yardstick-zero-kept",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityGrid.ts",
+   "find": "    if (column === undefined || !(column.reference !== undefined && column.reference > 0)) return null;",
+   "replace": "    if (column === undefined) return null;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityGrid.test.ts"
+   ],
+   "mustFail": [
+    "hands a zoom lane its yardstick at a time: the column at that time or the one before it, on the tier asked, and nothing where none has one"
+   ]
+  },
+  {
+   "id": "tick.sampler-default-max",
+   "file": "apps/runtime/src/indicators/passive_liquidity/liquidity-sampler.js",
+   "find": "sizeDigits = DEFAULT_SIZE_DIGITS, fold = \"sum\" }) {",
+   "replace": "sizeDigits = DEFAULT_SIZE_DIGITS, fold = \"max\" }) {",
+   "cwd": "apps/runtime",
+   "command": [
+    "npx",
+    "jest",
+    "test/indicators/passive_liquidity/liquidity-sampler.test.js"
+   ],
+   "mustFail": [
+    "a max fold keeps each row's biggest tick where the default sums them, and only sum and max are folds"
+   ]
+  },
+  {
+   "id": "tick.sampler-max-last-tick",
+   "file": "apps/runtime/src/indicators/passive_liquidity/liquidity-sampler.js",
+   "find": "    if (fold === \"max\") target[row - lo] = Math.max(target[row - lo], level.size);",
+   "replace": "    if (fold === \"max\") target[row - lo] = level.size;",
+   "cwd": "apps/runtime",
+   "command": [
+    "npx",
+    "jest",
+    "test/indicators/passive_liquidity/liquidity-sampler.test.js"
+   ],
+   "mustFail": [
+    "a max fold keeps each row's biggest tick where the default sums them, and only sum and max are folds"
+   ]
+  },
+  {
+   "id": "tick.sampler-asks-summed",
+   "file": "apps/runtime/src/indicators/passive_liquidity/liquidity-sampler.js",
+   "find": "  accumulate(snapshot.asks, ask, lo, hi, rowClusters, fold);",
+   "replace": "  accumulate(snapshot.asks, ask, lo, hi, rowClusters, \"sum\");",
+   "cwd": "apps/runtime",
+   "command": [
+    "npx",
+    "jest",
+    "test/indicators/l2-memory/compact-lanes.test.js"
+   ],
+   "mustFail": [
+    "a futures pair's lane holds each row's biggest tick, so a band reads the same as on lane 0; a crypto pair's lane still sums"
+   ]
+  },
+  {
+   "id": "tick.fold-equity-only",
+   "file": "apps/runtime/src/indicators/passive_liquidity/liquidity-sampler.js",
+   "find": "const BIGGEST_ROW_MARKETS = new Set([\"FUTURE\", \"EQUITY\"]);",
+   "replace": "const BIGGEST_ROW_MARKETS = new Set([\"EQUITY\"]);",
+   "cwd": "apps/runtime",
+   "command": [
+    "npx",
+    "jest",
+    "test/indicators/passive_liquidity/liquidity-sampler.test.js"
+   ],
+   "mustFail": [
+    "futures and equity books fold their lanes by the biggest tick, crypto books by the sum"
+   ]
+  },
+  {
+   "id": "tick.fold-always-max",
+   "file": "apps/runtime/src/indicators/passive_liquidity/liquidity-sampler.js",
+   "find": "  return BIGGEST_ROW_MARKETS.has(marketKind) ? \"max\" : \"sum\";",
+   "replace": "  return \"max\";",
+   "cwd": "apps/runtime",
+   "command": [
+    "npx",
+    "jest",
+    "test/indicators/passive_liquidity/liquidity-sampler.test.js"
+   ],
+   "mustFail": [
+    "futures and equity books fold their lanes by the biggest tick, crypto books by the sum"
+   ]
+  },
+  {
+   "id": "tick.rebuild-lane-always-max",
+   "file": "apps/runtime/src/indicators/l2-memory/liquidity-backfill.js",
+   "find": "windowRows: lane.windowRows, fold: laneFoldFor(marketKind),",
+   "replace": "windowRows: lane.windowRows, fold: \"max\",",
+   "cwd": "apps/runtime",
+   "command": [
+    "npx",
+    "jest",
+    "test/indicators/l2-memory/liquidity-backfill.test.js"
+   ],
+   "mustFail": [
+    "a rebuild folds a futures pair's lanes by the biggest tick and a crypto pair's by the sum, like the live lanes"
+   ]
+  },
+  {
+   "id": "tick.history-default-max",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/heatmapHistoryDecode.ts",
+   "find": "levelMs: number, fold: LaneFold = \"sum\"): LiquidityColumn[] {",
+   "replace": "levelMs: number, fold: LaneFold = \"max\"): LiquidityColumn[] {",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/heatmapHistoryDecode.test.ts"
+   ],
+   "mustFail": [
+    "sums every pair of rows into one on the lane's rows, keeps the flow on the wider rows, and measures the yardstick again there"
+   ]
+  },
+  {
+   "id": "tick.history-ask-max-sums",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/heatmapHistoryDecode.ts",
+   "find": "        ask[at] = Math.max(ask[at], column.ask[row - column.lo]);",
+   "replace": "        ask[at] += column.ask[row - column.lo];",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/heatmapHistoryDecode.test.ts"
+   ],
+   "mustFail": [
+    "on an index market keeps each wider row's biggest tick and lane 0's own yardstick, so a band reads the same on every lane; the flow still sums"
+   ]
+  },
+  {
+   "id": "tick.history-reference-dropped",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/heatmapHistoryDecode.ts",
+   "find": "      if (column.reference !== undefined) folded.reference = column.reference;\n",
+   "replace": "",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/heatmapHistoryDecode.test.ts"
+   ],
+   "mustFail": [
+    "on an index market keeps each wider row's biggest tick and lane 0's own yardstick, so a band reads the same on every lane; the flow still sums"
+   ]
+  },
+  {
+   "id": "tick.history-median-dropped",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/heatmapHistoryDecode.ts",
+   "find": "      if (column.median !== undefined) folded.median = column.median;\n",
+   "replace": "",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/heatmapHistoryDecode.test.ts"
+   ],
+   "mustFail": [
+    "on an index market keeps each wider row's biggest tick and lane 0's own yardstick, so a band reads the same on every lane; the flow still sums"
+   ]
+  },
+  {
+   "id": "tick.style-fold-always-max",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityStyle.ts",
+   "find": "  return liquidityStyleFor(provider, symbol, marketKind).market === \"index\" ? \"max\" : \"sum\";",
+   "replace": "  return liquidityStyleFor(provider, symbol, marketKind).market === \"index\" ? \"max\" : \"max\";",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityLanes.test.ts"
+   ],
+   "mustFail": [
+    "on an index market reads the yardstick from lane 0, since a lane row is the biggest tick and not a sum; a crypto lane keeps its own",
+    "on an index market folds the host's history into a lane by the biggest tick with lane 0's yardstick; on crypto it sums"
+   ]
+  },
+  {
+   "id": "tick.layout-history-always-max",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatmapLayout.ts",
+   "find": "shown.levelMs, laneFoldFor(base.provider, base.symbol, base.marketKind));",
+   "replace": "shown.levelMs, \"max\");",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityLanes.test.ts"
+   ],
+   "mustFail": [
+    "on an index market folds the host's history into a lane by the biggest tick with lane 0's yardstick; on crypto it sums"
+   ]
+  },
+  {
+   "id": "tick.layout-history-cache-ignores-fold",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatmapLayout.ts",
+   "find": "cached.factor === factor && cached.fold === fold && sameRowWidth(cached.rowWidth, laneRowWidth)) return cached.columns;",
+   "replace": "cached.factor === factor && sameRowWidth(cached.rowWidth, laneRowWidth)) return cached.columns;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityLanes.test.ts"
+   ],
+   "mustFail": [
+    "on an index market folds the host's history into a lane by the biggest tick with lane 0's yardstick; on crypto it sums"
+   ]
+  },
+  {
+   "id": "tick.layout-fixed-fold-truthy",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatmapLayout.ts",
+   "find": "laneGrid === null || laneFoldFor(grid.provider, grid.symbol, grid.marketKind) === \"max\" ? 1 : 2 ** lane),",
+   "replace": "laneGrid === null || laneFoldFor(grid.provider, grid.symbol, grid.marketKind) ? 1 : 2 ** lane),",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityLanes.test.ts"
+   ],
+   "mustFail": [
+    "a fixed colour scale reads the same on every lane: the size is per row of the finest lane, so a band of the same price has the same floor and saturation on rows twice as wide"
+   ]
+  },
+  {
+   "id": "tick.lane-view-crypto-reads-base",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityLanes.ts",
+   "find": "  const biggestTick = laneFoldFor(base.provider, base.symbol, base.marketKind) === \"max\";",
+   "replace": "  const biggestTick = true;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityLanes.test.ts"
+   ],
+   "mustFail": [
+    "reads columns, rows and yardstick from the lane, identity from lane 0, and maps lane 0's walls onto the lane's rows"
+   ]
+  },
+  {
+   "id": "tick.grid-yardstick-exact-skipped",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityGrid.ts",
+   "find": "    const column = index < list.length && list[index].ts === ts ? list[index] : list[index - 1];",
+   "replace": "    const column = list[index - 1];",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityGrid.test.ts"
+   ],
+   "mustFail": [
+    "hands a zoom lane its yardstick at a time: the column at that time or the one before it, on the tier asked, and nothing where none has one"
+   ]
+  },
+  {
+   "id": "tick.grid-yardstick-fine-only",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityGrid.ts",
+   "find": "    const list = deep ? this.deepColumns : this.columns;\n    const index = deep ? this.deepIndexAtOrAfter(ts) : this.indexAtOrAfter(ts);",
+   "replace": "    const list = this.columns;\n    const index = this.indexAtOrAfter(ts);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityGrid.test.ts"
+   ],
+   "mustFail": [
+    "hands a zoom lane its yardstick at a time: the column at that time or the one before it, on the tier asked, and nothing where none has one"
+   ]
+  },
+  {
+   "id": "tick.grid-yardstick-median-dropped",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityGrid.ts",
+   "find": "    return { reference: column.reference, median: column.median ?? 0, ceiling: column.ceiling ?? 0 };",
+   "replace": "    return { reference: column.reference, median: 0, ceiling: column.ceiling ?? 0 };",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityGrid.test.ts"
+   ],
+   "mustFail": [
+    "hands a zoom lane its yardstick at a time: the column at that time or the one before it, on the tier asked, and nothing where none has one"
+   ]
+  },
+  {
+   "id": "tick.lane-yardstick-null-called",
+   "file": "apps/web/src/lib/l2/laneGrids.ts",
+   "find": "    if (yardstick !== null && laneFoldFor(frame.provider, frame.symbol, \"marketKind\" in frame ? frame.marketKind : frame.assetClass) === \"max\") {",
+   "replace": "    if (laneFoldFor(frame.provider, frame.symbol, \"marketKind\" in frame ? frame.marketKind : frame.assetClass) === \"max\") {",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/l2/l2Store.test.ts"
+   ],
+   "mustFail": [
+    "on an index market a lane's columns carry lane 0's yardstick at their time and tier; a crypto lane keeps the one measured on its own rows"
+   ]
+  },
+  {
+   "id": "tick.lane-yardstick-gap-not-skipped",
+   "file": "apps/web/src/lib/l2/laneGrids.ts",
+   "find": "        if (own === null) continue;\n",
+   "replace": "",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/l2/l2Store.test.ts"
+   ],
+   "mustFail": [
+    "on an index market a lane's columns carry lane 0's yardstick at their time and tier; a crypto lane keeps the one measured on its own rows"
+   ]
+  },
+  {
+   "id": "tick.lane-yardstick-median-dropped",
+   "file": "apps/web/src/lib/l2/laneGrids.ts",
+   "find": "        column.median = own.median;\n",
+   "replace": "",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/l2/l2Store.test.ts"
+   ],
+   "mustFail": [
+    "on an index market a lane's columns carry lane 0's yardstick at their time and tier; a crypto lane keeps the one measured on its own rows"
+   ]
+  },
+  {
+   "id": "tick.store-yardstick-dropped",
+   "file": "apps/web/src/lib/l2/l2Store.ts",
+   "find": "    this.lanes = new LaneGrids({ yardstick });",
+   "replace": "    this.lanes = new LaneGrids();",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/l2/l2Store.test.ts"
+   ],
+   "mustFail": [
+    "on an index market a lane's columns carry lane 0's yardstick at their time and tier; a crypto lane keeps the one measured on its own rows"
+   ]
+  }
+ ]
+}

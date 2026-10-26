@@ -1,0 +1,324 @@
+{
+  "generatedAt": "2026-09-24T15:52:43.355Z",
+  "frozen": true,
+  "nowMs": 1790208000000,
+  "rows": 400,
+  "bars": 10080,
+  "results": [
+    {
+      "scenario": "baseline",
+      "favorites": [],
+      "frozen": true,
+      "captures": [
+        {
+          "label": "load",
+          "sha256": "39eb0898bd0dff6271d7278152379114180a8ba7e093adf733418faf7cc3c9ea",
+          "bytes": 7139,
+          "file": "..\\..\\benchmarks\\results\\w4-frozen-after\\baseline-load.png"
+        },
+        {
+          "label": "hover-1",
+          "sha256": "d2a3d18007eab2b6f99fb5d03f0d208c6c9e909589acb110c2d5e9b350301941",
+          "bytes": 7987,
+          "file": "..\\..\\benchmarks\\results\\w4-frozen-after\\baseline-hover-1.png"
+        },
+        {
+          "label": "hover-2",
+          "sha256": "f4cac23e23b4e55e7dbb8a402d64e3f06a2e77ff4deb0a74ebdb513c1cd5ea32",
+          "bytes": 7966,
+          "file": "..\\..\\benchmarks\\results\\w4-frozen-after\\baseline-hover-2.png"
+        },
+        {
+          "label": "hover-3",
+          "sha256": "6e1af238669340bdcc32dfdd9e0c5e8c30e053b748232ab11b516d274240e680",
+          "bytes": 8020,
+          "file": "..\\..\\benchmarks\\results\\w4-frozen-after\\baseline-hover-3.png"
+        },
+        {
+          "label": "idle",
+          "sha256": "a22547b0463d8ebf9d6b1520b21d95be7759f1b10ed71eab88d63c4948681f14",
+          "bytes": 7813,
+          "file": "..\\..\\benchmarks\\results\\w4-frozen-after\\baseline-idle.png"
+        }
+      ],
+      "pageErrors": []
+    },
+    {
+      "scenario": "bookMap",
+      "favorites": [
+        "l2BookMap"
+      ],
+      "frozen": true,
+      "captures": [
+        {
+          "label": "load",
+          "sha256": "e10643bc71c27c346eae473b2d21f7c74d06df84bf51f30ac0b6d188dc649b58",
+          "bytes": 107880,
+          "file": "..\\..\\benchmarks\\results\\w4-frozen-after\\bookMap-load.png"
+        },
+        {
+          "label": "hover-1",
+          "sha256": "194f2fc961757235c7065ea83e495cf6996d528e8b8cc34da6c72699c687904f",
+          "bytes": 123382,
+          "file": "..\\..\\benchmarks\\results\\w4-frozen-after\\bookMap-hover-1.png"
+        },
+        {
+          "label": "hover-2",
+          "sha256": "eea10da82ecbf58142fa8cb07a30ad67cb362bde387ab0411b8082352655a08c",
+          "bytes": 122460,
+          "file": "..\\..\\benchmarks\\results\\w4-frozen-after\\bookMap-hover-2.png"
+        },
+        {
+          "label": "hover-3",
+          "sha256": "42d8ccb6f0a16084e8f25ab8754e854f88b3f7cd32d1b3129ae4a5d9a38515c3",
+          "bytes": 122040,
+          "file": "..\\..\\benchmarks\\results\\w4-frozen-after\\bookMap-hover-3.png"
+        },
+        {
+          "label": "idle",
+          "sha256": "37e90bfdcd3da766f0741f2b5d046ff418e42deb2cf2321f1b73e23c0704e895",
+          "bytes": 108686,
+          "file": "..\\..\\benchmarks\\results\\w4-frozen-after\\bookMap-idle.png"
+        }
+      ],
+      "pageErrors": []
+    },
+    {
+      "scenario": "orderBlocks",
+      "favorites": [
+        "classicOrderBlocks",
+        "institutionalOrderBlocks",
+        "l1OrderBlocks"
+      ],
+      "frozen": true,
+      "captures": [
+        {
+          "label": "load",
+          "sha256": "ad9f7c97110ea746e74133a9cb46432444c7eab62a0deda2f308b0ad184f4330",
+          "bytes": 28433,
+          "file": "..\\..\\benchmarks\\results\\w4-frozen-after\\orderBlocks-load.png"
+        },
+        {
+          "label": "hover-1",
+          "sha256": "595226f125a7b089550f3eff350c92cdb445a0b94cbfd81eb66c24a4caa861fd",
+          "bytes": 29501,
+          "file": "..\\..\\benchmarks\\results\\w4-frozen-after\\orderBlocks-hover-1.png"
+        },
+        {
+          "label": "hover-2",
+          "sha256": "15ad22991d60222045c68cd2e04ec3733c93b7e93e4763689c5db15153da6ce4",
+          "bytes": 29451,
+          "file": "..\\..\\benchmarks\\results\\w4-frozen-after\\orderBlocks-hover-2.png"
+        },
+        {
+          "label": "hover-3",
+          "sha256": "66da0ac3ce7f40530c2714c0762b18792601fdc5ca5d86bfb2679ab42a6c10d6",
+          "bytes": 29424,
+          "file": "..\\..\\benchmarks\\results\\w4-frozen-after\\orderBlocks-hover-3.png"
+        },
+        {
+          "label": "idle",
+          "sha256": "7965b93ca41b4c217e26ba32ee778a4accb1f4ed43ac2000bacecac15ba6932b",
+          "bytes": 29388,
+          "file": "..\\..\\benchmarks\\results\\w4-frozen-after\\orderBlocks-idle.png"
+        }
+      ],
+      "pageErrors": []
+    },
+    {
+      "scenario": "wallsV2",
+      "favorites": [
+        "institutionalOrderBlocksV2"
+      ],
+      "frozen": true,
+      "captures": [
+        {
+          "label": "load",
+          "sha256": "fe9fc5cbc0f3963b346b295dd9a5e19e6f6b16ccf95f7c8b34b052c92422d11c",
+          "bytes": 11269,
+          "file": "..\\..\\benchmarks\\results\\w4-frozen-after\\wallsV2-load.png"
+        },
+        {
+          "label": "hover-1",
+          "sha256": "40178bdc8aa11c3deb008c3c65a3a4650203155a89964710d8ce60435d55456c",
+          "bytes": 12126,
+          "file": "..\\..\\benchmarks\\results\\w4-frozen-after\\wallsV2-hover-1.png"
+        },
+        {
+          "label": "hover-2",
+          "sha256": "e5432123f9e9e75c23cb6dd4d196d309643cad9d4e3790348073d7ab5513aeb4",
+          "bytes": 12103,
+          "file": "..\\..\\benchmarks\\results\\w4-frozen-after\\wallsV2-hover-2.png"
+        },
+        {
+          "label": "hover-3",
+          "sha256": "75d73cea3fa0d2fb355329d1095c945174cf59164e6ccffbc4a934d8e314a326",
+          "bytes": 12146,
+          "file": "..\\..\\benchmarks\\results\\w4-frozen-after\\wallsV2-hover-3.png"
+        },
+        {
+          "label": "idle",
+          "sha256": "a0ae35af97a16461b659feb49d8a55f0a945c18e06eebe323a26e49ba903d724",
+          "bytes": 11940,
+          "file": "..\\..\\benchmarks\\results\\w4-frozen-after\\wallsV2-idle.png"
+        }
+      ],
+      "pageErrors": []
+    },
+    {
+      "scenario": "absorption",
+      "favorites": [
+        "absorptionDetector"
+      ],
+      "frozen": true,
+      "captures": [
+        {
+          "label": "load",
+          "sha256": "5596009a5ae3c9e3a23fd6b734ae98e17d3432c8a9fe53b77db2a300ef0ef6b2",
+          "bytes": 12004,
+          "file": "..\\..\\benchmarks\\results\\w4-frozen-after\\absorption-load.png"
+        },
+        {
+          "label": "hover-1",
+          "sha256": "5b00df9f80bfc1b8a58a2710ed4226248bf4f71f2f093a199fd6f752ea5d2e8a",
+          "bytes": 12865,
+          "file": "..\\..\\benchmarks\\results\\w4-frozen-after\\absorption-hover-1.png"
+        },
+        {
+          "label": "hover-2",
+          "sha256": "be9442b16ac45a4243cc2f7b7f725eeafc705511b65fcef3765a4dfd776a300d",
+          "bytes": 12841,
+          "file": "..\\..\\benchmarks\\results\\w4-frozen-after\\absorption-hover-2.png"
+        },
+        {
+          "label": "hover-3",
+          "sha256": "28faa790ff20e195ee466fe978e255357dd9278a45bd763d4031f0c144c78b74",
+          "bytes": 12887,
+          "file": "..\\..\\benchmarks\\results\\w4-frozen-after\\absorption-hover-3.png"
+        },
+        {
+          "label": "idle",
+          "sha256": "a61ac78e3c41d2968e7c3a00a2100b893e06390524fa952c36dcc540f1e1839d",
+          "bytes": 12687,
+          "file": "..\\..\\benchmarks\\results\\w4-frozen-after\\absorption-idle.png"
+        }
+      ],
+      "pageErrors": []
+    },
+    {
+      "scenario": "all",
+      "favorites": [
+        "l2BookMap",
+        "classicOrderBlocks",
+        "institutionalOrderBlocks",
+        "l1OrderBlocks",
+        "institutionalOrderBlocksV2",
+        "absorptionDetector",
+        "passiveLiquidity"
+      ],
+      "frozen": true,
+      "captures": [
+        {
+          "label": "load",
+          "sha256": "4bed5c93a003fc28cd3533472d145abdf1d292b37bf2f546889b72a8a2f4734b",
+          "bytes": 184005,
+          "file": "..\\..\\benchmarks\\results\\w4-frozen-after\\all-load.png"
+        },
+        {
+          "label": "hover-1",
+          "sha256": "e3f9b82cecc98f2b5b0858e867e6ccf2ea75d395e9cd436abf2555991610e295",
+          "bytes": 198467,
+          "file": "..\\..\\benchmarks\\results\\w4-frozen-after\\all-hover-1.png"
+        },
+        {
+          "label": "hover-2",
+          "sha256": "75b8cd09a5d82f2435d12d996fdfbd2088f20551eb2637771ccf65bb5395df10",
+          "bytes": 195569,
+          "file": "..\\..\\benchmarks\\results\\w4-frozen-after\\all-hover-2.png"
+        },
+        {
+          "label": "hover-3",
+          "sha256": "16218195beeaa9769bbdd91719d4b939b2815af1d38ebeaaec7716ef72bb738d",
+          "bytes": 194819,
+          "file": "..\\..\\benchmarks\\results\\w4-frozen-after\\all-hover-3.png"
+        },
+        {
+          "label": "idle",
+          "sha256": "938fe7e4e2032577f628589e304f083cfe2b18a41d2f1205037b95143d034fa7",
+          "bytes": 184843,
+          "file": "..\\..\\benchmarks\\results\\w4-frozen-after\\all-idle.png"
+        }
+      ],
+      "pageErrors": []
+    },
+    {
+      "scenario": "everything",
+      "favorites": [
+        "rsi",
+        "ema",
+        "bollinger",
+        "sma",
+        "largeTradeBubbles",
+        "killzones",
+        "orderFlow",
+        "largeTradeDetector",
+        "deltaDivergence",
+        "volumeProfile",
+        "deltaProfile",
+        "sessionDeltaProfile",
+        "vpinCloud",
+        "volumeDeltaProfileOhlc",
+        "pivotPoints",
+        "pivotSupportResistance",
+        "passiveLiquidity",
+        "marketStructure",
+        "swingAlphabetProfile",
+        "aggressiveOrders",
+        "absorptionDetector",
+        "fvgBoxes",
+        "l2SupportResistance",
+        "l2BookMap",
+        "fvgDelta",
+        "classicOrderBlocks",
+        "institutionalOrderBlocks",
+        "institutionalOrderBlocksV2",
+        "l1OrderBlocks"
+      ],
+      "frozen": true,
+      "captures": [
+        {
+          "label": "load",
+          "sha256": "9bfe0cbb427e8d3ca25d045f20c0669c9ee3c900ef835976a84a1677270ac3df",
+          "bytes": 229453,
+          "file": "..\\..\\benchmarks\\results\\w4-frozen-after\\everything-load.png"
+        },
+        {
+          "label": "hover-1",
+          "sha256": "9dedb48b2fc874b98b55867c5ef904196651b004b8682c21ab1fa022ccbf799e",
+          "bytes": 234347,
+          "file": "..\\..\\benchmarks\\results\\w4-frozen-after\\everything-hover-1.png"
+        },
+        {
+          "label": "hover-2",
+          "sha256": "407bd75fd3d65a83c5f16d6e2f3f21af5fd9b48dca2f6f2048563a84178e3d83",
+          "bytes": 236167,
+          "file": "..\\..\\benchmarks\\results\\w4-frozen-after\\everything-hover-2.png"
+        },
+        {
+          "label": "hover-3",
+          "sha256": "4040f214446f4262afac6daf986ba0e1b9ed4976a06e97fe5405191dc5402373",
+          "bytes": 240716,
+          "file": "..\\..\\benchmarks\\results\\w4-frozen-after\\everything-hover-3.png"
+        },
+        {
+          "label": "idle",
+          "sha256": "a69d055408bafae619d54b7582cbd1b00f128e0deda82d2e3cd423a6aeac0c35",
+          "bytes": 230000,
+          "file": "..\\..\\benchmarks\\results\\w4-frozen-after\\everything-idle.png"
+        }
+      ],
+      "pageErrors": []
+    }
+  ],
+  "pass": true
+}

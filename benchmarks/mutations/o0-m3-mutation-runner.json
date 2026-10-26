@@ -1,0 +1,34 @@
+{
+  "mutations": [
+    {
+      "id": "o0-m3.mutation-check.arguments-not-quoted",
+      "file": "apps/runtime/scripts/verify/mutation-check.js",
+      "find": "return SAFE_ARGUMENT.test(part) ? part : `\"${part.replace(/\"/g, '\\\\\"')}\"`;",
+      "replace": "return part;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/scripts/verify/mutation-check.test.js"
+      ],
+      "mustFail": [
+        "quotes only what needs quoting"
+      ]
+    },
+    {
+      "id": "o0-m3.mutation-check.quotes-everything",
+      "file": "apps/runtime/scripts/verify/mutation-check.js",
+      "find": "return SAFE_ARGUMENT.test(part) ? part :",
+      "replace": "return false ? part :",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/scripts/verify/mutation-check.test.js"
+      ],
+      "mustFail": [
+        "quotes only what needs quoting"
+      ]
+    }
+  ]
+}

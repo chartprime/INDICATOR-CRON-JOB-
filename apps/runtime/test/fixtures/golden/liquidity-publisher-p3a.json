@@ -1,0 +1,46 @@
+{
+  "binanceStyle": {
+    "counts": {
+      "ticks": 1800,
+      "nullTicks": 10,
+      "liveFrames": 1999,
+      "resets": 18,
+      "snapshots": 5,
+      "snapshotFrames": 15,
+      "stores": 30,
+      "storeBytes": 3550180
+    },
+    "columnMsSeen": {
+      "1000": 1795,
+      "10000": 184,
+      "60000": 35
+    },
+    "digests": {
+      "live": "9c3409a51e3bd7a88da2dc4506107fe0a14ef2288d80fed43d32ae1ece33838a",
+      "snapshots": "b4c380cea2ab1e72a0c7d7e0d27fad0426905180e96915822c2d1f9a9e21ba3b",
+      "store": "b695736b84684eb66e97c9b805b133204e906595dfdeaecf832472f3b80396db"
+    }
+  },
+  "dxfeedStyle": {
+    "counts": {
+      "ticks": 1800,
+      "nullTicks": 10,
+      "liveFrames": 1999,
+      "resets": 18,
+      "snapshots": 5,
+      "snapshotFrames": 15,
+      "stores": 30,
+      "storeBytes": 6139640
+    },
+    "columnMsSeen": {
+      "1000": 1795,
+      "10000": 184,
+      "60000": 35
+    },
+    "digests": {
+      "live": "20d364b69e42ad0e3fb21f30a0dc89f59cd37c3d2cb0cb1d6e7c42d36cfcb32d",
+      "snapshots": "cb5ceaf3ad9dcc6620fde3917aaa9a82e9f1d7d9a54f008035f89859fa264686",
+      "store": "cf38641526ca39bcdc5c8b70e9cd1c521812ad6b2e4be83c3e88c25637324582"
+    }
+  }
+}

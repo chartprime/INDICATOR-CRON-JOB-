@@ -1,0 +1,94 @@
+{
+  "mutations": [
+    {
+      "id": "vpin-remote.session.chunk-edges-unaligned",
+      "file": "apps/runtime/src/indicators/vpin/vpin-session.js",
+      "find": "  return Math.min(toTs, Math.floor((cursor + chunkMs) / sliceMs) * sliceMs);",
+      "replace": "  return Math.min(toTs, cursor + chunkMs);",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/indicators/vpin/vpin-mode-equivalence.test.js"],
+      "mustFail": ["reading the aggregate in chunks from an unaligned start equals one read of the whole window"]
+    },
+    {
+      "id": "vpin-remote.session.sides-swapped",
+      "file": "apps/runtime/src/indicators/vpin/vpin-session.js",
+      "find": "  if (row.buyNotional > 0) trades.push({ ts: row.sliceTs, price: 1, size: row.buyNotional, side: \"buy\" });",
+      "replace": "  if (row.buyNotional > 0) trades.push({ ts: row.sliceTs, price: 1, size: row.buyNotional, side: \"sell\" });",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/indicators/vpin/vpin-mode-equivalence.test.js"],
+      "mustFail": ["at the production slice-to-bucket ratio the buckets, directions and z-scores match within tolerance"]
+    },
+    {
+      "id": "vpin-remote.session.coarse-slices-look-fine",
+      "file": "apps/runtime/src/indicators/vpin/vpin-session.js",
+      "find": "    const { rows, available } = await adapter.readSlicedNotional(cursor, chunkEnd, sliceMs);",
+      "replace": "    const { rows, available } = await adapter.readSlicedNotional(cursor, chunkEnd, 100);",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/indicators/vpin/vpin-mode-equivalence.test.js"],
+      "mustFail": ["a slice a fifth of a bucket wide is visibly worse, which is why the remote plan keeps slices two orders finer"]
+    },
+    {
+      "id": "vpin-remote.session.unavailable-chunk-skipped",
+      "file": "apps/runtime/src/indicators/vpin/vpin-session.js",
+      "find": "      return { readings, tradesApplied, pagesFetched: 0, slicesRead, chunksRead, complete: false, reason: \"SLICED_UNAVAILABLE\" };",
+      "replace": "      cursor = chunkEnd; continue;",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/indicators/vpin/vpin-session.test.js"],
+      "mustFail": ["an unavailable chunk stops the sliced backfill with its own reason and never falls back to per-trade reads"]
+    },
+    {
+      "id": "vpin-remote.session.exact-fallback-restored",
+      "file": "apps/runtime/src/indicators/vpin/vpin-session.js",
+      "find": "    return replaySlicedBackfillIntoState(vpinState, adapter, fromTs, toTs, { sliceMs, chunkMs });",
+      "replace": "    const sliced = await replaySlicedBackfillIntoState(vpinState, adapter, fromTs, toTs, { sliceMs, chunkMs }); if (sliced.complete) return sliced;",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/indicators/vpin/vpin-session.test.js"],
+      "mustFail": ["an unavailable chunk stops the sliced backfill with its own reason and never falls back to per-trade reads"]
+    },
+    {
+      "id": "vpin-remote.worker.plan-dropped",
+      "file": "apps/runtime/src/indicators/vpin/vpin-warmup-worker.js",
+      "find": "      backfill: backfillOptions(input),",
+      "replace": "      backfill: {},",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/indicators/vpin/vpin-warmup-worker.test.js"],
+      "mustFail": ["passes the backfill mode and sliced geometry through to the session, and validates them"]
+    },
+    {
+      "id": "vpin-remote.server.plan-not-applied",
+      "file": "apps/runtime/src/server/market-data-server.js",
+      "find": "        ...vpinBackfillPlan(storageReader),\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/server/market-data-server.test.js"],
+      "mustFail": ["a remote storage reader makes the VPIN warm-up sliced at the remote geometry; a local one stays exact"]
+    },
+    {
+      "id": "vpin-remote.shared.retry-never-escalates",
+      "file": "apps/runtime/src/server/market-data-server-shared.js",
+      "find": "      return VPIN_WARMUP_RETRY_STEPS_MS[Math.min(failures, VPIN_WARMUP_RETRY_STEPS_MS.length) - 1];",
+      "replace": "      return VPIN_WARMUP_RETRY_STEPS_MS[0];",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/server/market-data-server.test.js"],
+      "mustFail": ["a warm-up that keeps failing backs off instead of relaunching every 15 s, and logs its reason once"]
+    },
+    {
+      "id": "vpin-remote.shared.plan-ignores-locality",
+      "file": "apps/runtime/src/server/market-data-server-shared.js",
+      "find": "  if (storageReader?.remote) {",
+      "replace": "  if (false) {",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/server/market-data-server-shared.test.js"],
+      "mustFail": ["a remote reader is backfilled from the sliced aggregate at the remote geometry; a local one exactly"]
+    },
+    {
+      "id": "vpin-remote.route.sliced-not-slow",
+      "file": "apps/runtime/src/server/live-storage-route.js",
+      "find": "  \"sliced-notional\": { queryTimeoutMs: 45_000 },\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/server/live-storage-route.test.js"],
+      "mustFail": ["sliced-notional keeps the slow-aggregate deadline and caches a repeated window"]
+    }
+  ]
+}

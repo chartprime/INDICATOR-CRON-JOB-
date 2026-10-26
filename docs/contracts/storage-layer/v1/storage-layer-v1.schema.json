@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://terminal-l1-l2/contracts/storage-layer/v1",
+  "title": "Market Data Storage Layer Contract v1",
+  "description": "Row shapes for the raw SQLite tables the storage layer writes.",
+  "type": "object",
+  "properties": {
+    "trades": { "type": "array", "items": { "$ref": "#/$defs/tradeRow" } },
+    "candles": { "type": "array", "items": { "$ref": "#/$defs/candleRow" } },
+    "l2_depth_events": { "type": "array", "items": { "$ref": "#/$defs/l2DepthEventRow" } },
+    "l2_depth_snapshots": { "type": "array", "items": { "$ref": "#/$defs/l2DepthSnapshotRow" } }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "symbol": { "enum": ["BTCUSDT", "ETHUSDT"] },
+    "marketKind": { "enum": ["SPOT", "PERPETUAL"] },
+    "positiveDecimalString": {
+      "type": "string",
+      "maxLength": 1024,
+      "pattern": "^(?=.*[1-9])\\d+(?:\\.\\d+)?$"
+    },
+    "nonNegativeDecimalString": {
+      "type": "string",
+      "maxLength": 1024,
+      "pattern": "^\\d+(?:\\.\\d+)?$"
+    },
+    "tradeRow": {
+      "type": "object",
+      "required": ["id", "ts", "symbol", "market_kind", "price", "size", "side", "trade_id"],
+      "properties": {
+        "id": { "type": "integer", "minimum": 1 },
+        "ts": { "type": "integer", "minimum": 0 },
+        "symbol": { "$ref": "#/$defs/symbol" },
+        "market_kind": { "$ref": "#/$defs/marketKind" },
+        "price": { "$ref": "#/$defs/positiveDecimalString" },
+        "size": { "$ref": "#/$defs/positiveDecimalString" },
+        "side": { "enum": ["buy", "sell"] },
+        "trade_id": { "type": "string", "minLength": 1, "maxLength": 16, "pattern": "^\\d+$" }
+      },
+      "additionalProperties": false
+    },
+    "candleRow": {
+      "type": "object",
+      "required": ["id", "ts_open", "symbol", "market_kind", "open", "high", "low", "close", "volume", "trade_count"],
+      "properties": {
+        "id": { "type": "integer", "minimum": 1 },
+        "ts_open": { "type": "integer", "minimum": 0, "multipleOf": 60000 },
+        "symbol": { "$ref": "#/$defs/symbol" },
+        "market_kind": { "$ref": "#/$defs/marketKind" },
+        "open": { "$ref": "#/$defs/positiveDecimalString" },
+        "high": { "$ref": "#/$defs/positiveDecimalString" },
+        "low": { "$ref": "#/$defs/positiveDecimalString" },
+        "close": { "$ref": "#/$defs/positiveDecimalString" },
+        "volume": { "$ref": "#/$defs/nonNegativeDecimalString" },
+        "trade_count": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "depthLevel": {
+      "description": "[priceString, qtyString], exactly as Binance sends it -- raw, unconverted.",
+      "type": "array",
+      "prefixItems": [{ "$ref": "#/$defs/positiveDecimalString" }, { "$ref": "#/$defs/nonNegativeDecimalString" }],
+      "items": false,
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "l2DepthEventRow": {
+      "type": "object",
+      "required": [
+        "id", "ts", "received_at", "symbol", "market_kind",
+        "first_update_id", "last_update_id", "previous_update_id", "bids", "asks"
+      ],
+      "properties": {
+        "id": { "type": "integer", "minimum": 1 },
+        "ts": { "type": "integer", "minimum": 0 },
+        "received_at": { "type": "integer", "minimum": 0 },
+        "symbol": { "$ref": "#/$defs/symbol" },
+        "market_kind": { "$ref": "#/$defs/marketKind" },
+        "first_update_id": { "type": "integer", "minimum": 0 },
+        "last_update_id": { "type": "integer", "minimum": 0 },
+        "previous_update_id": {
+          "description": "Binance's pu -- only present on PERPETUAL, always null for SPOT.",
+          "oneOf": [{ "type": "integer", "minimum": 0 }, { "type": "null" }]
+        },
+        "bids": {
+          "description": "JSON text in SQLite; decoded content is an array of depthLevel tuples.",
+          "type": "string",
+          "contentMediaType": "application/json"
+        },
+        "asks": {
+          "description": "JSON text in SQLite; decoded content is an array of depthLevel tuples.",
+          "type": "string",
+          "contentMediaType": "application/json"
+        }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": { "properties": { "market_kind": { "const": "SPOT" } } },
+          "then": { "properties": { "previous_update_id": { "type": "null" } } }
+        },
+        {
+          "if": { "properties": { "market_kind": { "const": "PERPETUAL" } } },
+          "then": { "properties": { "previous_update_id": { "type": "integer" } } }
+        }
+      ]
+    },
+    "l2DepthSnapshotRow": {
+      "type": "object",
+      "required": ["id", "captured_at", "symbol", "market_kind", "last_update_id", "bids", "asks"],
+      "properties": {
+        "id": { "type": "integer", "minimum": 1 },
+        "captured_at": { "type": "integer", "minimum": 0 },
+        "symbol": { "$ref": "#/$defs/symbol" },
+        "market_kind": { "$ref": "#/$defs/marketKind" },
+        "last_update_id": { "type": "integer", "minimum": 0 },
+        "bids": { "type": "string", "contentMediaType": "application/json" },
+        "asks": { "type": "string", "contentMediaType": "application/json" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

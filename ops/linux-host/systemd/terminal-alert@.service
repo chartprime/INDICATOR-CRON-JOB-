@@ -1,0 +1,25 @@
+# OnFailure escalation hook. Runs TT_ALERT_COMMAND (or a journal line) for %i.
+[Unit]
+Description=Terminal-L1-L2 failure alert for %i
+
+[Service]
+Type=oneshot
+User=ttquery
+Group=ttquery
+EnvironmentFile=-/etc/terminal-l1-l2/monitoring.env
+EnvironmentFile=-/etc/terminal-l1-l2/alert-email.env
+EnvironmentFile=-/etc/terminal-l1-l2/alert-webhook.env
+ExecStartPre=+/opt/terminal-l1-l2/ops/scripts/check-service-env.sh /etc/terminal-l1-l2/alert-email.env alert-optional
+ExecStartPre=+/opt/terminal-l1-l2/ops/scripts/check-service-env.sh /etc/terminal-l1-l2/alert-webhook.env alert-optional
+ExecStart=/usr/bin/timeout -k 3 25 /bin/sh -c '${TT_ALERT_COMMAND:-logger -t terminal-alert -p user.err --} "terminal-l1-l2 alert: %i failed on $(hostname)"'
+TimeoutStartSec=30
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+CapabilityBoundingSet=
+MemoryMax=64M
+TasksMax=16
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=terminal-alert

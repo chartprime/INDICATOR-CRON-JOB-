@@ -1,0 +1,94 @@
+{
+  "mutations": [
+    {
+      "id": "pr47-audit.lane-fold.fold-not-compared",
+      "file": "apps/runtime/src/indicators/l2-memory/liquidity-store.js",
+      "find": "return (a.fold ?? \"sum\") === (b.fold ?? \"sum\");",
+      "replace": "return true;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/compact-lanes.test.js"
+      ],
+      "mustFail": [
+        "a lane is stored with its fold; one saved before folds existed restores only where rows were summed"
+      ]
+    },
+    {
+      "id": "pr47-audit.lane-fold.missing-fold-read-as-max",
+      "file": "apps/runtime/src/indicators/l2-memory/liquidity-store.js",
+      "find": "return (a.fold ?? \"sum\") === (b.fold ?? \"sum\");",
+      "replace": "return (a.fold ?? \"max\") === (b.fold ?? \"max\");",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/compact-lanes.test.js"
+      ],
+      "mustFail": [
+        "a lane is stored with its fold; one saved before folds existed restores only where rows were summed"
+      ]
+    },
+    {
+      "id": "pr47-audit.lane-fold.unknown-fold-accepted",
+      "file": "apps/runtime/src/indicators/l2-memory/liquidity-store.js",
+      "find": "    if (lane.fold !== undefined && !LANE_FOLDS.has(lane.fold)) return false;\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/compact-lanes.test.js"
+      ],
+      "mustFail": [
+        "a lane with an unknown fold rejects the file"
+      ]
+    },
+    {
+      "id": "pr47-audit.lane-fold.stream-writer-drops-fold",
+      "file": "apps/runtime/src/indicators/l2-memory/liquidity-store.js",
+      "find": "const fold = lane.fold === undefined ? \"\" : `,\"fold\":${JSON.stringify(lane.fold)}`;",
+      "replace": "const fold = \"\";",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/compact-lanes.test.js"
+      ],
+      "mustFail": [
+        "a lane with an unknown fold rejects the file"
+      ]
+    },
+    {
+      "id": "pr47-audit.lane-fold.fold-not-saved",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane-store.js",
+      "find": "fold: laneFoldFor(state.marketKind), recent:",
+      "replace": "recent:",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/compact-lanes.test.js"
+      ],
+      "mustFail": [
+        "a lane is stored with its fold; one saved before folds existed restores only where rows were summed"
+      ]
+    },
+    {
+      "id": "pr47-audit.lane-fold.restore-ignores-live-fold",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane-store.js",
+      "find": "{ ...lane.laneGeometry(target), fold: laneFoldFor(state.marketKind) }",
+      "replace": "lane.laneGeometry(target)",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/compact-lanes.test.js"
+      ],
+      "mustFail": [
+        "a lane is stored with its fold; one saved before folds existed restores only where rows were summed"
+      ]
+    }
+  ]
+}

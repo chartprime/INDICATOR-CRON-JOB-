@@ -1,0 +1,38 @@
+[Unit]
+Description=Terminal-L1-L2 capture export (Binance and dxFeed live capture to raw/live-capture/ in S3)
+RequiresMountsFor=/srv/terminal-data
+OnFailure=terminal-alert@%n.service
+
+[Service]
+Type=oneshot
+User=ttcollect
+Group=ttcollect
+Slice=terminal.slice
+WorkingDirectory=/opt/terminal-l1-l2/current/apps/runtime/conversion
+Environment=TT_DATA_ROOT=/srv/terminal-data/capture
+StateDirectory=terminal-l1-l2/capture-export
+StateDirectoryMode=0750
+LoadCredential=s3:/etc/terminal-l1-l2/capture-export/s3.credentials
+ExecStartPre=/usr/bin/mountpoint -q /srv/terminal-data
+ExecStart=/opt/terminal-l1-l2/converter-env/.venv/bin/python /opt/terminal-l1-l2/current/apps/runtime/conversion/capture_export.py --bucket chartprime-historical-data --region eu-central-1 --target all --watermark /var/lib/terminal-l1-l2/capture-export/watermark.json --staging-dir /srv/terminal-data/capture/export-staging --credentials ${CREDENTIALS_DIRECTORY}/s3 --max-seconds 3000
+TimeoutStartSec=3600
+Nice=10
+IOWeight=50
+MemoryMax=1G
+TasksMax=32
+UMask=0077
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+ReadWritePaths=/srv/terminal-data/capture
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=terminal-capture-export

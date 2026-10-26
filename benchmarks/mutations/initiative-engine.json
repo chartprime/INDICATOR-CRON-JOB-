@@ -1,0 +1,1046 @@
+{
+  "mutations": [
+    {
+      "id": "initiative.engine.efficiency-threshold",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "      efficiency: Object.freeze({ yes: efficiency >= EFFICIENCY_AT, value: wireValue(efficiency) }),",
+      "replace": "      efficiency: Object.freeze({ yes: efficiency >= 0, value: wireValue(efficiency) }),",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "a choppy window fails efficiency and strong closes"
+      ]
+    },
+    {
+      "id": "initiative.engine.efficiency-travel-from-the-pivot",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "    const travel = sign * (last - pivot);",
+      "replace": "    const travel = sign * (pivot - last);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "the band is born at the close that flips the leg, not a candle earlier"
+      ]
+    },
+    {
+      "id": "initiative.engine.efficiency-path-of-the-closes",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "    path += Math.abs(c.close - last);",
+      "replace": "    path += Math.abs(c.close - pivot);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "the band is born at the close that flips the leg, not a candle earlier"
+      ]
+    },
+    {
+      "id": "initiative.engine.strong-third",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "      if (range > 0 && (up ? c.close - c.lo : c.hi - c.close) >= STRONG_THIRD * range) strong += 1;",
+      "replace": "      if (range > 0 && (up ? c.close - c.lo : c.hi - c.close) >= 0) strong += 1;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "the band is born at the close that flips the leg, not a candle earlier",
+        "a choppy window fails efficiency and strong closes"
+      ]
+    },
+    {
+      "id": "initiative.engine.strong-needs-a-range",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "      if (range > 0 && (up ? c.close - c.lo : c.hi - c.close) >= STRONG_THIRD * range) strong += 1;",
+      "replace": "      if ((up ? c.close - c.lo : c.hi - c.close) >= STRONG_THIRD * range) strong += 1;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "a choppy window fails efficiency and strong closes"
+      ]
+    },
+    {
+      "id": "initiative.engine.strong-is-the-leg-side",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "      if (range > 0 && (up ? c.close - c.lo : c.hi - c.close) >= STRONG_THIRD * range) strong += 1;",
+      "replace": "      if (range > 0 && (up ? c.hi - c.close : c.close - c.lo) >= STRONG_THIRD * range) strong += 1;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "the band is born at the close that flips the leg, not a candle earlier"
+      ]
+    },
+    {
+      "id": "initiative.engine.closes-half-the-window",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "      closes: Object.freeze({ yes: strong / n >= STRONG_SHARE, value: strong }),",
+      "replace": "      closes: Object.freeze({ yes: strong / n >= 0, value: strong }),",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "a choppy window fails efficiency and strong closes"
+      ]
+    },
+    {
+      "id": "initiative.engine.burst-threshold",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "      burst: Object.freeze({ yes: burst >= BURST_AT, value: wireValue(burst) }),",
+      "replace": "      burst: Object.freeze({ yes: burst >= 0, value: wireValue(burst) }),",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "the band is born at the close that flips the leg, not a candle earlier"
+      ]
+    },
+    {
+      "id": "initiative.engine.quiet-at-least-three",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "    const quiet = typical.slice(0, Math.max(QUIET_MIN, n));",
+      "replace": "    const quiet = typical.slice(0, n);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "the leg ends at the next flip"
+      ]
+    },
+    {
+      "id": "initiative.engine.quiet-as-many-as-the-window",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "    const quiet = typical.slice(0, Math.max(QUIET_MIN, n));",
+      "replace": "    const quiet = typical.slice(0, QUIET_MIN);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "burst out of quiet"
+      ]
+    },
+    {
+      "id": "initiative.engine.burst-per-candle",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "    const burst = volume / n / (before / quiet.length);",
+      "replace": "    const burst = volume / (before / quiet.length);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "the band is born at the close that flips the leg, not a candle earlier"
+      ]
+    },
+    {
+      "id": "initiative.engine.delta-threshold",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "      delta: Object.freeze({ yes: deltaRank >= RANK_AT, rank: wireValue(deltaRank), share: wireValue(share) }),",
+      "replace": "      delta: Object.freeze({ yes: deltaRank >= 0, rank: wireValue(deltaRank), share: wireValue(share) }),",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "delta and big prints rank strictly above the typical"
+      ]
+    },
+    {
+      "id": "initiative.engine.delta-share-of-the-pushing-side",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "    const share = own / volume;",
+      "replace": "    const share = other / volume;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "the band is born at the close that flips the leg, not a candle earlier"
+      ]
+    },
+    {
+      "id": "initiative.engine.rank-strictly-below",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "  for (const v of values) if (v < x) below += 1;",
+      "replace": "  for (const v of values) if (v <= x) below += 1;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "the band is born at the close that flips the leg, not a candle earlier",
+        "delta and big prints rank strictly above the typical"
+      ]
+    },
+    {
+      "id": "initiative.engine.typical-shares-of-the-pushing-side",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "    const shares = typical.map((c) => (up ? c.buy : c.sell) / (c.buy + c.sell));",
+      "replace": "    const shares = typical.map((c) => (up ? c.sell : c.buy) / (c.buy + c.sell));",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "the band is born at the close that flips the leg, not a candle earlier"
+      ]
+    },
+    {
+      "id": "initiative.engine.typical-prints-of-the-pushing-side",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "    const prints = typical.map((c) => (up ? c.bigBuys : c.bigSells));",
+      "replace": "    const prints = typical.map((c) => (up ? c.bigSells : c.bigBuys));",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "the band is born at the close that flips the leg, not a candle earlier"
+      ]
+    },
+    {
+      "id": "initiative.engine.prints-threshold",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "      prints: Object.freeze({ yes: printsRank >= RANK_AT, rank: wireValue(printsRank), perCandle: wireValue(perCandle) }),",
+      "replace": "      prints: Object.freeze({ yes: printsRank >= 0, rank: wireValue(printsRank), perCandle: wireValue(perCandle) }),",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "a choppy window fails efficiency and strong closes"
+      ]
+    },
+    {
+      "id": "initiative.engine.prints-per-window-candle",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "    const perCandle = ownPrints / n;",
+      "replace": "    const perCandle = ownPrints;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "the leg ends at the next flip"
+      ]
+    },
+    {
+      "id": "initiative.engine.window-flow-of-the-pushing-side",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "      own += up ? c.buy : c.sell;",
+      "replace": "      own += up ? c.sell : c.buy;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "the band is born at the close that flips the leg, not a candle earlier"
+      ]
+    },
+    {
+      "id": "initiative.engine.window-prints-of-the-pushing-side",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "      ownPrints += up ? c.bigBuys : c.bigSells;",
+      "replace": "      ownPrints += up ? c.bigSells : c.bigBuys;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "the band is born at the close that flips the leg, not a candle earlier"
+      ]
+    },
+    {
+      "id": "initiative.engine.window-starts-after-the-pivot",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "    for (let j = pivotIdx + 1; j <= index; j += 1) {",
+      "replace": "    for (let j = pivotIdx; j <= index; j += 1) {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "the band is born at the close that flips the leg, not a candle earlier"
+      ]
+    },
+    {
+      "id": "initiative.engine.window-count",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "    const n = index - pivotIdx;",
+      "replace": "    const n = index - pivotIdx + 1;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "the band is born at the close that flips the leg, not a candle earlier"
+      ]
+    },
+    {
+      "id": "initiative.engine.typical-needs-twelve",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "    return typical.length < TYPICAL_MIN ? null : typical;",
+      "replace": "    return typical.length < 1 ? null : typical;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "no band when fewer than twelve candles precede the pivot"
+      ]
+    },
+    {
+      "id": "initiative.engine.typical-is-four-hours",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "    for (let j = pivotIdx; j > pivotIdx - typicalCount(candleMs); j -= 1) {",
+      "replace": "    for (let j = pivotIdx; j > pivotIdx - TYPICAL_MIN; j -= 1) {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "the band is born at the close that flips the leg, not a candle earlier"
+      ]
+    },
+    {
+      "id": "initiative.engine.typical-count-floor",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "  return Math.max(TYPICAL_MIN, Math.round(TYPICAL_MS / candleMs));",
+      "replace": "  return Math.round(TYPICAL_MS / candleMs);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "the thresholds are the measured ones"
+      ]
+    },
+    {
+      "id": "initiative.engine.typical-stops-at-the-ring",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "      if (c === null) break;",
+      "replace": "      if (c === null) { typical.push(c); continue; }",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "no band when fewer than twelve candles precede the pivot"
+      ]
+    },
+    {
+      "id": "initiative.engine.score-counts-the-yeses",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "      score: FACTS.filter((key) => facts[key].yes).length,",
+      "replace": "      score: FACTS.length,",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "the band is born at the close that flips the leg, not a candle earlier"
+      ]
+    },
+    {
+      "id": "initiative.engine.dominant-is-the-larger-side",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "      dominant: own >= other ? pushing : against,",
+      "replace": "      dominant: own < other ? pushing : against,",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "the band is born at the close that flips the leg, not a candle earlier",
+        "the dominant side is the side with more aggressive volume"
+      ]
+    },
+    {
+      "id": "initiative.engine.pushing-side-of-an-up-leg",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "    const pushing = up ? \"buyers\" : \"sellers\";",
+      "replace": "    const pushing = up ? \"sellers\" : \"buyers\";",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "the band is born at the close that flips the leg, not a candle earlier"
+      ]
+    },
+    {
+      "id": "initiative.engine.dominant-share-is-the-larger",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "      dominantShare: wireValue(Math.max(own, other) / volume),",
+      "replace": "      dominantShare: wireValue(Math.min(own, other) / volume),",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "the band is born at the close that flips the leg, not a candle earlier"
+      ]
+    },
+    {
+      "id": "initiative.engine.side-of-the-band",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "    const side = flip.up ? \"up\" : \"down\";",
+      "replace": "    const side = flip.up ? \"down\" : \"up\";",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "the band is born at the close that flips the leg, not a candle earlier"
+      ]
+    },
+    {
+      "id": "initiative.engine.pivot-time",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "    const pivotTs = engine.candleAt(flip.pivotIdx).ts;",
+      "replace": "    const pivotTs = engine.candleAt(flip.index).ts;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "the band is born at the close that flips the leg, not a candle earlier"
+      ]
+    },
+    {
+      "id": "initiative.engine.pivot-price",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "      pivotPrice: flip.pivot,",
+      "replace": "      pivotPrice: flip.ext,",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "the band is born at the close that flips the leg, not a candle earlier"
+      ]
+    },
+    {
+      "id": "initiative.engine.frozen-time",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "      frozenTs: engine.candleAt(flip.index).ts,",
+      "replace": "      frozenTs: engine.candleAt(flip.pivotIdx).ts,",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "the band is born at the close that flips the leg, not a candle earlier"
+      ]
+    },
+    {
+      "id": "initiative.engine.frozen-price",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "      frozenPrice: reading.close,",
+      "replace": "      frozenPrice: flip.pivot,",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "the band is born at the close that flips the leg, not a candle earlier"
+      ]
+    },
+    {
+      "id": "initiative.engine.atr-of-the-new-leg",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "      atr: flip.atrRef,",
+      "replace": "      atr: flip.ext,",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "the band is born at the close that flips the leg, not a candle earlier",
+        "the band carries the ATR at the pivot candle"
+      ]
+    },
+    {
+      "id": "initiative.engine.extreme-at-birth",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "      legExtremePrice: flip.ext,",
+      "replace": "      legExtremePrice: flip.pivot,",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "the band is born at the close that flips the leg, not a candle earlier"
+      ]
+    },
+    {
+      "id": "initiative.engine.extreme-time-at-birth",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "      legExtremeTs: engine.candleAt(flip.extIdx).ts,",
+      "replace": "      legExtremeTs: engine.candleAt(flip.pivotIdx).ts,",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "the band is born at the close that flips the leg, not a candle earlier"
+      ]
+    },
+    {
+      "id": "initiative.engine.no-band-without-a-typical",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "    if (reading === null) return;",
+      "replace": "    if (reading === undefined) return;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "no band when fewer than twelve candles precede the pivot"
+      ]
+    },
+    {
+      "id": "initiative.engine.extreme-moves-only-the-open-band",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "        if (open === null) continue;",
+      "replace": "        if (open === undefined) continue;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "no band when fewer than twelve candles precede the pivot",
+        "a session gap ends the open band at the first candle after the hole"
+      ]
+    },
+    {
+      "id": "initiative.engine.extreme-moves-the-band",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "        open.legExtremePrice = event.ext;",
+      "replace": "        void event.ext;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "the window never reads past the flip"
+      ]
+    },
+    {
+      "id": "initiative.engine.leg-end-is-the-engine-candle",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "      if (event.type === \"reset\" || event.type === \"flip\") end(engine.candleAt(event.index).ts, at, updates);",
+      "replace": "      if (event.type === \"reset\" || event.type === \"flip\") end(at, at, updates);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "the leg ends at the next flip",
+        "a session gap ends the open band at the first candle after the hole"
+      ]
+    },
+    {
+      "id": "initiative.engine.leg-end-marks-the-band",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "    open.legEndTs = ts;",
+      "replace": "    open.legEndTs = null;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "the leg ends at the next flip",
+        "a session gap ends the open band at the first candle after the hole"
+      ]
+    },
+    {
+      "id": "initiative.engine.leg-end-closes-the-band",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "    open = null;",
+      "replace": "    void open;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "a session gap ends the open band at the first candle after the hole"
+      ]
+    },
+    {
+      "id": "initiative.engine.only-a-flip-starts-a-band",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "      if (event.type === \"flip\") start(event, at, updates);",
+      "replace": "      if (event.type !== \"reset\") start(event, at, updates);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "the first leg after the warm-up is not a band"
+      ]
+    },
+    {
+      "id": "initiative.engine.a-reset-ends-the-band",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "      if (event.type === \"reset\" || event.type === \"flip\") end(engine.candleAt(event.index).ts, at, updates);",
+      "replace": "      if (event.type === \"flip\") end(engine.candleAt(event.index).ts, at, updates);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "a session gap ends the open band at the first candle after the hole"
+      ]
+    },
+    {
+      "id": "initiative.engine.bands-bounded",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "    if (bands.size > MAX_BANDS) bands.delete(bands.keys().next().value);",
+      "replace": "    if (bands.size > MAX_BANDS + 1) bands.delete(bands.keys().next().value);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "the bands kept are bounded"
+      ]
+    },
+    {
+      "id": "initiative.engine.restore-rejects-another-geometry",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "    if (!saved || saved.candleMs !== candleMs || saved.rowWidth !== rowWidth) return null;",
+      "replace": "    if (!saved || saved.candleMs !== candleMs) return null;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "the engine's state round-trips through toJSON and restore: the restored tracker gives back its open band"
+      ]
+    },
+    {
+      "id": "initiative.engine.restore-empty-save",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "    if (saved.engine === undefined) return [];",
+      "replace": "    if (saved.engine === undefined) return null;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "the engine's state round-trips through toJSON and restore: the restored tracker gives back its open band"
+      ]
+    },
+    {
+      "id": "initiative.engine.restore-rejects-other-engine-rules",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "    if (saved.engineRules !== EXHAUSTION_RULES_VERSION || !Array.isArray(saved.bands) || !saved.bands.every(storedBandValid)) return null;",
+      "replace": "    if (!Array.isArray(saved.bands) || !saved.bands.every(storedBandValid)) return null;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "the engine's state round-trips through toJSON and restore: the restored tracker gives back its open band"
+      ]
+    },
+    {
+      "id": "initiative.engine.restore-rejects-bad-bands",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "    if (saved.engineRules !== EXHAUSTION_RULES_VERSION || !Array.isArray(saved.bands) || !saved.bands.every(storedBandValid)) return null;",
+      "replace": "    if (saved.engineRules !== EXHAUSTION_RULES_VERSION || !saved.bands.every(storedBandValid)) return null;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "the engine's state round-trips through toJSON and restore: the restored tracker gives back its open band"
+      ]
+    },
+    {
+      "id": "initiative.engine.restore-rejects-a-bad-engine",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "    if (engine.restore(saved.engine) === null) return null;",
+      "replace": "    engine.restore(saved.engine);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "the engine's state round-trips through toJSON and restore: the restored tracker gives back its open band"
+      ]
+    },
+    {
+      "id": "initiative.engine.restore-open-band",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "      if (band.id === saved.open) found = record;",
+      "replace": "      found = record;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "the engine's state round-trips through toJSON and restore: the restored tracker gives back its open band"
+      ]
+    },
+    {
+      "id": "initiative.hook.flip-reported",
+      "file": "apps/runtime/src/indicators/exhaustion/exhaustion-engine.js",
+      "find": "      tell({ type: \"flip\", index, up: !up, pivotIdx, pivot, atrRef, ext, extIdx });",
+      "replace": "      tell({ type: \"extreme\", index, ext, extIdx });",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/exhaustion/exhaustion-engine.test.js",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "the engine reports its legs to a listener",
+        "the band is born at the close that flips the leg, not a candle earlier"
+      ]
+    },
+    {
+      "id": "initiative.hook.flip-carries-the-new-atr",
+      "file": "apps/runtime/src/indicators/exhaustion/exhaustion-engine.js",
+      "find": "      tell({ type: \"flip\", index, up: !up, pivotIdx, pivot, atrRef, ext, extIdx });",
+      "replace": "      tell({ type: \"flip\", index, up: !up, pivotIdx, pivot, atrRef: ext, ext, extIdx });",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/exhaustion/exhaustion-engine.test.js",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "the engine reports its legs to a listener",
+        "the band carries the ATR at the pivot candle"
+      ]
+    },
+    {
+      "id": "initiative.hook.extreme-reported",
+      "file": "apps/runtime/src/indicators/exhaustion/exhaustion-engine.js",
+      "find": "      tell({ type: \"extreme\", index, ext, extIdx });",
+      "replace": "      void 0;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/exhaustion/exhaustion-engine.test.js",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "the engine reports its legs to a listener",
+        "the window never reads past the flip"
+      ]
+    },
+    {
+      "id": "initiative.hook.reset-reported",
+      "file": "apps/runtime/src/indicators/exhaustion/exhaustion-engine.js",
+      "find": "    tell({ type: \"reset\", index });",
+      "replace": "    void 0;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/exhaustion/exhaustion-engine.test.js",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "the engine reports its legs to a listener",
+        "a session gap ends the open band at the first candle after the hole"
+      ]
+    },
+    {
+      "id": "initiative.hook.an-up-start-is-not-a-flip",
+      "file": "apps/runtime/src/indicators/exhaustion/exhaustion-engine.js",
+      "find": "        tell({ type: \"start\", index, up: true, pivotIdx, pivot, atrRef, ext, extIdx });",
+      "replace": "        tell({ type: \"flip\", index, up: true, pivotIdx, pivot, atrRef, ext, extIdx });",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/exhaustion/exhaustion-engine.test.js",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "the engine reports its legs to a listener",
+        "the first leg after the warm-up is not a band"
+      ]
+    },
+    {
+      "id": "initiative.hook.a-down-start-is-not-a-flip",
+      "file": "apps/runtime/src/indicators/exhaustion/exhaustion-engine.js",
+      "find": "        tell({ type: \"start\", index, up: false, pivotIdx, pivot, atrRef, ext, extIdx });",
+      "replace": "        tell({ type: \"flip\", index, up: false, pivotIdx, pivot, atrRef, ext, extIdx });",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/exhaustion/exhaustion-engine.test.js",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "the first leg after the warm-up is not a band"
+      ]
+    },
+    {
+      "id": "initiative.hook.listener-validated",
+      "file": "apps/runtime/src/indicators/exhaustion/exhaustion-engine.js",
+      "find": "  if (onLeg !== null && typeof onLeg !== \"function\") throw new Error(\"exhaustion-engine: onLeg must be a function or null\");",
+      "replace": "  if (onLeg === undefined) throw new Error(\"exhaustion-engine: onLeg must be a function or null\");",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/exhaustion/exhaustion-engine.test.js",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "the engine reports its legs to a listener"
+      ]
+    },
+    {
+      "id": "initiative.hook.events-frozen",
+      "file": "apps/runtime/src/indicators/exhaustion/exhaustion-engine.js",
+      "find": "    if (onLeg !== null) onLeg(Object.freeze(event));",
+      "replace": "    if (onLeg !== null) onLeg(event);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/exhaustion/exhaustion-engine.test.js",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "the engine reports its legs to a listener"
+      ]
+    },
+    {
+      "id": "initiative.hook.candles-by-index",
+      "file": "apps/runtime/src/indicators/exhaustion/exhaustion-engine.js",
+      "find": "  return Object.freeze({ push, list, toJSON, restore, stats, candleAt, get candleMs()",
+      "replace": "  return Object.freeze({ push, list, toJSON, restore, stats, get candleMs()",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/exhaustion/exhaustion-engine.test.js",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "the engine reports its legs to a listener",
+        "the band is born at the close that flips the leg, not a candle earlier"
+      ]
+    },
+    {
+      "id": "initiative.engine.restore-refuses-a-band-that-is-not-a-band",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "    if (saved.engineRules !== EXHAUSTION_RULES_VERSION || !Array.isArray(saved.bands) || !saved.bands.every(storedBandValid)) return null;",
+      "replace": "    if (saved.engineRules !== EXHAUSTION_RULES_VERSION || !Array.isArray(saved.bands)) return null;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "a saved state holding a band that is not a band is refused whole"
+      ]
+    },
+    {
+      "id": "initiative.engine.stored-band-is-an-object",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "  return band !== null && typeof band === \"object\" && typeof band.id === \"string\" && band.facts !== null && typeof band.facts === \"object\" && FACTS.every((key) => band.facts[key] !== null && typeof band.facts[key] === \"object\");",
+      "replace": "  return typeof band.id === \"string\" && band.facts !== null && typeof band.facts === \"object\" && FACTS.every((key) => band.facts[key] !== null && typeof band.facts[key] === \"object\");",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "a saved state holding a band that is not a band is refused whole"
+      ]
+    },
+    {
+      "id": "initiative.engine.stored-band-has-a-string-id",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "  return band !== null && typeof band === \"object\" && typeof band.id === \"string\" && band.facts !== null && typeof band.facts === \"object\" && FACTS.every((key) => band.facts[key] !== null && typeof band.facts[key] === \"object\");",
+      "replace": "  return band !== null && typeof band === \"object\" && band.facts !== null && typeof band.facts === \"object\" && FACTS.every((key) => band.facts[key] !== null && typeof band.facts[key] === \"object\");",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "a saved state holding a band that is not a band is refused whole"
+      ]
+    },
+    {
+      "id": "initiative.engine.stored-band-has-facts",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "  return band !== null && typeof band === \"object\" && typeof band.id === \"string\" && band.facts !== null && typeof band.facts === \"object\" && FACTS.every((key) => band.facts[key] !== null && typeof band.facts[key] === \"object\");",
+      "replace": "  return band !== null && typeof band === \"object\" && typeof band.id === \"string\" && FACTS.every((key) => band.facts[key] !== null && typeof band.facts[key] === \"object\");",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "a saved state holding a band that is not a band is refused whole"
+      ]
+    },
+    {
+      "id": "initiative.engine.stored-band-has-every-fact",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "  return band !== null && typeof band === \"object\" && typeof band.id === \"string\" && band.facts !== null && typeof band.facts === \"object\" && FACTS.every((key) => band.facts[key] !== null && typeof band.facts[key] === \"object\");",
+      "replace": "  return band !== null && typeof band === \"object\" && typeof band.id === \"string\" && band.facts !== null && typeof band.facts === \"object\" && true;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "a saved state holding a band that is not a band is refused whole"
+      ]
+    },
+    {
+      "id": "initiative.engine.state-keeps-the-open-band-only",
+      "file": "apps/runtime/src/indicators/initiative/initiative-engine.js",
+      "find": "bands: open === null ? [] : [bands.get(open.id)],",
+      "replace": "bands: list(),",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/initiative/initiative-engine.test.js"
+      ],
+      "mustFail": [
+        "the engine's state round-trips through toJSON and restore"
+      ]
+    }
+  ]
+}

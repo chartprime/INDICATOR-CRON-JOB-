@@ -1,0 +1,55 @@
+{
+  "mutations": [
+    {
+      "id": "audit-rebuild.history-failure-not-degraded",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane-rebuild.js",
+      "find": "      else if (state.fillReadiness?.state !== \"READY\") state.fillReadiness = { state: \"DEGRADED\", reason, completedAt: now(), pyramid: state.pyramidFill ?? null };",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/passive_liquidity/liquidity-publisher-pyramid.test.js",
+        "-t",
+        "breaks the event history"
+      ],
+      "mustFail": [
+        "a host window that breaks the event history stops the history fill for that pair"
+      ]
+    },
+    {
+      "id": "audit-rebuild.chain-without-catch",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane-rebuild.js",
+      "find": "    }).catch((error) => {\n      const reason = `WORKER_ERROR: ${error?.message ?? error}`;",
+      "replace": "    }).finally((error) => {\n      const reason = `WORKER_ERROR: ${error?.message ?? error}`;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/passive_liquidity/liquidity-publisher-pyramid.test.js",
+        "-t",
+        "breaks the event history"
+      ],
+      "mustFail": [
+        "a host window that breaks the event history stops the history fill for that pair"
+      ]
+    },
+    {
+      "id": "audit-rebuild.refused-fill-window-counted",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane-rebuild.js",
+      "find": "          stopped = \"EVENTS_REFUSED\";\n          return;\n",
+      "replace": "          stopped = \"EVENTS_REFUSED\";\n",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/passive_liquidity/liquidity-publisher.test.js",
+        "-t",
+        "stops at a window whose events"
+      ],
+      "mustFail": [
+        "the fill stops at a window whose events the history refuses"
+      ]
+    }
+  ]
+}

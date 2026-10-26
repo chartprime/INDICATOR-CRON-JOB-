@@ -1,0 +1,72 @@
+{
+  "mutations": [
+    {
+      "id": "tardis.exchange-time-after-receive-accepted",
+      "file": "apps/runtime/src/data-contracts/v1/adapters.js",
+      "find": "requireValue(receiveLagNs <= TARDIS_RECEIVE_CLOCK_LAG_LIMIT_NS, \"EXCHANGE_TIME_AFTER_RECEIVE\");",
+      "replace": "requireValue(true, \"EXCHANGE_TIME_AFTER_RECEIVE\");",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/contracts/market-observation-v1.test.js", "-t", "refused rather than labelled"],
+      "mustFail": ["refused rather than labelled"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "tardis.receive-lag-limit-widened",
+      "file": "apps/runtime/src/data-contracts/v1/adapters.js",
+      "find": "const TARDIS_RECEIVE_CLOCK_LAG_LIMIT_NS = 50000000n;",
+      "replace": "const TARDIS_RECEIVE_CLOCK_LAG_LIMIT_NS = 51000000n;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/contracts/market-observation-v1.test.js", "-t", "refused rather than labelled"],
+      "mustFail": ["refused rather than labelled"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "tardis.receive-lag-limit-exclusive",
+      "file": "apps/runtime/src/data-contracts/v1/adapters.js",
+      "find": "receiveLagNs <= TARDIS_RECEIVE_CLOCK_LAG_LIMIT_NS",
+      "replace": "receiveLagNs < TARDIS_RECEIVE_CLOCK_LAG_LIMIT_NS",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/contracts/market-observation-v1.test.js", "-t", "lagging receive clock"],
+      "mustFail": ["lagging receive clock"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "tardis.receive-lag-unflagged",
+      "file": "apps/runtime/src/data-contracts/v1/adapters.js",
+      "find": "if (receiveLagNs > 0n) flags.push(\"RECEIVE_BEFORE_EXCHANGE_TIME\");",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/contracts/market-observation-v1.test.js", "-t", "lagging receive clock"],
+      "mustFail": ["lagging receive clock"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "tardis.receive-lag-flag-on-equal-times",
+      "file": "apps/runtime/src/data-contracts/v1/adapters.js",
+      "find": "if (receiveLagNs > 0n)",
+      "replace": "if (receiveLagNs >= 0n)",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/contracts/market-observation-v1.test.js", "-t", "lagging receive clock"],
+      "mustFail": ["lagging receive clock"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "tardis.window-end-crossing-silently-dropped",
+      "file": "apps/runtime/conversion/tardis_decode.py",
+      "find": "raise TardisDecodeError(f\"TARDIS_EXCHANGE_TIME_CROSSES_WINDOW_END:{source['s3_key']}:{file_row}\")",
+      "replace": "pass",
+      "cwd": "apps/runtime/conversion",
+      "command": ["uv", "run", "--frozen", "pytest", "-q", "tests/test_tardis_stream.py", "-k", "received_before_it"],
+      "mustFail": ["test_a_trade_stamped_after_midnight_but_received_before_it_is_kept_or_stops_the_window"]
+    },
+    {
+      "id": "tardis.window-end-crossing-refused-inside-the-window",
+      "file": "apps/runtime/conversion/tardis_decode.py",
+      "find": "                if event_ns >= window_to:\n                    if receive_ns < window_to:",
+      "replace": "                if receive_ns < event_ns - 1000 and receive_ns // _DAY_NS < event_ns // _DAY_NS:\n                    raise TardisDecodeError(\"MUTANT\")\n                if event_ns >= window_to:\n                    if receive_ns < window_to:",
+      "cwd": "apps/runtime/conversion",
+      "command": ["uv", "run", "--frozen", "pytest", "-q", "tests/test_tardis_stream.py", "-k", "received_before_it"],
+      "mustFail": ["test_a_trade_stamped_after_midnight_but_received_before_it_is_kept_or_stops_the_window"]
+    }
+  ]
+}

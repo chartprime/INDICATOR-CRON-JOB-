@@ -1,0 +1,1077 @@
+{
+  "contractVersion": 1,
+  "source": {
+    "git": {
+      "commit": "bd5c900d89621fc8c36828d8660fdae0754ad59a",
+      "dirty": false,
+      "trackedChanges": 0,
+      "untrackedFiles": 0,
+      "trackedDiffSha256": null
+    },
+    "scriptSha256": "e0f2c61a433d1fd6a02c180ec7086d216c2e743cf5620b3039f0a855245e1307",
+    "manifestSha256": "866f6b235db27a5fe4894230ac15541424e53eb9554f167e8705fa6272cf569a",
+    "nodeVersion": "v24.21.0",
+    "contractVersions": {
+      "liveStorage": "live-storage/1",
+      "archive": null
+    },
+    "endpoints": {
+      "liveStorageOrigin": "http://10.88.0.1:8001",
+      "archiveOrigin": null,
+      "healthOrigin": null
+    }
+  },
+  "name": "o5-binance-replay-4h-20-page-sample-sparse-books-2026-09-20",
+  "startedAtUtc": "2026-09-21T10:44:26.853Z",
+  "users": 1,
+  "rounds": 1,
+  "wallMs": 51016.064,
+  "summary": {
+    "requests": 20,
+    "succeeded": 20,
+    "failed": 0,
+    "responseBytes": 19558684,
+    "wireBytes": 2475509,
+    "latencyMs": {
+      "min": 1991.533,
+      "p50": 2401.292,
+      "p95": 3136.399,
+      "p99": 3380.614,
+      "max": 3380.614
+    },
+    "statuses": {
+      "200": 20
+    },
+    "failureClasses": {
+      "SUCCESS": 20
+    }
+  },
+  "byRoute": {
+    "replay-page": {
+      "requests": 20,
+      "succeeded": 20,
+      "failed": 0,
+      "responseBytes": 19558684,
+      "wireBytes": 2475509,
+      "latencyMs": {
+        "min": 1991.533,
+        "p50": 2401.292,
+        "p95": 3136.399,
+        "p99": 3380.614,
+        "max": 3380.614
+      },
+      "statuses": {
+        "200": 20
+      },
+      "failureClasses": {
+        "SUCCESS": 20
+      }
+    }
+  },
+  "byRoutePage": {
+    "replay-page": {
+      "0": {
+        "requests": 1,
+        "succeeded": 1,
+        "failed": 0,
+        "responseBytes": 1052705,
+        "wireBytes": 138588,
+        "latencyMs": {
+          "min": 3380.614,
+          "p50": 3380.614,
+          "p95": 3380.614,
+          "p99": 3380.614,
+          "max": 3380.614
+        },
+        "statuses": {
+          "200": 1
+        },
+        "failureClasses": {
+          "SUCCESS": 1
+        }
+      },
+      "1": {
+        "requests": 1,
+        "succeeded": 1,
+        "failed": 0,
+        "responseBytes": 991255,
+        "wireBytes": 127314,
+        "latencyMs": {
+          "min": 3046.742,
+          "p50": 3046.742,
+          "p95": 3046.742,
+          "p99": 3046.742,
+          "max": 3046.742
+        },
+        "statuses": {
+          "200": 1
+        },
+        "failureClasses": {
+          "SUCCESS": 1
+        }
+      },
+      "2": {
+        "requests": 1,
+        "succeeded": 1,
+        "failed": 0,
+        "responseBytes": 892596,
+        "wireBytes": 111277,
+        "latencyMs": {
+          "min": 2949.503,
+          "p50": 2949.503,
+          "p95": 2949.503,
+          "p99": 2949.503,
+          "max": 2949.503
+        },
+        "statuses": {
+          "200": 1
+        },
+        "failureClasses": {
+          "SUCCESS": 1
+        }
+      },
+      "3": {
+        "requests": 1,
+        "succeeded": 1,
+        "failed": 0,
+        "responseBytes": 1026399,
+        "wireBytes": 135263,
+        "latencyMs": {
+          "min": 2940.101,
+          "p50": 2940.101,
+          "p95": 2940.101,
+          "p99": 2940.101,
+          "max": 2940.101
+        },
+        "statuses": {
+          "200": 1
+        },
+        "failureClasses": {
+          "SUCCESS": 1
+        }
+      },
+      "4": {
+        "requests": 1,
+        "succeeded": 1,
+        "failed": 0,
+        "responseBytes": 1040029,
+        "wireBytes": 134807,
+        "latencyMs": {
+          "min": 3035.768,
+          "p50": 3035.768,
+          "p95": 3035.768,
+          "p99": 3035.768,
+          "max": 3035.768
+        },
+        "statuses": {
+          "200": 1
+        },
+        "failureClasses": {
+          "SUCCESS": 1
+        }
+      },
+      "5": {
+        "requests": 1,
+        "succeeded": 1,
+        "failed": 0,
+        "responseBytes": 982841,
+        "wireBytes": 126145,
+        "latencyMs": {
+          "min": 3136.399,
+          "p50": 3136.399,
+          "p95": 3136.399,
+          "p99": 3136.399,
+          "max": 3136.399
+        },
+        "statuses": {
+          "200": 1
+        },
+        "failureClasses": {
+          "SUCCESS": 1
+        }
+      },
+      "6": {
+        "requests": 1,
+        "succeeded": 1,
+        "failed": 0,
+        "responseBytes": 966478,
+        "wireBytes": 120962,
+        "latencyMs": {
+          "min": 2271.833,
+          "p50": 2271.833,
+          "p95": 2271.833,
+          "p99": 2271.833,
+          "max": 2271.833
+        },
+        "statuses": {
+          "200": 1
+        },
+        "failureClasses": {
+          "SUCCESS": 1
+        }
+      },
+      "7": {
+        "requests": 1,
+        "succeeded": 1,
+        "failed": 0,
+        "responseBytes": 960381,
+        "wireBytes": 121421,
+        "latencyMs": {
+          "min": 2191.979,
+          "p50": 2191.979,
+          "p95": 2191.979,
+          "p99": 2191.979,
+          "max": 2191.979
+        },
+        "statuses": {
+          "200": 1
+        },
+        "failureClasses": {
+          "SUCCESS": 1
+        }
+      },
+      "8": {
+        "requests": 1,
+        "succeeded": 1,
+        "failed": 0,
+        "responseBytes": 966336,
+        "wireBytes": 119768,
+        "latencyMs": {
+          "min": 2143.686,
+          "p50": 2143.686,
+          "p95": 2143.686,
+          "p99": 2143.686,
+          "max": 2143.686
+        },
+        "statuses": {
+          "200": 1
+        },
+        "failureClasses": {
+          "SUCCESS": 1
+        }
+      },
+      "9": {
+        "requests": 1,
+        "succeeded": 1,
+        "failed": 0,
+        "responseBytes": 1003610,
+        "wireBytes": 123485,
+        "latencyMs": {
+          "min": 2256.019,
+          "p50": 2256.019,
+          "p95": 2256.019,
+          "p99": 2256.019,
+          "max": 2256.019
+        },
+        "statuses": {
+          "200": 1
+        },
+        "failureClasses": {
+          "SUCCESS": 1
+        }
+      },
+      "10": {
+        "requests": 1,
+        "succeeded": 1,
+        "failed": 0,
+        "responseBytes": 896870,
+        "wireBytes": 109129,
+        "latencyMs": {
+          "min": 2182.591,
+          "p50": 2182.591,
+          "p95": 2182.591,
+          "p99": 2182.591,
+          "max": 2182.591
+        },
+        "statuses": {
+          "200": 1
+        },
+        "failureClasses": {
+          "SUCCESS": 1
+        }
+      },
+      "11": {
+        "requests": 1,
+        "succeeded": 1,
+        "failed": 0,
+        "responseBytes": 1009033,
+        "wireBytes": 124685,
+        "latencyMs": {
+          "min": 2289.299,
+          "p50": 2289.299,
+          "p95": 2289.299,
+          "p99": 2289.299,
+          "max": 2289.299
+        },
+        "statuses": {
+          "200": 1
+        },
+        "failureClasses": {
+          "SUCCESS": 1
+        }
+      },
+      "12": {
+        "requests": 1,
+        "succeeded": 1,
+        "failed": 0,
+        "responseBytes": 988381,
+        "wireBytes": 121184,
+        "latencyMs": {
+          "min": 2740.331,
+          "p50": 2740.331,
+          "p95": 2740.331,
+          "p99": 2740.331,
+          "max": 2740.331
+        },
+        "statuses": {
+          "200": 1
+        },
+        "failureClasses": {
+          "SUCCESS": 1
+        }
+      },
+      "13": {
+        "requests": 1,
+        "succeeded": 1,
+        "failed": 0,
+        "responseBytes": 964338,
+        "wireBytes": 125144,
+        "latencyMs": {
+          "min": 2312.708,
+          "p50": 2312.708,
+          "p95": 2312.708,
+          "p99": 2312.708,
+          "max": 2312.708
+        },
+        "statuses": {
+          "200": 1
+        },
+        "failureClasses": {
+          "SUCCESS": 1
+        }
+      },
+      "14": {
+        "requests": 1,
+        "succeeded": 1,
+        "failed": 0,
+        "responseBytes": 1046467,
+        "wireBytes": 132917,
+        "latencyMs": {
+          "min": 2567.064,
+          "p50": 2567.064,
+          "p95": 2567.064,
+          "p99": 2567.064,
+          "max": 2567.064
+        },
+        "statuses": {
+          "200": 1
+        },
+        "failureClasses": {
+          "SUCCESS": 1
+        }
+      },
+      "15": {
+        "requests": 1,
+        "succeeded": 1,
+        "failed": 0,
+        "responseBytes": 925937,
+        "wireBytes": 118666,
+        "latencyMs": {
+          "min": 2421.502,
+          "p50": 2421.502,
+          "p95": 2421.502,
+          "p99": 2421.502,
+          "max": 2421.502
+        },
+        "statuses": {
+          "200": 1
+        },
+        "failureClasses": {
+          "SUCCESS": 1
+        }
+      },
+      "16": {
+        "requests": 1,
+        "succeeded": 1,
+        "failed": 0,
+        "responseBytes": 976224,
+        "wireBytes": 123587,
+        "latencyMs": {
+          "min": 2401.292,
+          "p50": 2401.292,
+          "p95": 2401.292,
+          "p99": 2401.292,
+          "max": 2401.292
+        },
+        "statuses": {
+          "200": 1
+        },
+        "failureClasses": {
+          "SUCCESS": 1
+        }
+      },
+      "17": {
+        "requests": 1,
+        "succeeded": 1,
+        "failed": 0,
+        "responseBytes": 952806,
+        "wireBytes": 122158,
+        "latencyMs": {
+          "min": 2550.456,
+          "p50": 2550.456,
+          "p95": 2550.456,
+          "p99": 2550.456,
+          "max": 2550.456
+        },
+        "statuses": {
+          "200": 1
+        },
+        "failureClasses": {
+          "SUCCESS": 1
+        }
+      },
+      "18": {
+        "requests": 1,
+        "succeeded": 1,
+        "failed": 0,
+        "responseBytes": 951057,
+        "wireBytes": 118709,
+        "latencyMs": {
+          "min": 2186.606,
+          "p50": 2186.606,
+          "p95": 2186.606,
+          "p99": 2186.606,
+          "max": 2186.606
+        },
+        "statuses": {
+          "200": 1
+        },
+        "failureClasses": {
+          "SUCCESS": 1
+        }
+      },
+      "19": {
+        "requests": 1,
+        "succeeded": 1,
+        "failed": 0,
+        "responseBytes": 964941,
+        "wireBytes": 120300,
+        "latencyMs": {
+          "min": 1991.533,
+          "p50": 1991.533,
+          "p95": 1991.533,
+          "p99": 1991.533,
+          "max": 1991.533
+        },
+        "statuses": {
+          "200": 1
+        },
+        "failureClasses": {
+          "SUCCESS": 1
+        }
+      }
+    }
+  },
+  "samples": [
+    {
+      "user": 0,
+      "round": 0,
+      "requestIndex": 0,
+      "route": "replay-page",
+      "page": 0,
+      "correlationId": "5ca92733-0ba6-4b06-be31-f77bc09adfab.0.0.0.0",
+      "status": 200,
+      "responseBytes": 1052705,
+      "wireBytes": 138588,
+      "contentEncoding": "gzip",
+      "bodySha256": "f2ce1d52a18eceee48c15acf55589a83441ceae8ca8c65cad6e45171e14a4a94",
+      "responseSummary": {
+        "frames": 2000,
+        "complete": false,
+        "stats": {
+          "snapshotsUsed": 1,
+          "eventsRead": 8801,
+          "tradesRead": 1390,
+          "booksEmitted": 611,
+          "gaps": 0,
+          "timestampGroupsExamined": 805,
+          "encodedBytes": 1052109
+        }
+      },
+      "failureClass": "SUCCESS",
+      "durationMs": 3380.614,
+      "headersMs": 2741.123,
+      "bodyMs": 603.891
+    },
+    {
+      "user": 0,
+      "round": 0,
+      "requestIndex": 0,
+      "route": "replay-page",
+      "page": 1,
+      "correlationId": "5ca92733-0ba6-4b06-be31-f77bc09adfab.0.0.0.1",
+      "status": 200,
+      "responseBytes": 991255,
+      "wireBytes": 127314,
+      "contentEncoding": "gzip",
+      "bodySha256": "a346cd1776b5eeaf7eae4e17c35e3c77146dfac8970a81616152ed54d0b761fb",
+      "responseSummary": {
+        "frames": 2000,
+        "complete": false,
+        "stats": {
+          "snapshotsUsed": 1,
+          "eventsRead": 9650,
+          "tradesRead": 1150,
+          "booksEmitted": 851,
+          "gaps": 0,
+          "timestampGroupsExamined": 1082,
+          "encodedBytes": 990659
+        }
+      },
+      "failureClass": "SUCCESS",
+      "durationMs": 3046.742,
+      "headersMs": 2730.01,
+      "bodyMs": 294.018
+    },
+    {
+      "user": 0,
+      "round": 0,
+      "requestIndex": 0,
+      "route": "replay-page",
+      "page": 2,
+      "correlationId": "5ca92733-0ba6-4b06-be31-f77bc09adfab.0.0.0.2",
+      "status": 200,
+      "responseBytes": 892596,
+      "wireBytes": 111277,
+      "contentEncoding": "gzip",
+      "bodySha256": "98c6922919dcabc33e2d56be18287003b4e224b4ebdc6f8a8389a3a669113dbc",
+      "responseSummary": {
+        "frames": 1977,
+        "complete": false,
+        "stats": {
+          "snapshotsUsed": 1,
+          "eventsRead": 10396,
+          "tradesRead": 1258,
+          "booksEmitted": 747,
+          "gaps": 0,
+          "timestampGroupsExamined": 878,
+          "encodedBytes": 892000
+        }
+      },
+      "failureClass": "SUCCESS",
+      "durationMs": 2949.503,
+      "headersMs": 2666.117,
+      "bodyMs": 261.739
+    },
+    {
+      "user": 0,
+      "round": 0,
+      "requestIndex": 0,
+      "route": "replay-page",
+      "page": 3,
+      "correlationId": "5ca92733-0ba6-4b06-be31-f77bc09adfab.0.0.0.3",
+      "status": 200,
+      "responseBytes": 1026399,
+      "wireBytes": 135263,
+      "contentEncoding": "gzip",
+      "bodySha256": "92dc17b35d78f59a3ea7d42b0b8f014f18bed1d1b7073c5f6fbddc2b219e5bd2",
+      "responseSummary": {
+        "frames": 1997,
+        "complete": false,
+        "stats": {
+          "snapshotsUsed": 1,
+          "eventsRead": 11083,
+          "tradesRead": 1319,
+          "booksEmitted": 687,
+          "gaps": 0,
+          "timestampGroupsExamined": 882,
+          "encodedBytes": 1025802
+        }
+      },
+      "failureClass": "SUCCESS",
+      "durationMs": 2940.101,
+      "headersMs": 2709.565,
+      "bodyMs": 199.153
+    },
+    {
+      "user": 0,
+      "round": 0,
+      "requestIndex": 0,
+      "route": "replay-page",
+      "page": 4,
+      "correlationId": "5ca92733-0ba6-4b06-be31-f77bc09adfab.0.0.0.4",
+      "status": 200,
+      "responseBytes": 1040029,
+      "wireBytes": 134807,
+      "contentEncoding": "gzip",
+      "bodySha256": "3d2fb904b641cf910fe6f6d458d59b80e746f7d2ab52195a0b0ae3b31fa592f7",
+      "responseSummary": {
+        "frames": 1998,
+        "complete": false,
+        "stats": {
+          "snapshotsUsed": 1,
+          "eventsRead": 11893,
+          "tradesRead": 1190,
+          "booksEmitted": 811,
+          "gaps": 0,
+          "timestampGroupsExamined": 984,
+          "encodedBytes": 1039432
+        }
+      },
+      "failureClass": "SUCCESS",
+      "durationMs": 3035.768,
+      "headersMs": 2819.43,
+      "bodyMs": 189.021
+    },
+    {
+      "user": 0,
+      "round": 0,
+      "requestIndex": 0,
+      "route": "replay-page",
+      "page": 5,
+      "correlationId": "5ca92733-0ba6-4b06-be31-f77bc09adfab.0.0.0.5",
+      "status": 200,
+      "responseBytes": 982841,
+      "wireBytes": 126145,
+      "contentEncoding": "gzip",
+      "bodySha256": "e18e8dea5048b447b182654f28c6ece30983e4c2dd35e73c72b5d67ec19ab3b5",
+      "responseSummary": {
+        "frames": 2000,
+        "complete": false,
+        "stats": {
+          "snapshotsUsed": 1,
+          "eventsRead": 12614,
+          "tradesRead": 1279,
+          "booksEmitted": 722,
+          "gaps": 0,
+          "timestampGroupsExamined": 961,
+          "encodedBytes": 982245
+        }
+      },
+      "failureClass": "SUCCESS",
+      "durationMs": 3136.399,
+      "headersMs": 2962.29,
+      "bodyMs": 143.228
+    },
+    {
+      "user": 0,
+      "round": 0,
+      "requestIndex": 0,
+      "route": "replay-page",
+      "page": 6,
+      "correlationId": "5ca92733-0ba6-4b06-be31-f77bc09adfab.0.0.0.6",
+      "status": 200,
+      "responseBytes": 966478,
+      "wireBytes": 120962,
+      "contentEncoding": "gzip",
+      "bodySha256": "835891907cc0824fb1a0d2ab8681d32179e1be7a80f9339d154ac07c84482b80",
+      "responseSummary": {
+        "frames": 2000,
+        "complete": false,
+        "stats": {
+          "snapshotsUsed": 1,
+          "eventsRead": 1492,
+          "tradesRead": 1122,
+          "booksEmitted": 879,
+          "gaps": 0,
+          "timestampGroupsExamined": 1055,
+          "encodedBytes": 965882
+        }
+      },
+      "failureClass": "SUCCESS",
+      "durationMs": 2271.833,
+      "headersMs": 1997.178,
+      "bodyMs": 251.466
+    },
+    {
+      "user": 0,
+      "round": 0,
+      "requestIndex": 0,
+      "route": "replay-page",
+      "page": 7,
+      "correlationId": "5ca92733-0ba6-4b06-be31-f77bc09adfab.0.0.0.7",
+      "status": 200,
+      "responseBytes": 960381,
+      "wireBytes": 121421,
+      "contentEncoding": "gzip",
+      "bodySha256": "8b974bc6e5b3d9e1abeb26573fee5118d11d701bee91b770f2ac8e6cfb691dff",
+      "responseSummary": {
+        "frames": 2000,
+        "complete": false,
+        "stats": {
+          "snapshotsUsed": 1,
+          "eventsRead": 2394,
+          "tradesRead": 1097,
+          "booksEmitted": 904,
+          "gaps": 0,
+          "timestampGroupsExamined": 1075,
+          "encodedBytes": 959785
+        }
+      },
+      "failureClass": "SUCCESS",
+      "durationMs": 2191.979,
+      "headersMs": 2037.854,
+      "bodyMs": 123.067
+    },
+    {
+      "user": 0,
+      "round": 0,
+      "requestIndex": 0,
+      "route": "replay-page",
+      "page": 8,
+      "correlationId": "5ca92733-0ba6-4b06-be31-f77bc09adfab.0.0.0.8",
+      "status": 200,
+      "responseBytes": 966336,
+      "wireBytes": 119768,
+      "contentEncoding": "gzip",
+      "bodySha256": "86833a0cf12d9d77651345c82d1083f1706096d5458efb01461de5e9b1e4ec7d",
+      "responseSummary": {
+        "frames": 1999,
+        "complete": false,
+        "stats": {
+          "snapshotsUsed": 1,
+          "eventsRead": 3478,
+          "tradesRead": 945,
+          "booksEmitted": 1086,
+          "gaps": 0,
+          "timestampGroupsExamined": 1293,
+          "encodedBytes": 965740
+        }
+      },
+      "failureClass": "SUCCESS",
+      "durationMs": 2143.686,
+      "headersMs": 1987.496,
+      "bodyMs": 132.114
+    },
+    {
+      "user": 0,
+      "round": 0,
+      "requestIndex": 0,
+      "route": "replay-page",
+      "page": 9,
+      "correlationId": "5ca92733-0ba6-4b06-be31-f77bc09adfab.0.0.0.9",
+      "status": 200,
+      "responseBytes": 1003610,
+      "wireBytes": 123485,
+      "contentEncoding": "gzip",
+      "bodySha256": "b3396c5949c78055ae80f434d09a783919716deb03ad214a4c550c3dbed45dcf",
+      "responseSummary": {
+        "frames": 2000,
+        "complete": false,
+        "stats": {
+          "snapshotsUsed": 1,
+          "eventsRead": 4666,
+          "tradesRead": 812,
+          "booksEmitted": 1189,
+          "gaps": 0,
+          "timestampGroupsExamined": 1381,
+          "encodedBytes": 1003011
+        }
+      },
+      "failureClass": "SUCCESS",
+      "durationMs": 2256.019,
+      "headersMs": 2004.44,
+      "bodyMs": 227.386
+    },
+    {
+      "user": 0,
+      "round": 0,
+      "requestIndex": 0,
+      "route": "replay-page",
+      "page": 10,
+      "correlationId": "5ca92733-0ba6-4b06-be31-f77bc09adfab.0.0.0.10",
+      "status": 200,
+      "responseBytes": 896870,
+      "wireBytes": 109129,
+      "contentEncoding": "gzip",
+      "bodySha256": "8fb671ec7f21ab6f272d4267672ba57fa76beeb243c8ef2e741c9cb72a90a5f1",
+      "responseSummary": {
+        "frames": 2000,
+        "complete": false,
+        "stats": {
+          "snapshotsUsed": 1,
+          "eventsRead": 5698,
+          "tradesRead": 977,
+          "booksEmitted": 1033,
+          "gaps": 0,
+          "timestampGroupsExamined": 1211,
+          "encodedBytes": 896272
+        }
+      },
+      "failureClass": "SUCCESS",
+      "durationMs": 2182.591,
+      "headersMs": 2033.184,
+      "bodyMs": 117.565
+    },
+    {
+      "user": 0,
+      "round": 0,
+      "requestIndex": 0,
+      "route": "replay-page",
+      "page": 11,
+      "correlationId": "5ca92733-0ba6-4b06-be31-f77bc09adfab.0.0.0.11",
+      "status": 200,
+      "responseBytes": 1009033,
+      "wireBytes": 124685,
+      "contentEncoding": "gzip",
+      "bodySha256": "f0380391d4ed65a710760fb24b0adf7e0f45e0ff225022f2da6f7cd73094ded9",
+      "responseSummary": {
+        "frames": 2000,
+        "complete": false,
+        "stats": {
+          "snapshotsUsed": 1,
+          "eventsRead": 6688,
+          "tradesRead": 1010,
+          "booksEmitted": 991,
+          "gaps": 0,
+          "timestampGroupsExamined": 1195,
+          "encodedBytes": 1008434
+        }
+      },
+      "failureClass": "SUCCESS",
+      "durationMs": 2289.299,
+      "headersMs": 2069.789,
+      "bodyMs": 190.357
+    },
+    {
+      "user": 0,
+      "round": 0,
+      "requestIndex": 0,
+      "route": "replay-page",
+      "page": 12,
+      "correlationId": "5ca92733-0ba6-4b06-be31-f77bc09adfab.0.0.0.12",
+      "status": 200,
+      "responseBytes": 988381,
+      "wireBytes": 121184,
+      "contentEncoding": "gzip",
+      "bodySha256": "e31e23799744afa1d293b68ec0750c5a2d4a82604b64a76c383d795e9d44dbb4",
+      "responseSummary": {
+        "frames": 1993,
+        "complete": false,
+        "stats": {
+          "snapshotsUsed": 1,
+          "eventsRead": 7957,
+          "tradesRead": 752,
+          "booksEmitted": 1270,
+          "gaps": 0,
+          "timestampGroupsExamined": 1460,
+          "encodedBytes": 987783
+        }
+      },
+      "failureClass": "SUCCESS",
+      "durationMs": 2740.331,
+      "headersMs": 2371.922,
+      "bodyMs": 339.065
+    },
+    {
+      "user": 0,
+      "round": 0,
+      "requestIndex": 0,
+      "route": "replay-page",
+      "page": 13,
+      "correlationId": "5ca92733-0ba6-4b06-be31-f77bc09adfab.0.0.0.13",
+      "status": 200,
+      "responseBytes": 964338,
+      "wireBytes": 125144,
+      "contentEncoding": "gzip",
+      "bodySha256": "0018d5fadc7bb69b06b1ff5910708a276b4ce42cc38a8ff52a10768cd1cecb6c",
+      "responseSummary": {
+        "frames": 2000,
+        "complete": false,
+        "stats": {
+          "snapshotsUsed": 1,
+          "eventsRead": 8610,
+          "tradesRead": 1347,
+          "booksEmitted": 654,
+          "gaps": 0,
+          "timestampGroupsExamined": 859,
+          "encodedBytes": 963741
+        }
+      },
+      "failureClass": "SUCCESS",
+      "durationMs": 2312.708,
+      "headersMs": 2163.182,
+      "bodyMs": 120.918
+    },
+    {
+      "user": 0,
+      "round": 0,
+      "requestIndex": 0,
+      "route": "replay-page",
+      "page": 14,
+      "correlationId": "5ca92733-0ba6-4b06-be31-f77bc09adfab.0.0.0.14",
+      "status": 200,
+      "responseBytes": 1046467,
+      "wireBytes": 132917,
+      "contentEncoding": "gzip",
+      "bodySha256": "297b33fb8754d7c459c658456cdf5f9fdd79b5be583f8981e7efdecbe295e0f5",
+      "responseSummary": {
+        "frames": 2000,
+        "complete": false,
+        "stats": {
+          "snapshotsUsed": 1,
+          "eventsRead": 9688,
+          "tradesRead": 921,
+          "booksEmitted": 1080,
+          "gaps": 0,
+          "timestampGroupsExamined": 1332,
+          "encodedBytes": 1045868
+        }
+      },
+      "failureClass": "SUCCESS",
+      "durationMs": 2567.064,
+      "headersMs": 2231.239,
+      "bodyMs": 311.386
+    },
+    {
+      "user": 0,
+      "round": 0,
+      "requestIndex": 0,
+      "route": "replay-page",
+      "page": 15,
+      "correlationId": "5ca92733-0ba6-4b06-be31-f77bc09adfab.0.0.0.15",
+      "status": 200,
+      "responseBytes": 925937,
+      "wireBytes": 118666,
+      "contentEncoding": "gzip",
+      "bodySha256": "e79358a4f8d63bad260ce2f94f20906654b14042ad63a8633749f2fe00eae696",
+      "responseSummary": {
+        "frames": 1975,
+        "complete": false,
+        "stats": {
+          "snapshotsUsed": 1,
+          "eventsRead": 10476,
+          "tradesRead": 1222,
+          "booksEmitted": 788,
+          "gaps": 0,
+          "timestampGroupsExamined": 1012,
+          "encodedBytes": 925338
+        }
+      },
+      "failureClass": "SUCCESS",
+      "durationMs": 2421.502,
+      "headersMs": 2275.111,
+      "bodyMs": 124.435
+    },
+    {
+      "user": 0,
+      "round": 0,
+      "requestIndex": 0,
+      "route": "replay-page",
+      "page": 16,
+      "correlationId": "5ca92733-0ba6-4b06-be31-f77bc09adfab.0.0.0.16",
+      "status": 200,
+      "responseBytes": 976224,
+      "wireBytes": 123587,
+      "contentEncoding": "gzip",
+      "bodySha256": "68cbe2a0d1c7caa3f5c6b8cc0d144f72fce4a7bb85fabfb97b85368f18f5ccba",
+      "responseSummary": {
+        "frames": 1910,
+        "complete": false,
+        "stats": {
+          "snapshotsUsed": 1,
+          "eventsRead": 11321,
+          "tradesRead": 1248,
+          "booksEmitted": 845,
+          "gaps": 0,
+          "timestampGroupsExamined": 1082,
+          "encodedBytes": 975625
+        }
+      },
+      "failureClass": "SUCCESS",
+      "durationMs": 2401.292,
+      "headersMs": 2260.191,
+      "bodyMs": 117.445
+    },
+    {
+      "user": 0,
+      "round": 0,
+      "requestIndex": 0,
+      "route": "replay-page",
+      "page": 17,
+      "correlationId": "5ca92733-0ba6-4b06-be31-f77bc09adfab.0.0.0.17",
+      "status": 200,
+      "responseBytes": 952806,
+      "wireBytes": 122158,
+      "contentEncoding": "gzip",
+      "bodySha256": "75cb70eb3b0edd893ff77d2fd79576bdaa8774279a7f9fff48c06dde22a1a7d1",
+      "responseSummary": {
+        "frames": 1993,
+        "complete": false,
+        "stats": {
+          "snapshotsUsed": 1,
+          "eventsRead": 12059,
+          "tradesRead": 1278,
+          "booksEmitted": 738,
+          "gaps": 0,
+          "timestampGroupsExamined": 951,
+          "encodedBytes": 952208
+        }
+      },
+      "failureClass": "SUCCESS",
+      "durationMs": 2550.456,
+      "headersMs": 2380.55,
+      "bodyMs": 148.01
+    },
+    {
+      "user": 0,
+      "round": 0,
+      "requestIndex": 0,
+      "route": "replay-page",
+      "page": 18,
+      "correlationId": "5ca92733-0ba6-4b06-be31-f77bc09adfab.0.0.0.18",
+      "status": 200,
+      "responseBytes": 951057,
+      "wireBytes": 118709,
+      "contentEncoding": "gzip",
+      "bodySha256": "d82d721f11b3b1d3d59dac285918f81aeb5ccba302fd710a7570ea325c4a14f3",
+      "responseSummary": {
+        "frames": 1939,
+        "complete": false,
+        "stats": {
+          "snapshotsUsed": 1,
+          "eventsRead": 1047,
+          "tradesRead": 1083,
+          "booksEmitted": 984,
+          "gaps": 0,
+          "timestampGroupsExamined": 1159,
+          "encodedBytes": 950459
+        }
+      },
+      "failureClass": "SUCCESS",
+      "durationMs": 2186.606,
+      "headersMs": 1738.82,
+      "bodyMs": 427.168
+    },
+    {
+      "user": 0,
+      "round": 0,
+      "requestIndex": 0,
+      "route": "replay-page",
+      "page": 19,
+      "correlationId": "5ca92733-0ba6-4b06-be31-f77bc09adfab.0.0.0.19",
+      "status": 200,
+      "responseBytes": 964941,
+      "wireBytes": 120300,
+      "contentEncoding": "gzip",
+      "bodySha256": "4c49fa292a29b65c114192c8f5e23f3806a5a547976e013c1b4f1fcb9166b668",
+      "responseSummary": {
+        "frames": 2000,
+        "complete": false,
+        "stats": {
+          "snapshotsUsed": 1,
+          "eventsRead": 1937,
+          "tradesRead": 1110,
+          "booksEmitted": 891,
+          "gaps": 0,
+          "timestampGroupsExamined": 1054,
+          "encodedBytes": 964343
+        }
+      },
+      "failureClass": "SUCCESS",
+      "durationMs": 1991.533,
+      "headersMs": 1754.351,
+      "bodyMs": 216.777
+    }
+  ]
+}

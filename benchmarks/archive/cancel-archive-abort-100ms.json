@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "name": "o0-cancel-archive-nq-candle-1d-abort-100ms-2026-09-20",
+  "users": 1,
+  "rounds": 5,
+  "requests": [
+    {
+      "kind": "archive-query",
+      "route": "archive-query",
+      "body": {
+        "instrumentId": "[\"XCME\",\"FUTURE\",\"NQU6\",\"USD\",\"CONTRACT\"]",
+        "family": "candle_1d",
+        "from": "1781654400000000000",
+        "to": "1788220800000000000",
+        "limit": 10000
+      },
+      "abort": { "afterMs": 100 }
+    }
+  ]
+}

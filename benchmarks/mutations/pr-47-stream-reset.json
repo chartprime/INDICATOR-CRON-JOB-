@@ -1,0 +1,20 @@
+{
+  "mutations": [
+    {
+      "id": "pr47-audit.stream.reset-keeps-the-want",
+      "file": "apps/web/src/lib/indicators/passive-liquidity/columnHistoryStream.ts",
+      "find": "    this._done = new Set(done);\n    this._wanted = null;\n",
+      "replace": "    this._done = new Set(done);\n",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/passive-liquidity/tests/columnHistoryStream.test.ts"
+      ],
+      "mustFail": [
+        "a reset from a listener on the last hour asks nothing more until the next want: the hours it finished are not fetched again"
+      ]
+    }
+  ]
+}

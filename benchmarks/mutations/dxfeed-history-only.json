@@ -1,0 +1,13 @@
+{
+  "mutations": [
+    {
+      "id": "history-only.no-broker-tears-down-warm-up",
+      "file": "apps/runtime/src/server/dxfeed-market-data-server.js",
+      "find": "      if (activeView.bookAssembler) emitBook(activeView, { status: \"UNAVAILABLE\", reason: NOT_CONFIGURED_REASON });",
+      "replace": "      if (activeView.bookAssembler) emitBook(activeView, { status: \"UNAVAILABLE\", reason: NOT_CONFIGURED_REASON });\n      jobOwner.cancel(vpinWarmupJob);",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/server/dxfeed-market-data-server.test.js"],
+      "mustFail": ["without a broker the selected instrument keeps its recorded host history: bars arrive and the VPIN warm-up is not cancelled"]
+    }
+  ]
+}

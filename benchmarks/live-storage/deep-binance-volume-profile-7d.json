@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "name": "o0-deep-binance-volume-profile-7d-2026-09-18",
+  "users": 1,
+  "rounds": 1,
+  "requests": [
+    {
+      "route": "volume-profile",
+      "body": { "symbol": "BTCUSDT", "marketKind": "SPOT", "options": { "fromTs": 1789084800000, "toTs": 1789689600000, "originPrice": 0, "rowWidth": 10 } }
+    }
+  ]
+}

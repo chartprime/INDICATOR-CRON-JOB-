@@ -1,0 +1,156 @@
+{
+  "version": 1,
+  "purpose": "One set of minute bars and hand-derived answers, read by BOTH the Python archive rollup (apps/runtime/conversion/candle_rollup.py) and the browser resampler (apps/web/src/lib/chart/resampleBars.ts). Where the two agree the answer is pinned once; where they differ each side's answer is pinned separately with the reason, so a difference cannot change silently in either direction.",
+  "oracle": "Hand-derived from the minute inputs: open = first minute's open, close = last minute's close, high/low = extremes, volume = sum. Not produced by either implementation.",
+  "baseMs": 1767571200000,
+  "baseNote": "2026-01-05T00:00:00Z, a UTC day start. Every offset below is in minutes from it.",
+  "cases": [
+    {
+      "name": "a full hour takes open from the first minute, close from the last and extremes from all",
+      "target": "hour",
+      "minutes": [
+        { "atMinute": 0, "count": 30, "open": "100", "high": "105", "low": "99", "close": "101", "volume": "10" },
+        { "atMinute": 30, "count": 30, "open": "101", "high": "108", "low": "97", "close": "104", "volume": "20" }
+      ],
+      "outcome": "agree",
+      "python": [{ "openMinute": 0, "open": "100", "high": "108", "low": "97", "close": "104", "volume": "900" }],
+      "js": [{ "openMinute": 0, "open": "100", "high": "108", "low": "97", "close": "104", "volume": "900", "closed": true }]
+    },
+    {
+      "name": "two hours come out in time order even when their minutes arrive in the opposite order",
+      "target": "hour",
+      "minutes": [
+        { "atMinute": 60, "count": 60, "open": "200", "high": "201", "low": "199", "close": "200", "volume": "2" },
+        { "atMinute": 0, "count": 60, "open": "100", "high": "101", "low": "99", "close": "100", "volume": "1" }
+      ],
+      "outcome": "agree",
+      "python": [
+        { "openMinute": 0, "open": "100", "high": "101", "low": "99", "close": "100", "volume": "60" },
+        { "openMinute": 60, "open": "200", "high": "201", "low": "199", "close": "200", "volume": "120" }
+      ],
+      "js": [
+        { "openMinute": 0, "open": "100", "high": "101", "low": "99", "close": "100", "volume": "60", "closed": true },
+        { "openMinute": 60, "open": "200", "high": "201", "low": "199", "close": "200", "volume": "120", "closed": true }
+      ]
+    },
+    {
+      "name": "a UTC day from two runs of minutes, complete",
+      "target": "day",
+      "minutes": [
+        { "atMinute": 0, "count": 700, "open": "100", "high": "110", "low": "95", "close": "105", "volume": "1" },
+        { "atMinute": 700, "count": 740, "open": "105", "high": "120", "low": "90", "close": "100", "volume": "2" }
+      ],
+      "outcome": "agree",
+      "python": [{ "openMinute": 0, "open": "100", "high": "120", "low": "90", "close": "100", "volume": "2180" }],
+      "js": [{ "openMinute": 0, "open": "100", "high": "120", "low": "90", "close": "100", "volume": "2180", "closed": true }]
+    },
+    {
+      "name": "a partial hour that starts on the hour: Python publishes it, the browser draws it but marks it still open",
+      "target": "hour",
+      "minutes": [
+        { "atMinute": 0, "open": "100", "high": "105", "low": "95", "close": "101", "volume": "7" },
+        { "atMinute": 1, "open": "101", "high": "110", "low": "90", "close": "102", "volume": "3" },
+        { "atMinute": 2, "open": "102", "high": "103", "low": "99", "close": "104", "volume": "5" }
+      ],
+      "outcome": "differ",
+      "difference": "Same values. Python has no completeness concept: a published hour is a bar, so a quiet hour is an ordinary bar. The browser flags any hour that is not 60 contiguous closed minutes as closed=false.",
+      "python": [{ "openMinute": 0, "open": "100", "high": "110", "low": "90", "close": "104", "volume": "15" }],
+      "js": [{ "openMinute": 0, "open": "100", "high": "110", "low": "90", "close": "104", "volume": "15", "closed": false }]
+    },
+    {
+      "name": "a sparse hour with holes: Python keeps it, the browser drops it",
+      "target": "hour",
+      "minutes": [
+        { "atMinute": 0, "open": "10", "high": "12", "low": "9", "close": "11", "volume": "1" },
+        { "atMinute": 1, "open": "11", "high": "13", "low": "10", "close": "12", "volume": "2" },
+        { "atMinute": 5, "open": "12", "high": "12", "low": "8", "close": "9", "volume": "3" },
+        { "atMinute": 30, "open": "9", "high": "20", "low": "9", "close": "15", "volume": "4" }
+      ],
+      "outcome": "differ",
+      "difference": "The archive holds a bar only where the market traded, so Python treats a sparse hour as an ordinary hour. The browser treats a hole between minutes as unknown and refuses to draw an aggregate over it. Open contract question: which meaning does a coarse bar have?",
+      "python": [{ "openMinute": 0, "open": "10", "high": "20", "low": "8", "close": "15", "volume": "10" }],
+      "js": []
+    },
+    {
+      "name": "an hour whose first minute is missing: Python keeps it, the browser drops it",
+      "target": "hour",
+      "minutes": [
+        { "atMinute": 10, "count": 50, "open": "50", "high": "51", "low": "49", "close": "50", "volume": "2" }
+      ],
+      "outcome": "differ",
+      "difference": "The browser requires the first minute to sit at the bucket open; Python does not. Same root difference as the sparse hour.",
+      "python": [{ "openMinute": 0, "open": "50", "high": "51", "low": "49", "close": "50", "volume": "100" }],
+      "js": []
+    },
+    {
+      "name": "a minute belongs to the hour it opens in: 12:59 and 13:00 are different hours",
+      "target": "hour",
+      "minutes": [
+        { "atMinute": 59, "open": "10", "high": "11", "low": "9", "close": "10", "volume": "4" },
+        { "atMinute": 60, "open": "20", "high": "21", "low": "19", "close": "20", "volume": "6" }
+      ],
+      "outcome": "differ",
+      "difference": "Both sides put the minutes in the same two hours; the browser then drops the first because its lone minute is not at the bucket open, and draws the second as an open hour.",
+      "python": [
+        { "openMinute": 0, "open": "10", "high": "11", "low": "9", "close": "10", "volume": "4" },
+        { "openMinute": 60, "open": "20", "high": "21", "low": "19", "close": "20", "volume": "6" }
+      ],
+      "js": [{ "openMinute": 60, "open": "20", "high": "21", "low": "19", "close": "20", "volume": "6", "closed": false }]
+    },
+    {
+      "name": "a fractional volume: Python refuses, the browser sums floats",
+      "target": "hour",
+      "minutes": [
+        { "atMinute": 0, "open": "10", "high": "11", "low": "9", "close": "10", "volume": "1.5" }
+      ],
+      "outcome": "differ",
+      "difference": "Archive volumes are integer contract counts, so Python treats a fractional volume as a defect. The browser also renders spot crypto, whose volumes are fractional, so it sums floats.",
+      "python": { "error": "VOLUME_NOT_REPRESENTABLE_AS_INTEGER" },
+      "js": [{ "openMinute": 0, "open": "10", "high": "11", "low": "9", "close": "10", "volume": "1.5", "closed": false }]
+    },
+    {
+      "name": "a price finer than nine decimal places: Python refuses, the browser passes it through",
+      "target": "hour",
+      "minutes": [
+        { "atMinute": 0, "open": "100.0000000001", "high": "101", "low": "99", "close": "100", "volume": "1" }
+      ],
+      "outcome": "differ",
+      "difference": "Python converts back to fixed nine-decimal point and refuses anything that would round. The browser holds doubles and never rounds.",
+      "python": { "error": "PRICE_NOT_REPRESENTABLE_AS_FIXED9" },
+      "js": [{ "openMinute": 0, "open": "100.0000000001", "high": "101", "low": "99", "close": "100", "volume": "1", "closed": false }]
+    },
+    {
+      "name": "the same minute delivered twice: Python counts it twice, the browser keeps the last",
+      "target": "hour",
+      "minutes": [
+        { "atMinute": 0, "open": "100", "high": "101", "low": "99", "close": "100", "volume": "5" },
+        { "atMinute": 0, "open": "100", "high": "101", "low": "99", "close": "100", "volume": "7" }
+      ],
+      "outcome": "differ",
+      "difference": "The browser deduplicates by open time (last wins); Python sums every row it is given. Harmless while published partitions never overlap; a duplicated minute in the archive would double its volume in the hourly rung.",
+      "python": [{ "openMinute": 0, "open": "100", "high": "101", "low": "99", "close": "100", "volume": "12" }],
+      "js": [{ "openMinute": 0, "open": "100", "high": "101", "low": "99", "close": "100", "volume": "7", "closed": false }]
+    },
+    {
+      "name": "minutes of two instruments in one hour are refused by both",
+      "target": "hour",
+      "minutes": [
+        { "atMinute": 0, "symbol": "38", "open": "10", "high": "11", "low": "9", "close": "10", "volume": "1" },
+        { "atMinute": 1, "symbol": "39", "open": "10", "high": "11", "low": "9", "close": "10", "volume": "1" }
+      ],
+      "outcome": "both-refuse",
+      "python": { "error": "HOUR_SPANS_MULTIPLE_SOURCE_SYMBOLS" },
+      "js": { "error": "bars must belong to one pair and source interval" }
+    },
+    {
+      "name": "a bar that is not on a minute boundary is refused by both",
+      "target": "hour",
+      "minutes": [
+        { "atMinute": 30.5, "open": "10", "high": "11", "low": "9", "close": "10", "volume": "1" }
+      ],
+      "outcome": "both-refuse",
+      "python": { "error": "SOURCE_BAR_NOT_MINUTE_ALIGNED" },
+      "js": { "error": "bars must belong to one pair and source interval" }
+    }
+  ]
+}

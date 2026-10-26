@@ -1,0 +1,49 @@
+{
+  "mutations": [
+    {
+      "id": "candle-rebuild.invalid-ticks-accepted",
+      "file": "apps/runtime/scripts/maintain/rebuild-dxfeed-candles.js",
+      "find": "classifyStoredDxFeedTimeAndSaleRowForBar(row, { requireValidTick: true })",
+      "replace": "classifyStoredDxFeedTimeAndSaleRowForBar(row, { requireValidTick: false })",
+      "mustFail": ["an invalid print no longer sets the high, and the sides come back"],
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/scripts/maintain/rebuild-dxfeed-candles.test.js"]
+    },
+    {
+      "id": "candle-rebuild.spread-legs-accepted",
+      "file": "apps/runtime/src/providers/dxfeed/dxfeed-trade-adapter.js",
+      "find": "{ type: row.event_kind, spreadLeg: row.spread_leg === 1, validTick: row.valid_tick === 1 }",
+      "replace": "{ type: row.event_kind, spreadLeg: false, validTick: row.valid_tick === 1 }",
+      "mustFail": ["a spread-leg print is excluded from the bar"],
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/scripts/maintain/rebuild-dxfeed-candles.test.js"]
+    },
+    {
+      "id": "candle-rebuild.native-minutes-planned",
+      "file": "apps/runtime/scripts/maintain/rebuild-dxfeed-candles.js",
+      "find": "WHERE symbol = ? AND asset_class = ? AND derivation = 'TIME_AND_SALE' AND ts_open >= ? AND ts_open < ? ORDER BY ts_open",
+      "replace": "WHERE symbol = ? AND asset_class = ? AND ts_open >= ? AND ts_open < ? ORDER BY ts_open",
+      "mustFail": ["native minutes and minutes outside the window are never planned"],
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/scripts/maintain/rebuild-dxfeed-candles.test.js"]
+    },
+    {
+      "id": "candle-rebuild.invalid-only-minute-kept",
+      "file": "apps/runtime/scripts/maintain/rebuild-dxfeed-candles.js",
+      "find": "const action = bar === null ? \"remove\" :",
+      "replace": "const action = bar === null ? \"unchanged\" :",
+      "mustFail": ["a minute made only of invalid prints is removed, not kept as a bar"],
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/scripts/maintain/rebuild-dxfeed-candles.test.js"]
+    },
+    {
+      "id": "candle-rebuild.missing-prints-treated-as-invalid",
+      "file": "apps/runtime/scripts/maintain/rebuild-dxfeed-candles.js",
+      "find": "      if (rows.length === 0) {",
+      "replace": "      if (false) {",
+      "mustFail": ["a minute whose prints are no longer stored is left alone and reported"],
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/scripts/maintain/rebuild-dxfeed-candles.test.js"]
+    }
+  ]
+}

@@ -1,0 +1,182 @@
+{
+  "binanceStyle": {
+    "liquidityBytes": 7400703,
+    "stats": {
+      "l2_view": {
+        "frames": 985,
+        "bytes": 508564,
+        "resets": 2,
+        "items": 985,
+        "maxItems": 1,
+        "missed": 0
+      },
+      "l2_walls": {
+        "frames": 1790,
+        "bytes": 3727186,
+        "resets": 1,
+        "items": 5825,
+        "maxItems": 6,
+        "missed": 0
+      },
+      "l2_events": {
+        "frames": 1787,
+        "bytes": 2062055,
+        "resets": 1,
+        "items": 16141,
+        "maxItems": 25,
+        "missed": 0
+      },
+      "l2_ladder": {
+        "frames": 1790,
+        "bytes": 2399351,
+        "resets": 0,
+        "items": 179000,
+        "maxItems": 100,
+        "missed": 0
+      }
+    },
+    "eventKinds": {
+      "trade": 10900,
+      "wall_shrink": 206,
+      "hidden": 2040,
+      "wall_trade": 2342,
+      "wall_born": 337,
+      "wall_hidden": 295,
+      "wall_end": 17,
+      "segment": 2
+    },
+    "capped": {
+      "frames": 0,
+      "lifecycleAtCap": 0
+    },
+    "chainBreaks": {
+      "l2_view": 0,
+      "l2_walls": 0,
+      "l2_events": 0,
+      "l2_ladder": 0
+    },
+    "wallChanges": {
+      "detail.cross_side+detail.cross_side_share+size": 1366,
+      "detail.cross_side+detail.cross_side_share+detail.fill_ratio+size": 545,
+      "detail.cross_side+detail.cross_side_share+size+span": 361,
+      "new": 337,
+      "detail.cross_side+detail.cross_side_share+row+size+span": 331,
+      "detail.cross_side+detail.cross_side_share+detail.fill_ratio+size+span": 194,
+      "detail.cross_side+detail.cross_side_share+fill+size+span": 183,
+      "detail.cross_side+detail.cross_side_share+detail.fill_ratio+row+size+span": 176,
+      "detail.cross_side+detail.cross_side_share+fill+row+size+span": 175,
+      "detail.cross_side+detail.cross_side_share+peak+ratio+size": 145,
+      "detail.cross_side+detail.cross_side_share+detail.first_shrink_ts+detail.reached_at_first_shrink+size": 141,
+      "detail.cross_side+detail.cross_side_share+detail.fill_ratio+fill+row+size+span": 84
+    },
+    "joins": {
+      "count": 5,
+      "wallMismatches": 0,
+      "eventSeqMismatches": 0,
+      "eventRingMismatches": 0,
+      "viewSeqMismatches": 0,
+      "ladderMismatches": 0,
+      "segmentMismatches": 0,
+      "l2_viewBytes": 117181,
+      "l2_wallsBytes": 29113,
+      "l2_eventsBytes": 276636,
+      "l2_ladderBytes": 6690
+    },
+    "digests": {
+      "l2_view": "4e405b6ce2f6a2a45a6c943f85d8a825e33cd6e64c4e7a7073378f9b520c4e6b",
+      "l2_walls": "1efc7dc4826f3ad58f1188642c31191fc667fef2e4211bf662a1f8aa9758f842",
+      "l2_events": "67721b9eb8051f3be89b277367c20ceabb5b46c230ef8b4553eb93e3037e26b7",
+      "l2_ladder": "883e8d00053fa8521dee6fea42048e08e6950708d94efdb869df973d48b2e495"
+    }
+  },
+  "dxfeedStyle": {
+    "liquidityBytes": 31964878,
+    "stats": {
+      "l2_view": {
+        "frames": 0,
+        "bytes": 0,
+        "resets": 0,
+        "items": 0,
+        "maxItems": 0,
+        "missed": 0
+      },
+      "l2_walls": {
+        "frames": 1790,
+        "bytes": 6530323,
+        "resets": 1,
+        "items": 10818,
+        "maxItems": 12,
+        "missed": 0
+      },
+      "l2_events": {
+        "frames": 1785,
+        "bytes": 2045468,
+        "resets": 1,
+        "items": 15713,
+        "maxItems": 25,
+        "missed": 0
+      },
+      "l2_ladder": {
+        "frames": 1790,
+        "bytes": 2180266,
+        "resets": 0,
+        "items": 156986,
+        "maxItems": 100,
+        "missed": 0
+      }
+    },
+    "eventKinds": {
+      "wall_shrink": 578,
+      "trade": 10890,
+      "wall_born": 725,
+      "wall_trade": 2664,
+      "hidden": 656,
+      "wall_end": 92,
+      "wall_hidden": 100,
+      "segment": 2
+    },
+    "capped": {
+      "frames": 0,
+      "lifecycleAtCap": 0
+    },
+    "chainBreaks": {
+      "l2_view": 0,
+      "l2_walls": 0,
+      "l2_events": 0,
+      "l2_ladder": 0
+    },
+    "wallChanges": {
+      "detail.cross_side+detail.cross_side_share+size": 1620,
+      "new": 725,
+      "detail.cross_side+detail.cross_side_share+row+size+span": 701,
+      "detail.cross_side+detail.cross_side_share+size+span": 583,
+      "detail.cross_side+detail.cross_side_share+detail.fill_ratio+size": 578,
+      "detail.cleared+detail.cross_side+detail.cross_side_share+size": 488,
+      "detail.cross_side+detail.cross_side_share": 482,
+      "detail.cleared+detail.cross_side+detail.cross_side_share+row+size+span": 299,
+      "detail.cross_side+detail.cross_side_share+detail.fill_ratio+row+size+span": 250,
+      "detail.cleared+detail.cross_side+detail.cross_side_share+size+span": 245,
+      "detail.cross_side+detail.cross_side_share+peak+ratio+row+size+span": 233,
+      "detail.cleared+detail.cross_side+detail.cross_side_share+detail.fill_ratio+size": 170
+    },
+    "joins": {
+      "count": 5,
+      "wallMismatches": 0,
+      "eventSeqMismatches": 0,
+      "eventRingMismatches": 0,
+      "viewSeqMismatches": 0,
+      "ladderMismatches": 0,
+      "segmentMismatches": 0,
+      "l2_viewBytes": 0,
+      "l2_wallsBytes": 173980,
+      "l2_eventsBytes": 283061,
+      "l2_ladderBytes": 5991
+    },
+    "digests": {
+      "l2_view": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "l2_walls": "8a6d04ff2d4567e178c7a371de5dda9e822a0b206f23e8daadd75a0850cdac16",
+      "l2_events": "6de019561c234bf94d5c5a89dbeca5b9841c65549810e3aa11d9b90a55afc4f8",
+      "l2_ladder": "839a00d8cfcd8da0393b84a508a99dd5879c738f54e48abaed10f74f3c656c40"
+    }
+  }
+}

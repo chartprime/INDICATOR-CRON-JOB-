@@ -1,0 +1,67 @@
+{
+  "mutations": [
+    {
+      "id": "pr26-live-book-profile-not-an-axis-occupant",
+      "file": "apps/web/src/components/chart/ChartPanel.tsx",
+      "find": "const frame = bookPrimitiveRef.current?.frame;",
+      "replace": "const frame = undefined;",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/components/chart/tests/ChartPanel.lifecycle.test.tsx", "-t", "keeps room at the price axis for the Live Order Book Profile"],
+      "mustFail": ["keeps room at the price axis for the Live Order Book Profile as far in as it draws"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "pr26-live-book-profile-picked-as-its-own-neighbour",
+      "file": "apps/web/src/components/chart/ChartPanel.tsx",
+      "find": "occupant.key !== LIVE_DELTA_OCCUPANT && occupant.key !== LIVE_BOOK_OCCUPANT",
+      "replace": "occupant.key !== LIVE_DELTA_OCCUPANT",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/components/chart/tests/ChartPanel.lifecycle.test.tsx", "-t", "sits the Live Order Book Profile beside the ladder"],
+      "mustFail": ["sits the Live Order Book Profile beside the ladder, never beside itself, however far in it draws"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "pr26-right-offset-claim-never-released",
+      "file": "apps/web/src/lib/chart/rightOffsetRoom.ts",
+      "find": "if (wanted === null) room.wanted.delete(owner);",
+      "replace": "if (wanted === null) void owner;",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/chart/tests/rightOffsetRoom.test.ts", "src/lib/indicators/axis-profile/tests/axisProfilePrimitive.test.ts"],
+      "mustFail": [
+        "is the widest claim while any stands, and the chart's own offset once every claim is dropped",
+        "hand the chart back its own right offset once both are off, whichever turns off first"
+      ],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "pr26-right-offset-ignores-the-apps-own-change",
+      "file": "apps/web/src/lib/chart/rightOffsetRoom.ts",
+      "find": "    room.base = options.rightOffset;\n  }",
+      "replace": "  }",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/chart/tests/rightOffsetRoom.test.ts"],
+      "mustFail": ["takes an offset the app set underneath the claims as the chart's own"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "pr26-axis-profile-claims-as-a-new-owner-each-time",
+      "file": "apps/web/src/lib/indicators/axis-profile/axisProfilePrimitive.ts",
+      "find": "claimRightOffset(chart, this, wanted, force);",
+      "replace": "claimRightOffset(chart, {}, wanted, force);",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/indicators/axis-profile/tests/axisProfilePrimitive.test.ts"],
+      "mustFail": ["hand the chart back its own right offset once both are off, whichever turns off first"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "pr26-resting-orders-survive-a-new-grid-epoch",
+      "file": "apps/web/src/lib/indicators/live-order-book-profile/restingOrders.ts",
+      "find": "if (grid.epoch !== this._state.epoch || this._seenTs === -Infinity || minSize !== this._minSize) {",
+      "replace": "if (this._seenTs === -Infinity || minSize !== this._minSize) {",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/indicators/live-order-book-profile/tests/restingOrders.test.ts"],
+      "mustFail": ["replays over what the grid holds after a reset of the grid, and walks what it missed while it was not asked"],
+      "timeoutMs": 180000
+    }
+  ]
+}

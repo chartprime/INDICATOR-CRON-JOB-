@@ -1,0 +1,101 @@
+{
+  "mutations": [
+    {
+      "id": "aggr-breaks.break-not-clamped",
+      "file": "apps/web/src/lib/indicators/aggressive-orders/aggressiveOrdersPrimitive.ts",
+      "find": "const along = Math.min(1, (ms - open) / intervalMs);",
+      "replace": "const along = (ms - open) / intervalMs;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/aggressive-orders/tests/aggressiveOrdersPrimitive.test.ts"
+      ],
+      "mustFail": [
+        "places a moment inside its candle's slot, as far along as it is through the candle; a moment in a session break at the right edge of the candle before it"
+      ]
+    },
+    {
+      "id": "aggr-breaks.always-at-the-centre",
+      "file": "apps/web/src/lib/indicators/aggressive-orders/aggressiveOrdersPrimitive.ts",
+      "find": "return Number(center) + (along - 0.5) * barSpacing;",
+      "replace": "return Number(center);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/aggressive-orders/tests/aggressiveOrdersPrimitive.test.ts"
+      ],
+      "mustFail": [
+        "places a moment inside its candle's slot, as far along as it is through the candle",
+        "draws each bubble on the candle its print belongs to, whatever holes the chart has before or after it"
+      ]
+    },
+    {
+      "id": "aggr-breaks.before-the-first-candle-drawn",
+      "file": "apps/web/src/lib/indicators/aggressive-orders/aggressiveOrdersPrimitive.ts",
+      "find": "if (lo === 0) return null;\n  const bar = bars[lo - 1];",
+      "replace": "if (lo === 0) lo = 1;\n  const bar = bars[lo - 1];",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/aggressive-orders/tests/aggressiveOrdersPrimitive.test.ts"
+      ],
+      "mustFail": [
+        "one before the first candle nowhere"
+      ]
+    },
+    {
+      "id": "aggr-breaks.no-candle-no-bubble",
+      "file": "apps/web/src/lib/indicators/aggressive-orders/aggressiveOrdersRenderer.ts",
+      "find": "const at = geometry.xOf(moment);\n    if (at === null) continue;\n    const x = at +",
+      "replace": "const at = geometry.xOf(moment);\n    const x = (at ?? 0) +",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/aggressive-orders/tests/aggressiveOrdersRenderer.test.ts"
+      ],
+      "mustFail": [
+        "draws no bubble for a print the chart has no candle for"
+      ]
+    },
+    {
+      "id": "aggr-breaks.visible-stretch-margin",
+      "file": "apps/web/src/lib/indicators/aggressive-orders/aggressiveOrdersPrimitive.ts",
+      "find": "const toMs = (visible === null ? lastSec : Number(visible.to)) * 1000 + 2 * intervalMs;",
+      "replace": "const toMs = (visible === null ? lastSec : Number(visible.to)) * 1000 + intervalMs;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/aggressive-orders/tests/aggressiveOrdersPrimitive.test.ts"
+      ],
+      "mustFail": [
+        "asks the tape for the chart's visible stretch, a candle each side, not for a stretch read off a straight line"
+      ]
+    },
+    {
+      "id": "aggr-breaks.slot-width-ignored",
+      "file": "apps/web/src/lib/indicators/aggressive-orders/aggressiveOrdersPrimitive.ts",
+      "find": "xOf: (ms) => candleX(bars, ms, intervalMs, barSpacing, (time) => timeScale.timeToCoordinate(time)),",
+      "replace": "xOf: (ms) => candleX(bars, ms, intervalMs, 0, (time) => timeScale.timeToCoordinate(time)),",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/aggressive-orders/tests/aggressiveOrdersPrimitive.test.ts"
+      ],
+      "mustFail": [
+        "draws each bubble on the candle its print belongs to, whatever holes the chart has before or after it"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,454 @@
+{
+  "mutations": [
+    {
+      "id": "archive-study.vpin-calibrates-on-the-week-it-reports",
+      "file": "apps/runtime/src/server/archive-study.js",
+      "find": "    calibrationEndTs: weekStart,",
+      "replace": "    calibrationEndTs: weekStart + WEEK_MS,",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/server/archive-study.test.js"],
+      "mustFail": ["each week warms up from the live lead-in and calibrates on the weeks before it"]
+    },
+    {
+      "id": "archive-study.vpin-returns-lead-in-readings",
+      "file": "apps/runtime/src/server/archive-study.js",
+      "find": "    readings: result.history.filter(\n      (reading) => reading.sealTs >= weekStart && reading.sealTs < weekEnd,\n    ),",
+      "replace": "    readings: result.history,",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/server/archive-study.test.js"],
+      "mustFail": ["every reading returned belongs to the weeks asked for"]
+    },
+    {
+      "id": "archive-study.print-range-off-the-bar-grid-accepted",
+      "file": "apps/runtime/src/server/archive-study.js",
+      "find": "  if (fromTs % bucketMs !== 0 || toTs % bucketMs !== 0)\n    refuse(\"PRINT_RANGE_NOT_BAR_ALIGNED\");\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/server/archive-study.test.js"],
+      "mustFail": ["a print range not on the bar grid"]
+    },
+    {
+      "id": "archive-study.historical-profile-scoped-as-live",
+      "file": "apps/runtime/src/server/archive-study.js",
+      "find": "          deliveryScope: \"HISTORICAL\",\n          historyRequestId: requestId,",
+      "replace": "          deliveryScope: \"LIVE\",\n          historyRequestId: requestId,",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/server/archive-study.test.js"],
+      "mustFail": ["a volume profile over the range"]
+    },
+    {
+      "id": "segmented-reader.contract-read-beyond-its-own-stretch",
+      "file": "apps/runtime/src/storage/segmented-archive-reader.js",
+      "find": "        fromTs: Math.max(fromTs, segment.fromTs),\n        toTs: Math.min(toTs, segment.toTs),",
+      "replace": "        fromTs,\n        toTs,",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/server/archive-study.test.js"],
+      "mustFail": ["a range across two contracts reads each for its own stretch"]
+    },
+    {
+      "id": "archive-study-route.gap-between-contracts-accepted",
+      "file": "apps/runtime/src/server/archive-study-route.js",
+      "find": "      return errorBody(INVALID_STUDY, \"SEGMENTS_NOT_CONTIGUOUS\");",
+      "replace": "      break;",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/server/archive-study-route.test.js"],
+      "mustFail": ["contract stretches with a gap between them is refused by name"]
+    },
+    {
+      "id": "archive-study-route.one-client-runs-studies-in-parallel",
+      "file": "apps/runtime/src/server/archive-study-route.js",
+      "find": "    if (activeClients.has(clientId)) {",
+      "replace": "    if (false) {",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/server/archive-study-route.test.js"],
+      "mustFail": ["one client runs one study at a time"]
+    },
+    {
+      "id": "web.archived-futures-prints-measured-in-notional",
+      "file": "apps/web/src/lib/indicators/whale-detector/whaleTrades.ts",
+      "find": "(marker.provider === \"DXFEED\" || marker.provider === \"DATABENTO\") && marker.assetClass === \"FUTURE\"",
+      "replace": "marker.provider === \"DXFEED\" && marker.assetClass === \"FUTURE\"",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/whale-detector/tests/whaleTrades.test.ts"],
+      "mustFail": ["measures archived Databento futures in contracts too"]
+    },
+    {
+      "id": "web.trade-studies-open-without-trade-families",
+      "file": "apps/web/src/lib/chart/indicatorRegistry.ts",
+      "find": "  requiredCapabilities: [\"ohlcv\", \"trade_families\"] as const,",
+      "replace": "  requiredCapabilities: [\"ohlcv\"] as const,",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/chart/historicalIndicatorAvailability.test.ts"],
+      "mustFail": ["opens the trade-derived studies exactly when the archive serves trade families"]
+    },
+    {
+      "id": "web.overloaded-study-not-retried",
+      "file": "apps/web/src/lib/archive/useArchiveStudies.ts",
+      "find": "            if (result.code === \"OVERLOADED\" && job.attempt < MAX_ATTEMPTS) {",
+      "replace": "            if (false) {",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/archive/useArchiveStudies.test.tsx"],
+      "mustFail": ["retries an overloaded study quietly with the same request"]
+    },
+    {
+      "id": "web.refused-study-never-asked-again",
+      "file": "apps/web/src/lib/archive/useArchiveStudies.ts",
+      "find": "              release(job);\n              setStatus((current) => ({\n                ...current,\n                loading: true,\n                issue: `The archive refused",
+      "replace": "              setStatus((current) => ({\n                ...current,\n                loading: true,\n                issue: `The archive refused",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/archive/useArchiveStudies.test.tsx"],
+      "mustFail": ["reports a refused study, then asks for it again on the next pan"]
+    },
+    {
+      "id": "web.vpin-asks-for-a-week-the-archive-cannot-finish",
+      "file": "apps/web/src/lib/archive/archiveStudyPlan.ts",
+      "find": "    if (week - VPIN_CALIBRATION_WINDOW_MS >= coverage.fromTs && week + WEEK_MS <= coverage.toTs) weeks.push(week);",
+      "replace": "    if (week >= coverage.fromTs && week + WEEK_MS <= coverage.toTs) weeks.push(week);",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/archive/archiveStudyPlan.test.ts"],
+      "mustFail": ["drops weeks the archive cannot finish"]
+    },
+    {
+      "id": "segmented-reader.outside-coverage-silently-clipped",
+      "file": "apps/runtime/src/storage/segmented-archive-reader.js",
+      "find": "    if (parts.length === 0 || parts[0].fromTs !== fromTs || parts.at(-1).toTs !== toTs) return null;",
+      "replace": "    if (parts.length === 0) return null;",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/server/archive-study.test.js"],
+      "mustFail": ["a read outside the declared segment coverage is unavailable rather than silently clipped"]
+    },
+    {
+      "id": "web.partial-study-cached-as-complete",
+      "file": "apps/web/src/lib/archive/useArchiveStudies.ts",
+      "find": "        for (const range of result.missing)\n          requested.delete(profileKey(range.fromTs));\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/archive/useArchiveStudies.test.tsx"],
+      "mustFail": ["does not cache a partial success as complete and retries its missing range on the next pan"]
+    },
+    {
+      "id": "web.print-chunks-follow-the-viewport-edge",
+      "file": "apps/web/src/lib/archive/archiveStudyPlan.ts",
+      "find": "  const chunkMs = Math.min(bucketMs * PRINT_CHUNK_BARS, MAX_PRINT_CHUNK_MS);\n  const chunks: ArchiveStudyRange[] = [];\n  for (let start = Math.floor(visibleFromMs / chunkMs) * chunkMs; start < visibleToMs; start += chunkMs) {",
+      "replace": "  const chunkMs = Math.min(bucketMs * PRINT_CHUNK_BARS, MAX_PRINT_CHUNK_MS);\n  const chunks: ArchiveStudyRange[] = [];\n  for (let start = visibleFromMs; start < visibleToMs; start += chunkMs) {",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/archive/archiveStudyPlan.test.ts"],
+      "mustFail": ["splits prints into fixed, bar-aligned chunks"]
+    },
+    {
+      "id": "web.profile-from-another-request-accepted",
+      "file": "apps/web/src/lib/archive/archiveStudyClient.ts",
+      "find": "    scope !== \"HISTORICAL\" ||\n    historyId !== requestId ||\n",
+      "replace": "    scope !== \"HISTORICAL\" ||\n",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/archive/archiveStudyClient.test.ts"],
+      "mustFail": ["rejects a profile tagged for another request"]
+    },
+    {
+      "id": "web.study-completion-contradiction-accepted",
+      "file": "apps/web/src/lib/archive/archiveStudyClient.ts",
+      "find": "  if (body.complete !== (missing.length === 0)) {",
+      "replace": "  if (false) {",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/archive/archiveStudyClient.test.ts"],
+      "mustFail": ["rejects payload or missing ranges outside the request and contradictory completion"]
+    },
+    {
+      "id": "web.study-profile-outside-request-accepted",
+      "file": "apps/web/src/lib/archive/archiveStudyClient.ts",
+      "find": "      profiles.some(\n        (entry) =>\n          !request.ranges.some(\n            (range) =>\n              entry.period_start_ts === range.fromTs &&\n              entry.period_end_ts === range.toTs,\n          ),\n      )",
+      "replace": "      false",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/archive/archiveStudyClient.test.ts"],
+      "mustFail": ["rejects payload or missing ranges outside the request and contradictory completion"]
+    },
+    {
+      "id": "web.new-attempt-keeps-the-old-error",
+      "file": "apps/web/src/lib/archive/useArchiveStudies.ts",
+      "find": "      setStatus((current) =>\n        current.issue === null ? current : { ...current, issue: null },\n      );\n      void drain();",
+      "replace": "      void drain();",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/archive/useArchiveStudies.test.tsx"],
+      "mustFail": ["asks for it again on the next pan and clears the report"]
+    },
+    {
+      "id": "archive-gateway.study-route-not-mounted",
+      "file": "apps/runtime/scripts/serve/run-archive-gateway.js",
+      "find": "      if (study.handle(request, response)) return;\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/server/archive-gateway.test.js"],
+      "mustFail": ["/archive/study is answered by the study route under the gateway"]
+    },
+    {
+      "id": "archive-gateway.study-loads-the-sqlite-vpin-worker",
+      "file": "apps/runtime/src/server/archive-study.js",
+      "find": "require(\"../indicators/vpin/vpin-compute\")",
+      "replace": "require(\"../indicators/vpin/vpin-warmup-worker\")",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/server/archive-gateway.test.js"],
+      "mustFail": ["loading it pulls in no exchange connection, dxFeed or sqlite"]
+    },
+    {
+      "id": "archive-gateway.study-loads-the-frame-catalogue",
+      "file": "apps/runtime/src/server/archive-study.js",
+      "find": "require(\"./wire-fields\")",
+      "replace": "require(\"./frames\")",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/server/archive-gateway.test.js"],
+      "mustFail": ["loading it pulls in no exchange connection, dxFeed or sqlite"]
+    },
+    {
+      "id": "archive-study-route.archive-pace-treated-as-failure",
+      "file": "apps/runtime/src/server/archive-study-route.js",
+      "find": "          if (\n            !(error instanceof UpstreamRefusal) ||\n            error.upstreamCode !== OVERLOADED ||\n            error.retryAfterMs === null\n          ) {",
+      "replace": "          if (true) {",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/server/archive-study-route.test.js"],
+      "mustFail": ["an archive that asks the study to slow down is waited for, not failed"]
+    },
+    {
+      "id": "archive-study-route.pace-waited-past-the-deadline",
+      "file": "apps/runtime/src/server/archive-study-route.js",
+      "find": "          if (now() + error.retryAfterMs >= deadlineAt)\n            throw new UpstreamRefusal(PACE_EXCEEDS_DEADLINE, error.detail);\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/server/archive-study-route.test.js"],
+      "mustFail": ["a pace the deadline cannot absorb ends the study as timed out"]
+    },
+    {
+      "id": "archive-study-route.study-spends-the-chart-budget",
+      "file": "apps/runtime/src/server/archive-study-route.js",
+      "find": "    const studyClient = upstreamClientFor(clientId);",
+      "replace": "    const studyClient = clientId;",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/server/archive-study-route.test.js"],
+      "mustFail": ["a study runs beside the data and returns only its result"]
+    },
+    {
+      "id": "web.vpin-request-spans-half-a-year",
+      "file": "apps/web/src/lib/archive/archiveStudyPlan.ts",
+      "find": "export const MAX_VPIN_WEEKS_PER_REQUEST = 2;",
+      "replace": "export const MAX_VPIN_WEEKS_PER_REQUEST = 26;",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/archive/useArchiveStudies.test.tsx"],
+      "mustFail": ["splits a long VPIN view into two-week requests"]
+    },
+    {
+      "id": "web.print-chunk-spans-500-days",
+      "file": "apps/web/src/lib/archive/archiveStudyPlan.ts",
+      "find": "  const chunkMs = Math.min(bucketMs * PRINT_CHUNK_BARS, MAX_PRINT_CHUNK_MS);",
+      "replace": "  const chunkMs = bucketMs * PRINT_CHUNK_BARS;",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/archive/archiveStudyPlan.test.ts"],
+      "mustFail": ["keeps each request small enough to finish inside the study deadline"]
+    },
+    {
+      "id": "web.profile-batch-ignores-the-period-length",
+      "file": "apps/web/src/lib/archive/archiveStudyPlan.ts",
+      "find": "Math.floor(MAX_PROFILE_SPAN_PER_REQUEST_MS / periodMs)",
+      "replace": "MAX_PROFILE_BLOCKS_PER_REQUEST",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/archive/archiveStudyPlan.test.ts"],
+      "mustFail": ["keeps each request small enough to finish inside the study deadline"]
+    },
+    {
+      "id": "archive-study.closed-day-reported-as-missing",
+      "file": "apps/runtime/src/server/archive-study.js",
+      "find": "    if (span.tradeCount === 0) {\n      empty.push({ fromTs, toTs });\n      continue;\n    }\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/server/archive-study.test.js"],
+      "mustFail": ["a day with no trades is reported empty and the study is still complete"]
+    },
+    {
+      "id": "archive-study.unreadable-day-reported-as-empty",
+      "file": "apps/runtime/src/server/archive-study.js",
+      "find": "    if (!span.available) {\n      missing.push({ fromTs, toTs });\n      continue;\n    }\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/server/archive-study.test.js"],
+      "mustFail": ["a day the archive cannot read is still missing, never empty"]
+    },
+    {
+      "id": "archive-study.vpin-chunked-for-the-laptop-link",
+      "file": "apps/runtime/src/server/archive-study.js",
+      "find": "      chunkMs: VPIN_BACKFILL_CHUNK_MS,",
+      "replace": "      chunkMs: 6 * 60 * 60 * 1_000,",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/server/archive-study.test.js"],
+      "mustFail": ["the host reads the slices a week at a time"]
+    },
+    {
+      "id": "archive-reader.sliced-window-refetched-every-time",
+      "file": "apps/runtime/src/storage/archive-storage-reader.js",
+      "find": "    sliceMemo.set(key, pending);\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/storage/archive-storage-reader.test.js"],
+      "mustFail": ["the same sliced window is read once"]
+    },
+    {
+      "id": "frames.profile-volume-held-to-the-shared-magnitude",
+      "file": "apps/runtime/src/server/wire-fields.js",
+      "find": "const MAX_PROFILE_VOLUME = 1_000_000_000_000;",
+      "replace": "const MAX_PROFILE_VOLUME = MAX_WIRE_MAGNITUDE;",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/server/frames.test.js"],
+      "mustFail": ["carries an equity row of tens of millions of shares"]
+    },
+    {
+      "id": "web.closed-period-asked-for-again",
+      "file": "apps/web/src/lib/archive/useArchiveStudies.ts",
+      "find": "        for (const range of result.empty) emptyProfileStarts.add(range.fromTs);",
+      "replace": "        for (const range of result.empty) requested.delete(profileKey(range.fromTs));",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/archive/useArchiveStudies.test.tsx"],
+      "mustFail": ["settles a period the market was closed"]
+    },
+    {
+      "id": "web.empty-range-outside-the-request-accepted",
+      "file": "apps/web/src/lib/archive/archiveStudyClient.ts",
+      "find": "      empty.some(\n        (range) =>\n          !request.ranges.some(\n            (asked) =>\n              asked.fromTs === range.fromTs && asked.toTs === range.toTs,\n          ),\n      )",
+      "replace": "      false",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/archive/archiveStudyClient.test.ts"],
+      "mustFail": ["empty range that was not asked for or was also profiled"]
+    },
+    {
+      "id": "archive-study.unsided-volume-counted-as-selling",
+      "file": "apps/runtime/src/storage/archive-storage-reader.js",
+      "find": "          entry.unknownVolume += unknown.value;",
+      "replace": "          entry.sellVolume += unknown.value;",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/server/archive-study.test.js"],
+      "mustFail": ["the buy/sell split of a"]
+    },
+    {
+      "id": "archive-study.flow-bars-not-bucketed",
+      "file": "apps/runtime/src/server/archive-study.js",
+      "find": "    const tsOpen = Math.floor(row.minuteTs / bucketMs) * bucketMs;",
+      "replace": "    const tsOpen = row.minuteTs;",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/server/archive-study.test.js"],
+      "mustFail": ["the buy/sell split of a one hour bar equals the live reader"]
+    },
+    {
+      "id": "archive-study.flow-range-off-the-bar-grid-accepted",
+      "file": "apps/runtime/src/server/archive-study.js",
+      "find": "    if (fromTs % bucketMs !== 0 || toTs % bucketMs !== 0)\n      refuse(\"FLOW_RANGE_NOT_BAR_ALIGNED\");\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/server/archive-study.test.js"],
+      "mustFail": ["a flow range off the bar grid"]
+    },
+    {
+      "id": "segmented-reader.flow-read-drops-a-contract",
+      "file": "apps/runtime/src/storage/segmented-archive-reader.js",
+      "find": "    const rows = answers.flatMap((answer) => answer.rows).sort((left, right) => left.minuteTs - right.minuteTs);",
+      "replace": "    const rows = [...answers[0].rows].sort((left, right) => left.minuteTs - right.minuteTs);",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/server/archive-study.test.js"],
+      "mustFail": ["buy/sell split across two contracts equals the single-contract answer"]
+    },
+    {
+      "id": "web.sell-side-derived-by-subtraction",
+      "file": "apps/web/src/lib/indicators/barSides.ts",
+      "find": "  const sell = bar.sell_volume === undefined || bar.sell_volume === null\n    ? Math.max(0, bar.volume - buy)\n    : bar.sell_volume;",
+      "replace": "  const sell = Math.max(0, bar.volume - buy);",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/barSides.test.ts"],
+      "mustFail": ["uses the reported sell side and keeps unsided volume out of both"]
+    },
+    {
+      "id": "web.candle-flow-studies-stay-binance-only",
+      "file": "apps/web/src/lib/chart/indicatorRegistry.ts",
+      "find": "const CANDLE_FLOW_POLICY: HistoricalIndicatorPolicy = Object.freeze({\n  requiredCapabilities: [\"ohlcv\", \"buy_volume\"] as const,\n});",
+      "replace": "const CANDLE_FLOW_POLICY: HistoricalIndicatorPolicy = Object.freeze({\n  requiredCapabilities: [\"ohlcv\", \"buy_volume\"] as const,\n  requiresBinanceCandleFlow: true,\n});",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/chart/historicalIndicatorAvailability.test.ts"],
+      "mustFail": ["opens the candle-flow studies for any provider"]
+    },
+    {
+      "id": "web.flow-chunk-spans-five-hundred-days",
+      "file": "apps/web/src/lib/archive/archiveStudyPlan.ts",
+      "find": "  const chunkMs = Math.max(bucketMs, Math.floor(Math.min(bucketMs * FLOW_CHUNK_BARS, MAX_FLOW_CHUNK_MS) / bucketMs) * bucketMs);",
+      "replace": "  const chunkMs = bucketMs * FLOW_CHUNK_BARS;",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/archive/archiveStudyPlan.test.ts"],
+      "mustFail": ["asks for bar flow on the display interval"]
+    },
+    {
+      "id": "web.unsided-share-not-reported",
+      "file": "apps/web/src/lib/archive/useArchiveStudies.ts",
+      "find": "        const unknown = bars.reduce(\n          (sum, entry) => sum + entry.unknown_volume,\n          0,\n        );",
+      "replace": "        const unknown = 0;",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/archive/useArchiveStudies.test.tsx"],
+      "mustFail": ["reports the share with no side"]
+    },
+    {
+      "id": "archive-study.partial-archive-page-treated-as-empty",
+      "file": "apps/runtime/src/server/archive-study-route.js",
+      "find": "        if (\n          [...STUDY_GAP_STATES].some(\n            (state) => (answer.coverage.states[state] ?? 0) > 0,\n          )\n        )\n          return null;\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/server/archive-study-route.test.js"],
+      "mustFail": ["a partial archive success is missing, never cached as an empty market period"]
+    },
+    {
+      "id": "web.profile-range-may-be-unclassified",
+      "file": "apps/web/src/lib/archive/archiveStudyClient.ts",
+      "find": "      new Set(classifications).size !== classifications.length ||\n      classifications.length !== requestedKeys.length ||\n      requestedKeys.some((rangeKey) => !classifications.includes(rangeKey))",
+      "replace": "      false",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/archive/archiveStudyClient.test.ts"],
+      "mustFail": ["requires every profile range to be exactly one of profiled, empty, or missing"]
+    },
+    {
+      "id": "archive-study.minute-flow-conservation-not-checked",
+      "file": "apps/runtime/src/storage/archive-storage-reader.js",
+      "find": "          if (buy.atoms + sell.atoms + unknown.atoms !== volume.atoms) {",
+      "replace": "          if (false) {",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/storage/archive-storage-reader.test.js"],
+      "mustFail": ["a minute whose explicit sides do not conserve volume is rejected"]
+    },
+    {
+      "id": "web.flow-toggle-does-not-replan",
+      "file": "apps/web/src/lib/archive/useArchiveStudies.ts",
+      "find": "  }, [toggles.flow, toggles.profile, toggles.vpin, toggles.prints]);",
+      "replace": "  }, [toggles.profile, toggles.vpin, toggles.prints]);",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/archive/useArchiveStudies.test.tsx"],
+      "mustFail": ["feeds the bar buy/sell split to the chart and reports the share with no side"]
+    },
+    {
+      "id": "web.session-profile-counts-unsided-volume-as-known",
+      "file": "apps/web/src/lib/indicators/session-delta-profile/sessionDeltaProfile.ts",
+      "find": "    const knownVolume = deltaKnown ? sides.sided : 0;",
+      "replace": "    const knownVolume = deltaKnown ? bar.volume : 0;",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/session-delta-profile/sessionDeltaProfile.test.ts"],
+      "mustFail": ["does not count explicitly unsided volume as known side volume"]
+    },
+    {
+      "id": "web.fvg-delta-folds-unsided-volume-into-sells",
+      "file": "apps/web/src/lib/indicators/fvg-delta/fvgDelta.ts",
+      "find": "        sellVolume: buyVolume - delta,",
+      "replace": "        sellVolume: buyVolume + delta,",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/fvg-delta/tests/fvgDelta.test.ts"],
+      "mustFail": ["keeps unsided volume out of the displayed sell side"]
+    },
+    {
+      "id": "archive-study-route.uncovered-time-treated-as-a-gap",
+      "file": "apps/runtime/src/server/archive-study-route.js",
+      "find": "const STUDY_GAP_STATES = Object.freeze(\n  new Set([...GAP_STATES].filter((state) => state !== \"UNKNOWN\")),\n);",
+      "replace": "const STUDY_GAP_STATES = GAP_STATES;",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/server/archive-study-route.test.js"],
+      "mustFail": ["a range spanning a weekend still completes"]
+    }
+  ]
+}

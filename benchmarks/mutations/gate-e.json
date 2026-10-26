@@ -1,0 +1,202 @@
+{
+  "mutations": [
+    {
+      "id": "ge-1.bookmap-tooltip-stacks-over-fvg-and-pivot",
+      "file": "apps/web/src/components/chart/tooltipPriority.ts",
+      "find": "    bookMap: present.bookMap && !present.wall && !present.fvg && !present.pivot && !present.sessionLevel && !present.whaleHeatmap,",
+      "replace": "    bookMap: present.bookMap && !present.wall && !present.sessionLevel && !present.whaleHeatmap,",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/components/chart/tests/tooltipPriority.test.ts"],
+      "mustFail": ["lets an FVG zone or a pivot under the cursor win over the Book Map cell behind it, so two cards never stack"]
+    },
+    {
+      "id": "ge-11.bookmap-bucket-kept-by-float-residue",
+      "file": "apps/web/src/lib/indicators/l2-book-map/l2BookMapPrimitive.ts",
+      "find": "        if (feeds <= 0) {",
+      "replace": "        if (feeds <= 0 && bucket.volume - cell.volume <= 1e-9) {",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/l2-book-map/tests/l2BookMapPrimitive.test.ts"],
+      "mustFail": ["removes a bucket once every column that fed it has left, whatever float residue the subtraction leaves"]
+    },
+    {
+      "id": "ge-10.absorption-hover-time-unlabelled",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionHover.ts",
+      "find": "  const whenLine = `${clock(print.ts)} UTC · ${shareWords} the wall`;",
+      "replace": "  const whenLine = `${clock(print.ts)} · ${shareWords} the wall`;",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/absorption-detector/tests/absorptionHover.test.ts"],
+      "mustFail": ["says who was absorbed, by what wall, how much of what it held, what it held at the sphere, its refills, and when"]
+    },
+    {
+      "id": "ge-9.merged-sphere-counts-one-attack-per-threshold",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionMerge.ts",
+      "find": "    const counted = [...attacks.values()];",
+      "replace": "    const counted = sphere.prints;",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/absorption-detector/tests/absorptionHover.test.ts"],
+      "mustFail": ["reads as the one print when nothing was merged, and as the whole of a candle's spheres when they were"]
+    },
+    {
+      "id": "ge-7.large-trades-one-request-over-cap",
+      "file": "apps/runtime/src/storage/dxfeed/remote-dxfeed-storage-reader.js",
+      "find": "    readLargeTradesAsync: readLargeTradesInSlices,",
+      "replace": "    readLargeTradesAsync: (symbol, assetClass, options) => call(\"large-trades\", symbol, assetClass, options),",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/storage/dxfeed/remote-dxfeed-storage-reader.test.js"],
+      "mustFail": ["reads a week of dense markers in newest-first slices that each fit under the cap, up to the limit"]
+    },
+    {
+      "id": "ge-7.large-trades-slice-not-bounded-by-bucket-density",
+      "file": "apps/runtime/src/storage/dxfeed/remote-dxfeed-storage-reader.js",
+      "find": "Math.floor(LARGE_TRADES_SLICE_ROWS / (2 * perBucketSideLimit))",
+      "replace": "Math.floor(LARGE_TRADES_SLICE_ROWS * 4)",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/storage/dxfeed/remote-dxfeed-storage-reader.test.js"],
+      "mustFail": ["reads a week of dense markers in newest-first slices that each fit under the cap, up to the limit"]
+    },
+    {
+      "id": "ge-7.large-trades-later-slice-failure-drops-all",
+      "file": "apps/runtime/src/storage/dxfeed/remote-dxfeed-storage-reader.js",
+      "find": "        if (pages.length === 0) return result;",
+      "replace": "        return result;",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/storage/dxfeed/remote-dxfeed-storage-reader.test.js"],
+      "mustFail": ["keeps what earlier slices returned when a later one fails, and falls back when the first does"]
+    },
+    {
+      "id": "ge-5.dxfeed-bar-sell-without-buy",
+      "file": "apps/runtime/src/server/frames.js",
+      "find": "  if (buy === undefined && sell !== undefined) {\n    return wholeVolume(sell, volume) ? { buy: 0, sell } : { buy: undefined, sell: undefined };\n  }",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/server/frames.test.js"],
+      "mustFail": ["never sends a sell side without a buy side, which the browser rejects with the whole snapshot"]
+    },
+    {
+      "id": "ge-6.eager-warmup-drops-history-before-live",
+      "file": "apps/runtime/src/server/dxfeed-eager-market-data-server.js",
+      "find": "            if (earlier.length === 0 || frame.ts_open > earlier[earlier.length - 1].ts_open) earlier.push(frame);",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/server/dxfeed-eager-market-data-server.test.js"],
+      "mustFail": ["keeps stored history for an instrument that already built live bars before it was first selected"]
+    },
+    {
+      "id": "ge-6.lazy-warmup-drops-history-before-live",
+      "file": "apps/runtime/src/server/dxfeed-market-data-server.js",
+      "find": "            if (earlier.length === 0 || frame.ts_open > earlier[earlier.length - 1].ts_open) earlier.push(frame);",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/server/dxfeed-market-data-server.test.js"],
+      "mustFail": ["a candle retry that lands after live bars closed keeps the older stored history in front of them"]
+    },
+    {
+      "id": "ge-4.l1-active-edge-at-next-bar",
+      "file": "apps/web/src/lib/indicators/l1-order-blocks/l1OrderBlocks.ts",
+      "find": "      const endTime = block.mitigatedTime ?? bar.ts_open;",
+      "replace": "      const endTime = block.mitigatedTime ?? bar.ts_open + bar.interval_ms;",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/l1-order-blocks/tests/l1OrderBlocks.test.ts"],
+      "mustFail": ["draws every box at candles the chart has, so an active block shows after the last bar of a history or a session"]
+    },
+    {
+      "id": "ge-3.classic-label-bare-near-black",
+      "file": "apps/web/src/lib/indicators/classic-order-blocks/orderBlockRender.ts",
+      "find": "      slot.setTextColor(CARD_TEXT);\n      slot.setTextBackground(CARD_FILL);\n      slot.setTextAccent(\"\");\n      slot.setTailFade(true);",
+      "replace": "      slot.setTextColor(\"#020202\");\n      slot.setTextBackground(\"\");\n      slot.setTextAccent(\"\");\n      slot.setTailFade(true);",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/classic-order-blocks/tests/classicOrderBlocks.test.ts"],
+      "mustFail": ["labels a block on a card that reads on the dark and the light chart alike"]
+    },
+    {
+      "id": "ge-2.deep-tier-switch-skips-window-tail",
+      "file": "apps/web/src/lib/indicators/institutional-order-blocks/bookEvidence.ts",
+      "find": "  if (state.lastTs !== null && state.tierMs !== null && state.tierMs < tierMs) {",
+      "replace": "  if (false) {",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/institutional-order-blocks/tests/bookEvidence.test.ts"],
+      "mustFail": ["counts each second once when the deep tier arrives after a zone was first read on fine columns"]
+    },
+    {
+      "id": "ge-2.deep-tier-switch-before-window-finished",
+      "file": "apps/web/src/lib/indicators/institutional-order-blocks/bookEvidence.ts",
+      "find": "    if (upTo < next) readTier = false;\n    else from = next;",
+      "replace": "    from = next;",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/institutional-order-blocks/tests/bookEvidence.test.ts"],
+      "mustFail": ["counts each second once when the deep tier arrives after a zone was first read on fine columns"]
+    },
+    {
+      "id": "ge-12.duckdb-default-connection-keeps-a-thread-per-core",
+      "file": "apps/runtime/conversion/archive_reader.py",
+      "find": "\nduckdb.default_connection().execute(\"SET threads=1\")\n",
+      "replace": "\n",
+      "cwd": "apps/runtime/conversion",
+      "command": ["uv", "run", "--frozen", "pytest", "-q", "tests/test_archive_reader.py", "-k", "default_connection"],
+      "mustFail": ["test_importing_the_reader_shrinks_duckdbs_default_connection_to_one_thread"]
+    },
+    {
+      "id": "ge-15.bookmap-cells-ask-the-chart-per-cell",
+      "file": "apps/web/src/lib/indicators/l2-book-map/l2BookMapPrimitive.ts",
+      "find": "      let y = positions.get(price);\n      if (y === undefined) {\n        y = series.priceToCoordinate(price);\n        positions.set(price, y);\n      }\n      return y;",
+      "replace": "      return series.priceToCoordinate(price);",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/l2-book-map/tests/l2BookMapPrimitive.test.ts"],
+      "mustFail": ["asks the chart for each price level's position once per repaint, however many cells share it"]
+    },
+    {
+      "id": "ge-16.run-cache-ignores-what-the-tiers-hold",
+      "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityRunFinder.ts",
+      "find": "  const sameTiers = kept !== undefined && (tiersMatch(kept, layout) || (onlyHistoryChanged(kept, layout) && at - kept.builtAt < HISTORY_RESCAN_MS));",
+      "replace": "  const sameTiers = kept !== undefined;",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/passive-liquidity/tests/liquidityRunFinder.test.ts"],
+      "mustFail": ["scans again only when what the settled columns are judged by changes, and answers from the kept scan otherwise"]
+    },
+    {
+      "id": "ge-16.run-cache-ignores-the-settings",
+      "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityRunFinder.ts",
+      "find": "  return JSON.stringify([layout.rowWidth, layout.clusterRows, layout.intervalMs, layout.clocks, settings, grid.epoch]);",
+      "replace": "  return JSON.stringify([layout.rowWidth, layout.clusterRows, layout.intervalMs, layout.clocks, grid.epoch]);",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/passive-liquidity/tests/liquidityRunFinder.test.ts"],
+      "mustFail": ["scans again only when what the settled columns are judged by changes, and answers from the kept scan otherwise"]
+    },
+    {
+      "id": "ge-16.runs-found-again-on-every-call",
+      "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityRunFinder.ts",
+      "find": "    if (runs === undefined) {\n      const scanner = prefix.scannerFor(bandIndex, side).fork(tailTouchesFor(bandIndex));",
+      "replace": "    if (runs === undefined || runs !== undefined) {\n      prefix.scanners.delete(key);\n      const scanner = prefix.scannerFor(bandIndex, side).fork(tailTouchesFor(bandIndex));",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/passive-liquidity/tests/liquidityRunFinder.test.ts"],
+      "mustFail": ["reuses the runs of a repaint that changes nothing they depend on, wherever the view sits"]
+    },
+    {
+      "id": "ge-13.snapshot-re-encodes-every-column",
+      "file": "apps/runtime/src/indicators/passive_liquidity/liquidity-history.js",
+      "find": "      current.push(encodeAfter(prev, columns[i]));",
+      "replace": "      current.push(encodeColumn(prev, columns[i]));",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/indicators/passive_liquidity/liquidity-history.test.js"],
+      "mustFail": ["a second snapshot reuses the first one's wire for every column, and the new oldest column is sent in full once the one before it is gone"]
+    },
+    {
+      "id": "ge-13.wire-cache-ignores-the-column-before",
+      "file": "apps/runtime/src/indicators/passive_liquidity/liquidity-history.js",
+      "find": "function encodeAfter(prev, next) {\n  if (prev === null) {",
+      "replace": "function encodeAfter(prev, next) {\n  if (deltaWires.has(next)) return deltaWires.get(next).wire;\n  if (prev === null) {",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/indicators/passive_liquidity/liquidity-history.test.js"],
+      "mustFail": ["a second snapshot reuses the first one's wire for every column, and the new oldest column is sent in full once the one before it is gone"]
+    },
+    {
+      "id": "ge-13.prune-keeps-the-old-first-column-twice",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane.js",
+      "find": "    state.shelf = [encodeAfter(null, head), ...state.shelf.slice(first + 1)];",
+      "replace": "    state.shelf = [encodeAfter(null, head), ...state.shelf.slice(first)];",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/indicators/passive_liquidity/liquidity-publisher.test.js"],
+      "mustFail": ["a save decodes only the shelf columns that aged out plus the one that becomes first, and leaves the rest of the chain as it was"]
+    }
+  ]
+}

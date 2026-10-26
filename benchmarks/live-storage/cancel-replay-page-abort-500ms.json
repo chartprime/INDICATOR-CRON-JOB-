@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "name": "o0-cancel-replay-page-abort-500ms-2026-09-18",
+  "serverDelta": true,
+  "users": 1,
+  "rounds": 5,
+  "requests": [
+    {
+      "route": "replay-page",
+      "body": {
+        "symbol": "BTCUSDT",
+        "marketKind": "SPOT",
+        "options": {
+          "fromTs": 1789675200000,
+          "toTs": 1789689600000,
+          "tickSize": 0.01,
+          "clusterTicks": 50,
+          "rowClusters": 8,
+          "windowRows": 1023,
+          "cursor": null
+        }
+      },
+      "abort": { "afterMs": 500 }
+    }
+  ]
+}

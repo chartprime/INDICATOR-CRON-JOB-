@@ -1,0 +1,219 @@
+{
+  "runs": 3,
+  "errors": {
+    "baseline": 0,
+    "after": 0
+  },
+  "table": {
+    "baseline": {
+      "loadMaxLT": {
+        "baseline": 73,
+        "after": 67
+      },
+      "steadyP95": {
+        "baseline": 16.7,
+        "after": 16.8
+      },
+      "steadyMaxLT": {
+        "baseline": 0,
+        "after": 0
+      },
+      "hoverP95": {
+        "baseline": 16.7,
+        "after": 16.7
+      },
+      "panP95": {
+        "baseline": 16.7,
+        "after": 16.7
+      },
+      "steadyBusyS": {
+        "baseline": 5.7921000000000005,
+        "after": 5.5123999999999995
+      },
+      "hoverBusyS": {
+        "baseline": 3.7822,
+        "after": 3.7087
+      }
+    },
+    "bookMap": {
+      "loadMaxLT": {
+        "baseline": 88,
+        "after": 80
+      },
+      "steadyP95": {
+        "baseline": 33.4,
+        "after": 33.3
+      },
+      "steadyMaxLT": {
+        "baseline": 73,
+        "after": 61
+      },
+      "hoverP95": {
+        "baseline": 50,
+        "after": 33.4
+      },
+      "panP95": {
+        "baseline": 33.2,
+        "after": 33.3
+      },
+      "steadyBusyS": {
+        "baseline": 12.2394,
+        "after": 10.796700000000001
+      },
+      "hoverBusyS": {
+        "baseline": 9.643600000000001,
+        "after": 8.6605
+      }
+    },
+    "orderBlocks": {
+      "loadMaxLT": {
+        "baseline": 3911,
+        "after": 358
+      },
+      "steadyP95": {
+        "baseline": 16.8,
+        "after": 16.7
+      },
+      "steadyMaxLT": {
+        "baseline": 53,
+        "after": 0
+      },
+      "hoverP95": {
+        "baseline": 16.8,
+        "after": 16.8
+      },
+      "panP95": {
+        "baseline": 33.3,
+        "after": 16.8
+      },
+      "steadyBusyS": {
+        "baseline": 7.789,
+        "after": 6.4793
+      },
+      "hoverBusyS": {
+        "baseline": 7.216600000000001,
+        "after": 5.6771
+      }
+    },
+    "wallsV2": {
+      "loadMaxLT": {
+        "baseline": 730,
+        "after": 107
+      },
+      "steadyP95": {
+        "baseline": 16.8,
+        "after": 16.8
+      },
+      "steadyMaxLT": {
+        "baseline": 0,
+        "after": 0
+      },
+      "hoverP95": {
+        "baseline": 16.8,
+        "after": 16.7
+      },
+      "panP95": {
+        "baseline": 16.8,
+        "after": 16.7
+      },
+      "steadyBusyS": {
+        "baseline": 6.8963,
+        "after": 6.2283
+      },
+      "hoverBusyS": {
+        "baseline": 5.9146,
+        "after": 5.1709
+      }
+    },
+    "absorption": {
+      "loadMaxLT": {
+        "baseline": 85,
+        "after": 83
+      },
+      "steadyP95": {
+        "baseline": 16.8,
+        "after": 16.8
+      },
+      "steadyMaxLT": {
+        "baseline": 54,
+        "after": 0
+      },
+      "hoverP95": {
+        "baseline": 16.7,
+        "after": 16.7
+      },
+      "panP95": {
+        "baseline": 16.8,
+        "after": 16.7
+      },
+      "steadyBusyS": {
+        "baseline": 7.3824,
+        "after": 5.7398
+      },
+      "hoverBusyS": {
+        "baseline": 5.1145,
+        "after": 3.716
+      }
+    },
+    "all": {
+      "loadMaxLT": {
+        "baseline": 4375,
+        "after": 480
+      },
+      "steadyP95": {
+        "baseline": 66.7,
+        "after": 50
+      },
+      "steadyMaxLT": {
+        "baseline": 106,
+        "after": 89
+      },
+      "hoverP95": {
+        "baseline": 83.3,
+        "after": 50
+      },
+      "panP95": {
+        "baseline": 66.7,
+        "after": 50
+      },
+      "steadyBusyS": {
+        "baseline": 17.887700000000002,
+        "after": 14.7175
+      },
+      "hoverBusyS": {
+        "baseline": 9.9571,
+        "after": 9.2393
+      }
+    },
+    "everything": {
+      "loadMaxLT": {
+        "baseline": 6703,
+        "after": 1672
+      },
+      "steadyP95": {
+        "baseline": 349.9,
+        "after": 83.4
+      },
+      "steadyMaxLT": {
+        "baseline": 413,
+        "after": 194
+      },
+      "hoverP95": {
+        "baseline": 433.3,
+        "after": 100
+      },
+      "panP95": {
+        "baseline": 433.3,
+        "after": 100
+      },
+      "steadyBusyS": {
+        "baseline": 20.002200000000002,
+        "after": 18.497799999999998
+      },
+      "hoverBusyS": {
+        "baseline": 10.227799999999998,
+        "after": 9.9485
+      }
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "name": "o0-deep-binance-minute-rollup-31d-2026-09-18",
+  "users": 1,
+  "rounds": 1,
+  "requests": [
+    {
+      "route": "minute-rollup",
+      "body": { "symbol": "BTCUSDT", "marketKind": "SPOT", "options": { "fromTs": 1787011200000, "toTs": 1789689600000, "tickSize": 0.32 } }
+    }
+  ]
+}

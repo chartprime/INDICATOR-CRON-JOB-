@@ -1,0 +1,8 @@
+[Unit]
+Description=Check terminal file-log retention every five minutes
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+Unit=terminal-log-retention.service
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,214 @@
+{
+  "mutations": [
+    {
+      "id": "l2p2.trade-kind-flipped",
+      "file": "apps/runtime/src/indicators/l2-memory/level-ledger.js",
+      "find": "kind: isSweep ? \"swept\" : \"absorbed\"",
+      "replace": "kind: isSweep ? \"absorbed\" : \"swept\"",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/level-events.test.js", "-t", "every trade is announced"],
+      "mustFail": ["every trade is announced"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "l2p2.reader-ignores-missed",
+      "file": "apps/runtime/src/indicators/l2-memory/heavy-reader.js",
+      "find": "let gap = result.missed > 0;",
+      "replace": "let gap = false;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/heavy-reader.test.js", "-t", "falling behind the ring"],
+      "mustFail": ["falling behind the ring"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "l2p2.reader-ignores-gap-segment",
+      "file": "apps/runtime/src/indicators/l2-memory/heavy-reader.js",
+      "find": "if (event.type === \"segment\" && event.state === \"GAP\") {",
+      "replace": "if (false) {",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/heavy-reader.test.js", "-t", "a lost book is a gap"],
+      "mustFail": ["a lost book is a gap"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "l2p2.wall-ignores-reader-gap",
+      "file": "apps/runtime/src/indicators/l2-memory/wall-service.js",
+      "find": "    if (gap) for (const list of Object.values(sides))",
+      "replace": "    if (false) for (const list of Object.values(sides))",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/wall-service.test.js", "-t", "mark the evidence as incomplete"],
+      "mustFail": ["mark the evidence as incomplete"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "l2p2.cross-side-includes-own-rows",
+      "file": "apps/runtime/src/indicators/l2-memory/wall-service.js",
+      "find": "          } else if (nearMid) {\n            own.crossSide += event.size;\n          }",
+      "replace": "          }\n          if (nearMid) {\n            own.crossSide += event.size;\n          }",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/wall-service.test.js", "-t", "cross-side volume"],
+      "mustFail": ["cross-side volume"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "l2p2.cross-side-band-ignored",
+      "file": "apps/runtime/src/indicators/l2-memory/wall-service.js",
+      "find": "const nearMid = midPrice > 0 && Math.abs(event.price - midPrice) <= CROSS_SIDE_BAND * midPrice;",
+      "replace": "const nearMid = midPrice > 0;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/wall-service.test.js", "-t", "cross-side volume"],
+      "mustFail": ["cross-side volume"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "l2p2.continuity-unbounded",
+      "file": "apps/runtime/src/indicators/l2-memory/wall-service.js",
+      "find": "if (entry.startTs - other.endTs > CONTINUITY_MS || ",
+      "replace": "if (false || ",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/wall-service.test.js", "-t", "re-placed within 20 s"],
+      "mustFail": ["re-placed within 20 s"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "l2p2.first-shrink-takes-last",
+      "file": "apps/runtime/src/indicators/l2-memory/wall-service.js",
+      "find": "event.type === \"shrank\" && own.firstShrinkTs === null) {",
+      "replace": "event.type === \"shrank\") {",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/wall-service.test.js", "-t", "the first shrink is the earliest"],
+      "mustFail": ["the first shrink is the earliest"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "l2p2.reach-judged-at-end",
+      "file": "apps/runtime/src/indicators/l2-memory/wall-service.js",
+      "find": "    own.endTs = entry.endTs;\n    const mid = midAt(entry.endTs, fallbackMid);",
+      "replace": "    own.endTs = entry.endTs;\n    const mid = midAt(entry.endTs, fallbackMid);\n    own.reachedAtFirstShrink = reachedDuring(entry, mid, mid);",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/wall-service.test.js", "-t", "price at the wall when it first shrank"],
+      "mustFail": ["price at the wall when it first shrank"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "l2p2.cleared-by-trades-share-lowered",
+      "file": "apps/runtime/src/indicators/l2-memory/wall-service.js",
+      "find": "const CLEARED_BY_TRADES_SHARE = 0.5;",
+      "replace": "const CLEARED_BY_TRADES_SHARE = 0.4;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/wall-service.test.js", "-t", "cleared by trades, however long it lived"],
+      "mustFail": ["cleared by trades, however long it lived"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "l2p2.cleared-by-trades-judges-resting-wall",
+      "file": "apps/runtime/src/indicators/l2-memory/wall-service.js",
+      "find": "clearedByTrades: own.endTs !== null && own.cleared > 0",
+      "replace": "clearedByTrades: own.cleared > 0",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/wall-service.test.js", "-t", "does not judge the wall while it still stands"],
+      "mustFail": ["does not judge the wall while it still stands"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "l2p2.newborn-wall-misses-its-birth-interval",
+      "file": "apps/runtime/src/indicators/l2-memory/wall-service.js",
+      "find": "    if (born.length > 0) attribute(activeBySide(born), batch.gap, batch.events, rowClusters, fromMid, toMid, { volumeOnly: true });",
+      "replace": "    void born;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/wall-service.test.js", "-t", "credited to it at birth"],
+      "mustFail": ["credited to it at birth"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "l2p2.birth-pass-credits-pre-wall-lifecycle",
+      "file": "apps/runtime/src/indicators/l2-memory/wall-service.js",
+      "find": "      if (volumeOnly && event.type !== \"hidden\") continue;",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/wall-service.test.js", "-t", "a shrink the event stream cannot see falls back"],
+      "mustFail": ["a shrink the event stream cannot see falls back"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "l2p2.first-shrink-compared-across-clocks",
+      "file": "apps/runtime/src/indicators/l2-memory/wall-service.js",
+      "find": "event.type === \"shrank\" && own.firstShrinkTs === null) {",
+      "replace": "event.type === \"shrank\" && own.firstShrinkTs === null && event.ts >= own.startTs) {",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/wall-service.test.js", "-t", "column clock running ahead"],
+      "mustFail": ["column clock running ahead"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "l2p2.repeats-claimed-complete-early",
+      "file": "apps/runtime/src/indicators/l2-memory/wall-service.js",
+      "find": "own.repeatsComplete = observingSince !== null && entry.startTs - observingSince >= REPEAT_WINDOW_MS;",
+      "replace": "own.repeatsComplete = true;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/wall-service.test.js", "-t", "repeat counts say whether a full hour was watched"],
+      "mustFail": ["repeat counts say whether a full hour was watched"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "l2p2.adopted-walls-missing-from-repeat-history",
+      "file": "apps/runtime/src/indicators/l2-memory/wall-service.js",
+      "find": "      starts.push({ id: entry.id, side: entry.side, row: entry.row, span: entry.span, startTs: entry.startTs });",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/wall-service.test.js", "-t", "repeat counts say whether a full hour was watched"],
+      "mustFail": ["repeat counts say whether a full hour was watched"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "l2p2.clear-keeps-repeat-history",
+      "file": "apps/runtime/src/indicators/l2-memory/wall-service.js",
+      "find": "    starts = [];\n    mids = [];\n    lastMidRow = null;",
+      "replace": "    mids = [];\n    lastMidRow = null;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/wall-service.test.js", "-t", "clear forgets every wall"],
+      "mustFail": ["clear forgets every wall"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "l2p2.wrapper-skips-quiet-columns",
+      "file": "apps/runtime/src/indicators/l2-memory/wall-service.js",
+      "find": "    const changed = tracker.update({ ts, column, snapshot, rowClusters, referenceRows });",
+      "replace": "    const changed = now.length === 0 ? false : tracker.update({ ts, column, snapshot, rowClusters, referenceRows });",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/wall-service.test.js", "-t", "the wire fields are exactly the tracker's"],
+      "mustFail": ["the wire fields are exactly the tracker's"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "l2p2.swallow-drops-evidence",
+      "file": "apps/runtime/src/indicators/l2-memory/wall-service.js",
+      "find": "if (survivor !== null) mergeInto(evidence.get(survivor.id), own);",
+      "replace": "if (false) mergeInto(evidence.get(survivor.id), own);",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/wall-service.test.js", "-t", "swallowed by an older neighbour"],
+      "mustFail": ["swallowed by an older neighbour"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "l2p2.restored-resting-wall-trusted",
+      "file": "apps/runtime/src/indicators/l2-memory/wall-service.js",
+      "find": "evidence.evidenceGap = entry.endTs === null || detail.evidenceGap !== false;",
+      "replace": "evidence.evidenceGap = detail.evidenceGap !== false;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/wall-service.test.js", "-t", "mark the evidence as incomplete"],
+      "mustFail": ["mark the evidence as incomplete"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "l2p2.repeats-window-unbounded",
+      "file": "apps/runtime/src/indicators/l2-memory/wall-service.js",
+      "find": "entry.startTs - start.startTs <= REPEAT_WINDOW_MS && ",
+      "replace": "true && ",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/wall-service.test.js", "-t", "repeat appearances"],
+      "mustFail": ["repeat appearances"],
+      "timeoutMs": 60000
+    }
+  ]
+}

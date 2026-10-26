@@ -1,0 +1,314 @@
+{
+  "mutations": [
+    {
+      "id": "p4a.wall-structural-change-invisible",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane-l2.js",
+      "find": "  for (const field of WALL_FIELDS) if (a[field] !== b[field]) return CHANGED;\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/lane-l2.test.js", "-t", "a wall that grows is sent at once"],
+      "mustFail": ["a wall that grows is sent at once"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "p4a.cross-side-never-refreshed",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane-l2.js",
+      "find": "(change === CROSS_SIDE_ONLY && ts - lastSent >= CROSS_SIDE_REFRESH_MS)",
+      "replace": "(change === CROSS_SIDE_ONLY && false)",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/lane-l2.test.js", "-t", "cross-side volume alone waits"],
+      "mustFail": ["cross-side volume alone waits"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "p4a.cross-side-sent-every-tick",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane-l2.js",
+      "find": "return ended ? CHANGED : CROSS_SIDE_ONLY;",
+      "replace": "return CHANGED;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/lane-l2.test.js", "-t", "cross-side volume alone waits"],
+      "mustFail": ["cross-side volume alone waits"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "p4a.snapshot-sends-walls-clients-never-got",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane-l2.js",
+      "find": "      walls: { seq: l2.walls.seq, reset: true, walls: [...l2.walls.prints.values()], removed: [] },",
+      "replace": "      walls: { seq: l2.walls.seq, reset: true, walls: state.tracker.walls(), removed: [] },",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/lane-l2.test.js", "-t", "cross-side volume alone waits"],
+      "mustFail": ["cross-side volume alone waits"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "p4a.cap-ignores-priority",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane-l2.js",
+      "find": "events.forEach((event, index) => byPriority[PRIORITY[event.event]].push(index));",
+      "replace": "events.forEach((event, index) => byPriority[2].push(index));",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/lane-l2.test.js", "-t", "a burst over the frame cap"],
+      "mustFail": ["a burst over the frame cap"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "p4a.near-price-filter-off",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane-l2.js",
+      "find": "      if (Math.abs(row - mid) > band) continue;\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/lane-l2.test.js", "-t", "trades near the mid are events"],
+      "mustFail": ["trades near the mid are events"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "p4a.event-ring-snapshot-unsorted",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane-l2.js",
+      "find": "events: [...l2.recent].sort((a, b) => a.ts - b.ts)",
+      "replace": "events: [...l2.recent]",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/passive_liquidity/liquidity-publisher-golden.test.js", "-t", "L2 channels"],
+      "mustFail": ["Test suite failed to run"],
+      "timeoutMs": 300000
+    },
+    {
+      "id": "p4a.segment-id-without-state",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane-l2.js",
+      "find": "return `${pairKey(state.marketKind, state.symbol)}:${startTs}:${segmentState}`;",
+      "replace": "return `${pairKey(state.marketKind, state.symbol)}:${startTs}`;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/lane-l2.test.js", "-t", "distinct ids"],
+      "mustFail": ["distinct ids"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "p4a.initial-segment-not-the-engines",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane-l2.js",
+      "find": "l2.segment = segmentOf(state, engine.segment ?? null);",
+      "replace": "l2.segment = null;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/lane-l2.test.js", "-t", "whenever collection began"],
+      "mustFail": ["whenever collection began"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "p4a.first-output-not-fresh",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane-l2.js",
+      "find": "      fresh: true,\n",
+      "replace": "      fresh: false,\n",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/lane-l2.test.js", "-t", "fresh"],
+      "mustFail": ["the first output is fresh"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "p4a.l2-failure-breaks-the-heatmap-tick",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane-frames.js",
+      "find": "    state.l2 = null;\n    state.l2Output = null;\n",
+      "replace": "    throw error;\n",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/lane-l2.test.js", "-t", "never costs the heatmap its frame"],
+      "mustFail": ["never costs the heatmap its frame"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "p4a.channel-publishes-an-inactive-pair",
+      "file": "apps/runtime/src/server/l2-channel.js",
+      "find": "if (!active || active.marketKind !== pair.marketKind || active.symbol !== pair.symbol) return;",
+      "replace": "if (!active) return;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/server/l2-channel.test.js", "-t", "no longer active"],
+      "mustFail": ["no longer active"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "p4a.channel-fresh-state-sent-as-increment",
+      "file": "apps/runtime/src/server/l2-channel.js",
+      "find": "if (out.fresh && channel !== \"l2_ladder\") {",
+      "replace": "if (false) {",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/server/l2-channel.test.js", "-t", "fresh engine state"],
+      "mustFail": ["fresh engine state"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "p4a.channel-subscribe-without-snapshot",
+      "file": "apps/runtime/src/server/l2-channel.js",
+      "find": "    replayers.get(channel).start(client, channelSnapshot(channel));\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/server/l2-channel.test.js", "-t", "subscribing replays a reset snapshot"],
+      "mustFail": ["subscribing replays a reset snapshot"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "p4a.channel-dropped-flag-keeps-sending",
+      "file": "apps/runtime/src/server/l2-channel.js",
+      "find": "    subscribers.get(channel).delete(client);\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/server/l2-channel.test.js", "-t", "replaces the set"],
+      "mustFail": ["replaces the set"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "p4a.router-sends-marker-history-to-dxfeed",
+      "file": "apps/runtime/src/server/provider-router.js",
+      "find": ".filter((flag) => flag !== \"marker_history\")",
+      "replace": ".filter(() => true)",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/server/provider-router.test.js", "-t", "P4a"],
+      "mustFail": ["follows the client across providers"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "p4a.active-wall-life-on-the-wire",
+      "file": "apps/runtime/src/server/l2-frames.js",
+      "find": "life_ms: ended ? counter(detail.lifeMs, `${field}.lifeMs`) : null,",
+      "replace": "life_ms: counter(detail.lifeMs, `${field}.lifeMs`),",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/server/l2-frames.test.js", "-t", "life_ms"],
+      "mustFail": ["life_ms is null while a wall is active"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "p4a.capability-accepts-non-true",
+      "file": "apps/runtime/src/server/l2-frames.js",
+      "find": "if (!CAPABILITY_FLAGS.includes(key) || message[key] !== true) return null;",
+      "replace": "if (!CAPABILITY_FLAGS.includes(key)) return null;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/server/l2-frames.test.js", "-t", "parseCapabilities"],
+      "mustFail": ["a false flag"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "p4a.wall-trade-not-logged",
+      "file": "apps/runtime/src/indicators/l2-memory/wall-service.js",
+      "find": "            note({ kind: \"wall_trade\", ts: event.ts, wall: entry.id, trade: mode, price: event.price, size: event.size });\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/wall-service.test.js", "-t", "P4a"],
+      "mustFail": ["one wall's life is logged in order"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "p4a.engine-segment-misses-the-gap",
+      "file": "apps/runtime/src/indicators/l2-memory/memory-engine.js",
+      "find": "      noteSegment(clockTs, \"GAP\", cause);",
+      "replace": "      ledger.noteSegment({ ts: clockTs, state: \"GAP\", cause });",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/memory-engine.test.js", "-t", "segment in force"],
+      "mustFail": ["follows seed, gap and resync"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "p4a.l2-publish-lost-when-heatmap-publish-throws",
+      "file": "apps/runtime/src/indicators/passive_liquidity/liquidity-publisher.js",
+      "find": "              log(`liquidity-publisher: tick failed for ${key}: ${error?.message ?? error}`);\n            }\n            if (key === ctx.activeKey && publishL2 !== null) {",
+      "replace": "              log(`liquidity-publisher: tick failed for ${key}: ${error?.message ?? error}`);\n              continue;\n            }\n            if (key === ctx.activeKey && publishL2 !== null) {",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/lane-l2.test.js", "-t", "running publisher"],
+      "mustFail": ["even when sending its heatmap frame threw"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "p4a.browser-declares-a-capability-it-cannot-parse",
+      "file": "apps/web/src/types/frames.ts",
+      "find": "export const CLIENT_CAPABILITIES: readonly string[] = Object.freeze([\"marker_history\", \"l2_view\", \"l2_walls\", \"l2_walls_lanes\", \"l2_events\", \"l2_ladder\", \"iceberg_orders\", \"exhaustion_shades\", \"initiative_bands\"]);",
+      "replace": "export const CLIENT_CAPABILITIES: readonly string[] = Object.freeze([\"marker_history\", \"l2_view\", \"l2_walls\", \"l2_walls_lanes\", \"l2_events\", \"l2_ladder\", \"iceberg_orders\", \"exhaustion_shades\", \"initiative_bands\", \"l2_depth\"]);",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/contracts/ws-frame-contract-limits.test.js"],
+      "mustFail": ["the browser declares every capability the server accepts"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "p4a.schema-kind-loses-its-capability-gate",
+      "file": "docs/contracts/ws-frame-contract/v1/ws-frame-contract-v1.schema.json",
+      "find": "      \"x-capability\": \"l2_ladder\",\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/contracts/ws-frame-contract-limits.test.js", "-t", "gates exactly the kind"],
+      "mustFail": ["gates exactly the kind"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "p4a.segment-burst-loses-current-transition",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane-l2.js",
+      "find": "    byPriority[PRIORITY.segment].reverse();\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/lane-l2.test.js", "-t", "segment burst over the event cap"],
+      "mustFail": ["segment burst over the event cap"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "p4a.ladder-join-waits-for-first-broadcast",
+      "file": "apps/runtime/src/server/l2-channel.js",
+      "find": "const [frame] = channelSnapshot(\"l2_ladder\");",
+      "replace": "const [frame] = [];",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/server/l2-channel.test.js", "-t", "existing engine snapshot before the first broadcast"],
+      "mustFail": ["existing engine snapshot before the first broadcast"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "p4a.pair-switch-omits-new-ladder",
+      "file": "apps/runtime/src/server/l2-channel.js",
+      "find": "    restart(\"l2_ladder\");\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/server/l2-channel.test.js", "-t", "immediately sends the new pair's ladder"],
+      "mustFail": ["immediately sends the new pair's ladder"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "p4a.l2-work-back-inside-the-heatmap-tick",
+      "file": "apps/runtime/src/indicators/passive_liquidity/liquidity-publisher.js",
+      "find": "              setImmediate(() => {\n                if (ctx.stopped) return;\n                try {\n                  const l2Out = takeL2(p.marketKind, p.symbol);\n                  if (l2Out) publishL2(l2Out, p);\n                } catch (error) {\n                  log(`liquidity-publisher: L2 publish failed for ${key}: ${error?.message ?? error}`);\n                }\n              });",
+      "replace": "              (() => {\n                if (ctx.stopped) return;\n                try {\n                  const l2Out = takeL2(p.marketKind, p.symbol);\n                  if (l2Out) publishL2(l2Out, p);\n                } catch (error) {\n                  log(`liquidity-publisher: L2 publish failed for ${key}: ${error?.message ?? error}`);\n                }\n              })();",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/lane-l2.test.js", "-t", "finishes the heatmap tick before any L2 work"],
+      "mustFail": ["finishes the heatmap tick before any L2 work"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "p4a.snapshot-ignores-the-pending-tick",
+      "file": "apps/runtime/src/indicators/passive_liquidity/liquidity-publisher.js",
+      "find": "    frames.flushL2(state);\n    return l2Ops.snapshot(state, engine, now());",
+      "replace": "    return l2Ops.snapshot(state, engine, now());",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/lane-l2.test.js", "-t", "already contains that tick"],
+      "mustFail": ["already contains that tick"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "p4a.snapshot-built-per-channel",
+      "file": "apps/runtime/src/server/l2-channel.js",
+      "find": "    if (batching && batchSnapshot !== null && batchSnapshot.key === key) return batchSnapshot.snap;\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/server/l2-channel.test.js", "-t", "load bounds"],
+      "mustFail": ["builds the engine snapshot once"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "p4a.capability-flip-unbounded",
+      "file": "apps/runtime/src/server/l2-channel.js",
+      "find": "const wait = channel === \"l2_ladder\" || last === undefined ? 0 : last + rejoinMinIntervalMs - now();",
+      "replace": "const wait = 0;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/server/l2-channel.test.js", "-t", "load bounds"],
+      "mustFail": ["served at most once per interval"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "p4a.opt-out-keeps-the-pending-join",
+      "file": "apps/runtime/src/server/l2-channel.js",
+      "find": "    cancelPending(client, channel);\n    subscribers.get(channel).delete(client);\n",
+      "replace": "    subscribers.get(channel).delete(client);\n",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/server/l2-channel.test.js", "-t", "load bounds"],
+      "mustFail": ["opts out during the wait"],
+      "timeoutMs": 180000
+    }
+  ]
+}

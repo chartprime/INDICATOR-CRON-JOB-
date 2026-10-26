@@ -1,0 +1,40 @@
+{
+  "mutations": [
+    {
+      "id": "j1.wall-burst.auction-event-limit",
+      "file": "apps/runtime/src/indicators/l2-memory/historical-wall-projection.js",
+      "find": "const MAX_PENDING_EVENTS = 65_536;",
+      "replace": "const MAX_PENDING_EVENTS = 16_384;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--runTestsByPath", "test/indicators/l2-memory/historical-wall-projection.test.js", "-t", "auction second above"],
+      "mustFail": ["an auction second above 49160 events preserves the complete engine prefix"]
+    },
+    {
+      "id": "j1.wall-burst.old-event-limit",
+      "file": "apps/runtime/src/indicators/l2-memory/historical-wall-projection.js",
+      "find": "const MAX_PENDING_EVENTS = 65_536;",
+      "replace": "const MAX_PENDING_EVENTS = 8_192;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--runTestsByPath", "test/indicators/l2-memory/historical-wall-projection.test.js", "-t", "busy second above"],
+      "mustFail": ["a busy second above 8192 events retains every individual trade and drains its bounded queue"]
+    },
+    {
+      "id": "j1.wall-burst.unbounded-count",
+      "file": "apps/runtime/src/indicators/l2-memory/historical-wall-projection.js",
+      "find": "pending.length >= MAX_PENDING_EVENTS || pendingBytes + bytes > MAX_PENDING_BYTES",
+      "replace": "pendingBytes + bytes > MAX_PENDING_BYTES",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--runTestsByPath", "test/indicators/l2-memory/historical-wall-projection.test.js", "-t", "pending event count"],
+      "mustFail": ["pending event count and decoded bytes each fail closed instead of dropping burst evidence"]
+    },
+    {
+      "id": "j1.wall-burst.unbounded-bytes",
+      "file": "apps/runtime/src/indicators/l2-memory/historical-wall-projection.js",
+      "find": "pending.length >= MAX_PENDING_EVENTS || pendingBytes + bytes > MAX_PENDING_BYTES",
+      "replace": "pending.length >= MAX_PENDING_EVENTS",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--runTestsByPath", "test/indicators/l2-memory/historical-wall-projection.test.js", "-t", "pending event count"],
+      "mustFail": ["pending event count and decoded bytes each fail closed instead of dropping burst evidence"]
+    }
+  ]
+}

@@ -1,0 +1,84 @@
+{
+ "mutations": [
+  {
+   "id": "finest.default-auto",
+   "file": "apps/web/src/lib/chart/liveIndicatorExtras.ts",
+   "find": "    liquidityLane: \"0\",",
+   "replace": "    liquidityLane: \"auto\",",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/chart/tests/liveIndicatorExtras.test.ts"
+   ],
+   "mustFail": [
+    "keeps heatmap settings saved before the price-zoom choice existed, and reads a missing or unknown choice as the finest rows, the standard for every market"
+   ]
+  },
+  {
+   "id": "finest.restore-auto",
+   "file": "apps/web/src/lib/chart/liveIndicatorExtras.ts",
+   "find": "raw.liquidityLane : \"0\",",
+   "replace": "raw.liquidityLane : \"auto\",",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/chart/tests/liveIndicatorExtras.test.ts"
+   ],
+   "mustFail": [
+    "keeps heatmap settings saved before the price-zoom choice existed, and reads a missing or unknown choice as the finest rows, the standard for every market"
+   ]
+  },
+  {
+   "id": "finest.dialog-default-auto",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/LiquidityHeatmapSettingsModal.tsx",
+   "find": "  lane = \"0\",",
+   "replace": "  lane = \"auto\",",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "starts the price zoom on the finest rows and puts it back there with Reset to default"
+   ]
+  },
+  {
+   "id": "finest.reset-auto",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/LiquidityHeatmapSettingsModal.tsx",
+   "find": "    onLaneChange?.(\"0\");",
+   "replace": "    onLaneChange?.(\"auto\");",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/LiquidityHeatmapSettingsModal.sliders.test.tsx"
+   ],
+   "mustFail": [
+    "starts the price zoom on the finest rows and puts it back there with Reset to default"
+   ]
+  },
+  {
+   "id": "finest.pinned-past-cap",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityLanes.ts",
+   "find": "    if (pinned !== undefined && fits(pinned)) return pinned.lane;",
+   "replace": "    if (pinned !== undefined) return pinned.lane;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityLanes.test.ts"
+   ],
+   "mustFail": [
+    "a pinned lane with more rows in view than the layout draws gives way to the lane auto would pick, so the finest rows never leave the chart empty"
+   ]
+  }
+ ]
+}

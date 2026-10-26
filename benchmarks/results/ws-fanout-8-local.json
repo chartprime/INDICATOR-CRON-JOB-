@@ -1,0 +1,538 @@
+{
+  "contractVersion": 1,
+  "kind": "ws-fanout",
+  "name": "o0-ws-fanout-8-clients-1000-trades-per-second",
+  "source": {
+    "git": {
+      "commit": "f127ea4f44a274ad43c3fb5b6639d02c18d8a6f0",
+      "dirty": true,
+      "trackedChanges": 26,
+      "untrackedFiles": 56,
+      "trackedDiffSha256": "48ff14d5846e2773ce2e6a771f4d5dc88474e25b8990267464b011144545ac4a"
+    },
+    "scriptSha256": "3ba4799c2cdd9603147913fe55ab087b07edd1d3c205cd919faa5e50c0de5687",
+    "manifestSha256": "8042f0b559d5f886c16d6458a7e8e3989f62413ec61bc251cc422f5a74f43200",
+    "nodeVersion": "v25.2.1",
+    "wsVersion": "8.21.3"
+  },
+  "startedAtUtc": "2026-09-20T03:38:11.804Z",
+  "settings": {
+    "clients": 8,
+    "warmupMs": 6000,
+    "durationMs": 20000,
+    "sampleEveryMs": 250,
+    "upstream": {
+      "tradesPerPulse": 20,
+      "pulseMs": 20
+    },
+    "slowClients": null,
+    "server": null
+  },
+  "wallMs": 26322.361,
+  "measuredWallMs": 20015.563,
+  "sent": {
+    "total": 26004,
+    "measured": 20018,
+    "nominalTradesPerSecond": 1000,
+    "achievedTradesPerSecond": 1000,
+    "pulseIntervalMs": {
+      "samples": 819,
+      "p50": 25.761000000000422,
+      "p95": 31.029200000000856,
+      "p99": 31.778399999999237,
+      "max": 34.73270000000048
+    }
+  },
+  "latencyMs": {
+    "healthy": {
+      "samples": 160144,
+      "p50": 19,
+      "p95": 22,
+      "p99": 23,
+      "max": 38
+    }
+  },
+  "timelineClient0": [
+    {
+      "second": 0,
+      "trades": 998,
+      "latencyMs": {
+        "samples": 998,
+        "p50": 19,
+        "p95": 21,
+        "p99": 21,
+        "max": 21
+      },
+      "frames": {}
+    },
+    {
+      "second": 1,
+      "trades": 982,
+      "latencyMs": {
+        "samples": 982,
+        "p50": 19,
+        "p95": 21,
+        "p99": 21,
+        "max": 21
+      },
+      "frames": {
+        "marker": 1
+      }
+    },
+    {
+      "second": 2,
+      "trades": 1012,
+      "latencyMs": {
+        "samples": 1012,
+        "p50": 18,
+        "p95": 22,
+        "p99": 22,
+        "max": 22
+      },
+      "frames": {}
+    },
+    {
+      "second": 3,
+      "trades": 1012,
+      "latencyMs": {
+        "samples": 1012,
+        "p50": 19,
+        "p95": 22,
+        "p99": 25,
+        "max": 25
+      },
+      "frames": {
+        "health": 2
+      }
+    },
+    {
+      "second": 4,
+      "trades": 996,
+      "latencyMs": {
+        "samples": 996,
+        "p50": 14,
+        "p95": 20,
+        "p99": 21,
+        "max": 21
+      },
+      "frames": {}
+    },
+    {
+      "second": 5,
+      "trades": 1005,
+      "latencyMs": {
+        "samples": 1005,
+        "p50": 14,
+        "p95": 20,
+        "p99": 22,
+        "max": 22
+      },
+      "frames": {}
+    },
+    {
+      "second": 6,
+      "trades": 976,
+      "latencyMs": {
+        "samples": 976,
+        "p50": 19,
+        "p95": 21,
+        "p99": 21,
+        "max": 21
+      },
+      "frames": {}
+    },
+    {
+      "second": 7,
+      "trades": 1010,
+      "latencyMs": {
+        "samples": 1010,
+        "p50": 18,
+        "p95": 21,
+        "p99": 23,
+        "max": 23
+      },
+      "frames": {
+        "marker": 1
+      }
+    },
+    {
+      "second": 8,
+      "trades": 988,
+      "latencyMs": {
+        "samples": 988,
+        "p50": 19,
+        "p95": 21,
+        "p99": 22,
+        "max": 22
+      },
+      "frames": {
+        "marker": 1
+      }
+    },
+    {
+      "second": 9,
+      "trades": 1036,
+      "latencyMs": {
+        "samples": 1036,
+        "p50": 19,
+        "p95": 21,
+        "p99": 25,
+        "max": 25
+      },
+      "frames": {}
+    },
+    {
+      "second": 10,
+      "trades": 991,
+      "latencyMs": {
+        "samples": 991,
+        "p50": 19,
+        "p95": 22,
+        "p99": 26,
+        "max": 34
+      },
+      "frames": {}
+    },
+    {
+      "second": 11,
+      "trades": 975,
+      "latencyMs": {
+        "samples": 975,
+        "p50": 19,
+        "p95": 24,
+        "p99": 29,
+        "max": 37
+      },
+      "frames": {
+        "marker": 2
+      }
+    },
+    {
+      "second": 12,
+      "trades": 1013,
+      "latencyMs": {
+        "samples": 1013,
+        "p50": 19,
+        "p95": 21,
+        "p99": 21,
+        "max": 21
+      },
+      "frames": {}
+    },
+    {
+      "second": 13,
+      "trades": 988,
+      "latencyMs": {
+        "samples": 988,
+        "p50": 19,
+        "p95": 21,
+        "p99": 21,
+        "max": 21
+      },
+      "frames": {}
+    },
+    {
+      "second": 14,
+      "trades": 1006,
+      "latencyMs": {
+        "samples": 1006,
+        "p50": 19,
+        "p95": 21,
+        "p99": 22,
+        "max": 22
+      },
+      "frames": {
+        "health": 2,
+        "marker": 1
+      }
+    },
+    {
+      "second": 15,
+      "trades": 993,
+      "latencyMs": {
+        "samples": 993,
+        "p50": 19,
+        "p95": 21,
+        "p99": 23,
+        "max": 23
+      },
+      "frames": {}
+    },
+    {
+      "second": 16,
+      "trades": 1003,
+      "latencyMs": {
+        "samples": 1003,
+        "p50": 19,
+        "p95": 21,
+        "p99": 22,
+        "max": 22
+      },
+      "frames": {}
+    },
+    {
+      "second": 17,
+      "trades": 996,
+      "latencyMs": {
+        "samples": 996,
+        "p50": 19,
+        "p95": 22,
+        "p99": 22,
+        "max": 22
+      },
+      "frames": {}
+    },
+    {
+      "second": 18,
+      "trades": 1023,
+      "latencyMs": {
+        "samples": 1023,
+        "p50": 19,
+        "p95": 20,
+        "p99": 22,
+        "max": 22
+      },
+      "frames": {}
+    },
+    {
+      "second": 19,
+      "trades": 988,
+      "latencyMs": {
+        "samples": 988,
+        "p50": 18,
+        "p95": 22,
+        "p99": 26,
+        "max": 26
+      },
+      "frames": {
+        "marker": 1
+      }
+    },
+    {
+      "second": 20,
+      "trades": 27,
+      "latencyMs": {
+        "samples": 27,
+        "p50": 19,
+        "p95": 19,
+        "p99": 19,
+        "max": 19
+      },
+      "frames": {}
+    }
+  ],
+  "invariants": {
+    "producerKeptUp": true,
+    "healthyClientsReceivedEverySentTrade": true,
+    "resumedSlowClientsReceivedEverySentTrade": null,
+    "healthyClientsMinReceived": 20018,
+    "healthyClientsMaxReceived": 20018,
+    "duplicatesOrReordered": 0,
+    "gapsOnHealthyClients": 0,
+    "slowClients": 0,
+    "slowClientsEvictedByServer": 0,
+    "serverCloseCodes": {},
+    "incidents": 0
+  },
+  "server": {
+    "maxHealthyBufferedBytes": 0,
+    "maxSlowBufferedBytes": 0,
+    "rssBytes": {
+      "start": 128196608,
+      "max": 128196608,
+      "end": 114991104
+    },
+    "eventLoopDelayMs": {
+      "p50": 15.720447,
+      "p99": 21.676031,
+      "max": 26.968063
+    },
+    "incidents": []
+  },
+  "clients": [
+    {
+      "index": 0,
+      "slow": false,
+      "received": 20018,
+      "frameCounts": {
+        "trade": 20018,
+        "marker": 7,
+        "health": 4
+      },
+      "duplicatesOrReordered": 0,
+      "gaps": 0,
+      "latencyMs": {
+        "samples": 20018,
+        "p50": 19,
+        "p95": 21,
+        "p99": 23,
+        "max": 37
+      },
+      "maxBufferedBytes": 0,
+      "serverClose": null,
+      "serverTerminatedAtMs": null,
+      "clientClosed": null
+    },
+    {
+      "index": 1,
+      "slow": false,
+      "received": 20018,
+      "frameCounts": {
+        "trade": 20018,
+        "marker": 7,
+        "health": 4
+      },
+      "duplicatesOrReordered": 0,
+      "gaps": 0,
+      "latencyMs": {
+        "samples": 20018,
+        "p50": 19,
+        "p95": 21,
+        "p99": 23,
+        "max": 37
+      },
+      "maxBufferedBytes": 0,
+      "serverClose": null,
+      "serverTerminatedAtMs": null,
+      "clientClosed": null
+    },
+    {
+      "index": 2,
+      "slow": false,
+      "received": 20018,
+      "frameCounts": {
+        "trade": 20018,
+        "marker": 7,
+        "health": 4
+      },
+      "duplicatesOrReordered": 0,
+      "gaps": 0,
+      "latencyMs": {
+        "samples": 20018,
+        "p50": 19,
+        "p95": 21,
+        "p99": 23,
+        "max": 37
+      },
+      "maxBufferedBytes": 0,
+      "serverClose": null,
+      "serverTerminatedAtMs": null,
+      "clientClosed": null
+    },
+    {
+      "index": 3,
+      "slow": false,
+      "received": 20018,
+      "frameCounts": {
+        "trade": 20018,
+        "marker": 7,
+        "health": 4
+      },
+      "duplicatesOrReordered": 0,
+      "gaps": 0,
+      "latencyMs": {
+        "samples": 20018,
+        "p50": 19,
+        "p95": 21,
+        "p99": 23,
+        "max": 37
+      },
+      "maxBufferedBytes": 0,
+      "serverClose": null,
+      "serverTerminatedAtMs": null,
+      "clientClosed": null
+    },
+    {
+      "index": 4,
+      "slow": false,
+      "received": 20018,
+      "frameCounts": {
+        "trade": 20018,
+        "marker": 7,
+        "health": 4
+      },
+      "duplicatesOrReordered": 0,
+      "gaps": 0,
+      "latencyMs": {
+        "samples": 20018,
+        "p50": 19,
+        "p95": 22,
+        "p99": 23,
+        "max": 38
+      },
+      "maxBufferedBytes": 0,
+      "serverClose": null,
+      "serverTerminatedAtMs": null,
+      "clientClosed": null
+    },
+    {
+      "index": 5,
+      "slow": false,
+      "received": 20018,
+      "frameCounts": {
+        "trade": 20018,
+        "marker": 7,
+        "health": 4
+      },
+      "duplicatesOrReordered": 0,
+      "gaps": 0,
+      "latencyMs": {
+        "samples": 20018,
+        "p50": 19,
+        "p95": 22,
+        "p99": 23,
+        "max": 38
+      },
+      "maxBufferedBytes": 0,
+      "serverClose": null,
+      "serverTerminatedAtMs": null,
+      "clientClosed": null
+    },
+    {
+      "index": 6,
+      "slow": false,
+      "received": 20018,
+      "frameCounts": {
+        "trade": 20018,
+        "marker": 7,
+        "health": 4
+      },
+      "duplicatesOrReordered": 0,
+      "gaps": 0,
+      "latencyMs": {
+        "samples": 20018,
+        "p50": 19,
+        "p95": 22,
+        "p99": 23,
+        "max": 38
+      },
+      "maxBufferedBytes": 0,
+      "serverClose": null,
+      "serverTerminatedAtMs": null,
+      "clientClosed": null
+    },
+    {
+      "index": 7,
+      "slow": false,
+      "received": 20018,
+      "frameCounts": {
+        "trade": 20018,
+        "marker": 7,
+        "health": 4
+      },
+      "duplicatesOrReordered": 0,
+      "gaps": 0,
+      "latencyMs": {
+        "samples": 20018,
+        "p50": 19,
+        "p95": 22,
+        "p99": 23,
+        "max": 38
+      },
+      "maxBufferedBytes": 0,
+      "serverClose": null,
+      "serverTerminatedAtMs": null,
+      "clientClosed": null
+    }
+  ]
+}

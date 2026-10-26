@@ -1,0 +1,58 @@
+# Iceberg history builder. Runs the Iceberg Detector's own trackers over the
+# capture, 7 days per pair, under /srv/terminal-data/iceberg-history, in its own
+# unit. Reads the capture only; live-storage serves the stores it writes.
+[Unit]
+Description=Terminal-L1-L2 iceberg history builder
+After=time-sync.target terminal-collector.service
+RequiresMountsFor=/srv/terminal-data
+StartLimitIntervalSec=3600
+StartLimitBurst=5
+OnFailure=terminal-alert@%n.service
+
+[Service]
+Type=simple
+User=ttcollect
+Group=ttcollect
+Slice=terminal.slice
+WorkingDirectory=/opt/terminal-l1-l2/current/apps/runtime
+Environment=NODE_ENV=production
+Environment=TT_DATA_ROOT=/srv/terminal-data/capture
+Environment=TT_LOG_DIR=/var/log/terminal-l1-l2/iceberg-history
+Environment=TT_ICEBERG_DIR=/srv/terminal-data/iceberg-history
+Environment=TT_ICEBERG_BINANCE_DB_PATH=/srv/terminal-data/capture/live/market-data.sqlite
+Environment=TT_ICEBERG_DXFEED_DB_PATH=/srv/terminal-data/capture/live/dxfeed-market-data.sqlite
+LogsDirectory=terminal-l1-l2/iceberg-history
+ExecStartPre=/usr/bin/mountpoint -q /srv/terminal-data
+ExecStartPre=/usr/bin/test -d /srv/terminal-data/iceberg-history
+ExecStartPre=/usr/bin/test -r /srv/terminal-data/capture/live/market-data.sqlite
+ExecStart=/opt/terminal-l1-l2/node-v24.21.0-linux-x64/bin/node /opt/terminal-l1-l2/current/apps/runtime/scripts/serve/run-iceberg-history.js
+Restart=on-failure
+RestartPreventExitStatus=2
+RestartSec=60
+TimeoutStopSec=180
+UMask=0027
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+ReadOnlyPaths=/srv/terminal-data/capture
+ReadWritePaths=/srv/terminal-data/iceberg-history
+CPUQuota=100%
+MemoryHigh=1G
+MemoryMax=2G
+TasksMax=64
+Nice=10
+IOSchedulingClass=idle
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=terminal-iceberg-history
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,164 @@
+{
+  "mutations": [
+    {
+      "id": "p4c3.run-starts-cold",
+      "file": "apps/runtime/src/indicators/l2-memory/pyramid/pyramid-builder.js",
+      "find": "        fromTs: Math.max(0, firstTs - warmupMs),",
+      "replace": "        fromTs: firstTs,",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/pyramid.test.js"],
+      "mustFail": ["builds each 5 min window with the book and flow one long replay produces"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "p4c3.plan-rebuilds-built-windows",
+      "file": "apps/runtime/src/indicators/l2-memory/pyramid/pyramid-builder.js",
+      "find": "      if (built.has(ts)) continue;",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/pyramid.test.js"],
+      "mustFail": ["plans newest first, skips built windows"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "p4c3.plan-ignores-capture-margin",
+      "file": "apps/runtime/src/indicators/l2-memory/pyramid/pyramid-builder.js",
+      "find": "captured >= end + captureMarginMs;",
+      "replace": "captured >= end;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/pyramid.test.js"],
+      "mustFail": ["plans newest first, skips built windows"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "p4c3.plan-never-settles",
+      "file": "apps/runtime/src/indicators/l2-memory/pyramid/pyramid-builder.js",
+      "find": "      if (recorded || at >= end + settleMs) due.push(ts);",
+      "replace": "      if (recorded) due.push(ts);",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/pyramid.test.js"],
+      "mustFail": ["plans newest first, skips built windows"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "p4c3.plan-looks-past-retention",
+      "file": "apps/runtime/src/indicators/l2-memory/pyramid/pyramid-builder.js",
+      "find": "    const oldest = windowStart(at - retentionMs);",
+      "replace": "    const oldest = windowStart(at - retentionMs - WINDOW_MS);",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/pyramid.test.js"],
+      "mustFail": ["plans newest first, skips built windows"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "p4c3.tail-never-waits",
+      "file": "apps/runtime/src/indicators/l2-memory/pyramid/pyramid-builder.js",
+      "find": "run[run.length - 1] === tail && run.length < minTailWindows &&",
+      "replace": "false &&",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/pyramid.test.js"],
+      "mustFail": ["groups due windows into contiguous runs"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "p4c3.runs-uncapped",
+      "file": "apps/runtime/src/indicators/l2-memory/pyramid/pyramid-builder.js",
+      "find": "group.slice(Math.max(0, hi - maxRunWindows), hi)",
+      "replace": "group.slice(0, hi)",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/pyramid.test.js"],
+      "mustFail": ["groups due windows into contiguous runs"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "p4c3.repin-on-any-drift",
+      "file": "apps/runtime/src/indicators/l2-memory/pyramid/pyramid-builder.js",
+      "find": "wanted > pinned.rowClusters * REPIN_FACTOR",
+      "replace": "wanted > pinned.rowClusters",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/pyramid.test.js"],
+      "mustFail": ["re-pins only when the price moved the row width more than twofold"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "p4c3.rewrite-keeps-old-levels",
+      "file": "apps/runtime/src/indicators/l2-memory/pyramid/pyramid-store.js",
+      "find": "    for (const levelMs of LEVELS_MS) writes.deleteLevels.run(levelMs, windowTs);",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/pyramid.test.js"],
+      "mustFail": ["a rewrite replaces a window whole"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "p4c3.repin-keeps-old-windows",
+      "file": "apps/runtime/src/indicators/l2-memory/pyramid/pyramid-store.js",
+      "find": "    writes.wipeWindows.run();",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/pyramid.test.js"],
+      "mustFail": ["a new geometry wipes them"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "p4c3.page-can-be-empty",
+      "file": "apps/runtime/src/indicators/l2-memory/pyramid/pyramid-store.js",
+      "find": "      if (windows.length > 0 && bytes + text.length > maxBytes) {",
+      "replace": "      if (bytes + text.length > maxBytes) {",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/pyramid.test.js"],
+      "mustFail": ["pages them back decoded"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "p4c3.prune-leaves-levels",
+      "file": "apps/runtime/src/indicators/l2-memory/pyramid/pyramid-store.js",
+      "find": "      for (const levelMs of LEVELS_MS) writes.pruneLevels.run(levelMs, cutoff);",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/pyramid.test.js"],
+      "mustFail": ["prune drops whole windows older than the cutoff"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "p4c3.reference-rows-from-window",
+      "file": "apps/runtime/src/indicators/passive_liquidity/liquidity-geometry.js",
+      "find": "    referenceRows: windowRowsFor(price, rowWidth, referenceBp),",
+      "replace": "    referenceRows: windowRowsFor(price, rowWidth, windowBp),",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/pyramid.test.js"],
+      "mustFail": ["pins the same lane-0 geometry the live publisher derives"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "p4c3.row-factor-keeps-row-width",
+      "file": "apps/runtime/src/indicators/l2-memory/pyramid/pyramid-reader.js",
+      "find": "rowWidth: geometry.rowWidth * rowFactor",
+      "replace": "rowWidth: geometry.rowWidth",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/server/live-storage-route.test.js"],
+      "mustFail": ["a row factor sums rows into wider ones"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "p4c3.route-accepts-any-row-factor",
+      "file": "apps/runtime/src/server/live-storage-route.js",
+      "find": "    if (routeName === HEATMAP_ROUTE && options.rowFactor !== undefined && !HEATMAP_ROW_FACTORS.includes(options.rowFactor)) return \"ROW_FACTOR_OUT_OF_RANGE\";",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/server/live-storage-route.test.js"],
+      "mustFail": ["refuses a level off the pyramid"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "p4c3.probe-at-wall-clock",
+      "file": "apps/runtime/src/indicators/l2-memory/pyramid/pyramid-service.js",
+      "find": "    const probeAt = Number.isFinite(recorded) ? Math.min(at, recorded) : at;",
+      "replace": "    const probeAt = at;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/pyramid-service.test.js"],
+      "mustFail": ["pins a pair from the recording's last book"],
+      "timeoutMs": 240000
+    }
+  ]
+}

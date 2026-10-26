@@ -1,0 +1,95 @@
+{
+  "mutations": [
+    {
+      "id": "p4b-followups.early-selection-closes-the-client",
+      "file": "apps/runtime/src/server/market-data-server.js",
+      "find": "      if (routesReadyFor(newMarketKind)) throw error;",
+      "replace": "      throw error;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/server/market-data-server.test.js", "-t", "a selection made before its Binance routes connect"],
+      "mustFail": ["is held, keeps the client connected, and is applied once the routes connect"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "p4b-followups.held-selection-never-applied",
+      "file": "apps/runtime/src/server/market-data-server.js",
+      "find": "      performSwitch(pendingSymbol, pendingMarketKind);",
+      "replace": "      void pendingSymbol;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/server/market-data-server.test.js", "-t", "a selection made before its Binance routes connect"],
+      "mustFail": ["is held, keeps the client connected, and is applied once the routes connect"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "p4b-followups.reselecting-the-active-pair-keeps-the-held-one",
+      "file": "apps/runtime/src/server/market-data-server.js",
+      "find": "      cancelPendingSelection();",
+      "replace": "      void 0;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/server/market-data-server.test.js", "-t", "a selection made before its Binance routes connect"],
+      "mustFail": ["is dropped when the active pair is chosen again before the routes connect"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "p4b-followups.connected-route-failure-swallowed",
+      "file": "apps/runtime/src/server/market-data-server.js",
+      "find": "      if (routesReadyFor(newMarketKind)) throw error;",
+      "replace": "      void routesReadyFor;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/server/market-data-server.test.js", "-t", "still surfaces a failure when the routes report connected"],
+      "mustFail": ["still surfaces a failure when the routes report connected"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "p4b-followups.status-panel-not-redrawn",
+      "file": "apps/web/src/components/chart/MainPanel.tsx",
+      "find": "const timer = window.setInterval(() => chartRef.current?.refreshL2(), 1_000);",
+      "replace": "const timer = window.setInterval(() => {}, 1_000);",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/components/chart/tests/MainPanel.test.tsx", "-t", "redraws every second while visible"],
+      "mustFail": ["redraws every second while visible"]
+    },
+    {
+      "id": "p4b-followups.status-redraw-while-hidden",
+      "file": "apps/web/src/components/chart/MainPanel.tsx",
+      "find": "if (!l2FeedStatusOn || l2 === null) return;",
+      "replace": "if (l2 === null) return;",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/components/chart/tests/MainPanel.test.tsx", "-t", "redraws every second while visible"],
+      "mustFail": ["redraws every second while visible"]
+    },
+    {
+      "id": "p4b-followups.untrusted-segment-shown-green",
+      "file": "apps/web/src/lib/indicators/l2-feed-status/l2FeedStatus.ts",
+      "find": "tone: segment?.state !== \"LIVE\" ? \"bad\" : l2.trusted() ? \"good\" : \"neutral\"",
+      "replace": "tone: segment?.state !== \"LIVE\" ? \"bad\" : \"good\"",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/chart/tests/indicatorL2.test.ts"],
+      "mustFail": ["reports trust, the segment, every channel's sync and lag, and what is held"]
+    },
+    {
+      "id": "p4b-followups.sdk-cells-writable",
+      "file": "apps/web/src/lib/chart/indicatorL2.ts",
+      "find": "  readonly bid: ArrayLike<number>;",
+      "replace": "  bid: Float64Array;",
+      "cwd": "apps/web",
+      "command": ["npx", "tsc", "--noEmit", "-p", "tsconfig.app.json"]
+    },
+    {
+      "id": "p4b-followups.sdk-geometry-writable",
+      "file": "apps/web/src/lib/chart/indicatorL2.ts",
+      "find": "  readonly lo: number;",
+      "replace": "  lo: number;",
+      "cwd": "apps/web",
+      "command": ["npx", "tsc", "--noEmit", "-p", "tsconfig.app.json"]
+    },
+    {
+      "id": "p4b-followups.sdk-column-list-writable",
+      "file": "apps/web/src/lib/chart/indicatorL2.ts",
+      "find": "  readonly columns: readonly L2ColumnView[];",
+      "replace": "  readonly columns: L2ColumnView[];",
+      "cwd": "apps/web",
+      "command": ["npx", "tsc", "--noEmit", "-p", "tsconfig.app.json"]
+    }
+  ]
+}

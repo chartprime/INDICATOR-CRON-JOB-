@@ -1,0 +1,58 @@
+# W6.06 Phase 5 staged backfill worker. Instance = phase (ohlcv/l1/l2), each
+# triggered deliberately: `systemctl start terminal-backfill@ohlcv.service`.
+[Unit]
+Description=Terminal-L1-L2 backfill worker (%i)
+Wants=network-online.target
+After=network-online.target time-sync.target
+RequiresMountsFor=/srv/terminal-data
+StartLimitIntervalSec=86400
+StartLimitBurst=3
+OnFailure=terminal-alert@%n.service
+
+[Service]
+Type=oneshot
+User=ttconvert
+Group=ttconvert
+Slice=terminalconversion.slice
+WorkingDirectory=/opt/terminal-l1-l2/current/apps/runtime
+Environment=TT_CONVERT_SCRATCH_BYTES=400000000000
+Environment=TT_CONVERT_FREE_RESERVE_BYTES=20000000000
+Environment=TT_CONVERT_DUCKDB_MEMORY_BYTES=6000000000
+Environment=TT_CONVERT_SPILL_BYTES=2000000000
+Environment=TT_CONVERT_FINALIZE_THREADS=8
+Environment=TT_COLLECTOR_HEALTH_FILE=/run/terminal-l1-l2/collector-health.json
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONDONTWRITEBYTECODE=1
+EnvironmentFile=/etc/terminal-l1-l2/convert/service.env
+LogsDirectory=terminal-l1-l2/convert
+ExecStartPre=/usr/bin/mountpoint -q /srv/terminal-data
+ExecStartPre=+/opt/terminal-l1-l2/ops/scripts/check-service-env.sh /etc/terminal-l1-l2/convert/service.env convert
+ExecStart=/opt/terminal-l1-l2/converter-env/.venv/bin/python /opt/terminal-l1-l2/current/apps/runtime/conversion/backfill_sequence_cli.py --phase %i --bucket chartprime-historical-data --curated-prefix curated/databento --staging-root /srv/terminal-data/curated-staging --curated-root /srv/terminal-data/curated --catalog-root /srv/terminal-data/curated/_catalog --node-bin /opt/terminal-l1-l2/node-v24.21.0-linux-x64/bin/node --pool-size 2
+Restart=on-failure
+RestartPreventExitStatus=2 3
+RestartSec=60
+TimeoutStartSec=0
+TimeoutStopSec=90
+CPUQuota=1600%
+MemoryHigh=32G
+MemoryMax=48G
+TasksMax=256
+Nice=15
+IOSchedulingClass=3
+UMask=0077
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+ReadWritePaths=/srv/terminal-data/curated /srv/terminal-data/curated-staging
+ReadWritePaths=/srv/terminal-data/curated-staging.sequence.guard
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=terminal-backfill-%i

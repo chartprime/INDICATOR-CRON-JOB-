@@ -1,0 +1,31 @@
+{
+  "mutations": [
+    {
+      "id": "archive-served-window.end-not-clipped",
+      "file": "apps/runtime/conversion/archive_service.py",
+      "find": "    end = min(int(page[\"lastKey\"][0]) + span, int(requested[\"to\"]))",
+      "replace": "    end = int(page[\"lastKey\"][0]) + span",
+      "cwd": "apps/runtime/conversion",
+      "command": ["uv", "run", "--frozen", "pytest", "-q", "tests/test_archive_service.py", "tests/test_archive_http.py", "-k", "served_window or ending_inside or full_contract_page"],
+      "mustFail": ["test_the_served_window_never_extends_past_what_was_requested", "test_a_window_ending_inside_the_last_candle_serves_a_span_inside_the_window", "test_the_real_node_gateway_and_python_service_return_a_full_contract_page[candle]"]
+    },
+    {
+      "id": "archive-served-window.start-not-clipped",
+      "file": "apps/runtime/conversion/archive_service.py",
+      "find": "    start = max(int(page[\"firstKey\"][0]), int(requested[\"from\"]))",
+      "replace": "    start = int(page[\"firstKey\"][0])",
+      "cwd": "apps/runtime/conversion",
+      "command": ["uv", "run", "--frozen", "pytest", "-q", "tests/test_archive_service.py", "-k", "served_window"],
+      "mustFail": ["test_the_served_window_never_extends_past_what_was_requested"]
+    },
+    {
+      "id": "archive-served-window.span-dropped",
+      "file": "apps/runtime/conversion/archive_service.py",
+      "find": "    end = min(int(page[\"lastKey\"][0]) + span, int(requested[\"to\"]))",
+      "replace": "    end = min(int(page[\"lastKey\"][0]) + 1, int(requested[\"to\"]))",
+      "cwd": "apps/runtime/conversion",
+      "command": ["uv", "run", "--frozen", "pytest", "-q", "tests/test_archive_service.py", "-k", "served_window"],
+      "mustFail": ["test_the_served_window_never_extends_past_what_was_requested"]
+    }
+  ]
+}

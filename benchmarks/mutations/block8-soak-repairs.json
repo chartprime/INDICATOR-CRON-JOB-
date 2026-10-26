@@ -1,0 +1,281 @@
+{
+  "mutations": [
+    {
+      "id": "block8.zero-band-cell-rejected",
+      "file": "docs/contracts/ws-frame-contract/v1/ws-frame-contract-v1.schema.json",
+      "find": "\"bid\": {\n          \"type\": \"array\",\n          \"maxItems\": 256,\n          \"items\": { \"$ref\": \"#/$defs/sizeAmount\" }\n        },\n        \"ask\"",
+      "replace": "\"bid\": {\n          \"type\": \"array\",\n          \"maxItems\": 256,\n          \"items\": { \"$ref\": \"#/$defs/wireMagnitude\" }\n        },\n        \"ask\"",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/contracts/ws-frame-contract-limits.test.js", "-t", "band history permits zero book and flow cells"],
+      "mustFail": ["band history permits zero book and flow cells"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "block8.cache-strong-predecessor",
+      "file": "apps/runtime/src/indicators/passive_liquidity/liquidity-history.js",
+      "find": "  cached.set(prev, wire);",
+      "replace": "  cached.set(prev, wire); cached.prev = prev;",
+      "cwd": "apps/runtime",
+      "command": [
+        "node",
+        "../../node_modules/jest/bin/jest.js",
+        "--runInBand",
+        "--silent",
+        "--runTestsByPath",
+        "test/indicators/passive_liquidity/liquidity-history.test.js",
+        "-t",
+        "the delta cache releases evicted predecessor chains"
+      ],
+      "mustFail": [
+        "the delta cache releases evicted predecessor chains"
+      ],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "block8.closed-market-poll",
+      "file": "apps/runtime/src/indicators/volume-profile/volume-profile-session.js",
+      "find": "if (!open) { status = \"CLOSED\";",
+      "replace": "if (false && !open) { status = \"CLOSED\";",
+      "cwd": "apps/runtime",
+      "command": [
+        "node",
+        "../../node_modules/jest/bin/jest.js",
+        "--runInBand",
+        "--silent",
+        "--runTestsByPath",
+        "test/indicators/volume-profile/volume-profile-session.test.js",
+        "-t",
+        "closed markets suspend reads"
+      ],
+      "mustFail": [
+        "closed markets suspend reads"
+      ],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "block8.failed-seed-accepted",
+      "file": "apps/runtime/src/indicators/volume-profile/volume-profile-session.js",
+      "find": "if (seedToTs > periodStartTs && !await seedSessionFromStorage",
+      "replace": "if (false && seedToTs > periodStartTs && !await seedSessionFromStorage",
+      "cwd": "apps/runtime",
+      "command": [
+        "node",
+        "../../node_modules/jest/bin/jest.js",
+        "--runInBand",
+        "--silent",
+        "--runTestsByPath",
+        "test/indicators/volume-profile/volume-profile-session.test.js",
+        "-t",
+        "an available empty reference"
+      ],
+      "mustFail": [
+        "an available empty reference"
+      ],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "block8.partial-catchup-ready",
+      "file": "apps/runtime/src/indicators/volume-profile/volume-profile-engine.js",
+      "find": "  let complete = false;",
+      "replace": "  let complete = true;",
+      "cwd": "apps/runtime",
+      "command": [
+        "node",
+        "../../node_modules/jest/bin/jest.js",
+        "--runInBand",
+        "--silent",
+        "--runTestsByPath",
+        "test/indicators/volume-profile/volume-profile-session.test.js",
+        "-t",
+        "hitting the per-tick page cap"
+      ],
+      "mustFail": [
+        "hitting the per-tick page cap"
+      ],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "block8.last-subscriber-not-aborted",
+      "file": "apps/runtime/src/server/live-storage-route.js",
+      "find": "if (entry.subscribers === 0) entry.controller.abort();",
+      "replace": "if (entry.subscribers < 0) entry.controller.abort();",
+      "cwd": "apps/runtime",
+      "command": [
+        "node",
+        "../../node_modules/jest/bin/jest.js",
+        "--runInBand",
+        "--silent",
+        "--runTestsByPath",
+        "test/server/live-storage-route.test.js",
+        "-t",
+        "band cancellation is subscriber-aware"
+      ],
+      "mustFail": [
+        "band cancellation is subscriber-aware"
+      ],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "block8.mixed-admission-unbounded",
+      "file": "apps/runtime/src/server/live-storage-route.js",
+      "find": "return subscribeRead(existing, externalSignal);\n    }\n    if (inFlight.size + directControllers.size >= maxConcurrentQueries)",
+      "replace": "return subscribeRead(existing, externalSignal);\n    }\n    if (inFlight.size >= maxConcurrentQueries)",
+      "cwd": "apps/runtime",
+      "command": [
+        "node",
+        "../../node_modules/jest/bin/jest.js",
+        "--runInBand",
+        "--silent",
+        "--runTestsByPath",
+        "test/server/live-storage-route.test.js",
+        "-t",
+        "band and direct replay reads share one combined admission cap"
+      ],
+      "mustFail": [
+        "band and direct replay reads share one combined admission cap"
+      ],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "block8.queue-cap-removed",
+      "file": "apps/runtime/src/storage/dxfeed/remote-dxfeed-storage-reader.js",
+      "find": "if (pendingCalls.length >= maxPendingRequests)",
+      "replace": "if (false && pendingCalls.length >= maxPendingRequests)",
+      "cwd": "apps/runtime",
+      "command": [
+        "node",
+        "../../node_modules/jest/bin/jest.js",
+        "--runInBand",
+        "--silent",
+        "--runTestsByPath",
+        "test/storage/dxfeed/remote-dxfeed-storage-reader.test.js",
+        "-t",
+        "queued reads are bounded"
+      ],
+      "mustFail": [
+        "queued reads are bounded"
+      ],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "block8.sparse-replay-disabled",
+      "file": "apps/runtime/src/server/replay-page-worker.js",
+      "find": "request.kind === \"band-history\" ? \"sparse\"",
+      "replace": "request.kind === \"band-history\" ? \"full\"",
+      "cwd": "apps/runtime",
+      "command": [
+        "node",
+        "../../node_modules/jest/bin/jest.js",
+        "--runInBand",
+        "--silent",
+        "--runTestsByPath",
+        "test/server/replay-page-worker.test.js",
+        "-t",
+        "a hole the recording never re-anchors"
+      ],
+      "mustFail": [
+        "a hole the recording never re-anchors"
+      ],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "block8.deadline-not-split",
+      "file": "apps/web/src/lib/chart/bandHistory.ts",
+      "find": "frame.reason === \"READ_TIMEOUT\" && pending.to",
+      "replace": "frame.reason === \"READ_FAILED\" && pending.to",
+      "cwd": "apps/web",
+      "command": [
+        "node",
+        "../../node_modules/vitest/vitest.mjs",
+        "run",
+        "src/lib/chart/tests/bandHistory.test.ts",
+        "-t",
+        "bisects only read deadlines"
+      ],
+      "mustFail": [
+        "bisects only read deadlines"
+      ],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "block8.boundary-overlap-lost",
+      "file": "apps/web/src/lib/chart/bandHistory.ts",
+      "find": "to: middle + entry.want.columnMs, columns: null",
+      "replace": "to: middle, columns: null",
+      "cwd": "apps/web",
+      "command": [
+        "node",
+        "../../node_modules/vitest/vitest.mjs",
+        "run",
+        "src/lib/chart/tests/bandHistory.test.ts",
+        "-t",
+        "bisects only read deadlines"
+      ],
+      "mustFail": [
+        "bisects only read deadlines"
+      ],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "block8.obsolete-job-retained",
+      "file": "apps/web/src/lib/archive/useArchiveStudies.ts",
+      "find": "if (runningJob?.request.study === study && !stillDesired(runningJob))",
+      "replace": "if (false && runningJob?.request.study === study && !stillDesired(runningJob))",
+      "cwd": "apps/web",
+      "command": [
+        "node",
+        "../../node_modules/vitest/vitest.mjs",
+        "run",
+        "src/lib/archive/useArchiveStudies.test.tsx",
+        "-t",
+        "aborts obsolete work and re-plans"
+      ],
+      "mustFail": [
+        "aborts obsolete work and re-plans"
+      ],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "block8.equity-size-price-bound",
+      "file": "apps/runtime/src/server/frames.js",
+      "find": "size: decimalToFiniteNumber(size, \"dxfeedTradeFrame.size\", { ceiling: assetClass === \"EQUITY\" ? MAX_EQUITY_TRADE_SIZE : MAX_WIRE_MAGNITUDE })",
+      "replace": "size: decimalToFiniteNumber(size, \"dxfeedTradeFrame.size\", { ceiling: MAX_WIRE_MAGNITUDE })",
+      "cwd": "apps/runtime",
+      "command": [
+        "node",
+        "../../node_modules/jest/bin/jest.js",
+        "--runInBand",
+        "--silent",
+        "--runTestsByPath",
+        "test/server/frames.test.js",
+        "-t",
+        "retains the recorded 12.14-million-share NVDA print"
+      ],
+      "mustFail": [
+        "retains the recorded 12.14-million-share NVDA print"
+      ],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "block8.gap-flow-retained",
+      "file": "apps/runtime/src/indicators/passive_liquidity/column-flow.js",
+      "find": "if (print.ts > ts - PRINT_WINDOW_COLUMNS * columnMs) return true;",
+      "replace": "if (true || print.ts > ts - PRINT_WINDOW_COLUMNS * columnMs) return true;",
+      "cwd": "apps/runtime",
+      "command": [
+        "node",
+        "../../node_modules/jest/bin/jest.js",
+        "--runInBand",
+        "--silent",
+        "--runTestsByPath",
+        "test/indicators/passive_liquidity/column-flow.test.js",
+        "-t",
+        "a book gap discards expired pending flow"
+      ],
+      "mustFail": [
+        "a book gap discards expired pending flow"
+      ],
+      "timeoutMs": 60000
+    }
+  ]
+}

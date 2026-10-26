@@ -1,0 +1,173 @@
+{
+  "bars": 10080,
+  "rows": [
+    {
+      "id": "classicOrderBlocks",
+      "replayMs": 1148,
+      "notifies": 14506249,
+      "objects": 400,
+      "faulted": false
+    },
+    {
+      "id": "marketStructure",
+      "replayMs": 850,
+      "notifies": 8372025,
+      "objects": 304,
+      "faulted": false
+    },
+    {
+      "id": "swingAlphabetProfile",
+      "replayMs": 779,
+      "notifies": 4078351,
+      "objects": 3343,
+      "faulted": false
+    },
+    {
+      "id": "l1OrderBlocks",
+      "replayMs": 500,
+      "notifies": 970269,
+      "objects": 400,
+      "faulted": false
+    },
+    {
+      "id": "institutionalOrderBlocksV2",
+      "replayMs": 300,
+      "notifies": 3870785,
+      "objects": 64,
+      "faulted": false
+    },
+    {
+      "id": "institutionalOrderBlocks",
+      "replayMs": 148,
+      "notifies": 604811,
+      "objects": 10,
+      "faulted": false
+    },
+    {
+      "id": "fvgBoxes",
+      "replayMs": 140,
+      "notifies": 542751,
+      "objects": 40,
+      "faulted": false
+    },
+    {
+      "id": "pivotSupportResistance",
+      "replayMs": 85,
+      "notifies": 675432,
+      "objects": 300,
+      "faulted": false
+    },
+    {
+      "id": "fvgDelta",
+      "replayMs": 39,
+      "notifies": 196623,
+      "objects": 40,
+      "faulted": false
+    },
+    {
+      "id": "bollinger",
+      "replayMs": 15,
+      "notifies": 0,
+      "objects": 0,
+      "faulted": false
+    },
+    {
+      "id": "sma",
+      "replayMs": 15,
+      "notifies": 0,
+      "objects": 0,
+      "faulted": false
+    },
+    {
+      "id": "rsi",
+      "replayMs": 11,
+      "notifies": 0,
+      "objects": 0,
+      "faulted": false
+    },
+    {
+      "id": "ema",
+      "replayMs": 11,
+      "notifies": 0,
+      "objects": 0,
+      "faulted": false
+    },
+    {
+      "id": "largeTradeBubbles",
+      "replayMs": 7,
+      "notifies": 0,
+      "objects": 0,
+      "faulted": false
+    },
+    {
+      "id": "killzones",
+      "replayMs": 4,
+      "notifies": 0,
+      "objects": 0,
+      "faulted": false
+    },
+    {
+      "id": "orderFlow",
+      "replayMs": 4,
+      "notifies": 0,
+      "objects": 0,
+      "faulted": false
+    },
+    {
+      "id": "pivotPoints",
+      "replayMs": 4,
+      "notifies": 0,
+      "objects": 0,
+      "faulted": false
+    },
+    {
+      "id": "largeTradeDetector",
+      "replayMs": 3,
+      "notifies": 0,
+      "objects": 0,
+      "faulted": false
+    },
+    {
+      "id": "deltaDivergence",
+      "replayMs": 3,
+      "notifies": 0,
+      "objects": 0,
+      "faulted": false
+    },
+    {
+      "id": "volumeProfile",
+      "replayMs": 3,
+      "notifies": 0,
+      "objects": 0,
+      "faulted": false
+    },
+    {
+      "id": "deltaProfile",
+      "replayMs": 2,
+      "notifies": 0,
+      "objects": 0,
+      "faulted": false
+    },
+    {
+      "id": "sessionDeltaProfile",
+      "replayMs": 2,
+      "notifies": 0,
+      "objects": 0,
+      "faulted": false
+    },
+    {
+      "id": "vpinCloud",
+      "replayMs": 2,
+      "notifies": 0,
+      "objects": 0,
+      "faulted": false
+    },
+    {
+      "id": "volumeDeltaProfileOhlc",
+      "replayMs": 2,
+      "notifies": 0,
+      "objects": 0,
+      "faulted": false
+    }
+  ]
+}

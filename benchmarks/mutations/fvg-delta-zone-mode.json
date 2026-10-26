@@ -1,0 +1,40 @@
+{
+  "mutations": [
+    {
+      "id": "fvg-zone.hit-test-ignores-display-mode",
+      "file": "apps/web/src/components/chart/fvgHoverData.ts",
+      "find": "  if (event.displayMode === \"boxes\") {",
+      "replace": "  if (event.displayMode === \"lines\") {",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/chart/tests/ChartPanel.test.ts"],
+      "mustFail": ["hits the whole visible box, while line mode retains midpoint-only hit testing"]
+    },
+    {
+      "id": "fvg-zone.hit-test-excludes-far-edge",
+      "file": "apps/web/src/components/chart/fvgHoverData.ts",
+      "find": "    if (input.cursorY < firstY || input.cursorY > lastY) return null;",
+      "replace": "    if (input.cursorY < firstY || input.cursorY >= lastY) return null;",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/chart/tests/ChartPanel.test.ts"],
+      "mustFail": ["hits the whole visible box, while line mode retains midpoint-only hit testing"]
+    },
+    {
+      "id": "fvg-zone.bearish-exact-wick-touch-not-mitigated",
+      "file": "apps/web/src/lib/indicators/fvg-delta/fvgDelta.ts",
+      "find": "            : bar.high >= event.bottomPrice",
+      "replace": "            : bar.high > event.bottomPrice",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/fvg-delta/tests/fvgDelta.test.ts"],
+      "mustFail": ["ends a bearish zone when a later high touches its lower edge"]
+    },
+    {
+      "id": "fvg-zone.boxes-mode-uses-close-rule",
+      "file": "apps/web/src/lib/indicators/fvg-delta/fvgDelta.ts",
+      "find": "        settings.displayMode === \"boxes\"\n          ? event.kind === \"bullish\"",
+      "replace": "        settings.displayMode === \"never\"\n          ? event.kind === \"bullish\"",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/fvg-delta/tests/fvgDelta.test.ts"],
+      "mustFail": ["mitigates with close when in lines mode and with wick when in boxes mode"]
+    }
+  ]
+}

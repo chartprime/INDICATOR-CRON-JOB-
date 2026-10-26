@@ -1,0 +1,53 @@
+# Archive gateway (W6.10). Authenticates browser callers and relays to the
+# loopback query service; it holds no S3 credential and reads no curated data.
+[Unit]
+Description=Terminal-L1-L2 archive gateway
+Wants=network-online.target terminal-archive-query.service
+After=network-online.target time-sync.target terminal-archive-query.service
+StartLimitIntervalSec=300
+StartLimitBurst=5
+OnFailure=terminal-alert@%n.service
+
+[Service]
+Type=simple
+User=ttgateway
+Group=ttgateway
+Slice=terminal.slice
+WorkingDirectory=/opt/terminal-l1-l2/current/apps/runtime
+Environment=NODE_ENV=production
+Environment=TT_LOG_DIR=/var/log/terminal-l1-l2/gateway
+Environment=TT_ARCHIVE_GATEWAY_HOST=127.0.0.1
+EnvironmentFile=/etc/terminal-l1-l2/gateway/service.env
+LogsDirectory=terminal-l1-l2/gateway
+ExecStartPre=+/opt/terminal-l1-l2/ops/scripts/check-service-env.sh /etc/terminal-l1-l2/gateway/service.env gateway
+ExecStart=/opt/terminal-l1-l2/node-v24.21.0-linux-x64/bin/node /opt/terminal-l1-l2/current/apps/runtime/scripts/serve/run-archive-gateway.js 8001
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=30
+UMask=0077
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+IPAddressDeny=any
+IPAddressAllow=localhost
+IPAddressAllow=100.64.0.0/10
+IPAddressAllow=10.88.0.0/24
+InaccessiblePaths=/srv/terminal-data
+MemoryHigh=512M
+MemoryMax=1G
+TasksMax=64
+Nice=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=terminal-archive-gateway
+
+[Install]
+WantedBy=multi-user.target

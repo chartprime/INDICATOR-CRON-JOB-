@@ -1,0 +1,130 @@
+{
+  "mutations": [
+    {
+      "id": "p4c2.lane-covering-ignores-the-top-price",
+      "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityLanes.ts",
+      "find": "fits(candidate) && candidate.priceLo <= lo && candidate.priceHi >= hi",
+      "replace": "fits(candidate) && candidate.priceLo <= lo",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/passive-liquidity/tests/liquidityLanes.test.ts"],
+      "mustFail": ["takes the finest lane whose coverage holds the prices on screen"]
+    },
+    {
+      "id": "p4c2.lane-ignores-the-row-budget",
+      "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityLanes.ts",
+      "find": "const covering = candidates.find((candidate) => fits(candidate) && ",
+      "replace": "const covering = candidates.find((candidate) => ",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/passive-liquidity/tests/liquidityLanes.test.ts"],
+      "mustFail": ["skips a covering lane with more rows in view than the layout draws"]
+    },
+    {
+      "id": "p4c2.pinned-lane-ignored",
+      "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityLanes.ts",
+      "find": "  if (choice !== \"auto\") {",
+      "replace": "  if (false) {",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/passive-liquidity/tests/liquidityLanes.test.ts"],
+      "mustFail": ["a pinned lane wins when it exists"]
+    },
+    {
+      "id": "p4c2.walls-kept-on-lane-zero-rows",
+      "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityLanes.ts",
+      "find": "    const row = Math.floor(level.row / factor);",
+      "replace": "    const row = level.row;",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/passive-liquidity/tests/liquidityLanes.test.ts"],
+      "mustFail": ["maps lane 0's walls onto the lane's rows"]
+    },
+    {
+      "id": "p4c2.layout-never-draws-a-lane",
+      "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatmapLayout.ts",
+      "find": "  const drawn: HeatGrid = laneGrid === null ? grid : laneHeatGrid(laneGrid, grid, lane);",
+      "replace": "  const drawn: HeatGrid = grid;",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/passive-liquidity/tests/liquidityLanes.test.ts"],
+      "mustFail": ["zoomed out past lane 0 draws lane 1"]
+    },
+    {
+      "id": "p4c2.lane-bands-not-scaled",
+      "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatmapLayout.ts",
+      "find": "  const clusterRows = sameRows ? fineClusterRows : Math.max(1, Math.round((fineClusterRows * grid.rowWidth) / rowWidth));",
+      "replace": "  const clusterRows = fineClusterRows;",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/passive-liquidity/tests/liquidityLanes.test.ts", "src/lib/indicators/passive-liquidity/tests/liquidityHeatmapLayout.test.ts"],
+      "mustFail": ["zoomed out past lane 0 draws lane 1"]
+    },
+    {
+      "id": "p4c2.lanes-override-the-coarse-picture",
+      "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatmapLayout.ts",
+      "find": "  const lane = coarse ? 0 : chooseLane(",
+      "replace": "  const lane = chooseLane(",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/passive-liquidity/tests/liquidityLanes.test.ts"],
+      "mustFail": ["from 4h bars with a coarse tier, the coarse picture wins"]
+    },
+    {
+      "id": "p4c2.chart-never-hands-lanes",
+      "file": "apps/web/src/components/chart/ChartPanel.tsx",
+      "find": "      liquidityPrimitiveRef.current?.setLanes(store?.lanes ?? null);\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/components/chart/tests/ChartPanel.lifecycle.test.tsx", "-t", "zoom lanes"],
+      "mustFail": ["gives the heatmap the live store's zoom lanes"]
+    },
+    {
+      "id": "p4c2.saved-lane-dropped",
+      "file": "apps/web/src/lib/chart/liveIndicatorExtras.ts",
+      "find": "    liquidityLane: isLaneChoice(raw.liquidityLane) ? raw.liquidityLane : \"0\",",
+      "replace": "    liquidityLane: \"0\",",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/chart/tests/liveIndicatorExtras.test.ts"],
+      "mustFail": ["brings every custom indicator setting back after a reload"]
+    },
+    {
+      "id": "p4c2.saved-lane-never-applied",
+      "file": "apps/web/src/components/chart/MainPanel.tsx",
+      "find": "    chartRef.current?.setLiquidityLane(liquidityLane);",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/components/chart/tests/MainPanel.test.tsx", "-t", "price-zoom"],
+      "mustFail": ["hands the chart the saved heatmap price-zoom choice on mount"]
+    },
+    {
+      "id": "p4c2.layer-never-reports-its-lane",
+      "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatmapPrimitive.ts",
+      "find": "      this.onLaneDrawn?.(lane);",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/passive-liquidity/tests/liquidityLanes.test.ts"],
+      "mustFail": ["the heatmap layer reports the lane it draws"]
+    },
+    {
+      "id": "p4c2.lane-callback-stuck-on-first-render",
+      "file": "apps/web/src/components/chart/ChartPanel.tsx",
+      "find": "    onLiquidityLaneDrawnRef.current = onLiquidityLaneDrawn;",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/components/chart/tests/ChartPanel.lifecycle.test.tsx", "-t", "price-zoom lane"],
+      "mustFail": ["tells the panel which price-zoom lane"]
+    },
+    {
+      "id": "p4c2.legend-shows-lane-zero-rows",
+      "file": "apps/web/src/components/chart/MainPanel.tsx",
+      "find": "rows ${liquidity.rowWidth * 2 ** liquidityDrawnLane}",
+      "replace": "rows ${liquidity.rowWidth}",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/components/chart/tests/MainPanel.test.tsx", "-t", "legend names the rows"],
+      "mustFail": ["the heatmap legend names the rows the chart is drawing"]
+    },
+    {
+      "id": "p4c2.hover-forgets-the-lane",
+      "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityBandHover.ts",
+      "find": "    lane: layout.lane,",
+      "replace": "    lane: 0,",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/passive-liquidity/tests/liquidityBandHover.test.ts"],
+      "mustFail": ["names the price-zoom lane the band was drawn from"]
+    }
+  ]
+}

@@ -1,0 +1,917 @@
+{
+  "generatedAt": "2026-09-24T19:01:41.741Z",
+  "rows": 400,
+  "bars": 10080,
+  "liveBars": true,
+  "liquidityFrames": 17,
+  "phases": {
+    "loadSeconds": 20,
+    "steadySeconds": 20,
+    "hoverSeconds": 10,
+    "panSettleSeconds": 3
+  },
+  "results": [
+    {
+      "scenario": "baseline",
+      "favorites": [],
+      "pageState": {
+        "chartCanvas": true,
+        "ohlcReadout": true,
+        "liveBadge": true,
+        "indicatorRows": 0,
+        "hiddenIndicatorRows": 0,
+        "liquidityLoaded": false
+      },
+      "phases": {
+        "load": {
+          "longTaskMs": {
+            "count": 3,
+            "p50": 63,
+            "p95": 63,
+            "p99": 63,
+            "max": 73
+          },
+          "frameIntervalMs": {
+            "count": 1181,
+            "p50": 16.7,
+            "p95": 16.8,
+            "p99": 33.4,
+            "max": 133.2
+          }
+        },
+        "steady": {
+          "longTaskMs": {
+            "count": 0,
+            "p50": null,
+            "p95": null,
+            "p99": null,
+            "max": null
+          },
+          "frameIntervalMs": {
+            "count": 1198,
+            "p50": 16.7,
+            "p95": 16.8,
+            "p99": 16.8,
+            "max": 33.4
+          }
+        },
+        "hover": {
+          "longTaskMs": {
+            "count": 0,
+            "p50": null,
+            "p95": null,
+            "p99": null,
+            "max": null
+          },
+          "frameIntervalMs": {
+            "count": 601,
+            "p50": 16.7,
+            "p95": 16.7,
+            "p99": 16.8,
+            "max": 33.3
+          }
+        },
+        "pan": {
+          "longTaskMs": {
+            "count": 0,
+            "p50": null,
+            "p95": null,
+            "p99": null,
+            "max": null
+          },
+          "frameIntervalMs": {
+            "count": 308,
+            "p50": 16.7,
+            "p95": 16.7,
+            "p99": 16.8,
+            "max": 16.8
+          }
+        }
+      },
+      "mainThreadBusySeconds": {
+        "steady": 5.9422,
+        "hover": 3.8938,
+        "pan": 1.8362
+      },
+      "hoverMoves": 289,
+      "heapUsedMb": 75.4,
+      "domNodes": 854,
+      "pageErrors": [],
+      "profileTop": null
+    },
+    {
+      "scenario": "bookMap",
+      "favorites": [
+        "l2BookMap"
+      ],
+      "pageState": {
+        "chartCanvas": true,
+        "ohlcReadout": true,
+        "liveBadge": true,
+        "indicatorRows": 1,
+        "hiddenIndicatorRows": 0,
+        "liquidityLoaded": false
+      },
+      "phases": {
+        "load": {
+          "longTaskMs": {
+            "count": 6,
+            "p50": 64,
+            "p95": 77,
+            "p99": 77,
+            "max": 78
+          },
+          "frameIntervalMs": {
+            "count": 942,
+            "p50": 16.7,
+            "p95": 33.4,
+            "p99": 66.6,
+            "max": 183.3
+          }
+        },
+        "steady": {
+          "longTaskMs": {
+            "count": 1,
+            "p50": 73,
+            "p95": 73,
+            "p99": 73,
+            "max": 73
+          },
+          "frameIntervalMs": {
+            "count": 979,
+            "p50": 16.7,
+            "p95": 33.4,
+            "p99": 49.9,
+            "max": 66.6
+          }
+        },
+        "hover": {
+          "longTaskMs": {
+            "count": 4,
+            "p50": 51,
+            "p95": 55,
+            "p99": 55,
+            "max": 61
+          },
+          "frameIntervalMs": {
+            "count": 386,
+            "p50": 33.2,
+            "p95": 33.4,
+            "p99": 50,
+            "max": 66.6
+          }
+        },
+        "pan": {
+          "longTaskMs": {
+            "count": 0,
+            "p50": null,
+            "p95": null,
+            "p99": null,
+            "max": null
+          },
+          "frameIntervalMs": {
+            "count": 296,
+            "p50": 16.7,
+            "p95": 16.8,
+            "p99": 33.3,
+            "max": 50
+          }
+        }
+      },
+      "mainThreadBusySeconds": {
+        "steady": 12.2394,
+        "hover": 9.5896,
+        "pan": 3.1296999999999997
+      },
+      "hoverMoves": 275,
+      "heapUsedMb": 24.9,
+      "domNodes": 880,
+      "pageErrors": [],
+      "profileTop": null
+    },
+    {
+      "scenario": "orderBlocks",
+      "favorites": [
+        "classicOrderBlocks",
+        "institutionalOrderBlocks",
+        "l1OrderBlocks"
+      ],
+      "pageState": {
+        "chartCanvas": true,
+        "ohlcReadout": true,
+        "liveBadge": true,
+        "indicatorRows": 3,
+        "hiddenIndicatorRows": 0,
+        "liquidityLoaded": false
+      },
+      "phases": {
+        "load": {
+          "longTaskMs": {
+            "count": 5,
+            "p50": 105,
+            "p95": 170,
+            "p99": 170,
+            "max": 4434
+          },
+          "frameIntervalMs": {
+            "count": 908,
+            "p50": 16.7,
+            "p95": 16.8,
+            "p99": 66.6,
+            "max": 4483.1
+          }
+        },
+        "steady": {
+          "longTaskMs": {
+            "count": 1,
+            "p50": 63,
+            "p95": 63,
+            "p99": 63,
+            "max": 63
+          },
+          "frameIntervalMs": {
+            "count": 1184,
+            "p50": 16.7,
+            "p95": 16.8,
+            "p99": 33.3,
+            "max": 50
+          }
+        },
+        "hover": {
+          "longTaskMs": {
+            "count": 0,
+            "p50": null,
+            "p95": null,
+            "p99": null,
+            "max": null
+          },
+          "frameIntervalMs": {
+            "count": 571,
+            "p50": 16.7,
+            "p95": 16.8,
+            "p99": 33.4,
+            "max": 50.1
+          }
+        },
+        "pan": {
+          "longTaskMs": {
+            "count": 1,
+            "p50": 50,
+            "p95": 50,
+            "p99": 50,
+            "max": 50
+          },
+          "frameIntervalMs": {
+            "count": 289,
+            "p50": 16.7,
+            "p95": 33.3,
+            "p99": 33.4,
+            "max": 50
+          }
+        }
+      },
+      "mainThreadBusySeconds": {
+        "steady": 7.789,
+        "hover": 7.216600000000001,
+        "pan": 3.3129
+      },
+      "hoverMoves": 283,
+      "heapUsedMb": 47.9,
+      "domNodes": 897,
+      "pageErrors": [],
+      "profileTop": null
+    },
+    {
+      "scenario": "wallsV2",
+      "favorites": [
+        "institutionalOrderBlocksV2"
+      ],
+      "pageState": {
+        "chartCanvas": true,
+        "ohlcReadout": true,
+        "liveBadge": true,
+        "indicatorRows": 1,
+        "hiddenIndicatorRows": 0,
+        "liquidityLoaded": false
+      },
+      "phases": {
+        "load": {
+          "longTaskMs": {
+            "count": 5,
+            "p50": 80,
+            "p95": 661,
+            "p99": 661,
+            "max": 788
+          },
+          "frameIntervalMs": {
+            "count": 1104,
+            "p50": 16.7,
+            "p95": 16.8,
+            "p99": 33.3,
+            "max": 833.3
+          }
+        },
+        "steady": {
+          "longTaskMs": {
+            "count": 0,
+            "p50": null,
+            "p95": null,
+            "p99": null,
+            "max": null
+          },
+          "frameIntervalMs": {
+            "count": 1194,
+            "p50": 16.7,
+            "p95": 16.8,
+            "p99": 16.8,
+            "max": 33.4
+          }
+        },
+        "hover": {
+          "longTaskMs": {
+            "count": 0,
+            "p50": null,
+            "p95": null,
+            "p99": null,
+            "max": null
+          },
+          "frameIntervalMs": {
+            "count": 591,
+            "p50": 16.7,
+            "p95": 16.8,
+            "p99": 33.3,
+            "max": 33.4
+          }
+        },
+        "pan": {
+          "longTaskMs": {
+            "count": 0,
+            "p50": null,
+            "p95": null,
+            "p99": null,
+            "max": null
+          },
+          "frameIntervalMs": {
+            "count": 317,
+            "p50": 16.7,
+            "p95": 16.7,
+            "p99": 16.8,
+            "max": 16.8
+          }
+        }
+      },
+      "mainThreadBusySeconds": {
+        "steady": 6.8963,
+        "hover": 5.9146,
+        "pan": 2.3743000000000003
+      },
+      "hoverMoves": 283,
+      "heapUsedMb": 36.6,
+      "domNodes": 867,
+      "pageErrors": [],
+      "profileTop": null
+    },
+    {
+      "scenario": "absorption",
+      "favorites": [
+        "absorptionDetector"
+      ],
+      "pageState": {
+        "chartCanvas": true,
+        "ohlcReadout": true,
+        "liveBadge": true,
+        "indicatorRows": 1,
+        "hiddenIndicatorRows": 0,
+        "liquidityLoaded": false
+      },
+      "phases": {
+        "load": {
+          "longTaskMs": {
+            "count": 6,
+            "p50": 63,
+            "p95": 88,
+            "p99": 88,
+            "max": 92
+          },
+          "frameIntervalMs": {
+            "count": 1166,
+            "p50": 16.7,
+            "p95": 16.8,
+            "p99": 49.9,
+            "max": 200
+          }
+        },
+        "steady": {
+          "longTaskMs": {
+            "count": 0,
+            "p50": null,
+            "p95": null,
+            "p99": null,
+            "max": null
+          },
+          "frameIntervalMs": {
+            "count": 1193,
+            "p50": 16.7,
+            "p95": 16.8,
+            "p99": 16.8,
+            "max": 33.4
+          }
+        },
+        "hover": {
+          "longTaskMs": {
+            "count": 0,
+            "p50": null,
+            "p95": null,
+            "p99": null,
+            "max": null
+          },
+          "frameIntervalMs": {
+            "count": 599,
+            "p50": 16.7,
+            "p95": 16.7,
+            "p99": 16.8,
+            "max": 33.3
+          }
+        },
+        "pan": {
+          "longTaskMs": {
+            "count": 0,
+            "p50": null,
+            "p95": null,
+            "p99": null,
+            "max": null
+          },
+          "frameIntervalMs": {
+            "count": 311,
+            "p50": 16.7,
+            "p95": 16.7,
+            "p99": 16.8,
+            "max": 33.3
+          }
+        }
+      },
+      "mainThreadBusySeconds": {
+        "steady": 7.2376000000000005,
+        "hover": 4.9691,
+        "pan": 2.1023
+      },
+      "hoverMoves": 291,
+      "heapUsedMb": 118.9,
+      "domNodes": 873,
+      "pageErrors": [],
+      "profileTop": null
+    },
+    {
+      "scenario": "all",
+      "favorites": [
+        "l2BookMap",
+        "classicOrderBlocks",
+        "institutionalOrderBlocks",
+        "l1OrderBlocks",
+        "institutionalOrderBlocksV2",
+        "absorptionDetector",
+        "passiveLiquidity"
+      ],
+      "pageState": {
+        "chartCanvas": true,
+        "ohlcReadout": true,
+        "liveBadge": true,
+        "indicatorRows": 7,
+        "hiddenIndicatorRows": 0,
+        "liquidityLoaded": true
+      },
+      "phases": {
+        "load": {
+          "longTaskMs": {
+            "count": 66,
+            "p50": 60,
+            "p95": 84,
+            "p99": 846,
+            "max": 4592
+          },
+          "frameIntervalMs": {
+            "count": 456,
+            "p50": 33.3,
+            "p95": 66.7,
+            "p99": 116.7,
+            "max": 4616.4
+          }
+        },
+        "steady": {
+          "longTaskMs": {
+            "count": 104,
+            "p50": 59,
+            "p95": 84,
+            "p99": 88,
+            "max": 148
+          },
+          "frameIntervalMs": {
+            "count": 590,
+            "p50": 33.3,
+            "p95": 66.7,
+            "p99": 83.3,
+            "max": 133.4
+          }
+        },
+        "hover": {
+          "longTaskMs": {
+            "count": 111,
+            "p50": 62,
+            "p95": 77,
+            "p99": 81,
+            "max": 95
+          },
+          "frameIntervalMs": {
+            "count": 176,
+            "p50": 50.1,
+            "p95": 83.3,
+            "p99": 83.4,
+            "max": 100
+          }
+        },
+        "pan": {
+          "longTaskMs": {
+            "count": 48,
+            "p50": 58,
+            "p95": 71,
+            "p99": 78,
+            "max": 82
+          },
+          "frameIntervalMs": {
+            "count": 168,
+            "p50": 33.4,
+            "p95": 66.7,
+            "p99": 66.8,
+            "max": 83.3
+          }
+        }
+      },
+      "mainThreadBusySeconds": {
+        "steady": 17.887700000000002,
+        "hover": 10.005600000000001,
+        "pan": 5.5953
+      },
+      "hoverMoves": 174,
+      "heapUsedMb": 75.4,
+      "domNodes": 995,
+      "pageErrors": [],
+      "profileTop": null
+    },
+    {
+      "scenario": "everything",
+      "favorites": [
+        "rsi",
+        "ema",
+        "bollinger",
+        "sma",
+        "largeTradeBubbles",
+        "killzones",
+        "orderFlow",
+        "largeTradeDetector",
+        "deltaDivergence",
+        "volumeProfile",
+        "deltaProfile",
+        "sessionDeltaProfile",
+        "vpinCloud",
+        "volumeDeltaProfileOhlc",
+        "pivotPoints",
+        "pivotSupportResistance",
+        "passiveLiquidity",
+        "marketStructure",
+        "swingAlphabetProfile",
+        "aggressiveOrders",
+        "absorptionDetector",
+        "fvgBoxes",
+        "l2SupportResistance",
+        "l2BookMap",
+        "fvgDelta",
+        "classicOrderBlocks",
+        "institutionalOrderBlocks",
+        "institutionalOrderBlocksV2",
+        "l1OrderBlocks"
+      ],
+      "pageState": {
+        "chartCanvas": true,
+        "ohlcReadout": true,
+        "liveBadge": true,
+        "indicatorRows": 29,
+        "hiddenIndicatorRows": 0,
+        "liquidityLoaded": true
+      },
+      "phases": {
+        "load": {
+          "longTaskMs": {
+            "count": 40,
+            "p50": 337,
+            "p95": 506,
+            "p99": 1316,
+            "max": 6931
+          },
+          "frameIntervalMs": {
+            "count": 46,
+            "p50": 333.3,
+            "p95": 500,
+            "p99": 1516.6,
+            "max": 7116.4
+          }
+        },
+        "steady": {
+          "longTaskMs": {
+            "count": 59,
+            "p50": 327,
+            "p95": 387,
+            "p99": 389,
+            "max": 413
+          },
+          "frameIntervalMs": {
+            "count": 60,
+            "p50": 333.2,
+            "p95": 383.4,
+            "p99": 383.4,
+            "max": 433.3
+          }
+        },
+        "hover": {
+          "longTaskMs": {
+            "count": 30,
+            "p50": 332,
+            "p95": 489,
+            "p99": 501,
+            "max": 785
+          },
+          "frameIntervalMs": {
+            "count": 29,
+            "p50": 349.9,
+            "p95": 500,
+            "p99": 500,
+            "max": 783.3
+          }
+        },
+        "pan": {
+          "longTaskMs": {
+            "count": 71,
+            "p50": 399,
+            "p95": 504,
+            "p99": 543,
+            "max": 652
+          },
+          "frameIntervalMs": {
+            "count": 72,
+            "p50": 400,
+            "p95": 516.6,
+            "p99": 550,
+            "max": 666.7
+          }
+        }
+      },
+      "mainThreadBusySeconds": {
+        "steady": 20.002200000000002,
+        "hover": 10.2464,
+        "pan": 29.6109
+      },
+      "hoverMoves": 28,
+      "heapUsedMb": 84,
+      "domNodes": 1453,
+      "pageErrors": [],
+      "profileTop": null
+    }
+  ],
+  "verdict": {
+    "budgets": {
+      "steadyLongTaskMaxMs": 100,
+      "frameIntervalP95Ms": 33,
+      "perIndicatorAddedP95Ms": 8
+    },
+    "checks": [
+      {
+        "scenario": "baseline",
+        "check": "steady long task ≤ 100 ms",
+        "value": 0,
+        "pass": true
+      },
+      {
+        "scenario": "baseline",
+        "check": "steady frame interval p95 ≤ 33 ms",
+        "value": 16.8,
+        "pass": true
+      },
+      {
+        "scenario": "baseline",
+        "check": "hover frame interval p95 ≤ 33 ms",
+        "value": 16.7,
+        "pass": true
+      },
+      {
+        "scenario": "baseline",
+        "check": "no page errors",
+        "value": 0,
+        "pass": true
+      },
+      {
+        "scenario": "bookMap",
+        "check": "steady long task ≤ 100 ms",
+        "value": 73,
+        "pass": true
+      },
+      {
+        "scenario": "bookMap",
+        "check": "steady frame interval p95 ≤ 33 ms",
+        "value": 33.4,
+        "pass": false
+      },
+      {
+        "scenario": "bookMap",
+        "check": "steady p95 added over baseline ≤ 8 ms",
+        "value": 16.6,
+        "pass": false
+      },
+      {
+        "scenario": "bookMap",
+        "check": "hover frame interval p95 ≤ 33 ms",
+        "value": 33.4,
+        "pass": false
+      },
+      {
+        "scenario": "bookMap",
+        "check": "hover p95 added over baseline ≤ 8 ms",
+        "value": 16.7,
+        "pass": false
+      },
+      {
+        "scenario": "bookMap",
+        "check": "no page errors",
+        "value": 0,
+        "pass": true
+      },
+      {
+        "scenario": "orderBlocks",
+        "check": "steady long task ≤ 100 ms",
+        "value": 63,
+        "pass": true
+      },
+      {
+        "scenario": "orderBlocks",
+        "check": "steady frame interval p95 ≤ 33 ms",
+        "value": 16.8,
+        "pass": true
+      },
+      {
+        "scenario": "orderBlocks",
+        "check": "steady p95 added over baseline ≤ 8 ms",
+        "value": 0,
+        "pass": true
+      },
+      {
+        "scenario": "orderBlocks",
+        "check": "hover frame interval p95 ≤ 33 ms",
+        "value": 16.8,
+        "pass": true
+      },
+      {
+        "scenario": "orderBlocks",
+        "check": "hover p95 added over baseline ≤ 8 ms",
+        "value": 0.1,
+        "pass": true
+      },
+      {
+        "scenario": "orderBlocks",
+        "check": "no page errors",
+        "value": 0,
+        "pass": true
+      },
+      {
+        "scenario": "wallsV2",
+        "check": "steady long task ≤ 100 ms",
+        "value": 0,
+        "pass": true
+      },
+      {
+        "scenario": "wallsV2",
+        "check": "steady frame interval p95 ≤ 33 ms",
+        "value": 16.8,
+        "pass": true
+      },
+      {
+        "scenario": "wallsV2",
+        "check": "steady p95 added over baseline ≤ 8 ms",
+        "value": 0,
+        "pass": true
+      },
+      {
+        "scenario": "wallsV2",
+        "check": "hover frame interval p95 ≤ 33 ms",
+        "value": 16.8,
+        "pass": true
+      },
+      {
+        "scenario": "wallsV2",
+        "check": "hover p95 added over baseline ≤ 8 ms",
+        "value": 0.1,
+        "pass": true
+      },
+      {
+        "scenario": "wallsV2",
+        "check": "no page errors",
+        "value": 0,
+        "pass": true
+      },
+      {
+        "scenario": "absorption",
+        "check": "steady long task ≤ 100 ms",
+        "value": 0,
+        "pass": true
+      },
+      {
+        "scenario": "absorption",
+        "check": "steady frame interval p95 ≤ 33 ms",
+        "value": 16.8,
+        "pass": true
+      },
+      {
+        "scenario": "absorption",
+        "check": "steady p95 added over baseline ≤ 8 ms",
+        "value": 0,
+        "pass": true
+      },
+      {
+        "scenario": "absorption",
+        "check": "hover frame interval p95 ≤ 33 ms",
+        "value": 16.7,
+        "pass": true
+      },
+      {
+        "scenario": "absorption",
+        "check": "hover p95 added over baseline ≤ 8 ms",
+        "value": 0,
+        "pass": true
+      },
+      {
+        "scenario": "absorption",
+        "check": "no page errors",
+        "value": 0,
+        "pass": true
+      },
+      {
+        "scenario": "all",
+        "check": "steady long task ≤ 100 ms",
+        "value": 148,
+        "pass": false
+      },
+      {
+        "scenario": "all",
+        "check": "steady frame interval p95 ≤ 33 ms",
+        "value": 66.7,
+        "pass": false
+      },
+      {
+        "scenario": "all",
+        "check": "hover frame interval p95 ≤ 33 ms",
+        "value": 83.3,
+        "pass": false
+      },
+      {
+        "scenario": "all",
+        "check": "no page errors",
+        "value": 0,
+        "pass": true
+      },
+      {
+        "scenario": "everything",
+        "check": "steady long task ≤ 100 ms",
+        "value": 413,
+        "pass": false
+      },
+      {
+        "scenario": "everything",
+        "check": "steady frame interval p95 ≤ 33 ms",
+        "value": 383.4,
+        "pass": false
+      },
+      {
+        "scenario": "everything",
+        "check": "steady p95 added over baseline ≤ 8 ms",
+        "value": 366.6,
+        "pass": false
+      },
+      {
+        "scenario": "everything",
+        "check": "hover frame interval p95 ≤ 33 ms",
+        "value": 500,
+        "pass": false
+      },
+      {
+        "scenario": "everything",
+        "check": "hover p95 added over baseline ≤ 8 ms",
+        "value": 483.3,
+        "pass": false
+      },
+      {
+        "scenario": "everything",
+        "check": "no page errors",
+        "value": 0,
+        "pass": true
+      }
+    ],
+    "pass": false
+  }
+}

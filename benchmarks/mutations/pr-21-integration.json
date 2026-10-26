@@ -1,0 +1,34 @@
+{
+  "mutations": [
+    {
+      "id": "pr21-cumulative-pairs-across-its-own-restart",
+      "file": "apps/web/src/lib/indicators/cvd-divergence/cvdDivergence.ts",
+      "find": "    restartsAtEveryGap: true,",
+      "replace": "    restartsAtEveryGap: false,",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/indicators/cvd-divergence/tests/cvdDivergence.test.ts", "-t", "never pairs cumulative pivots across a weekend"],
+      "mustFail": ["never pairs cumulative pivots across a weekend, where the running total itself restarts at zero"],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "pr21-trend-filters-not-persisted",
+      "file": "apps/web/src/lib/indicators/cvd-divergence/cvdDivergenceIndicator.tsx",
+      "find": "...([\"oscillator\", \"cumulative\"] as const).flatMap(",
+      "replace": "...([] as const).flatMap(",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/chart/historicalIndicatorPreferences.test.ts", "-t", "keeps CVD Divergence's trend filters"],
+      "mustFail": ["keeps CVD Divergence's trend filters across a save and reload"],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "pr21-oscillator-restarts-at-every-scheduled-close",
+      "file": "apps/web/src/lib/indicators/cvd-divergence/cvdDivergence.ts",
+      "find": "if (uncoveredMs > closureToleranceMs(current)) return true;",
+      "replace": "if (uncoveredMs > 0) return true;",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/indicators/cvd-divergence/tests/cvdDivergence.test.ts", "-t", "now fills on a 1D stock chart that skips weekends"],
+      "mustFail": ["now fills on a 1D stock chart that skips weekends"],
+      "timeoutMs": 120000
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+[Unit]
+Description=Run Terminal-L1-L2 capture retention daily at 03:30 UTC
+
+[Timer]
+OnCalendar=*-*-* 03:30:00 UTC
+Persistent=true
+Unit=terminal-capture-retention.service
+
+[Install]
+WantedBy=timers.target

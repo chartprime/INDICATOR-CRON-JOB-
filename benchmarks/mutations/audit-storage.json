@@ -1,0 +1,588 @@
+{
+  "mutations": [
+    {
+      "id": "audit-storage.lock.fresh-empty-lock-taken",
+      "file": "apps/runtime/src/storage/storage-lock.js",
+      "find": "        if (age !== null && age < LOCK_WRITE_GRACE_MS) {",
+      "replace": "        if (false) {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/storage/storage-lock.test.js"
+      ],
+      "mustFail": [
+        "an empty lock file another collector has just created is waited on"
+      ]
+    },
+    {
+      "id": "audit-storage.lock.live-owner-not-respected",
+      "file": "apps/runtime/src/storage/storage-lock.js",
+      "find": "      if (existing.pid !== null && isProcessAlive(existing.pid)) {",
+      "replace": "      if (false) {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/storage/storage-lock.test.js"
+      ],
+      "mustFail": [
+        "exclusive creation prevents a second lock instance in this process from overwriting the owner"
+      ]
+    },
+    {
+      "id": "audit-storage.lock.stale-rename-race-ignored",
+      "file": "apps/runtime/src/storage/storage-lock.js",
+      "find": "      const stillStale = renamedOwner?.raw === existing.raw;",
+      "replace": "      const stillStale = true;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/storage/storage-lock.test.js"
+      ],
+      "mustFail": [
+        "restores (does not delete) a lock file another process concurrently wrote"
+      ]
+    },
+    {
+      "id": "audit-storage.lock.release-deletes-anothers",
+      "file": "apps/runtime/src/storage/storage-lock.js",
+      "find": "    if (current?.raw !== owner?.raw) {",
+      "replace": "    if (false) {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/storage/storage-lock.test.js"
+      ],
+      "mustFail": [
+        "release() never deletes a lock file that a different process re-acquired after us"
+      ]
+    },
+    {
+      "id": "audit-storage.lock.lock-not-exclusive",
+      "file": "apps/runtime/src/storage/storage-lock.js",
+      "find": "fs.openSync(lockPath, \"wx\", 0o600)",
+      "replace": "fs.openSync(lockPath, \"w\", 0o600)",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/storage/storage-lock.test.js"
+      ],
+      "mustFail": [
+        "exclusive creation prevents a second lock instance in this process from overwriting the owner"
+      ]
+    },
+    {
+      "id": "audit-storage.queue.batch-lost-on-failure",
+      "file": "apps/runtime/src/storage/storage-write-queue.js",
+      "find": "      queue.unshift(...batch);\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/storage/storage-write-queue.test.js"
+      ],
+      "mustFail": [
+        "a non-retryable write failure is retained"
+      ]
+    },
+    {
+      "id": "audit-storage.queue.retry-on-any-error",
+      "file": "apps/runtime/src/storage/storage-write-queue.js",
+      "find": "      if (duringStop || !retryableWriteError(error)) {",
+      "replace": "      if (duringStop) {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/storage/storage-write-queue.test.js"
+      ],
+      "mustFail": [
+        "a non-retryable write failure is retained"
+      ]
+    },
+    {
+      "id": "audit-storage.queue.retry-cap-ignored",
+      "file": "apps/runtime/src/storage/storage-write-queue.js",
+      "find": "      if (retryAttempt > maxRetryAttempts) {",
+      "replace": "      if (false) {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/storage/storage-write-queue.test.js"
+      ],
+      "mustFail": [
+        "a lock that never clears is given up on after the retry cap"
+      ]
+    },
+    {
+      "id": "audit-storage.queue.retry-count-not-reset",
+      "file": "apps/runtime/src/storage/storage-write-queue.js",
+      "find": "      batchWriter()(batch);\n      retryAttempt = 0;",
+      "replace": "      batchWriter()(batch);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/storage/storage-write-queue.test.js"
+      ],
+      "mustFail": [
+        "the retry cap counts consecutive failures"
+      ]
+    },
+    {
+      "id": "audit-storage.queue.pending-cap-ignored",
+      "file": "apps/runtime/src/storage/storage-write-queue.js",
+      "find": "    if (queue.length >= maxPendingItems) {",
+      "replace": "    if (false) {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/storage/storage-write-queue.test.js"
+      ],
+      "mustFail": [
+        "a bounded queue fails visibly before it can grow without limit"
+      ]
+    },
+    {
+      "id": "audit-storage.queue.stop-leaves-queue",
+      "file": "apps/runtime/src/storage/storage-write-queue.js",
+      "find": "    while (queue.length > 0) {\n      drainOnce({ duringStop: true });\n    }",
+      "replace": "    drainOnce({ duringStop: true });",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/storage/storage-write-queue.test.js"
+      ],
+      "mustFail": [
+        "stop() writes every pending batch, not only the first"
+      ]
+    },
+    {
+      "id": "audit-storage.queue.push-after-failure",
+      "file": "apps/runtime/src/storage/storage-write-queue.js",
+      "find": "    if (failure) {\n      throw new Error(\"storage-write-queue: cannot enqueue after a fatal",
+      "replace": "    if (false) {\n      throw new Error(\"storage-write-queue: cannot enqueue after a fatal",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/storage/storage-write-queue.test.js"
+      ],
+      "mustFail": [
+        "after a fatal failure a push is refused"
+      ]
+    },
+    {
+      "id": "audit-storage.queue.batch-not-transactional",
+      "file": "apps/runtime/src/storage/storage-write-queue.js",
+      "find": "      runBatch = storageDb.raw.transaction((items) => {",
+      "replace": "      runBatch = ((fn) => fn)((items) => {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/storage/storage-write-queue.test.js"
+      ],
+      "mustFail": [
+        "several pushes before the scheduled flush fires are batched into a single transaction"
+      ]
+    },
+    {
+      "id": "audit-storage.checkpoint.deep-every-cycle",
+      "file": "apps/runtime/src/storage/storage-checkpoint.js",
+      "find": "    const deep = cycleCount % deepCycleEvery === 0;",
+      "replace": "    const deep = true;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/storage/storage-checkpoint.test.js"
+      ],
+      "mustFail": [
+        "runOnce() issues a PASSIVE checkpoint on ordinary cycles"
+      ]
+    },
+    {
+      "id": "audit-storage.checkpoint.never-deep",
+      "file": "apps/runtime/src/storage/storage-checkpoint.js",
+      "find": "    const deep = cycleCount % deepCycleEvery === 0;",
+      "replace": "    const deep = false;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/storage/storage-checkpoint.test.js"
+      ],
+      "mustFail": [
+        "every Nth cycle is a deep cycle"
+      ]
+    },
+    {
+      "id": "audit-storage.checkpoint.error-escapes",
+      "file": "apps/runtime/src/storage/storage-checkpoint.js",
+      "find": "      onError?.(error);",
+      "replace": "      throw error;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/storage/storage-checkpoint.test.js"
+      ],
+      "mustFail": [
+        "a failure during a scheduled cycle is logged and reported via onError"
+      ]
+    },
+    {
+      "id": "audit-storage.service.trade-side-swapped",
+      "file": "apps/runtime/src/storage/storage-service.js",
+      "find": "side: payload.isBuyerMaker ? \"sell\" : \"buy\",",
+      "replace": "side: payload.isBuyerMaker ? \"buy\" : \"sell\",",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/storage/storage-service.test.js"
+      ],
+      "mustFail": [
+        "a TRADE envelope is written to the trades table"
+      ]
+    },
+    {
+      "id": "audit-storage.service.open-candle-written",
+      "file": "apps/runtime/src/storage/storage-service.js",
+      "find": "    if (envelope.payload?.isClosed !== true) return;\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/storage/storage-service.test.js"
+      ],
+      "mustFail": [
+        "a still-open KLINE (isClosed: false) is not persisted"
+      ]
+    },
+    {
+      "id": "audit-storage.service.candle-taker-over-volume",
+      "file": "apps/runtime/src/storage/storage-service.js",
+      "find": "      compareDecimalStrings(payload.takerBuyBaseVolume, payload.baseVolume) > 0 ||\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/storage/storage-service.test.js"
+      ],
+      "mustFail": [
+        "a KLINE with taker-buy volume greater than the bar's own volume is rejected"
+      ]
+    },
+    {
+      "id": "audit-storage.service.candle-not-one-minute",
+      "file": "apps/runtime/src/storage/storage-service.js",
+      "find": "      payload.interval !== \"1m\" ||\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/storage/storage-service.test.js"
+      ],
+      "mustFail": [
+        "a KLINE with an interval other than one minute is rejected"
+      ]
+    },
+    {
+      "id": "audit-storage.service.depth-range-reversed",
+      "file": "apps/runtime/src/storage/storage-service.js",
+      "find": "      payload.lastUpdateId < payload.firstUpdateId ||\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/storage/storage-service.test.js"
+      ],
+      "mustFail": [
+        "a DEPTH event with a last update id before its first is rejected"
+      ]
+    },
+    {
+      "id": "audit-storage.service.depth-spot-previous-id",
+      "file": "apps/runtime/src/storage/storage-service.js",
+      "find": "      (envelope.marketKind === MARKET_KINDS.SPOT && payload.previousUpdateId !== null) ||\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/storage/storage-service.test.js"
+      ],
+      "mustFail": [
+        "a DEPTH event with a spot event naming a previous update id"
+      ]
+    },
+    {
+      "id": "audit-storage.service.depth-level-cap",
+      "file": "apps/runtime/src/storage/storage-service.js",
+      "find": "      payload.bids.length > MAX_DEPTH_ENTRIES ||\n      payload.asks.length > MAX_DEPTH_ENTRIES ||\n      !isDepthLevels(payload.bids) ||\n      !isDepthLevels(payload.asks)\n    ) {\n      rejectRecord(`invalid depth event",
+      "replace": "      !isDepthLevels(payload.bids) ||\n      !isDepthLevels(payload.asks)\n    ) {\n      rejectRecord(`invalid depth event",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/storage/storage-service.test.js"
+      ],
+      "mustFail": [
+        "oversized depth arrays are rejected at both event and snapshot persistence"
+      ]
+    },
+    {
+      "id": "audit-storage.service.trade-gap-off-by-one",
+      "file": "apps/runtime/src/storage/storage-service.js",
+      "find": "    } else if (previousTradeId !== undefined && payload.tradeId > previousTradeId + 1) {",
+      "replace": "    } else if (previousTradeId !== undefined && payload.tradeId > previousTradeId + 2) {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/storage/storage-service.test.js"
+      ],
+      "mustFail": [
+        "tracks perpetual provider trade-ID discontinuity separately"
+      ]
+    },
+    {
+      "id": "audit-storage.service.trade-continuity-regresses",
+      "file": "apps/runtime/src/storage/storage-service.js",
+      "find": "    if (isTradeIdAdvancing) {\n      lastTradeIdByPair.set",
+      "replace": "    if (true) {\n      lastTradeIdByPair.set",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/storage/storage-service.test.js"
+      ],
+      "mustFail": [
+        "a late trade id behind the newest one keeps the newest as the continuity mark"
+      ]
+    },
+    {
+      "id": "audit-storage.service.session-boundary-gap-ignored",
+      "file": "apps/runtime/src/storage/storage-service.js",
+      "find": "    if (previousTradeId === undefined && priorSessionTradeId !== undefined && payload.tradeId > priorSessionTradeId + 1) {",
+      "replace": "    if (false) {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/storage/storage-service.test.js"
+      ],
+      "mustFail": [
+        "a service restart reports a session-boundary coverage gap"
+      ]
+    },
+    {
+      "id": "audit-storage.service.snapshot-written-twice",
+      "file": "apps/runtime/src/storage/storage-service.js",
+      "find": "      lastDepthSnapshotUpdateIdByPair.get(key) === snapshot.lastUpdateId\n",
+      "replace": "      false\n",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/storage/storage-service.test.js"
+      ],
+      "mustFail": [
+        "deduplicates an unchanged snapshot before repeating its expensive level validation"
+      ]
+    },
+    {
+      "id": "audit-storage.reader.prints-window-closed",
+      "file": "apps/runtime/src/storage/storage-reader.js",
+      "find": "\"WHERE symbol = ? AND market_kind = ? AND ts >= ? AND ts < ? AND CAST(size AS REAL) >= ? \"",
+      "replace": "\"WHERE symbol = ? AND market_kind = ? AND ts >= ? AND ts <= ? AND CAST(size AS REAL) >= ? \"",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/storage/storage-reader.test.js",
+        "test/storage/storage-reader-aggressive-prints.test.js",
+        "test/storage/storage-reader-daily-notional.test.js",
+        "test/storage/storage-reader-volume-profile-async.test.js"
+      ],
+      "mustFail": [
+        "returns the prints at least minSize big inside [fromMs,"
+      ]
+    },
+    {
+      "id": "audit-storage.reader.prints-min-size-strict",
+      "file": "apps/runtime/src/storage/storage-reader.js",
+      "find": "AND CAST(size AS REAL) >= ? ",
+      "replace": "AND CAST(size AS REAL) > ? ",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/storage/storage-reader.test.js",
+        "test/storage/storage-reader-aggressive-prints.test.js",
+        "test/storage/storage-reader-daily-notional.test.js",
+        "test/storage/storage-reader-volume-profile-async.test.js"
+      ],
+      "mustFail": [
+        "returns the prints at least minSize big inside [fromMs,"
+      ]
+    },
+    {
+      "id": "audit-storage.reader.price-range-window-closed",
+      "file": "apps/runtime/src/storage/storage-reader.js",
+      "find": "WHERE symbol = ? AND market_kind = ? AND ts >= ? AND ts < ?\",",
+      "replace": "WHERE symbol = ? AND market_kind = ? AND ts >= ? AND ts <= ?\",",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/storage/storage-reader.test.js",
+        "test/storage/storage-reader-aggressive-prints.test.js",
+        "test/storage/storage-reader-daily-notional.test.js",
+        "test/storage/storage-reader-volume-profile-async.test.js"
+      ],
+      "mustFail": [
+        "readPriceRange reads [fromTs, toTs)"
+      ]
+    },
+    {
+      "id": "audit-storage.reader.rollup-window-closed",
+      "file": "apps/runtime/src/storage/storage-reader.js",
+      "find": "day_bucket >= @rollupFrom AND day_bucket < @rollupTo",
+      "replace": "day_bucket >= @rollupFrom AND day_bucket <= @rollupTo",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/storage/storage-reader.test.js",
+        "test/storage/storage-reader-aggressive-prints.test.js",
+        "test/storage/storage-reader-daily-notional.test.js",
+        "test/storage/storage-reader-volume-profile-async.test.js"
+      ],
+      "mustFail": [
+        "once the rollup has fully caught up"
+      ]
+    },
+    {
+      "id": "audit-storage.reader.rollup-past-watermark",
+      "file": "apps/runtime/src/storage/storage-reader.js",
+      "find": "      const rollupTo = Math.max(rollupFrom, Math.min(lastFullDayExclusive, materializedThroughExclusive));",
+      "replace": "      const rollupTo = Math.max(rollupFrom, lastFullDayExclusive);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/storage/storage-reader.test.js",
+        "test/storage/storage-reader-aggressive-prints.test.js",
+        "test/storage/storage-reader-daily-notional.test.js",
+        "test/storage/storage-reader-volume-profile-async.test.js"
+      ],
+      "mustFail": [
+        "with no rollup maintenance ever run"
+      ]
+    },
+    {
+      "id": "audit-storage.reader.rollup-partial-first-day",
+      "file": "apps/runtime/src/storage/storage-reader.js",
+      "find": "      const rollupFrom = Math.ceil(fromTs / 86_400_000) * 86_400_000;",
+      "replace": "      const rollupFrom = Math.floor(fromTs / 86_400_000) * 86_400_000;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/storage/storage-reader.test.js",
+        "test/storage/storage-reader-aggressive-prints.test.js",
+        "test/storage/storage-reader-daily-notional.test.js",
+        "test/storage/storage-reader-volume-profile-async.test.js"
+      ],
+      "mustFail": [
+        "a window fully inside o"
+      ]
+    },
+    {
+      "id": "audit-storage.reader.rollup-tail-dropped",
+      "file": "apps/runtime/src/storage/storage-reader.js",
+      "find": "      rows.push(...rawDailyNotionalRows(conn, symbol, marketKind, rollupTo, toTs));\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/storage/storage-reader.test.js",
+        "test/storage/storage-reader-aggressive-prints.test.js",
+        "test/storage/storage-reader-daily-notional.test.js",
+        "test/storage/storage-reader-volume-profile-async.test.js"
+      ],
+      "mustFail": [
+        "with no rollup maintenance ever run"
+      ]
+    },
+    {
+      "id": "audit-storage.reader.rollup-negative-kept",
+      "file": "apps/runtime/src/storage/storage-reader.js",
+      "find": "          if (Number.isFinite(row.notional) && row.notional >= 0) rows.push(row);",
+      "replace": "          rows.push(row);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/storage/storage-reader.test.js",
+        "test/storage/storage-reader-aggressive-prints.test.js",
+        "test/storage/storage-reader-daily-notional.test.js",
+        "test/storage/storage-reader-volume-profile-async.test.js"
+      ],
+      "mustFail": [
+        "a materialized day whose total is not a finite number is left out"
+      ]
+    }
+  ]
+}

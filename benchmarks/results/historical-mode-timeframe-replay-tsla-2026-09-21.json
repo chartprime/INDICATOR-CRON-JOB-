@@ -1,0 +1,1438 @@
+{
+ "version": 1,
+ "kind": "historical-mode-timeframe-replay",
+ "instrument": "tsla",
+ "path": "laptop -> WireGuard 10.88.0.1:8001 (terminal-archive-gateway) -> terminal-archive-query -> S3/PartCache",
+ "requests": "the Historical Mode client's initial window per timeframe: 500 display bars ending at availability end (1D uncapped), candle_<resolution>, limit 10000, cursor chain up to 4 pages",
+ "linkNote": "laptop<->host ~200 KB/s; totalMs includes the wire, fetchMs/queryMs are host-side from the response scan block, stage deltas from archive-query /health",
+ "before": {
+  "hostRelease": "bd5c900",
+  "cold": {
+   "at": "2026-09-21T13:48:31.457Z",
+   "results": [
+    {
+     "timeframe": "1m",
+     "family": "candle_1m",
+     "windowDays": 0.3,
+     "pages": [
+      {
+       "status": 200,
+       "ms": 1298,
+       "wireBytes": 42038,
+       "decodedBytes": 746878,
+       "rows": 495,
+       "partitionsRead": 1,
+       "partitionsSelected": 1,
+       "partsOpened": 1,
+       "cacheHits": 0,
+       "cacheMisses": 1,
+       "fetchMs": 445,
+       "queryMs": 86,
+       "bytesRead": 77034
+      }
+     ],
+     "totalMs": 1298,
+     "rows": 495,
+     "wireBytes": 42038,
+     "partitionsRead": 1,
+     "fetchMs": 445,
+     "queryMs": 86,
+     "cacheMisses": 1,
+     "status": "200"
+    },
+    {
+     "timeframe": "5m",
+     "family": "candle_1m",
+     "windowDays": 1.7,
+     "pages": [
+      {
+       "status": 200,
+       "ms": 908,
+       "wireBytes": 77903,
+       "decodedBytes": 1408173,
+       "rows": 934,
+       "partitionsRead": 1,
+       "partitionsSelected": 1,
+       "partsOpened": 1,
+       "cacheHits": 1,
+       "cacheMisses": 0,
+       "fetchMs": 46,
+       "queryMs": 92,
+       "bytesRead": 0
+      }
+     ],
+     "totalMs": 908,
+     "rows": 934,
+     "wireBytes": 77903,
+     "partitionsRead": 1,
+     "fetchMs": 46,
+     "queryMs": 92,
+     "cacheMisses": 0,
+     "status": "200"
+    },
+    {
+     "timeframe": "15m",
+     "family": "candle_1m",
+     "windowDays": 5.2,
+     "pages": [
+      {
+       "status": 200,
+       "ms": 2458,
+       "wireBytes": 245274,
+       "decodedBytes": 4518644,
+       "rows": 2999,
+       "partitionsRead": 4,
+       "partitionsSelected": 4,
+       "partsOpened": 4,
+       "cacheHits": 1,
+       "cacheMisses": 3,
+       "fetchMs": 676,
+       "queryMs": 191,
+       "bytesRead": 220747
+      }
+     ],
+     "totalMs": 2458,
+     "rows": 2999,
+     "wireBytes": 245274,
+     "partitionsRead": 4,
+     "fetchMs": 676,
+     "queryMs": 191,
+     "cacheMisses": 3,
+     "status": "200"
+    },
+    {
+     "timeframe": "30m",
+     "family": "candle_1m",
+     "windowDays": 10.4,
+     "pages": [
+      {
+       "status": 200,
+       "ms": 3872,
+       "wireBytes": 456470,
+       "decodedBytes": 8395496,
+       "rows": 5572,
+       "partitionsRead": 7,
+       "partitionsSelected": 7,
+       "partsOpened": 7,
+       "cacheHits": 4,
+       "cacheMisses": 3,
+       "fetchMs": 652,
+       "queryMs": 264,
+       "bytesRead": 225156
+      },
+      {
+       "status": 200,
+       "ms": 663,
+       "wireBytes": 35628,
+       "decodedBytes": 632294,
+       "rows": 419,
+       "partitionsRead": 7,
+       "partitionsSelected": 7,
+       "partsOpened": 1,
+       "cacheHits": 7,
+       "cacheMisses": 0,
+       "fetchMs": 257,
+       "queryMs": 63,
+       "bytesRead": 0
+      }
+     ],
+     "totalMs": 4535,
+     "rows": 5991,
+     "wireBytes": 492098,
+     "partitionsRead": 7,
+     "fetchMs": 909,
+     "queryMs": 327,
+     "cacheMisses": 3,
+     "status": "200,200"
+    },
+    {
+     "timeframe": "1h",
+     "family": "candle_1h",
+     "windowDays": 20.8,
+     "pages": [
+      {
+       "status": 200,
+       "ms": 1928,
+       "wireBytes": 13316,
+       "decodedBytes": 361111,
+       "rows": 240,
+       "partitionsRead": 15,
+       "partitionsSelected": 15,
+       "partsOpened": 15,
+       "cacheHits": 0,
+       "cacheMisses": 15,
+       "fetchMs": 1719,
+       "queryMs": 87,
+       "bytesRead": 202757
+      }
+     ],
+     "totalMs": 1928,
+     "rows": 240,
+     "wireBytes": 13316,
+     "partitionsRead": 15,
+     "fetchMs": 1719,
+     "queryMs": 87,
+     "cacheMisses": 15,
+     "status": "200"
+    },
+    {
+     "timeframe": "4h",
+     "family": "candle_1h",
+     "windowDays": 83.3,
+     "pages": [
+      {
+       "status": 200,
+       "ms": 5996,
+       "wireBytes": 46280,
+       "decodedBytes": 1381400,
+       "rows": 920,
+       "partitionsRead": 58,
+       "partitionsSelected": 58,
+       "partsOpened": 58,
+       "cacheHits": 15,
+       "cacheMisses": 43,
+       "fetchMs": 5427,
+       "queryMs": 237,
+       "bytesRead": 581601
+      }
+     ],
+     "totalMs": 5996,
+     "rows": 920,
+     "wireBytes": 46280,
+     "partitionsRead": 58,
+     "fetchMs": 5427,
+     "queryMs": 237,
+     "cacheMisses": 43,
+     "status": "200"
+    },
+    {
+     "timeframe": "6h",
+     "family": "candle_1h",
+     "windowDays": 125,
+     "pages": [
+      {
+       "status": 200,
+       "ms": 6202,
+       "wireBytes": 68866,
+       "decodedBytes": 2065661,
+       "rows": 1376,
+       "partitionsRead": 86,
+       "partitionsSelected": 86,
+       "partsOpened": 86,
+       "cacheHits": 58,
+       "cacheMisses": 28,
+       "fetchMs": 5277,
+       "queryMs": 240,
+       "bytesRead": 378647
+      }
+     ],
+     "totalMs": 6202,
+     "rows": 1376,
+     "wireBytes": 68866,
+     "partitionsRead": 86,
+     "fetchMs": 5277,
+     "queryMs": 240,
+     "cacheMisses": 28,
+     "status": "200"
+    },
+    {
+     "timeframe": "12h",
+     "family": "candle_1h",
+     "windowDays": 250,
+     "pages": [
+      {
+       "status": 200,
+       "ms": 13126,
+       "wireBytes": 131464,
+       "decodedBytes": 4010502,
+       "rows": 2672,
+       "partitionsRead": 170,
+       "partitionsSelected": 170,
+       "partsOpened": 170,
+       "cacheHits": 86,
+       "cacheMisses": 84,
+       "fetchMs": 11930,
+       "queryMs": 441,
+       "bytesRead": 1131454
+      }
+     ],
+     "totalMs": 13126,
+     "rows": 2672,
+     "wireBytes": 131464,
+     "partitionsRead": 170,
+     "fetchMs": 11930,
+     "queryMs": 441,
+     "cacheMisses": 84,
+     "status": "200"
+    },
+    {
+     "timeframe": "1D",
+     "family": "candle_1d",
+     "windowDays": 364,
+     "pages": [
+      {
+       "status": 200,
+       "ms": 27775,
+       "wireBytes": 14970,
+       "decodedBytes": 378007,
+       "rows": 251,
+       "partitionsRead": 251,
+       "partitionsSelected": 251,
+       "partsOpened": 251,
+       "cacheHits": 0,
+       "cacheMisses": 251,
+       "fetchMs": 26972,
+       "queryMs": 565,
+       "bytesRead": 2461200
+      }
+     ],
+     "totalMs": 27775,
+     "rows": 251,
+     "wireBytes": 14970,
+     "partitionsRead": 251,
+     "fetchMs": 26972,
+     "queryMs": 565,
+     "cacheMisses": 251,
+     "status": "200"
+    }
+   ]
+  },
+  "warm": {
+   "at": "2026-09-21T13:50:58.184Z",
+   "results": [
+    {
+     "timeframe": "1m",
+     "family": "candle_1m",
+     "windowDays": 0.3,
+     "pages": [
+      {
+       "status": 200,
+       "ms": 908,
+       "wireBytes": 42036,
+       "decodedBytes": 746875,
+       "rows": 495,
+       "partitionsRead": 1,
+       "partitionsSelected": 1,
+       "partsOpened": 1,
+       "cacheHits": 1,
+       "cacheMisses": 0,
+       "fetchMs": 29,
+       "queryMs": 65,
+       "bytesRead": 0
+      }
+     ],
+     "totalMs": 908,
+     "rows": 495,
+     "wireBytes": 42036,
+     "partitionsRead": 1,
+     "fetchMs": 29,
+     "queryMs": 65,
+     "cacheMisses": 0,
+     "status": "200"
+    },
+    {
+     "timeframe": "5m",
+     "family": "candle_1m",
+     "windowDays": 1.7,
+     "pages": [
+      {
+       "status": 200,
+       "ms": 1056,
+       "wireBytes": 77899,
+       "decodedBytes": 1408173,
+       "rows": 934,
+       "partitionsRead": 1,
+       "partitionsSelected": 1,
+       "partsOpened": 1,
+       "cacheHits": 1,
+       "cacheMisses": 0,
+       "fetchMs": 38,
+       "queryMs": 73,
+       "bytesRead": 0
+      }
+     ],
+     "totalMs": 1056,
+     "rows": 934,
+     "wireBytes": 77899,
+     "partitionsRead": 1,
+     "fetchMs": 38,
+     "queryMs": 73,
+     "cacheMisses": 0,
+     "status": "200"
+    },
+    {
+     "timeframe": "15m",
+     "family": "candle_1m",
+     "windowDays": 5.2,
+     "pages": [
+      {
+       "status": 200,
+       "ms": 2185,
+       "wireBytes": 245268,
+       "decodedBytes": 4518640,
+       "rows": 2999,
+       "partitionsRead": 4,
+       "partitionsSelected": 4,
+       "partsOpened": 4,
+       "cacheHits": 4,
+       "cacheMisses": 0,
+       "fetchMs": 139,
+       "queryMs": 207,
+       "bytesRead": 0
+      }
+     ],
+     "totalMs": 2185,
+     "rows": 2999,
+     "wireBytes": 245268,
+     "partitionsRead": 4,
+     "fetchMs": 139,
+     "queryMs": 207,
+     "cacheMisses": 0,
+     "status": "200"
+    },
+    {
+     "timeframe": "30m",
+     "family": "candle_1m",
+     "windowDays": 10.4,
+     "pages": [
+      {
+       "status": 200,
+       "ms": 5258,
+       "wireBytes": 456465,
+       "decodedBytes": 8395492,
+       "rows": 5572,
+       "partitionsRead": 7,
+       "partitionsSelected": 7,
+       "partsOpened": 7,
+       "cacheHits": 7,
+       "cacheMisses": 0,
+       "fetchMs": 224,
+       "queryMs": 310,
+       "bytesRead": 0
+      },
+      {
+       "status": 200,
+       "ms": 677,
+       "wireBytes": 35622,
+       "decodedBytes": 632292,
+       "rows": 419,
+       "partitionsRead": 7,
+       "partitionsSelected": 7,
+       "partsOpened": 1,
+       "cacheHits": 7,
+       "cacheMisses": 0,
+       "fetchMs": 269,
+       "queryMs": 54,
+       "bytesRead": 0
+      }
+     ],
+     "totalMs": 5935,
+     "rows": 5991,
+     "wireBytes": 492087,
+     "partitionsRead": 7,
+     "fetchMs": 493,
+     "queryMs": 364,
+     "cacheMisses": 0,
+     "status": "200,200"
+    },
+    {
+     "timeframe": "1h",
+     "family": "candle_1h",
+     "windowDays": 20.8,
+     "pages": [
+      {
+       "status": 200,
+       "ms": 703,
+       "wireBytes": 13315,
+       "decodedBytes": 361105,
+       "rows": 240,
+       "partitionsRead": 15,
+       "partitionsSelected": 15,
+       "partsOpened": 15,
+       "cacheHits": 15,
+       "cacheMisses": 0,
+       "fetchMs": 513,
+       "queryMs": 87,
+       "bytesRead": 0
+      }
+     ],
+     "totalMs": 703,
+     "rows": 240,
+     "wireBytes": 13315,
+     "partitionsRead": 15,
+     "fetchMs": 513,
+     "queryMs": 87,
+     "cacheMisses": 0,
+     "status": "200"
+    },
+    {
+     "timeframe": "4h",
+     "family": "candle_1h",
+     "windowDays": 83.3,
+     "pages": [
+      {
+       "status": 200,
+       "ms": 2787,
+       "wireBytes": 46277,
+       "decodedBytes": 1381394,
+       "rows": 920,
+       "partitionsRead": 58,
+       "partitionsSelected": 58,
+       "partsOpened": 58,
+       "cacheHits": 58,
+       "cacheMisses": 0,
+       "fetchMs": 2161,
+       "queryMs": 182,
+       "bytesRead": 0
+      }
+     ],
+     "totalMs": 2787,
+     "rows": 920,
+     "wireBytes": 46277,
+     "partitionsRead": 58,
+     "fetchMs": 2161,
+     "queryMs": 182,
+     "cacheMisses": 0,
+     "status": "200"
+    },
+    {
+     "timeframe": "6h",
+     "family": "candle_1h",
+     "windowDays": 125,
+     "pages": [
+      {
+       "status": 200,
+       "ms": 3968,
+       "wireBytes": 68865,
+       "decodedBytes": 2065655,
+       "rows": 1376,
+       "partitionsRead": 86,
+       "partitionsSelected": 86,
+       "partsOpened": 86,
+       "cacheHits": 86,
+       "cacheMisses": 0,
+       "fetchMs": 3208,
+       "queryMs": 212,
+       "bytesRead": 0
+      }
+     ],
+     "totalMs": 3968,
+     "rows": 1376,
+     "wireBytes": 68865,
+     "partitionsRead": 86,
+     "fetchMs": 3208,
+     "queryMs": 212,
+     "cacheMisses": 0,
+     "status": "200"
+    },
+    {
+     "timeframe": "12h",
+     "family": "candle_1h",
+     "windowDays": 250,
+     "pages": [
+      {
+       "status": 200,
+       "ms": 7733,
+       "wireBytes": 131460,
+       "decodedBytes": 4010497,
+       "rows": 2672,
+       "partitionsRead": 170,
+       "partitionsSelected": 170,
+       "partsOpened": 170,
+       "cacheHits": 170,
+       "cacheMisses": 0,
+       "fetchMs": 6261,
+       "queryMs": 356,
+       "bytesRead": 0
+      }
+     ],
+     "totalMs": 7733,
+     "rows": 2672,
+     "wireBytes": 131460,
+     "partitionsRead": 170,
+     "fetchMs": 6261,
+     "queryMs": 356,
+     "cacheMisses": 0,
+     "status": "200"
+    },
+    {
+     "timeframe": "1D",
+     "family": "candle_1d",
+     "windowDays": 364,
+     "pages": [
+      {
+       "status": 200,
+       "ms": 9930,
+       "wireBytes": 14971,
+       "decodedBytes": 378001,
+       "rows": 251,
+       "partitionsRead": 251,
+       "partitionsSelected": 251,
+       "partsOpened": 251,
+       "cacheHits": 251,
+       "cacheMisses": 0,
+       "fetchMs": 9314,
+       "queryMs": 349,
+       "bytesRead": 0
+      }
+     ],
+     "totalMs": 9930,
+     "rows": 251,
+     "wireBytes": 14971,
+     "partitionsRead": 251,
+     "fetchMs": 9314,
+     "queryMs": 349,
+     "cacheMisses": 0,
+     "status": "200"
+    }
+   ]
+  },
+  "stagesCold": {
+   "window": [
+    "2026-09-21T13:47:25Z",
+    "2026-09-21T13:48:32Z"
+   ],
+   "gatewayRoute": {
+    "admitted": 10,
+    "completed": 10
+   },
+   "archiveQueryStages": {
+    "admissionWaitMs": {
+     "count": 10,
+     "totalMs": 0.2
+    },
+    "serviceMs": {
+     "count": 10,
+     "totalMs": 56068.6
+    },
+    "discoverMs": {
+     "count": 10,
+     "totalMs": 391.9
+    },
+    "fetchMs": {
+     "count": 10,
+     "totalMs": 53401.6
+    },
+    "manifestMs": {
+     "count": 10,
+     "totalMs": 25097.0
+    },
+    "cacheLookupMs": {
+     "count": 10,
+     "totalMs": 6983.1
+    },
+    "downloadMs": {
+     "count": 10,
+     "totalMs": 21318.8
+    },
+    "readerAcquireMs": {
+     "count": 10,
+     "totalMs": 0.5
+    },
+    "readerRoundTripMs": {
+     "count": 10,
+     "totalMs": 1495.7
+    },
+    "queryMs": {
+     "count": 10,
+     "totalMs": 2266.8
+    }
+   }
+  },
+  "stagesWarm": {
+   "window": [
+    "2026-09-21T13:50:21Z",
+    "2026-09-21T13:50:58Z"
+   ],
+   "gatewayRoute": {
+    "admitted": 10,
+    "completed": 10
+   },
+   "archiveQueryStages": {
+    "admissionWaitMs": {
+     "count": 10,
+     "totalMs": 0.1
+    },
+    "serviceMs": {
+     "count": 10,
+     "totalMs": 24424.2
+    },
+    "discoverMs": {
+     "count": 10,
+     "totalMs": 363.5
+    },
+    "fetchMs": {
+     "count": 10,
+     "totalMs": 22156.2
+    },
+    "manifestMs": {
+     "count": 10,
+     "totalMs": 38.7
+    },
+    "cacheLookupMs": {
+     "count": 10,
+     "totalMs": 22115.7
+    },
+    "downloadMs": {
+     "count": 10,
+     "totalMs": 0.0
+    },
+    "readerAcquireMs": {
+     "count": 10,
+     "totalMs": 0.6
+    },
+    "readerRoundTripMs": {
+     "count": 10,
+     "totalMs": 1466.1
+    },
+    "queryMs": {
+     "count": 10,
+     "totalMs": 1896.4
+    }
+   }
+  }
+ },
+ "after": {
+  "hostRelease": "265cb91",
+  "restarted": "terminal-archive-query 2026-09-21T14:16:59Z (manifest memo emptied, part cache kept)",
+  "coldManifests": {
+   "at": "2026-09-21T14:17:29.322Z",
+   "results": [
+    {
+     "timeframe": "1m",
+     "family": "candle_1m",
+     "windowDays": 0.3,
+     "pages": [
+      {
+       "status": 200,
+       "ms": 855,
+       "wireBytes": 42038,
+       "decodedBytes": 746878,
+       "rows": 495,
+       "partitionsRead": 1,
+       "partitionsSelected": 1,
+       "partsOpened": 1,
+       "cacheHits": 1,
+       "cacheMisses": 0,
+       "fetchMs": 231,
+       "queryMs": 141,
+       "bytesRead": 1744
+      }
+     ],
+     "totalMs": 855,
+     "rows": 495,
+     "wireBytes": 42038,
+     "partitionsRead": 1,
+     "fetchMs": 231,
+     "queryMs": 141,
+     "cacheMisses": 0,
+     "status": "200"
+    },
+    {
+     "timeframe": "5m",
+     "family": "candle_1m",
+     "windowDays": 1.7,
+     "pages": [
+      {
+       "status": 200,
+       "ms": 495,
+       "wireBytes": 77901,
+       "decodedBytes": 1408174,
+       "rows": 934,
+       "partitionsRead": 1,
+       "partitionsSelected": 1,
+       "partsOpened": 1,
+       "cacheHits": 1,
+       "cacheMisses": 0,
+       "fetchMs": 41,
+       "queryMs": 66,
+       "bytesRead": 0
+      }
+     ],
+     "totalMs": 495,
+     "rows": 934,
+     "wireBytes": 77901,
+     "partitionsRead": 1,
+     "fetchMs": 41,
+     "queryMs": 66,
+     "cacheMisses": 0,
+     "status": "200"
+    },
+    {
+     "timeframe": "15m",
+     "family": "candle_1m",
+     "windowDays": 5.2,
+     "pages": [
+      {
+       "status": 200,
+       "ms": 1584,
+       "wireBytes": 245262,
+       "decodedBytes": 4518643,
+       "rows": 2999,
+       "partitionsRead": 4,
+       "partitionsSelected": 4,
+       "partsOpened": 4,
+       "cacheHits": 4,
+       "cacheMisses": 0,
+       "fetchMs": 207,
+       "queryMs": 201,
+       "bytesRead": 5232
+      }
+     ],
+     "totalMs": 1584,
+     "rows": 2999,
+     "wireBytes": 245262,
+     "partitionsRead": 4,
+     "fetchMs": 207,
+     "queryMs": 201,
+     "cacheMisses": 0,
+     "status": "200"
+    },
+    {
+     "timeframe": "30m",
+     "family": "candle_1m",
+     "windowDays": 10.4,
+     "pages": [
+      {
+       "status": 200,
+       "ms": 2806,
+       "wireBytes": 456461,
+       "decodedBytes": 8395494,
+       "rows": 5572,
+       "partitionsRead": 7,
+       "partitionsSelected": 7,
+       "partsOpened": 7,
+       "cacheHits": 7,
+       "cacheMisses": 0,
+       "fetchMs": 109,
+       "queryMs": 258,
+       "bytesRead": 5231
+      },
+      {
+       "status": 200,
+       "ms": 326,
+       "wireBytes": 35625,
+       "decodedBytes": 632293,
+       "rows": 419,
+       "partitionsRead": 7,
+       "partitionsSelected": 7,
+       "partsOpened": 1,
+       "cacheHits": 7,
+       "cacheMisses": 0,
+       "fetchMs": 31,
+       "queryMs": 52,
+       "bytesRead": 0
+      }
+     ],
+     "totalMs": 3132,
+     "rows": 5991,
+     "wireBytes": 492086,
+     "partitionsRead": 7,
+     "fetchMs": 140,
+     "queryMs": 310,
+     "cacheMisses": 0,
+     "status": "200,200"
+    },
+    {
+     "timeframe": "1h",
+     "family": "candle_1h",
+     "windowDays": 20.8,
+     "pages": [
+      {
+       "status": 200,
+       "ms": 439,
+       "wireBytes": 13321,
+       "decodedBytes": 361110,
+       "rows": 240,
+       "partitionsRead": 15,
+       "partitionsSelected": 15,
+       "partsOpened": 15,
+       "cacheHits": 15,
+       "cacheMisses": 0,
+       "fetchMs": 216,
+       "queryMs": 107,
+       "bytesRead": 26125
+      }
+     ],
+     "totalMs": 439,
+     "rows": 240,
+     "wireBytes": 13321,
+     "partitionsRead": 15,
+     "fetchMs": 216,
+     "queryMs": 107,
+     "cacheMisses": 0,
+     "status": "200"
+    },
+    {
+     "timeframe": "4h",
+     "family": "candle_1h",
+     "windowDays": 83.3,
+     "pages": [
+      {
+       "status": 200,
+       "ms": 1027,
+       "wireBytes": 46280,
+       "decodedBytes": 1381396,
+       "rows": 920,
+       "partitionsRead": 58,
+       "partitionsSelected": 58,
+       "partsOpened": 58,
+       "cacheHits": 58,
+       "cacheMisses": 0,
+       "fetchMs": 384,
+       "queryMs": 244,
+       "bytesRead": 74886
+      }
+     ],
+     "totalMs": 1027,
+     "rows": 920,
+     "wireBytes": 46280,
+     "partitionsRead": 58,
+     "fetchMs": 384,
+     "queryMs": 244,
+     "cacheMisses": 0,
+     "status": "200"
+    },
+    {
+     "timeframe": "6h",
+     "family": "candle_1h",
+     "windowDays": 125,
+     "pages": [
+      {
+       "status": 200,
+       "ms": 1029,
+       "wireBytes": 68873,
+       "decodedBytes": 2065660,
+       "rows": 1376,
+       "partitionsRead": 86,
+       "partitionsSelected": 86,
+       "partsOpened": 86,
+       "cacheHits": 86,
+       "cacheMisses": 0,
+       "fetchMs": 277,
+       "queryMs": 248,
+       "bytesRead": 48773
+      }
+     ],
+     "totalMs": 1029,
+     "rows": 1376,
+     "wireBytes": 68873,
+     "partitionsRead": 86,
+     "fetchMs": 277,
+     "queryMs": 248,
+     "cacheMisses": 0,
+     "status": "200"
+    },
+    {
+     "timeframe": "12h",
+     "family": "candle_1h",
+     "windowDays": 250,
+     "pages": [
+      {
+       "status": 200,
+       "ms": 2125,
+       "wireBytes": 131459,
+       "decodedBytes": 4010502,
+       "rows": 2672,
+       "partitionsRead": 170,
+       "partitionsSelected": 170,
+       "partsOpened": 170,
+       "cacheHits": 170,
+       "cacheMisses": 0,
+       "fetchMs": 706,
+       "queryMs": 454,
+       "bytesRead": 146316
+      }
+     ],
+     "totalMs": 2125,
+     "rows": 2672,
+     "wireBytes": 131459,
+     "partitionsRead": 170,
+     "fetchMs": 706,
+     "queryMs": 454,
+     "cacheMisses": 0,
+     "status": "200"
+    },
+    {
+     "timeframe": "1D",
+     "family": "candle_1d",
+     "windowDays": 364,
+     "pages": [
+      {
+       "status": 200,
+       "ms": 2619,
+       "wireBytes": 14976,
+       "decodedBytes": 378006,
+       "rows": 251,
+       "partitionsRead": 251,
+       "partitionsSelected": 251,
+       "partsOpened": 251,
+       "cacheHits": 251,
+       "cacheMisses": 0,
+       "fetchMs": 1882,
+       "queryMs": 578,
+       "bytesRead": 436385
+      }
+     ],
+     "totalMs": 2619,
+     "rows": 251,
+     "wireBytes": 14976,
+     "partitionsRead": 251,
+     "fetchMs": 1882,
+     "queryMs": 578,
+     "cacheMisses": 0,
+     "status": "200"
+    }
+   ]
+  },
+  "warm": {
+   "at": "2026-09-21T14:17:52.047Z",
+   "results": [
+    {
+     "timeframe": "1m",
+     "family": "candle_1m",
+     "windowDays": 0.3,
+     "pages": [
+      {
+       "status": 200,
+       "ms": 482,
+       "wireBytes": 42038,
+       "decodedBytes": 746874,
+       "rows": 495,
+       "partitionsRead": 1,
+       "partitionsSelected": 1,
+       "partsOpened": 1,
+       "cacheHits": 1,
+       "cacheMisses": 0,
+       "fetchMs": 37,
+       "queryMs": 51,
+       "bytesRead": 0
+      }
+     ],
+     "totalMs": 482,
+     "rows": 495,
+     "wireBytes": 42038,
+     "partitionsRead": 1,
+     "fetchMs": 37,
+     "queryMs": 51,
+     "cacheMisses": 0,
+     "status": "200"
+    },
+    {
+     "timeframe": "5m",
+     "family": "candle_1m",
+     "windowDays": 1.7,
+     "pages": [
+      {
+       "status": 200,
+       "ms": 623,
+       "wireBytes": 77901,
+       "decodedBytes": 1408175,
+       "rows": 934,
+       "partitionsRead": 1,
+       "partitionsSelected": 1,
+       "partsOpened": 1,
+       "cacheHits": 1,
+       "cacheMisses": 0,
+       "fetchMs": 37,
+       "queryMs": 65,
+       "bytesRead": 0
+      }
+     ],
+     "totalMs": 623,
+     "rows": 934,
+     "wireBytes": 77901,
+     "partitionsRead": 1,
+     "fetchMs": 37,
+     "queryMs": 65,
+     "cacheMisses": 0,
+     "status": "200"
+    },
+    {
+     "timeframe": "15m",
+     "family": "candle_1m",
+     "windowDays": 5.2,
+     "pages": [
+      {
+       "status": 200,
+       "ms": 1391,
+       "wireBytes": 245261,
+       "decodedBytes": 4518640,
+       "rows": 2999,
+       "partitionsRead": 4,
+       "partitionsSelected": 4,
+       "partsOpened": 4,
+       "cacheHits": 4,
+       "cacheMisses": 0,
+       "fetchMs": 42,
+       "queryMs": 189,
+       "bytesRead": 0
+      }
+     ],
+     "totalMs": 1391,
+     "rows": 2999,
+     "wireBytes": 245261,
+     "partitionsRead": 4,
+     "fetchMs": 42,
+     "queryMs": 189,
+     "cacheMisses": 0,
+     "status": "200"
+    },
+    {
+     "timeframe": "30m",
+     "family": "candle_1m",
+     "windowDays": 10.4,
+     "pages": [
+      {
+       "status": 200,
+       "ms": 2912,
+       "wireBytes": 456469,
+       "decodedBytes": 8395491,
+       "rows": 5572,
+       "partitionsRead": 7,
+       "partitionsSelected": 7,
+       "partsOpened": 7,
+       "cacheHits": 7,
+       "cacheMisses": 0,
+       "fetchMs": 49,
+       "queryMs": 239,
+       "bytesRead": 0
+      },
+      {
+       "status": 200,
+       "ms": 329,
+       "wireBytes": 35632,
+       "decodedBytes": 632293,
+       "rows": 419,
+       "partitionsRead": 7,
+       "partitionsSelected": 7,
+       "partsOpened": 1,
+       "cacheHits": 7,
+       "cacheMisses": 0,
+       "fetchMs": 38,
+       "queryMs": 61,
+       "bytesRead": 0
+      }
+     ],
+     "totalMs": 3241,
+     "rows": 5991,
+     "wireBytes": 492101,
+     "partitionsRead": 7,
+     "fetchMs": 87,
+     "queryMs": 300,
+     "cacheMisses": 0,
+     "status": "200,200"
+    },
+    {
+     "timeframe": "1h",
+     "family": "candle_1h",
+     "windowDays": 20.8,
+     "pages": [
+      {
+       "status": 200,
+       "ms": 348,
+       "wireBytes": 13309,
+       "decodedBytes": 361105,
+       "rows": 240,
+       "partitionsRead": 15,
+       "partitionsSelected": 15,
+       "partsOpened": 15,
+       "cacheHits": 15,
+       "cacheMisses": 0,
+       "fetchMs": 40,
+       "queryMs": 87,
+       "bytesRead": 0
+      }
+     ],
+     "totalMs": 348,
+     "rows": 240,
+     "wireBytes": 13309,
+     "partitionsRead": 15,
+     "fetchMs": 40,
+     "queryMs": 87,
+     "cacheMisses": 0,
+     "status": "200"
+    },
+    {
+     "timeframe": "4h",
+     "family": "candle_1h",
+     "windowDays": 83.3,
+     "pages": [
+      {
+       "status": 200,
+       "ms": 550,
+       "wireBytes": 46276,
+       "decodedBytes": 1381393,
+       "rows": 920,
+       "partitionsRead": 58,
+       "partitionsSelected": 58,
+       "partsOpened": 58,
+       "cacheHits": 58,
+       "cacheMisses": 0,
+       "fetchMs": 42,
+       "queryMs": 174,
+       "bytesRead": 0
+      }
+     ],
+     "totalMs": 550,
+     "rows": 920,
+     "wireBytes": 46276,
+     "partitionsRead": 58,
+     "fetchMs": 42,
+     "queryMs": 174,
+     "cacheMisses": 0,
+     "status": "200"
+    },
+    {
+     "timeframe": "6h",
+     "family": "candle_1h",
+     "windowDays": 125,
+     "pages": [
+      {
+       "status": 200,
+       "ms": 692,
+       "wireBytes": 68870,
+       "decodedBytes": 2065656,
+       "rows": 1376,
+       "partitionsRead": 86,
+       "partitionsSelected": 86,
+       "partsOpened": 86,
+       "cacheHits": 86,
+       "cacheMisses": 0,
+       "fetchMs": 54,
+       "queryMs": 186,
+       "bytesRead": 0
+      }
+     ],
+     "totalMs": 692,
+     "rows": 1376,
+     "wireBytes": 68870,
+     "partitionsRead": 86,
+     "fetchMs": 54,
+     "queryMs": 186,
+     "cacheMisses": 0,
+     "status": "200"
+    },
+    {
+     "timeframe": "12h",
+     "family": "candle_1h",
+     "windowDays": 250,
+     "pages": [
+      {
+       "status": 200,
+       "ms": 1284,
+       "wireBytes": 131457,
+       "decodedBytes": 4010496,
+       "rows": 2672,
+       "partitionsRead": 170,
+       "partitionsSelected": 170,
+       "partsOpened": 170,
+       "cacheHits": 170,
+       "cacheMisses": 0,
+       "fetchMs": 38,
+       "queryMs": 377,
+       "bytesRead": 0
+      }
+     ],
+     "totalMs": 1284,
+     "rows": 2672,
+     "wireBytes": 131457,
+     "partitionsRead": 170,
+     "fetchMs": 38,
+     "queryMs": 377,
+     "cacheMisses": 0,
+     "status": "200"
+    },
+    {
+     "timeframe": "1D",
+     "family": "candle_1d",
+     "windowDays": 364,
+     "pages": [
+      {
+       "status": 200,
+       "ms": 562,
+       "wireBytes": 14970,
+       "decodedBytes": 378000,
+       "rows": 251,
+       "partitionsRead": 251,
+       "partitionsSelected": 251,
+       "partsOpened": 251,
+       "cacheHits": 251,
+       "cacheMisses": 0,
+       "fetchMs": 64,
+       "queryMs": 339,
+       "bytesRead": 0
+      }
+     ],
+     "totalMs": 562,
+     "rows": 251,
+     "wireBytes": 14970,
+     "partitionsRead": 251,
+     "fetchMs": 64,
+     "queryMs": 339,
+     "cacheMisses": 0,
+     "status": "200"
+    }
+   ]
+  },
+  "stagesColdManifests": {
+   "window": [
+    "2026-09-21T14:17:13Z",
+    "2026-09-21T14:17:29Z"
+   ],
+   "gatewayRoute": {
+    "admitted": 10,
+    "completed": 10
+   },
+   "archiveQueryStages": {
+    "admissionWaitMs": {
+     "count": 10,
+     "totalMs": 0.2
+    },
+    "serviceMs": {
+     "count": 10,
+     "totalMs": 6816.7
+    },
+    "discoverMs": {
+     "count": 10,
+     "totalMs": 377.7
+    },
+    "fetchMs": {
+     "count": 10,
+     "totalMs": 4082.5
+    },
+    "manifestMs": {
+     "count": 10,
+     "totalMs": 3672.6
+    },
+    "cacheLookupMs": {
+     "count": 10,
+     "totalMs": 408.0
+    },
+    "downloadMs": {
+     "count": 10,
+     "totalMs": 0.0
+    },
+    "readerAcquireMs": {
+     "count": 10,
+     "totalMs": 1.1
+    },
+    "readerRoundTripMs": {
+     "count": 10,
+     "totalMs": 1562.7
+    },
+    "queryMs": {
+     "count": 10,
+     "totalMs": 2348.8
+    }
+   }
+  },
+  "stagesWarm": {
+   "window": [
+    "2026-09-21T14:17:41Z",
+    "2026-09-21T14:17:51Z"
+   ],
+   "gatewayRoute": {
+    "admitted": 10,
+    "completed": 10
+   },
+   "archiveQueryStages": {
+    "admissionWaitMs": {
+     "count": 10,
+     "totalMs": 0.1
+    },
+    "serviceMs": {
+     "count": 10,
+     "totalMs": 2578.4
+    },
+    "discoverMs": {
+     "count": 10,
+     "totalMs": 364.2
+    },
+    "fetchMs": {
+     "count": 10,
+     "totalMs": 439.9
+    },
+    "manifestMs": {
+     "count": 10,
+     "totalMs": 39.3
+    },
+    "cacheLookupMs": {
+     "count": 10,
+     "totalMs": 398.9
+    },
+    "downloadMs": {
+     "count": 10,
+     "totalMs": 0.0
+    },
+    "readerAcquireMs": {
+     "count": 10,
+     "totalMs": 0.6
+    },
+    "readerRoundTripMs": {
+     "count": 10,
+     "totalMs": 1431.3
+    },
+    "queryMs": {
+     "count": 10,
+     "totalMs": 1766.1
+    }
+   }
+  }
+ },
+ "userWalkthroughStagesOnBd5c900": {
+  "window": [
+   "2026-09-21T13:50:58Z",
+   "2026-09-21T13:57:10Z"
+  ],
+  "gatewayRoute": {
+   "admitted": 47,
+   "queued": 6,
+   "rejected": 1,
+   "completed": 44,
+   "cancelled": 3
+  },
+  "archiveQueryStages": {
+   "admissionWaitMs": {
+    "count": 47,
+    "totalMs": 154.6
+   },
+   "serviceMs": {
+    "count": 47,
+    "totalMs": 110352.7
+   },
+   "discoverMs": {
+    "count": 47,
+    "totalMs": 508.9
+   },
+   "fetchMs": {
+    "count": 43,
+    "totalMs": 94195.6
+   },
+   "manifestMs": {
+    "count": 43,
+    "totalMs": 48552.7
+   },
+   "cacheLookupMs": {
+    "count": 43,
+    "totalMs": 33105.3
+   },
+   "downloadMs": {
+    "count": 43,
+    "totalMs": 12531.7
+   },
+   "readerAcquireMs": {
+    "count": 43,
+    "totalMs": 2.0
+   },
+   "readerRoundTripMs": {
+    "count": 43,
+    "totalMs": 3816.7
+   },
+   "queryMs": {
+    "count": 43,
+    "totalMs": 6229.0
+   }
+  }
+ }
+}

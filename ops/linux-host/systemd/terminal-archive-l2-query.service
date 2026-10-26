@@ -1,0 +1,49 @@
+[Unit]
+Description=Terminal-L1-L2 historical L2 query service
+Wants=network-online.target
+After=network-online.target time-sync.target
+RequiresMountsFor=/srv/terminal-data
+StartLimitIntervalSec=300
+StartLimitBurst=5
+OnFailure=terminal-alert@%n.service
+
+[Service]
+Type=simple
+User=ttquery
+Group=ttquery
+Slice=terminal.slice
+WorkingDirectory=/opt/terminal-l1-l2/current/apps/runtime
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONDONTWRITEBYTECODE=1
+EnvironmentFile=/etc/terminal-l1-l2/query/service.env
+ExecStartPre=/usr/bin/mountpoint -q /srv/terminal-data
+ExecStartPre=+/opt/terminal-l1-l2/ops/scripts/check-service-env.sh /etc/terminal-l1-l2/query/service.env query
+ExecStartPre=/usr/bin/test -w /srv/terminal-data/query-cache/l2
+ExecStart=/opt/terminal-l1-l2/converter-env/.venv/bin/python /opt/terminal-l1-l2/current/apps/runtime/conversion/historical_l2_http.py --bucket chartprime-historical-data --cache-root /srv/terminal-data/query-cache/l2 --host 127.0.0.1 --port 8004
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=45
+UMask=0077
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+ReadWritePaths=/srv/terminal-data/query-cache/l2
+CPUQuota=200%
+MemoryHigh=2G
+MemoryMax=4G
+TasksMax=128
+Nice=15
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=terminal-archive-l2-query
+
+[Install]
+WantedBy=multi-user.target

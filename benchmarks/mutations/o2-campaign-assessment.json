@@ -1,0 +1,49 @@
+{
+  "mutations": [
+    {
+      "id": "o2-campaign.assessment-ignores-the-runner-exit-code",
+      "file": "apps/runtime/scripts/bench/o2-campaign.js",
+      "find": "        const acceptedByRunner = wrapper.accepted === true && wrapper.runnerExitCode === 0;",
+      "replace": "        const acceptedByRunner = true;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/scripts/bench/o2-campaign.test.js"
+      ],
+      "mustFail": [
+        "does not count a slot whose runner exited non-zero, however healthy the report it left behind looks"
+      ]
+    },
+    {
+      "id": "o2-campaign.declared-nondeterminism-still-judged-on-drift",
+      "file": "apps/runtime/scripts/bench/o2-campaign.js",
+      "find": "  if (workload?.allowedFailureClasses !== undefined) return null;",
+      "replace": "  if (false) return null;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/scripts/bench/o2-campaign.test.js"
+      ],
+      "mustFail": [
+        "does not judge a workload that declares intentional failure classes on sample-set determinism"
+      ]
+    },
+    {
+      "id": "o2-campaign.rejected-slot-still-counted-complete",
+      "file": "apps/runtime/scripts/bench/o2-campaign.js",
+      "find": "        if (acceptedByRunner && reportPasses(workload, report)) completedSlots += 1;",
+      "replace": "        if (reportPasses(workload, report)) completedSlots += 1;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/scripts/bench/o2-campaign.test.js"
+      ],
+      "mustFail": [
+        "does not count a slot whose runner exited non-zero, however healthy the report it left behind looks"
+      ]
+    }
+  ]
+}

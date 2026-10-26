@@ -1,0 +1,49 @@
+{
+  "mutations": [
+    {
+      "id": "archive-pagination.served-compared-across-pages",
+      "file": "apps/web/src/lib/archive/archivePagination.ts",
+      "find": "  return JSON.stringify({ ...left, served: null }) === JSON.stringify({ ...right, served: null });",
+      "replace": "  return JSON.stringify(left) === JSON.stringify(right);",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/archive/archivePagination.test.ts"],
+      "mustFail": ["accepts the per-page served span the archive reports and merges it across pages"]
+    },
+    {
+      "id": "archive-pagination.served-not-merged",
+      "file": "apps/web/src/lib/archive/archivePagination.ts",
+      "find": "        coverage: Object.freeze({ ...pages[0].coverage, served: combinedServed(pages) }),",
+      "replace": "        coverage: pages[0].coverage,",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/archive/archivePagination.test.ts"],
+      "mustFail": ["accepts the per-page served span the archive reports and merges it across pages"]
+    },
+    {
+      "id": "archive-pagination.backwards-page-accepted",
+      "file": "apps/web/src/lib/archive/archivePagination.ts",
+      "find": "  return BigInt(next.from) >= BigInt(previous.from) && BigInt(next.to) >= BigInt(previous.to);",
+      "replace": "  return true;",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/archive/archivePagination.test.ts"],
+      "mustFail": ["refuses pages whose served span moves backwards, but tolerates the overlap tied timestamps produce"]
+    },
+    {
+      "id": "archive-pagination.tied-timestamp-overlap-refused",
+      "file": "apps/web/src/lib/archive/archivePagination.ts",
+      "find": "  return BigInt(next.from) >= BigInt(previous.from) && BigInt(next.to) >= BigInt(previous.to);",
+      "replace": "  return BigInt(next.from) >= BigInt(previous.to);",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/archive/archivePagination.test.ts"],
+      "mustFail": ["refuses pages whose served span moves backwards, but tolerates the overlap tied timestamps produce"]
+    },
+    {
+      "id": "archive-pagination.empty-page-drops-served",
+      "file": "apps/web/src/lib/archive/archivePagination.ts",
+      "find": "  const served = pages.map((page) => page.coverage.served).filter((window): window is NonNullable<ServedWindow> => window !== null);",
+      "replace": "  const served = pages.map((page) => page.coverage.served).filter((window): window is NonNullable<ServedWindow> => window !== null && pages.at(-1)?.coverage.served !== null);",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/archive/archivePagination.test.ts"],
+      "mustFail": ["merges served across an empty page and reports null when no page served anything"]
+    }
+  ]
+}

@@ -1,0 +1,64 @@
+{
+  "mutations": [
+    {
+      "id": "p4c3-audit.capture-crosses-pairs",
+      "file": "apps/runtime/src/indicators/l2-memory/pyramid/pyramid-service.js",
+      "find": "WHERE symbol = ? AND market_kind = ? ORDER BY ts DESC LIMIT 1",
+      "replace": "WHERE (? IS NOT NULL OR ? IS NOT NULL) ORDER BY ts DESC LIMIT 1",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/pyramid-service.test.js"],
+      "mustFail": ["capture progress is isolated by symbol and market kind"],
+      "timeoutMs": 30000
+    },
+    {
+      "id": "p4c3-audit.capture-uses-insert-order",
+      "file": "apps/runtime/src/indicators/l2-memory/pyramid/pyramid-service.js",
+      "find": "WHERE symbol = ? AND market_kind = ? ORDER BY ts DESC LIMIT 1",
+      "replace": "WHERE symbol = ? AND market_kind = ? ORDER BY id DESC LIMIT 1",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/pyramid-service.test.js"],
+      "mustFail": ["capture progress is isolated by symbol and market kind"],
+      "timeoutMs": 30000
+    },
+    {
+      "id": "p4c3-audit.coverage-counts-only",
+      "file": "apps/runtime/src/indicators/l2-memory/pyramid/pyramid-levels.js",
+      "find": "if (base[i].ts !== windowTs + i * BASE_LEVEL_MS)",
+      "replace": "if (false)",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/pyramid.test.js"],
+      "mustFail": ["COVERED requires every 10 s grid slot"],
+      "timeoutMs": 30000
+    },
+    {
+      "id": "p4c3-audit.failed-window-never-retries",
+      "file": "apps/runtime/src/indicators/l2-memory/pyramid/pyramid-builder.js",
+      "find": "if (record.state === WINDOW_STATES.FAILED) return at - record.builtAt < failedRetryMs;",
+      "replace": "if (record.state === WINDOW_STATES.FAILED) return true;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/pyramid.test.js"],
+      "mustFail": ["a window the recording does not reach is a hole"],
+      "timeoutMs": 30000
+    },
+    {
+      "id": "p4c3-audit.cycle-budget-overshoots",
+      "file": "apps/runtime/src/indicators/l2-memory/pyramid/pyramid-builder.js",
+      "find": "const selected = Number.isFinite(remaining) && remaining < run.length ? run.slice(-remaining) : run;",
+      "replace": "const selected = run;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/pyramid.test.js"],
+      "mustFail": ["cycle budget limits windows even when a configured run is longer"],
+      "timeoutMs": 30000
+    },
+    {
+      "id": "p4c3-audit.heatmap-needs-unrelated-dxfeed-reader",
+      "file": "apps/runtime/src/server/live-storage-route.js",
+      "find": "if (dxfeedStorageReader === null && !PYRAMID_ROUTES.has(routeName) && !ICEBERG_ROUTES.has(routeName)) {",
+      "replace": "if (dxfeedStorageReader === null) {",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/server/live-storage-route.test.js"],
+      "mustFail": ["serves dxFeed pairs from their own store"],
+      "timeoutMs": 30000
+    }
+  ]
+}

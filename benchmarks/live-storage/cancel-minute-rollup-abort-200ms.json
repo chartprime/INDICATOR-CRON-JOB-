@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "name": "o0-cancel-minute-rollup-abort-200ms-2026-09-18",
+  "serverDelta": true,
+  "users": 1,
+  "rounds": 5,
+  "requests": [
+    {
+      "route": "minute-rollup",
+      "body": { "symbol": "BTCUSDT", "marketKind": "SPOT", "options": { "fromTs": 1789084800000, "toTs": 1789689600000, "tickSize": 0.32 } },
+      "abort": { "afterMs": 200 }
+    }
+  ]
+}

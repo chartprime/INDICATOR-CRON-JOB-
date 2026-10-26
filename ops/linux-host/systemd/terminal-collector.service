@@ -1,0 +1,52 @@
+# Binance collector. Enable only after deploy.sh has created `current`.
+[Unit]
+Description=Terminal-L1-L2 Binance collector
+Wants=network-online.target
+After=network-online.target time-sync.target
+RequiresMountsFor=/srv/terminal-data
+StartLimitIntervalSec=300
+StartLimitBurst=5
+OnFailure=terminal-alert@%n.service
+
+[Service]
+Type=simple
+User=ttcollect
+Group=ttcollect
+Slice=terminal.slice
+WorkingDirectory=/opt/terminal-l1-l2/current/apps/runtime
+Environment=TT_DATA_ROOT=/srv/terminal-data/capture
+Environment=TT_LOG_DIR=/var/log/terminal-l1-l2/collect
+Environment=TT_RUNTIME_DIR=/run/terminal-l1-l2
+EnvironmentFile=/etc/terminal-l1-l2/collect/service.env
+LogsDirectory=terminal-l1-l2/collect
+# W6.06 Phase 4 cooperative throttle (design lock 19 section 0.8): a shared,
+# world-readable runtime path the converter (a different user, no access to
+# /srv/terminal-data/capture) reads to back off under real collector load.
+RuntimeDirectory=terminal-l1-l2
+RuntimeDirectoryMode=0755
+ExecStartPre=/usr/bin/mountpoint -q /srv/terminal-data
+ExecStartPre=+/opt/terminal-l1-l2/ops/scripts/check-service-env.sh /etc/terminal-l1-l2/collect/service.env
+ExecStart=/opt/terminal-l1-l2/node-v24.21.0-linux-x64/bin/node /opt/terminal-l1-l2/current/apps/runtime/scripts/collect/run-collector.js
+Restart=on-failure
+RestartSec=10
+RestartPreventExitStatus=78
+TimeoutStopSec=150
+UMask=0077
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+ReadWritePaths=/srv/terminal-data/capture /var/lib/terminal-l1-l2/collect
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=terminal-collector
+
+[Install]
+WantedBy=multi-user.target

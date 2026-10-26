@@ -1,0 +1,49 @@
+{
+  "mutations": [
+    {
+      "id": "readiness.accepts-unknown-state",
+      "file": "apps/runtime/src/server/operational-readiness.js",
+      "find": "if (!STATE_SET.has(state)) throw new Error(\"operational readiness state is invalid\");",
+      "replace": "if (false) throw new Error(\"operational readiness state is invalid\");",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/server/operational-readiness.test.js", "--runInBand"],
+      "mustFail": ["keeps states and reasons governed"]
+    },
+    {
+      "id": "readiness.accepts-unknown-reason",
+      "file": "apps/runtime/src/server/operational-readiness.js",
+      "find": "if (reason !== null && !REASON_SET.has(reason)) throw new Error(\"operational readiness reason is invalid\");",
+      "replace": "if (false) throw new Error(\"operational readiness reason is invalid\");",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/server/operational-readiness.test.js", "--runInBand"],
+      "mustFail": ["keeps states and reasons governed"]
+    },
+    {
+      "id": "readiness.stale-generation-applies",
+      "file": "apps/runtime/src/server/operational-readiness.js",
+      "find": "if (expectedGeneration !== undefined && expectedGeneration !== generation) return false;",
+      "replace": "if (false) return false;",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/server/operational-readiness.test.js", "--runInBand"],
+      "mustFail": ["does not log duplicate state/reason and rejects stale generations"]
+    },
+    {
+      "id": "readiness.duplicate-transition-logs",
+      "file": "apps/runtime/src/server/operational-readiness.js",
+      "find": "if ((!prior || prior.state !== state || prior.reason !== reason) && log) {",
+      "replace": "if (log) {",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/server/operational-readiness.test.js", "--runInBand"],
+      "mustFail": ["does not log duplicate state/reason and rejects stale generations"]
+    },
+    {
+      "id": "readiness.vpin-disabled-reported-unavailable",
+      "file": "apps/runtime/src/server/market-data-server.js",
+      "find": "vpinWarmupStateByPair.set(key, \"DISABLED\");",
+      "replace": "vpinWarmupStateByPair.set(key, \"UNAVAILABLE\");",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/server/market-data-server.test.js", "--runInBand"],
+      "mustFail": ["an explicit VPIN suspension performs no calibration or live polling"]
+    }
+  ]
+}

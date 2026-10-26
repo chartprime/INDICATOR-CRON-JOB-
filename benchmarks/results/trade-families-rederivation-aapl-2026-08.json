@@ -1,0 +1,1222 @@
+{
+  "days": [
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 0,
+        "candle_bars": 21314,
+        "candle_minutes": 936,
+        "dataset_version": "w606-ohlcv-v1-xnas-itch-ohlcv-1s-aapl-2026-08",
+        "explained_by_receive_time": 0,
+        "explained_sample": [],
+        "family": "candle",
+        "first_mismatches": [],
+        "minutes_compared": 936,
+        "mismatches": 0,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2026-08-03",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "a2ebdc316698be7d5092aa26b11a291af480385ea90d35f3048d59ea83dd4797",
+          "recomputed_sha256": "a2ebdc316698be7d5092aa26b11a291af480385ea90d35f3048d59ea83dd4797",
+          "rows": 16009
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "b277438bb52c3b130274778087930deb197bf811385f783b07bd9fec6f4b24e4",
+          "recomputed_sha256": "b277438bb52c3b130274778087930deb197bf811385f783b07bd9fec6f4b24e4",
+          "rows": 936
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "84ff14bbe1fb3f810e5c0f7d228133eafdcad125b4504ff658a9fbcc703bcf89",
+          "recomputed_sha256": "84ff14bbe1fb3f810e5c0f7d228133eafdcad125b4504ff658a9fbcc703bcf89",
+          "rows": 5829
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "b136350e937dd70dcfb413e4c7812a41f2467503b53b0a695ea4739127fb9059",
+          "recomputed_sha256": "b136350e937dd70dcfb413e4c7812a41f2467503b53b0a695ea4739127fb9059",
+          "rows": 11694
+        }
+      },
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"AAPL\",\"USD\",\"SHARE\"]",
+      "source_manifest_sha256": "53e90b735c06b61f573c7b3ccd97467c22a3091fc986db80b89dfe29428a483a"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 2,
+        "candle_bars": 21750,
+        "candle_minutes": 946,
+        "dataset_version": "w606-ohlcv-v1-xnas-itch-ohlcv-1s-aapl-2026-08",
+        "explained_by_receive_time": 4,
+        "explained_sample": [
+          {
+            "arriving": "0",
+            "arriving_prints": 0,
+            "candle_volume": "10017",
+            "delta": "84",
+            "leaving": "84",
+            "leaving_prints": 1,
+            "net": "84",
+            "open_ns": "1785856380000000000",
+            "trade_volume": "10101"
+          },
+          {
+            "arriving": "84",
+            "arriving_prints": 1,
+            "candle_volume": "11530",
+            "delta": "-84",
+            "leaving": "0",
+            "leaving_prints": 0,
+            "net": "-84",
+            "open_ns": "1785856440000000000",
+            "trade_volume": "11446"
+          },
+          {
+            "arriving": "0",
+            "arriving_prints": 0,
+            "candle_volume": "428966",
+            "delta": "40",
+            "leaving": "40",
+            "leaving_prints": 1,
+            "net": "40",
+            "open_ns": "1785873540000000000",
+            "trade_volume": "429006"
+          }
+        ],
+        "family": "candle",
+        "first_mismatches": [
+          {
+            "candle_volume": "10017",
+            "open_ns": "1785856380000000000",
+            "trade_volume": "10101"
+          },
+          {
+            "candle_volume": "11530",
+            "open_ns": "1785856440000000000",
+            "trade_volume": "11446"
+          },
+          {
+            "candle_volume": "428966",
+            "open_ns": "1785873540000000000",
+            "trade_volume": "429006"
+          },
+          {
+            "candle_volume": "13627010",
+            "open_ns": "1785873600000000000",
+            "trade_volume": "13626970"
+          }
+        ],
+        "minutes_compared": 946,
+        "mismatches": 4,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2026-08-04",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "c51bd9f32353ea439267035bd681a08bd399c1b8ecbb79d3c129233dcd842b98",
+          "recomputed_sha256": "c51bd9f32353ea439267035bd681a08bd399c1b8ecbb79d3c129233dcd842b98",
+          "rows": 13836
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "3e5188a15571db87b5c324780d89c40fe5a4c2d0bc0f2d227b83e66041f44b20",
+          "recomputed_sha256": "3e5188a15571db87b5c324780d89c40fe5a4c2d0bc0f2d227b83e66041f44b20",
+          "rows": 946
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "ee1033ee5b74bdeeba114dc3a023b91d3f8e61b9471cfce6f522018d8793f6f9",
+          "recomputed_sha256": "ee1033ee5b74bdeeba114dc3a023b91d3f8e61b9471cfce6f522018d8793f6f9",
+          "rows": 5592
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "04731faa1e837a50520ad41eed5db13deef152bd10c6dcb879eb227c0357eaf6",
+          "recomputed_sha256": "04731faa1e837a50520ad41eed5db13deef152bd10c6dcb879eb227c0357eaf6",
+          "rows": 12621
+        }
+      },
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"AAPL\",\"USD\",\"SHARE\"]",
+      "source_manifest_sha256": "813889fa9e8ede16a138fb202d25ca15cb58b3032c9856ac3d7f8c0753a41ef7"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 0,
+        "candle_bars": 22224,
+        "candle_minutes": 948,
+        "dataset_version": "w606-ohlcv-v1-xnas-itch-ohlcv-1s-aapl-2026-08",
+        "explained_by_receive_time": 0,
+        "explained_sample": [],
+        "family": "candle",
+        "first_mismatches": [],
+        "minutes_compared": 948,
+        "mismatches": 0,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2026-08-05",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "427961c550cf88ad2bfc1b826f1cb3e34a47398d3b8a6b0addcaa6565668d714",
+          "recomputed_sha256": "427961c550cf88ad2bfc1b826f1cb3e34a47398d3b8a6b0addcaa6565668d714",
+          "rows": 14568
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "8f9ba91bca182de176ae0f62078458dae332b43be2c9080b52b319a7e8557c77",
+          "recomputed_sha256": "8f9ba91bca182de176ae0f62078458dae332b43be2c9080b52b319a7e8557c77",
+          "rows": 948
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "82aeb691b0f2f9a255cf6e74e075f620cf4635dcf528a451109e20b8c3c0c59a",
+          "recomputed_sha256": "82aeb691b0f2f9a255cf6e74e075f620cf4635dcf528a451109e20b8c3c0c59a",
+          "rows": 5736
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "2fd2311ed99a8829889aedd822ad8114e5deeb8279807d56e107ec1f26e225d3",
+          "recomputed_sha256": "2fd2311ed99a8829889aedd822ad8114e5deeb8279807d56e107ec1f26e225d3",
+          "rows": 12788
+        }
+      },
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"AAPL\",\"USD\",\"SHARE\"]",
+      "source_manifest_sha256": "79a442a8ef3bc993d65b868aa0f7b3f3b0c990be89b6731521fc9e7a43faedd5"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 0,
+        "candle_bars": 19473,
+        "candle_minutes": 901,
+        "dataset_version": "w606-ohlcv-v1-xnas-itch-ohlcv-1s-aapl-2026-08",
+        "explained_by_receive_time": 0,
+        "explained_sample": [],
+        "family": "candle",
+        "first_mismatches": [],
+        "minutes_compared": 901,
+        "mismatches": 0,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2026-08-06",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "adb10c8ca387d7cf89804c1c20f6cc3737ec5790c8e1f1b81411bf360dc1cdf2",
+          "recomputed_sha256": "adb10c8ca387d7cf89804c1c20f6cc3737ec5790c8e1f1b81411bf360dc1cdf2",
+          "rows": 11736
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "31aeeffebbd6149f92c0f980c5852706b5d7910d712870ebad0be5a1dbb18469",
+          "recomputed_sha256": "31aeeffebbd6149f92c0f980c5852706b5d7910d712870ebad0be5a1dbb18469",
+          "rows": 901
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "a47d23c895e93c5cc2071a7a1bb2f75c6edea1e64c4596d3fb87f048f0d8d61c",
+          "recomputed_sha256": "a47d23c895e93c5cc2071a7a1bb2f75c6edea1e64c4596d3fb87f048f0d8d61c",
+          "rows": 4816
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "4a277410e060674c4edb3f22c69d4d8088f4be61b8cb80a5c112e61fd269c6fd",
+          "recomputed_sha256": "4a277410e060674c4edb3f22c69d4d8088f4be61b8cb80a5c112e61fd269c6fd",
+          "rows": 11229
+        }
+      },
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"AAPL\",\"USD\",\"SHARE\"]",
+      "source_manifest_sha256": "b06a7fb008be7a16040e4157647d7a63c54d942c1c9fcc95cb69b664744f4f89"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 0,
+        "candle_bars": 18262,
+        "candle_minutes": 840,
+        "dataset_version": "w606-ohlcv-v1-xnas-itch-ohlcv-1s-aapl-2026-08",
+        "explained_by_receive_time": 0,
+        "explained_sample": [],
+        "family": "candle",
+        "first_mismatches": [],
+        "minutes_compared": 840,
+        "mismatches": 0,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2026-08-07",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "78f200241114b2ef1c9646159de5f98ced87ea03da110e64577f6a320e8f4d5a",
+          "recomputed_sha256": "78f200241114b2ef1c9646159de5f98ced87ea03da110e64577f6a320e8f4d5a",
+          "rows": 9584
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "3bd09b65da01b990ad0e9ba8a81fcbac2f3b41d36fc65be4439e871c135c8297",
+          "recomputed_sha256": "3bd09b65da01b990ad0e9ba8a81fcbac2f3b41d36fc65be4439e871c135c8297",
+          "rows": 840
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "ab57590ba97a97d934f275d4b734c1f5f6a8d9347013137369e3ff604867be02",
+          "recomputed_sha256": "ab57590ba97a97d934f275d4b734c1f5f6a8d9347013137369e3ff604867be02",
+          "rows": 4530
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "c2122311ecc503cc4af70ffcc5451b12d0e263e9a295aced82a45025bee9c28c",
+          "recomputed_sha256": "c2122311ecc503cc4af70ffcc5451b12d0e263e9a295aced82a45025bee9c28c",
+          "rows": 10463
+        }
+      },
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"AAPL\",\"USD\",\"SHARE\"]",
+      "source_manifest_sha256": "887d8fffc1233a6cf3a67f1001aaa94f941956ae83f578d0c9894e5aaec19850"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 2,
+        "candle_bars": 17577,
+        "candle_minutes": 884,
+        "dataset_version": "w606-ohlcv-v1-xnas-itch-ohlcv-1s-aapl-2026-08",
+        "explained_by_receive_time": 2,
+        "explained_sample": [
+          {
+            "arriving": "0",
+            "arriving_prints": 0,
+            "candle_volume": "23347",
+            "delta": "180",
+            "leaving": "180",
+            "leaving_prints": 2,
+            "net": "180",
+            "open_ns": "1786370340000000000",
+            "trade_volume": "23527"
+          },
+          {
+            "arriving": "180",
+            "arriving_prints": 2,
+            "candle_volume": "63071",
+            "delta": "-180",
+            "leaving": "0",
+            "leaving_prints": 0,
+            "net": "-180",
+            "open_ns": "1786370400000000000",
+            "trade_volume": "62891"
+          }
+        ],
+        "family": "candle",
+        "first_mismatches": [
+          {
+            "candle_volume": "23347",
+            "open_ns": "1786370340000000000",
+            "trade_volume": "23527"
+          },
+          {
+            "candle_volume": "63071",
+            "open_ns": "1786370400000000000",
+            "trade_volume": "62891"
+          }
+        ],
+        "minutes_compared": 884,
+        "mismatches": 2,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2026-08-10",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "1497301c1e7db95a3cdab7a62de4b65e9a948e8688e7ce20f00afa3c65639905",
+          "recomputed_sha256": "1497301c1e7db95a3cdab7a62de4b65e9a948e8688e7ce20f00afa3c65639905",
+          "rows": 11805
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "74930a83e35f29bc024897b3cf2edea6c7396fe92c52daae42a6960ef2107ce4",
+          "recomputed_sha256": "74930a83e35f29bc024897b3cf2edea6c7396fe92c52daae42a6960ef2107ce4",
+          "rows": 884
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "6d03bd1075cb7c2fa373cd9b01849dd716ad2aa81a135568e6f1f59ab7f557be",
+          "recomputed_sha256": "6d03bd1075cb7c2fa373cd9b01849dd716ad2aa81a135568e6f1f59ab7f557be",
+          "rows": 5183
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "af99d24c22f920849144d7574ae5a551c2ba717908d4f5a7f608dc6b15b8a782",
+          "recomputed_sha256": "af99d24c22f920849144d7574ae5a551c2ba717908d4f5a7f608dc6b15b8a782",
+          "rows": 10484
+        }
+      },
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"AAPL\",\"USD\",\"SHARE\"]",
+      "source_manifest_sha256": "7e422a14efa9f41239624846e98a6a06787d93edadb447f2429ea692c2e6c23b"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 0,
+        "candle_bars": 18250,
+        "candle_minutes": 845,
+        "dataset_version": "w606-ohlcv-v1-xnas-itch-ohlcv-1s-aapl-2026-08",
+        "explained_by_receive_time": 0,
+        "explained_sample": [],
+        "family": "candle",
+        "first_mismatches": [],
+        "minutes_compared": 845,
+        "mismatches": 0,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2026-08-11",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "afe4b06877b1e161d9bb99d621f1e62e744391286680c8f3cd54d4f4b5b3643f",
+          "recomputed_sha256": "afe4b06877b1e161d9bb99d621f1e62e744391286680c8f3cd54d4f4b5b3643f",
+          "rows": 9235
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "b1b2d9665657b96e7b99217603552f54886bb0022804c762c2962671b267b407",
+          "recomputed_sha256": "b1b2d9665657b96e7b99217603552f54886bb0022804c762c2962671b267b407",
+          "rows": 845
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "f593a434cc5a6f812b5677c68d5b6229093ca3dfb538ded510c336af3d340aa1",
+          "recomputed_sha256": "f593a434cc5a6f812b5677c68d5b6229093ca3dfb538ded510c336af3d340aa1",
+          "rows": 4468
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "d543daad27cdc6b6bd6fc60658ecba23f763c3eaa7d3ad07aff619d95deb5d3b",
+          "recomputed_sha256": "d543daad27cdc6b6bd6fc60658ecba23f763c3eaa7d3ad07aff619d95deb5d3b",
+          "rows": 10294
+        }
+      },
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"AAPL\",\"USD\",\"SHARE\"]",
+      "source_manifest_sha256": "8fea1233a21359f33a4ce55b1ce55865d157e34c5aba5685f38d589aad334ae3"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 0,
+        "candle_bars": 16663,
+        "candle_minutes": 887,
+        "dataset_version": "w606-ohlcv-v1-xnas-itch-ohlcv-1s-aapl-2026-08",
+        "explained_by_receive_time": 0,
+        "explained_sample": [],
+        "family": "candle",
+        "first_mismatches": [],
+        "minutes_compared": 887,
+        "mismatches": 0,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2026-08-12",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "1df0b10e237f775391b8cf6cf4e4438451d3481a542f0b1230d327547a06db35",
+          "recomputed_sha256": "1df0b10e237f775391b8cf6cf4e4438451d3481a542f0b1230d327547a06db35",
+          "rows": 9759
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "18a251aae23155ce3fcc1408eb7fa7b88ecfed50c6324eba9a9c91c2298423eb",
+          "recomputed_sha256": "18a251aae23155ce3fcc1408eb7fa7b88ecfed50c6324eba9a9c91c2298423eb",
+          "rows": 887
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "ec7f76f893312a15e1d4d84b8e01af733c43ad1415c46cce54c14bbbca84f8e3",
+          "recomputed_sha256": "ec7f76f893312a15e1d4d84b8e01af733c43ad1415c46cce54c14bbbca84f8e3",
+          "rows": 4936
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "0b406005aef6addb58dfa68089b1700b8b253b3aa6ac51d9df6b975ba5185a8c",
+          "recomputed_sha256": "0b406005aef6addb58dfa68089b1700b8b253b3aa6ac51d9df6b975ba5185a8c",
+          "rows": 10174
+        }
+      },
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"AAPL\",\"USD\",\"SHARE\"]",
+      "source_manifest_sha256": "650f82997d08c50dc5f7a7cb16ea9828d281c3ae448b8e9e47433ada361fdcbe"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 0,
+        "candle_bars": 17192,
+        "candle_minutes": 863,
+        "dataset_version": "w606-ohlcv-v1-xnas-itch-ohlcv-1s-aapl-2026-08",
+        "explained_by_receive_time": 0,
+        "explained_sample": [],
+        "family": "candle",
+        "first_mismatches": [],
+        "minutes_compared": 863,
+        "mismatches": 0,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2026-08-13",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "43e8e5b2edbfedac1116aa4e1b2959f13fb5f51d26d993b8aa07877f375ebdde",
+          "recomputed_sha256": "43e8e5b2edbfedac1116aa4e1b2959f13fb5f51d26d993b8aa07877f375ebdde",
+          "rows": 9858
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "e38c9b6638437483d6b859417b7dbb4173d1a6fa2578d1e3526c278239b52b7c",
+          "recomputed_sha256": "e38c9b6638437483d6b859417b7dbb4173d1a6fa2578d1e3526c278239b52b7c",
+          "rows": 863
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "183f5c1cd76cfb093761da64883ccf0b543938ff10859da0c5cda6d6b6d3fdd2",
+          "recomputed_sha256": "183f5c1cd76cfb093761da64883ccf0b543938ff10859da0c5cda6d6b6d3fdd2",
+          "rows": 4499
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "52ec44ccc37cefaf544bf50f1f7ac9ca2c7b40e1ffc0ae2e9c01923beda16b60",
+          "recomputed_sha256": "52ec44ccc37cefaf544bf50f1f7ac9ca2c7b40e1ffc0ae2e9c01923beda16b60",
+          "rows": 9898
+        }
+      },
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"AAPL\",\"USD\",\"SHARE\"]",
+      "source_manifest_sha256": "8544eec7b3ff4f5bf6edf6b8e6ffa1fff6f0d83788660c119e44f9e18403681b"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 0,
+        "candle_bars": 13809,
+        "candle_minutes": 803,
+        "dataset_version": "w606-ohlcv-v1-xnas-itch-ohlcv-1s-aapl-2026-08",
+        "explained_by_receive_time": 0,
+        "explained_sample": [],
+        "family": "candle",
+        "first_mismatches": [],
+        "minutes_compared": 803,
+        "mismatches": 0,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2026-08-14",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "932b93ee0f645c1e3aea970bee9f584cc2e4ba0e837d0cdf30c698a61dcfd390",
+          "recomputed_sha256": "932b93ee0f645c1e3aea970bee9f584cc2e4ba0e837d0cdf30c698a61dcfd390",
+          "rows": 7779
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "61a4096f42625facad80c49e37a53e1eb597f1fe233e0a9752cc6fd1e040c69e",
+          "recomputed_sha256": "61a4096f42625facad80c49e37a53e1eb597f1fe233e0a9752cc6fd1e040c69e",
+          "rows": 803
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "7ab9091cf3f2f94db872098e2e6f03f164b574388c9fcd50dc493655abc1060f",
+          "recomputed_sha256": "7ab9091cf3f2f94db872098e2e6f03f164b574388c9fcd50dc493655abc1060f",
+          "rows": 4285
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "25c14a0cbad83b4aa577b1922e78c5895f0edce6c558f8ac3ff598ac4c6e5386",
+          "recomputed_sha256": "25c14a0cbad83b4aa577b1922e78c5895f0edce6c558f8ac3ff598ac4c6e5386",
+          "rows": 8825
+        }
+      },
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"AAPL\",\"USD\",\"SHARE\"]",
+      "source_manifest_sha256": "5042615424e22383ca3bcf287ab3df43877ba3c013317f948eb4dda1ea10ccc0"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 0,
+        "candle_bars": 16429,
+        "candle_minutes": 838,
+        "dataset_version": "w606-ohlcv-v1-xnas-itch-ohlcv-1s-aapl-2026-08",
+        "explained_by_receive_time": 0,
+        "explained_sample": [],
+        "family": "candle",
+        "first_mismatches": [],
+        "minutes_compared": 838,
+        "mismatches": 0,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2026-08-17",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "1c5410af0bf88497725d821edf8f74706dbd788ad367e11930d37e31c2c8218d",
+          "recomputed_sha256": "1c5410af0bf88497725d821edf8f74706dbd788ad367e11930d37e31c2c8218d",
+          "rows": 9029
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "f822e7d96af7765f2c69fa7569a994febea5cdcf164a1b521f83e07f274f9917",
+          "recomputed_sha256": "f822e7d96af7765f2c69fa7569a994febea5cdcf164a1b521f83e07f274f9917",
+          "rows": 838
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "0b876cdde7fc10cd3d7df8de4bd06bfa31e74ce5b9f3fb4b258f2a6bd4537589",
+          "recomputed_sha256": "0b876cdde7fc10cd3d7df8de4bd06bfa31e74ce5b9f3fb4b258f2a6bd4537589",
+          "rows": 4520
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "c9a2ac73583417282212f51800ef90bc67c31726160c4021cf44801d5f7e3a2e",
+          "recomputed_sha256": "c9a2ac73583417282212f51800ef90bc67c31726160c4021cf44801d5f7e3a2e",
+          "rows": 9698
+        }
+      },
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"AAPL\",\"USD\",\"SHARE\"]",
+      "source_manifest_sha256": "2542e54ba3db16ae66f99bef536fe2ceaea31e0e5797288cbd22621450f7262c"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 0,
+        "candle_bars": 18261,
+        "candle_minutes": 897,
+        "dataset_version": "w606-ohlcv-v1-xnas-itch-ohlcv-1s-aapl-2026-08",
+        "explained_by_receive_time": 0,
+        "explained_sample": [],
+        "family": "candle",
+        "first_mismatches": [],
+        "minutes_compared": 897,
+        "mismatches": 0,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2026-08-18",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "c7633b2758e3bb43082ef668454ebb070aca0438273486735ce535a16cb7d961",
+          "recomputed_sha256": "c7633b2758e3bb43082ef668454ebb070aca0438273486735ce535a16cb7d961",
+          "rows": 11213
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "373d646499c7e2fc478d0e3e61bdc2b40bd7248e8a19ab78223052cd73fc0a1b",
+          "recomputed_sha256": "373d646499c7e2fc478d0e3e61bdc2b40bd7248e8a19ab78223052cd73fc0a1b",
+          "rows": 897
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "a0a99d342023262dc808667124f5826ed6b18dbe013493882a95b5ebe25a4ebd",
+          "recomputed_sha256": "a0a99d342023262dc808667124f5826ed6b18dbe013493882a95b5ebe25a4ebd",
+          "rows": 4860
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "a46843a305031d58f7511c7f722078093ecb0edb5f61d595ace562a3e43b42f3",
+          "recomputed_sha256": "a46843a305031d58f7511c7f722078093ecb0edb5f61d595ace562a3e43b42f3",
+          "rows": 10665
+        }
+      },
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"AAPL\",\"USD\",\"SHARE\"]",
+      "source_manifest_sha256": "0fd4122bb955a93db76768735d79e387c7dea8ca58a7ff017c49b6ef62b386ca"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 0,
+        "candle_bars": 18787,
+        "candle_minutes": 855,
+        "dataset_version": "w606-ohlcv-v1-xnas-itch-ohlcv-1s-aapl-2026-08",
+        "explained_by_receive_time": 0,
+        "explained_sample": [],
+        "family": "candle",
+        "first_mismatches": [],
+        "minutes_compared": 855,
+        "mismatches": 0,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2026-08-19",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "31b8b1c08cd7431135711c5aa99b189293f088b25b0b06baefa0d27ce902d712",
+          "recomputed_sha256": "31b8b1c08cd7431135711c5aa99b189293f088b25b0b06baefa0d27ce902d712",
+          "rows": 12095
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "de5dfd19020c03454c1f4ff1535936ab67fd7a59360730eca4a7c8fffb56220d",
+          "recomputed_sha256": "de5dfd19020c03454c1f4ff1535936ab67fd7a59360730eca4a7c8fffb56220d",
+          "rows": 855
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "dcf57a66b1c7902f6a340d5e7c734079cfdd5412e909604d123dafc30e59f621",
+          "recomputed_sha256": "dcf57a66b1c7902f6a340d5e7c734079cfdd5412e909604d123dafc30e59f621",
+          "rows": 4522
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "a522ba3c91290e96a1306b3df7eabf4be55496462f379dc21ba0b05766254f12",
+          "recomputed_sha256": "a522ba3c91290e96a1306b3df7eabf4be55496462f379dc21ba0b05766254f12",
+          "rows": 10911
+        }
+      },
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"AAPL\",\"USD\",\"SHARE\"]",
+      "source_manifest_sha256": "093ed7f231ed058f641f3e84954a730782409606c7e834d0db53d5d659facd41"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 0,
+        "candle_bars": 14564,
+        "candle_minutes": 819,
+        "dataset_version": "w606-ohlcv-v1-xnas-itch-ohlcv-1s-aapl-2026-08",
+        "explained_by_receive_time": 0,
+        "explained_sample": [],
+        "family": "candle",
+        "first_mismatches": [],
+        "minutes_compared": 819,
+        "mismatches": 0,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2026-08-20",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "985b9d20e1ac327415e3a9cecfffd0ecfccfb031f2d8bc6bb22e5fb6d8754d49",
+          "recomputed_sha256": "985b9d20e1ac327415e3a9cecfffd0ecfccfb031f2d8bc6bb22e5fb6d8754d49",
+          "rows": 10760
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "370aad374d8512fbc5c7ef4da1aff5ebfe7776109eb775fac71a8b68b3229592",
+          "recomputed_sha256": "370aad374d8512fbc5c7ef4da1aff5ebfe7776109eb775fac71a8b68b3229592",
+          "rows": 819
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "0fbed7ec5baa835bb244805107ffd88c59ca058db51bedf4dec06e59fba52d2b",
+          "recomputed_sha256": "0fbed7ec5baa835bb244805107ffd88c59ca058db51bedf4dec06e59fba52d2b",
+          "rows": 4489
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "4b0fb822bed69c76260c58ca757d3ef4d96bff03d33717469c23a834df7afed3",
+          "recomputed_sha256": "4b0fb822bed69c76260c58ca757d3ef4d96bff03d33717469c23a834df7afed3",
+          "rows": 8960
+        }
+      },
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"AAPL\",\"USD\",\"SHARE\"]",
+      "source_manifest_sha256": "c338cc1ef53f497be7585541cc0d4d4770fac8dd429d734d96a9c82c9e50f977"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 0,
+        "candle_bars": 15578,
+        "candle_minutes": 810,
+        "dataset_version": "w606-ohlcv-v1-xnas-itch-ohlcv-1s-aapl-2026-08",
+        "explained_by_receive_time": 0,
+        "explained_sample": [],
+        "family": "candle",
+        "first_mismatches": [],
+        "minutes_compared": 810,
+        "mismatches": 0,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2026-08-21",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "0bbaa251d57ff778d23e2950722a4bd172bab222c32a9f2a266c378ae59f49c3",
+          "recomputed_sha256": "0bbaa251d57ff778d23e2950722a4bd172bab222c32a9f2a266c378ae59f49c3",
+          "rows": 10016
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "1ba33efc64e2b35a40b9a0c05a3cba0384e929dbf19245f1ed893d1d7660a84d",
+          "recomputed_sha256": "1ba33efc64e2b35a40b9a0c05a3cba0384e929dbf19245f1ed893d1d7660a84d",
+          "rows": 810
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "f7ceef9687b2fbf20f2dc623a601ba9485630b4981f00dcee5ef396f617cdc9e",
+          "recomputed_sha256": "f7ceef9687b2fbf20f2dc623a601ba9485630b4981f00dcee5ef396f617cdc9e",
+          "rows": 4118
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "5b41f60fb6e47fc1496068946e7c365be97eea3c90b9cc8de07c32f37777eba3",
+          "recomputed_sha256": "5b41f60fb6e47fc1496068946e7c365be97eea3c90b9cc8de07c32f37777eba3",
+          "rows": 9167
+        }
+      },
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"AAPL\",\"USD\",\"SHARE\"]",
+      "source_manifest_sha256": "5ff76d6e409b066a10a3d54f92a197ee44678c895b68517a8103d1f05c74abee"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 0,
+        "candle_bars": 13991,
+        "candle_minutes": 803,
+        "dataset_version": "w606-ohlcv-v1-xnas-itch-ohlcv-1s-aapl-2026-08",
+        "explained_by_receive_time": 0,
+        "explained_sample": [],
+        "family": "candle",
+        "first_mismatches": [],
+        "minutes_compared": 803,
+        "mismatches": 0,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2026-08-24",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "8d4e1688bebe643dd3b5520e28f7b7186a418945c4dbab93853ee86088f9b1ae",
+          "recomputed_sha256": "8d4e1688bebe643dd3b5520e28f7b7186a418945c4dbab93853ee86088f9b1ae",
+          "rows": 9573
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "b1ff5efafe981683ad7350fc6b9e945732fc862fe44bc4c1a98ba579068ca82b",
+          "recomputed_sha256": "b1ff5efafe981683ad7350fc6b9e945732fc862fe44bc4c1a98ba579068ca82b",
+          "rows": 803
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "5ce12e3e868369798de5fa91012d8e00a8fececc59542781698983d8df389a48",
+          "recomputed_sha256": "5ce12e3e868369798de5fa91012d8e00a8fececc59542781698983d8df389a48",
+          "rows": 4038
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "546a21e8fb40e784a8bcc96497bb5520a5cbe02219558410557e3918eb8298f2",
+          "recomputed_sha256": "546a21e8fb40e784a8bcc96497bb5520a5cbe02219558410557e3918eb8298f2",
+          "rows": 8531
+        }
+      },
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"AAPL\",\"USD\",\"SHARE\"]",
+      "source_manifest_sha256": "989ecc3f1e39cb0c6e9d730430c384ff520a50a24ac3ea95e88ea5d9c7ed92cd"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 0,
+        "candle_bars": 16199,
+        "candle_minutes": 821,
+        "dataset_version": "w606-ohlcv-v1-xnas-itch-ohlcv-1s-aapl-2026-08",
+        "explained_by_receive_time": 0,
+        "explained_sample": [],
+        "family": "candle",
+        "first_mismatches": [],
+        "minutes_compared": 821,
+        "mismatches": 0,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2026-08-25",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "410bd86c162cd9cba2be868c4b70e7a7c00d2aaf610e4cab12d1b3d2c1daefd2",
+          "recomputed_sha256": "410bd86c162cd9cba2be868c4b70e7a7c00d2aaf610e4cab12d1b3d2c1daefd2",
+          "rows": 9603
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "4c341620199a16a7c111d4b347c133cf76c91508959bf4e6bd298c22cdba21ec",
+          "recomputed_sha256": "4c341620199a16a7c111d4b347c133cf76c91508959bf4e6bd298c22cdba21ec",
+          "rows": 821
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "8681c7066581d9a22727991788ee70bef7182a5e9c1652cca5ef4b8067cc4dc5",
+          "recomputed_sha256": "8681c7066581d9a22727991788ee70bef7182a5e9c1652cca5ef4b8067cc4dc5",
+          "rows": 4299
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "67f020129bee4dfad505184164ae62eb067f101504ee0f36ade5e0ef4a564c0a",
+          "recomputed_sha256": "67f020129bee4dfad505184164ae62eb067f101504ee0f36ade5e0ef4a564c0a",
+          "rows": 9706
+        }
+      },
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"AAPL\",\"USD\",\"SHARE\"]",
+      "source_manifest_sha256": "64355ab2cd9a4d37b1126fd81b56f72d44d2134481d50e77530e712e31aa83a2"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 0,
+        "candle_bars": 13982,
+        "candle_minutes": 829,
+        "dataset_version": "w606-ohlcv-v1-xnas-itch-ohlcv-1s-aapl-2026-08",
+        "explained_by_receive_time": 0,
+        "explained_sample": [],
+        "family": "candle",
+        "first_mismatches": [],
+        "minutes_compared": 829,
+        "mismatches": 0,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2026-08-26",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "504265e444cef4d74e65358a6ab9aec006794a846c43ef4f2c58d3ffeba2ab45",
+          "recomputed_sha256": "504265e444cef4d74e65358a6ab9aec006794a846c43ef4f2c58d3ffeba2ab45",
+          "rows": 10062
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "0cd8462cfffa31868d90402baecf4508853090827c9fb8dccffa71c61f485810",
+          "recomputed_sha256": "0cd8462cfffa31868d90402baecf4508853090827c9fb8dccffa71c61f485810",
+          "rows": 829
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "ea1fb72a0f46d18aba35d7a8a145a6f2d767a85a28f0ce1b05389dba233639df",
+          "recomputed_sha256": "ea1fb72a0f46d18aba35d7a8a145a6f2d767a85a28f0ce1b05389dba233639df",
+          "rows": 4542
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "bc78a7421944fa89644744ba0910640e8af8b98da886d6157da7ae6cb3589307",
+          "recomputed_sha256": "bc78a7421944fa89644744ba0910640e8af8b98da886d6157da7ae6cb3589307",
+          "rows": 8671
+        }
+      },
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"AAPL\",\"USD\",\"SHARE\"]",
+      "source_manifest_sha256": "845dcd3c596a445de8e1c2d4e3b707c0b8aaffc0b3d74b8cb504c6f89b10a092"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 0,
+        "candle_bars": 17826,
+        "candle_minutes": 861,
+        "dataset_version": "w606-ohlcv-v1-xnas-itch-ohlcv-1s-aapl-2026-08",
+        "explained_by_receive_time": 0,
+        "explained_sample": [],
+        "family": "candle",
+        "first_mismatches": [],
+        "minutes_compared": 861,
+        "mismatches": 0,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2026-08-27",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "7ee21a875d259e19a6dcac6d1ba886ce0d6acf75edb4715dfc6cd2720a7c4dbf",
+          "recomputed_sha256": "7ee21a875d259e19a6dcac6d1ba886ce0d6acf75edb4715dfc6cd2720a7c4dbf",
+          "rows": 11059
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "89b884292fde0bf9ca554d07afe9e05bccfe0f3e2c8d1fa0ee0a16238f33856b",
+          "recomputed_sha256": "89b884292fde0bf9ca554d07afe9e05bccfe0f3e2c8d1fa0ee0a16238f33856b",
+          "rows": 861
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "cb51fe1288c3efe2114e3cdff2c7ccee3ff9ef0ff40f695005b5969a63e2d97e",
+          "recomputed_sha256": "cb51fe1288c3efe2114e3cdff2c7ccee3ff9ef0ff40f695005b5969a63e2d97e",
+          "rows": 4629
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "180dd1308e7e243185351309ad900c8214b672462aad2aade5a5a9ca0e61c547",
+          "recomputed_sha256": "180dd1308e7e243185351309ad900c8214b672462aad2aade5a5a9ca0e61c547",
+          "rows": 10727
+        }
+      },
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"AAPL\",\"USD\",\"SHARE\"]",
+      "source_manifest_sha256": "9a5d1407633fcc0c8ab6f4f0774735f577329c2fe67fc6eae95577268e0fd2df"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 3,
+        "candle_bars": 15009,
+        "candle_minutes": 816,
+        "dataset_version": "w606-ohlcv-v1-xnas-itch-ohlcv-1s-aapl-2026-08",
+        "explained_by_receive_time": 2,
+        "explained_sample": [
+          {
+            "arriving": "0",
+            "arriving_prints": 0,
+            "candle_volume": "22855",
+            "delta": "118",
+            "leaving": "118",
+            "leaving_prints": 3,
+            "net": "118",
+            "open_ns": "1787925540000000000",
+            "trade_volume": "22973"
+          },
+          {
+            "arriving": "118",
+            "arriving_prints": 3,
+            "candle_volume": "25381",
+            "delta": "-118",
+            "leaving": "0",
+            "leaving_prints": 0,
+            "net": "-118",
+            "open_ns": "1787925600000000000",
+            "trade_volume": "25263"
+          }
+        ],
+        "family": "candle",
+        "first_mismatches": [
+          {
+            "candle_volume": "22855",
+            "open_ns": "1787925540000000000",
+            "trade_volume": "22973"
+          },
+          {
+            "candle_volume": "25381",
+            "open_ns": "1787925600000000000",
+            "trade_volume": "25263"
+          }
+        ],
+        "minutes_compared": 816,
+        "mismatches": 2,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2026-08-28",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "0b5be0f583146e7681277b77708cc159f69e8237b8ed17a80cbadc57bd09e412",
+          "recomputed_sha256": "0b5be0f583146e7681277b77708cc159f69e8237b8ed17a80cbadc57bd09e412",
+          "rows": 11439
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "8e85830bbcb35ea4e2a65f6305d1d631698e631b1c1607410efca8cc4e3b469f",
+          "recomputed_sha256": "8e85830bbcb35ea4e2a65f6305d1d631698e631b1c1607410efca8cc4e3b469f",
+          "rows": 816
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "3eb38b693f4cb573f81ec6a5bef90fb25cf09c4f9df30d70b4c74581ee3ef401",
+          "recomputed_sha256": "3eb38b693f4cb573f81ec6a5bef90fb25cf09c4f9df30d70b4c74581ee3ef401",
+          "rows": 4245
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "f7ccc423299e239f5126833fe32161393df8221c4440d21dde0478cf66eaf97e",
+          "recomputed_sha256": "f7ccc423299e239f5126833fe32161393df8221c4440d21dde0478cf66eaf97e",
+          "rows": 9405
+        }
+      },
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"AAPL\",\"USD\",\"SHARE\"]",
+      "source_manifest_sha256": "7f130fef7efcd2c81edddd14ef4e35b29a01c5fb127486a04610bef823c94a33"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 0,
+        "candle_bars": 16573,
+        "candle_minutes": 806,
+        "dataset_version": "w606-ohlcv-v1-xnas-itch-ohlcv-1s-aapl-2026-08",
+        "explained_by_receive_time": 0,
+        "explained_sample": [],
+        "family": "candle",
+        "first_mismatches": [],
+        "minutes_compared": 806,
+        "mismatches": 0,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2026-08-31",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "2fea8a75a0b1bad123fb59a785385f9b95433b810a9aa5df8e151211e9a1b638",
+          "recomputed_sha256": "2fea8a75a0b1bad123fb59a785385f9b95433b810a9aa5df8e151211e9a1b638",
+          "rows": 11090
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "fa19540bea22dd1172910468292da688e00260054fbc170ed549da4168397cfc",
+          "recomputed_sha256": "fa19540bea22dd1172910468292da688e00260054fbc170ed549da4168397cfc",
+          "rows": 806
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "02bfe01838456d4af6f17ba7969f56c33c41f58150300a41198363b934ae8fb9",
+          "recomputed_sha256": "02bfe01838456d4af6f17ba7969f56c33c41f58150300a41198363b934ae8fb9",
+          "rows": 4398
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "1e56be0b433dc67b146c828e2ac3e45d74a69fb13086833094bb77c341576276",
+          "recomputed_sha256": "1e56be0b433dc67b146c828e2ac3e45d74a69fb13086833094bb77c341576276",
+          "rows": 10110
+        }
+      },
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"AAPL\",\"USD\",\"SHARE\"]",
+      "source_manifest_sha256": "cc267c44168e0cd997a3e373f3e55860155576e36d2d4ab899e151ae887c2ac8"
+    }
+  ],
+  "equal": true,
+  "families_version": "w606-l1agg-v1-xnas-itch-aapl-2026-08",
+  "version": 1
+}

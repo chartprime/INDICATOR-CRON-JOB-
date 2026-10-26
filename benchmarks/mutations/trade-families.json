@@ -1,0 +1,559 @@
+{
+  "mutations": [
+    {
+      "id": "trade-families.slice-side-filter-widened",
+      "file": "apps/runtime/conversion/trade_families.py",
+      "find": "        \"FROM trades WHERE side IN ('BUY', 'SELL') GROUP BY slice_ns ORDER BY slice_ns\").fetchall()",
+      "replace": "        \"FROM trades GROUP BY slice_ns ORDER BY slice_ns\").fetchall()",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "tests/test_trade_families.py"
+      ],
+      "mustFail": [
+        "test_the_stage_reproduces_the_golden_family[trade_slice-equity]",
+        "test_the_stage_reproduces_the_golden_family[trade_slice-futures]"
+      ]
+    },
+    {
+      "id": "trade-families.futures-valid-tick-filter-dropped",
+      "file": "apps/runtime/conversion/trade_families.py",
+      "find": "    validity = \"AND (valid_tick IS NULL OR valid_tick) \" if market == \"FUTURE\" else \"\"",
+      "replace": "    validity = \"\"",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "tests/test_trade_families.py"
+      ],
+      "mustFail": [
+        "test_the_stage_reproduces_the_golden_family[trade_minute-futures]"
+      ]
+    },
+    {
+      "id": "trade-families.equity-valid-tick-filter-applied",
+      "file": "apps/runtime/conversion/trade_families.py",
+      "find": "    validity = \"AND (valid_tick IS NULL OR valid_tick) \" if market == \"FUTURE\" else \"\"",
+      "replace": "    validity = \"AND (valid_tick IS NULL OR valid_tick) \"",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "tests/test_trade_families.py"
+      ],
+      "mustFail": [
+        "test_the_stage_reproduces_the_golden_family[trade_minute-equity]"
+      ]
+    },
+    {
+      "id": "trade-families.bucket-rounds-instead-of-floors",
+      "file": "apps/runtime/conversion/trade_families.py",
+      "find": "    bucket = f\"(price_sub - ((price_sub % {tick} + {tick}) % {tick})) // {tick}\"",
+      "replace": "    bucket = f\"CAST(round(price_sub / {tick}) AS BIGINT)\"",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "tests/test_trade_families.py"
+      ],
+      "mustFail": [
+        "test_the_stage_reproduces_the_golden_family[trade_level-equity]",
+        "test_the_stage_reproduces_the_golden_family[trade_level-futures]"
+      ]
+    },
+    {
+      "id": "trade-families.prints-cap-off-by-one",
+      "file": "apps/runtime/conversion/trade_families.py",
+      "find": "        f\") WHERE rank <= {int(prints_per_side)} \"",
+      "replace": "        f\") WHERE rank <= {int(prints_per_side) + 1} \"",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "tests/test_trade_families.py"
+      ],
+      "mustFail": [
+        "test_the_stage_reproduces_the_golden_family[trade_prints-futures]"
+      ]
+    },
+    {
+      "id": "trade-families.prints-tie-goes-to-the-earlier-execution",
+      "file": "apps/runtime/conversion/trade_families.py",
+      "find": "ORDER BY {magnitude} DESC, event_ns DESC, \"\n        \"      source_rank DESC, stable_position DESC, ordinal DESC) AS rank \"",
+      "replace": "ORDER BY {magnitude} DESC, event_ns ASC, \"\n        \"      source_rank ASC, stable_position ASC, ordinal ASC) AS rank \"",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "tests/test_trade_families.py"
+      ],
+      "mustFail": [
+        "test_the_stage_reproduces_the_golden_family[trade_prints-futures]"
+      ]
+    },
+    {
+      "id": "trade-families.undefined-side-dropped-from-volume",
+      "file": "apps/runtime/conversion/trade_families.py",
+      "find": "        \"SELECT minute_ns, SUM(size_v), \"",
+      "replace": "        \"SELECT minute_ns, SUM(CASE WHEN side IN ('BUY', 'SELL') THEN size_v ELSE 0 END), \"",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "tests/test_trade_families.py"
+      ],
+      "mustFail": [
+        "test_the_stage_reproduces_the_golden_family[trade_minute-equity]",
+        "test_the_stage_reproduces_the_golden_family[trade_minute-futures]"
+      ]
+    },
+    {
+      "id": "trade-families.notional-through-a-double",
+      "file": "apps/runtime/conversion/trade_families.py",
+      "find": "        f\"CAST(price AS DECIMAL({NOTIONAL_OPERAND_WIDTH},{VALUE_SCALE})) \"\n        f\"* CAST(size AS DECIMAL({NOTIONAL_OPERAND_WIDTH},{VALUE_SCALE})) AS notional, \"",
+      "replace": "        f\"CAST(CAST(price AS DOUBLE) * CAST(size AS DOUBLE) AS DECIMAL(38,12)) AS notional, \"",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "tests/test_trade_families.py"
+      ],
+      "mustFail": [
+        "test_the_stage_reproduces_the_golden_family[trade_slice-equity]"
+      ]
+    },
+    {
+      "id": "trade-families.precision-guard-removed",
+      "file": "apps/runtime/conversion/trade_families.py",
+      "find": "    if imprecise:\n        raise FamilyError(f\"FAMILY_PRECISION_UNSUPPORTED:{imprecise}\")",
+      "replace": "    if imprecise and False:\n        raise FamilyError(f\"FAMILY_PRECISION_UNSUPPORTED:{imprecise}\")",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "tests/test_trade_families.py"
+      ],
+      "mustFail": [
+        "test_a_price_beyond_the_fixed_scale_is_refused_not_rounded"
+      ]
+    },
+    {
+      "id": "trade-families.resume-republishes-a-completed-partition",
+      "file": "apps/runtime/conversion/derive_families.py",
+      "find": "    return _ckpt.is_partition_complete(checkpoint, instrument_id, family, date) or any(",
+      "replace": "    return False or any(",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "tests/test_derive_families.py",
+        "-k",
+        "interrupted_month"
+      ],
+      "mustFail": [
+        "test_an_interrupted_month_resumes_without_republishing_and_a_finished_month_is_a_no_op"
+      ]
+    },
+    {
+      "id": "trade-families.unpublished-source-accepted",
+      "file": "apps/runtime/conversion/derive_families.py",
+      "find": "            if not partition[\"published_to_s3\"]:\n                raise DeriveError(f\"SOURCE_PARTITION_NOT_PUBLISHED:{instrument_id}:{date}\")",
+      "replace": "            if False:\n                raise DeriveError(f\"SOURCE_PARTITION_NOT_PUBLISHED:{instrument_id}:{date}\")",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "tests/test_derive_families.py",
+        "-k",
+        "unpublished_or_ambiguous"
+      ],
+      "mustFail": [
+        "test_an_unpublished_or_ambiguous_source_partition_is_refused_at_planning"
+      ]
+    },
+    {
+      "id": "trade-families.identity-mismatch-not-checked",
+      "file": "apps/runtime/conversion/derive_families.py",
+      "find": "    if _identity.instrument_id(instrument) != source[\"instrument_id\"] or identity[\"instrument_id\"] != source[\"instrument_id\"]:",
+      "replace": "    if False:",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "tests/test_derive_families.py",
+        "-k",
+        "stale_catalog_pointer_and_a_source"
+      ],
+      "mustFail": [
+        "test_a_stale_catalog_pointer_and_a_source_whose_rows_belong_to_another_instrument_are_refused"
+      ]
+    },
+    {
+      "id": "trade-families.derivation-block-omitted",
+      "file": "apps/runtime/conversion/writer.py",
+      "find": "        if derivation is not None:\n            manifest[\"derivation\"] = json.loads(json.dumps(derivation, sort_keys=True))",
+      "replace": "        if False:\n            manifest[\"derivation\"] = json.loads(json.dumps(derivation, sort_keys=True))",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "tests/test_writer.py",
+        "-k",
+        "derived_partition_round_trips"
+      ],
+      "mustFail": [
+        "test_a_derived_partition_round_trips_its_columns_and_carries_the_derivation_block[trade_minute_1m-trade_minute]"
+      ]
+    },
+    {
+      "id": "trade-families.contract-accepts-side-volumes-that-do-not-sum",
+      "file": "apps/runtime/src/data-contracts/v1/record.js",
+      "find": "      requireValue(compareDecimal(addDecimal(addDecimal(d.buyVolume, d.sellVolume), d.undefinedVolume), d.volume) === 0, \"SIDE_VOLUMES_DO_NOT_SUM_TO_VOLUME\");",
+      "replace": "      requireValue(compareDecimal(addDecimal(addDecimal(d.buyVolume, d.sellVolume), d.undefinedVolume), d.volume) <= 0, \"SIDE_VOLUMES_DO_NOT_SUM_TO_VOLUME\");",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/contracts/derived-families.test.js"
+      ],
+      "mustFail": [
+        "trade_minute with {\"volume\":\"43\"} is refused as SIDE_VOLUMES_DO_NOT_SUM_TO_VOLUME"
+      ]
+    },
+    {
+      "id": "trade-families.golden-geometry-drifts-from-live",
+      "file": "benchmarks/fixtures/golden/trade-families.json",
+      "find": "  \"sliceMs\": 2000,\n  \"printsPerSide\": 4,",
+      "replace": "  \"sliceMs\": 3000,\n  \"printsPerSide\": 4,",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/storage/dxfeed/trade-families-equivalence.test.js"
+      ],
+      "mustFail": [
+        "slice width, prints per side and the marker bucket come from the live modules"
+      ]
+    },
+    {
+      "id": "trade-families.empty-plan-reported-ok",
+      "file": "apps/runtime/conversion/derive_families.py",
+      "find": "    if not months:\n        raise DeriveError(f\"NO_SOURCE_PARTITIONS:{dataset}:{symbol}\")",
+      "replace": "    if False:\n        raise DeriveError(f\"NO_SOURCE_PARTITIONS:{dataset}:{symbol}\")",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "tests/test_derive_families.py",
+        "-k",
+        "nothing_to_derive"
+      ],
+      "mustFail": [
+        "test_a_symbol_with_nothing_to_derive_is_refused_not_reported_ok"
+      ]
+    },
+    {
+      "id": "trade-families.reconciliation-judges-futures-prints-by-notional",
+      "file": "apps/runtime/conversion/trade_families.py",
+      "find": "    magnitude = \"size_v\" if market == \"FUTURE\" else \"notional\"\n    expected = dict(connection.execute(",
+      "replace": "    magnitude = \"notional\"\n    expected = dict(connection.execute(",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "tests/test_trade_families.py",
+        "-k",
+        "judged_by_size_alone"
+      ],
+      "mustFail": [
+        "test_a_futures_print_candidate_is_judged_by_size_alone_in_the_reconciliation_too"
+      ]
+    },
+    {
+      "id": "trade-families.empty-family-not-recorded",
+      "file": "apps/runtime/conversion/derive_families.py",
+      "find": "        if not rows:\n            checkpoint.setdefault(\"empty_partitions\", []).append(",
+      "replace": "        if not rows:\n            continue\n            checkpoint.setdefault(\"empty_partitions\", []).append(",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "tests/test_derive_families.py",
+        "-k",
+        "no_sided_execution"
+      ],
+      "mustFail": [
+        "test_a_day_with_no_sided_execution_publishes_the_side_free_families_and_records_the_empty_ones"
+      ]
+    },
+    {
+      "id": "trade-families.qualification-reads-sources-from-the-publish-namespace",
+      "file": "apps/runtime/conversion/derive_families.py",
+      "find": "    source_store = store if source_prefix is None else s3_publish.Store(client, bucket, source_prefix)",
+      "replace": "    source_store = store",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "tests/test_derive_families.py",
+        "-k",
+        "qualification_run"
+      ],
+      "mustFail": [
+        "test_a_qualification_run_reads_the_real_sources_and_publishes_only_into_its_own_namespace"
+      ]
+    },
+    {
+      "id": "trade-families.qualification-plans-sources-from-the-publish-catalog",
+      "file": "apps/runtime/conversion/derive_families.py",
+      "find": "    snapshot = snapshot_path(catalog_root if source_catalog_root is None else source_catalog_root)",
+      "replace": "    snapshot = snapshot_path(catalog_root)",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "tests/test_derive_families.py",
+        "-k",
+        "qualification_run"
+      ],
+      "mustFail": [
+        "test_a_qualification_run_reads_the_real_sources_and_publishes_only_into_its_own_namespace"
+      ]
+    },
+    {
+      "id": "trade-families.rederive-resolves-families-from-the-source-catalog",
+      "file": "apps/runtime/conversion/trade_families_rederive.py",
+      "find": "    families_snapshot = args.snapshot if args.families_snapshot is None else args.families_snapshot",
+      "replace": "    families_snapshot = args.snapshot",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "tests/test_derive_families.py",
+        "-k",
+        "qualification_run"
+      ],
+      "mustFail": [
+        "test_a_qualification_run_reads_the_real_sources_and_publishes_only_into_its_own_namespace"
+      ]
+    },
+    {
+      "id": "trade-families.provider-column-required-of-older-catalogs",
+      "file": "apps/runtime/conversion/curated_partition.py",
+      "find": "        provider = \"provider\" if \"provider\" in columns else \"NULL\"",
+      "replace": "        provider = \"provider\"",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "tests/test_derive_families.py",
+        "-k",
+        "provider_column"
+      ],
+      "mustFail": [
+        "test_a_converter_catalog_written_before_the_provider_column_plans_and_derives"
+      ]
+    },
+    {
+      "id": "trade-families.notional-product-narrowed-to-decimal-18",
+      "file": "apps/runtime/conversion/trade_families.py",
+      "find": "NOTIONAL_OPERAND_WIDTH = 19",
+      "replace": "NOTIONAL_OPERAND_WIDTH = 18",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "tests/test_trade_families.py",
+        "-k",
+        "equity_block"
+      ],
+      "mustFail": [
+        "test_the_stage_reproduces_the_golden_family[trade_minute-equity_block]"
+      ]
+    },
+    {
+      "id": "trade-families.candle-cross-check-reads-bars-instead-of-minutes",
+      "file": "apps/runtime/conversion/trade_families_rederive.py",
+      "find": "            f\"SELECT open_ns - open_ns % {int(bucket_ns)} AS bucket_ns, SUM(volume), count(*) \"",
+      "replace": "            f\"SELECT open_ns AS bucket_ns, SUM(volume), count(*) \"",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "tests/test_trade_families.py",
+        "-k",
+        "one_second_bars"
+      ],
+      "mustFail": [
+        "test_the_candle_cross_check_sums_one_second_bars_into_the_minute_it_compares"
+      ]
+    },
+    {
+      "id": "trade-families.attribution-only-looks-forward",
+      "file": "apps/runtime/conversion/trade_families_rederive.py",
+      "find": "                \"WHERE event_ns >= ? AND event_ns < ? AND (receive_ns < ? OR receive_ns >= ?)\",\n                [minute, close, minute, close]).fetchone()",
+      "replace": "                \"WHERE event_ns >= ? AND event_ns < ? AND receive_ns >= ?\",\n                [minute, close, close]).fetchone()",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "tests/test_trade_families.py",
+        "-k",
+        "before_the_engine_timestamp"
+      ],
+      "mustFail": [
+        "test_a_print_captured_before_the_engine_timestamp_moves_volume_to_the_earlier_minute"
+      ]
+    },
+    {
+      "id": "trade-families.attribution-counts-executions-the-families-exclude",
+      "file": "apps/runtime/conversion/trade_families_rederive.py",
+      "find": "    validity = \"AND (valid_tick IS NULL OR valid_tick) \" if market == \"FUTURE\" else \"\"\n    connection = duckdb.connect(config={\"threads\": \"1\"})",
+      "replace": "    validity = \"\"\n    connection = duckdb.connect(config={\"threads\": \"1\"})",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "tests/test_trade_families.py",
+        "-k",
+        "families_count"
+      ],
+      "mustFail": [
+        "test_the_futures_attribution_counts_only_the_executions_the_families_count"
+      ]
+    },
+    {
+      "id": "trade-families.unexplained-candle-difference-reported-as-explained",
+      "file": "apps/runtime/conversion/trade_families_rederive.py",
+      "find": "        (explained if entry and Decimal(entry[\"net\"]) == delta else unexplained).append(target)",
+      "replace": "        (explained if entry else unexplained).append(target)",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "tests/test_trade_families.py",
+        "-k",
+        "reported_unexplained"
+      ],
+      "mustFail": [
+        "test_a_candle_difference_no_boundary_print_accounts_for_is_reported_unexplained"
+      ]
+    },
+    {
+      "id": "trade-families.sequence-publishes-qualification-output-into-production",
+      "file": "apps/runtime/conversion/backfill_sequence.py",
+      "find": "                        source_store=s3_publish.Store(client, bucket, source_prefix) if source_prefix else None,",
+      "replace": "                        source_store=None,",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "tests/test_derive_families.py",
+        "-k",
+        "qualification_namespace_while_reading"
+      ],
+      "mustFail": [
+        "test_the_sequence_can_publish_into_a_qualification_namespace_while_reading_the_real_sources"
+      ]
+    },
+    {
+      "id": "trade-families.non-derived-phase-keeps-the-source-overrides",
+      "file": "apps/runtime/conversion/backfill_sequence.py",
+      "find": "        job_kwargs.pop(\"source_prefix\", None)\n        job_kwargs.pop(\"source_catalog_root\", None)",
+      "replace": "        pass",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "tests/test_derive_families.py",
+        "-k",
+        "non_derived_phase"
+      ],
+      "mustFail": [
+        "test_a_non_derived_phase_never_receives_the_derived_source_overrides"
+      ]
+    }
+  ]
+}

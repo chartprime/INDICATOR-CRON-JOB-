@@ -1,0 +1,161 @@
+{
+  "contractVersion": 1,
+  "kind": "browser",
+  "name": "o1-browser-selection-to-first-paint",
+  "scenario": "selection-change",
+  "source": {
+    "git": {
+      "commit": "685ad2788142a2c34a812ca9f1981ee43e0db39a",
+      "dirty": true,
+      "trackedChanges": 17,
+      "untrackedFiles": 6,
+      "trackedDiffSha256": "819f717bad0ac4af847d4a40a52df4c5be3f91f8a413277faf3882263bf652e0"
+    },
+    "scriptSha256": "403413a285356a083977f37e7e56edc84dd63dd39d1011bd0f2e92b0de6de54c",
+    "manifestSha256": "ac94e52f435b847d4edfae20914b36f59d685aa8062f58f3c0841ca195e20939",
+    "nodeVersion": "v25.2.1",
+    "webDist": {
+      "fileCount": 5,
+      "totalBytes": 875840,
+      "sha256": "5409a692c5f3e83d6b49d9fc73375fd9cc1fad046a1a5af8e217eedec685bf4f"
+    },
+    "browser": "Chrome/152.0.7977.84"
+  },
+  "startedAtUtc": "2026-09-20T22:19:46.075Z",
+  "settings": {
+    "durationSeconds": 20,
+    "upstream": {
+      "tradesPerPulse": 10,
+      "pulseMs": 20
+    },
+    "selectionChangeAtSeconds": 10,
+    "observability": {
+      "selectionTrace": true,
+      "performanceEntries": [
+        "longtask",
+        "event",
+        "paint"
+      ]
+    }
+  },
+  "timings": {
+    "navigationToWebSocketConnectMs": 283,
+    "firstTradePublishedToFirstCommitMs": 13,
+    "selectionFrameToFirstNewTradeCommitMs": 66
+  },
+  "tape": {
+    "published": 6460,
+    "committed": 6450,
+    "newestCommittedId": 6460,
+    "rowsRetained": 60,
+    "eventToDomCommitMs": {
+      "samples": 6450,
+      "p50": 17,
+      "p95": 25,
+      "p99": 28,
+      "max": 45
+    }
+  },
+  "longTaskMs": {
+    "samples": 1,
+    "p50": 55,
+    "p95": 55,
+    "p99": 55,
+    "max": 55
+  },
+  "browserTrace": {
+    "selectionTraces": [
+      {
+        "selectionGeneration": 1,
+        "runId": "710a1fd4-44a5-49d9-8c87-6edebbfef5ea",
+        "connectionId": 1,
+        "provider": "BINANCE",
+        "marketKind": "SPOT",
+        "symbol": "ETH-USDT",
+        "requestedAtMs": 1789942797445.8,
+        "workerSentAtMs": 1789942797446.5,
+        "workerReceivedAtMs": 1789942797447.9001,
+        "workerParsedAtMs": 1789942797448.3,
+        "mainReceivedAtMs": 1789942797456.1,
+        "reactAppliedAtMs": 1789942797456.1,
+        "chartCommittedAtMs": 1789942797457.4001,
+        "firstPaintAtMs": 1789942797497.6,
+        "outcome": "COMPLETE",
+        "reason": "NONE",
+        "ordered": true,
+        "durationsMs": {
+          "requestToWorkerSend": 0.699951171875,
+          "transportToWorkerReceive": 1.400146484375,
+          "workerParse": 0.39990234375,
+          "workerPostToMainReceive": 7.800048828125,
+          "reactApply": 0,
+          "snapshotToChartCommit": 1.300048828125,
+          "chartCommitToFirstPaint": 40.199951171875,
+          "requestToFirstPaint": 51.800048828125
+        }
+      }
+    ],
+    "performanceEntries": [
+      {
+        "entryType": "paint",
+        "name": "first-paint",
+        "startTime": 52,
+        "duration": 0
+      },
+      {
+        "entryType": "longtask",
+        "name": "self",
+        "startTime": 157.60000002384186,
+        "duration": 55
+      },
+      {
+        "entryType": "paint",
+        "name": "first-contentful-paint",
+        "startTime": 272,
+        "duration": 0
+      }
+    ],
+    "classification": "COMPLETE"
+  },
+  "memory": [
+    {
+      "seconds": 5,
+      "heapUsed": 9381296,
+      "nodes": 1572,
+      "layoutCount": 176,
+      "taskDuration": 3.419828
+    },
+    {
+      "seconds": 10,
+      "heapUsed": 13408072,
+      "nodes": 2122,
+      "layoutCount": 339,
+      "taskDuration": 6.2298
+    },
+    {
+      "seconds": 15,
+      "heapUsed": 7197588,
+      "nodes": 1682,
+      "layoutCount": 504,
+      "taskDuration": 9.182514
+    },
+    {
+      "seconds": 20,
+      "heapUsed": 8859452,
+      "nodes": 1132,
+      "layoutCount": 667,
+      "taskDuration": 12.117982
+    }
+  ],
+  "pageErrors": [],
+  "invariants": {
+    "latestPublishedTradeReachedTheDom": true,
+    "noPageErrors": true,
+    "tapeRowsBounded": true,
+    "chartCanvasesPresent": true,
+    "tapeWithdrawnOnDisconnect": true,
+    "selectionHonoured": true,
+    "selectionTraceComplete": true
+  },
+  "pass": true
+}

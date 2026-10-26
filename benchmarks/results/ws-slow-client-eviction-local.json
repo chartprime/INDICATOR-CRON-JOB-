@@ -1,0 +1,416 @@
+{
+  "contractVersion": 1,
+  "kind": "ws-fanout",
+  "name": "o0-ws-slow-client-eviction-shrunk-thresholds",
+  "source": {
+    "git": {
+      "commit": "f127ea4f44a274ad43c3fb5b6639d02c18d8a6f0",
+      "dirty": true,
+      "trackedChanges": 26,
+      "untrackedFiles": 58,
+      "trackedDiffSha256": "48ff14d5846e2773ce2e6a771f4d5dc88474e25b8990267464b011144545ac4a"
+    },
+    "scriptSha256": "3ba4799c2cdd9603147913fe55ab087b07edd1d3c205cd919faa5e50c0de5687",
+    "manifestSha256": "a49815a07646e51ce78f2573224784d885b7d93383a5616c88d22838c2f8bf79",
+    "nodeVersion": "v25.2.1",
+    "wsVersion": "8.21.3"
+  },
+  "startedAtUtc": "2026-09-20T03:39:38.147Z",
+  "endedEarly": "SLOW_CLIENTS_EVICTED",
+  "settings": {
+    "clients": 4,
+    "warmupMs": 6000,
+    "durationMs": 30000,
+    "sampleEveryMs": 100,
+    "upstream": {
+      "tradesPerPulse": 20,
+      "pulseMs": 20
+    },
+    "slowClients": {
+      "count": 1,
+      "pauseAfterMs": 1000,
+      "stopAfterEviction": true
+    },
+    "server": {
+      "clientBufferSoftBytes": 300000,
+      "clientBufferHardBytes": 3000000,
+      "clientBufferGraceMs": 300
+    }
+  },
+  "wallMs": 10537.039,
+  "measuredWallMs": 4261.084,
+  "sent": {
+    "total": 10250,
+    "measured": 4273,
+    "nominalTradesPerSecond": 1000,
+    "achievedTradesPerSecond": 1003,
+    "pulseIntervalMs": {
+      "samples": 144,
+      "p50": 30.96929999999975,
+      "p95": 31.864800000000287,
+      "p99": 32.34720000000016,
+      "max": 33.042199999999866
+    }
+  },
+  "latencyMs": {
+    "healthy": {
+      "samples": 12819,
+      "p50": 18,
+      "p95": 19,
+      "p99": 20,
+      "max": 21
+    }
+  },
+  "timelineClient0": [
+    {
+      "second": 0,
+      "trades": 996,
+      "latencyMs": {
+        "samples": 996,
+        "p50": 18,
+        "p95": 19,
+        "p99": 19,
+        "max": 20
+      },
+      "frames": {}
+    },
+    {
+      "second": 1,
+      "trades": 1009,
+      "latencyMs": {
+        "samples": 1009,
+        "p50": 18,
+        "p95": 19,
+        "p99": 20,
+        "max": 20
+      },
+      "frames": {
+        "marker": 1
+      }
+    },
+    {
+      "second": 2,
+      "trades": 1022,
+      "latencyMs": {
+        "samples": 1022,
+        "p50": 18,
+        "p95": 19,
+        "p99": 19,
+        "max": 19
+      },
+      "frames": {}
+    },
+    {
+      "second": 3,
+      "trades": 983,
+      "latencyMs": {
+        "samples": 983,
+        "p50": 17,
+        "p95": 19,
+        "p99": 19,
+        "max": 19
+      },
+      "frames": {
+        "health": 2
+      }
+    },
+    {
+      "second": 4,
+      "trades": 263,
+      "latencyMs": {
+        "samples": 263,
+        "p50": 18,
+        "p95": 21,
+        "p99": 21,
+        "max": 21
+      },
+      "frames": {}
+    }
+  ],
+  "invariants": {
+    "producerKeptUp": true,
+    "healthyClientsReceivedEverySentTrade": true,
+    "resumedSlowClientsReceivedEverySentTrade": null,
+    "healthyClientsMinReceived": 4273,
+    "healthyClientsMaxReceived": 4273,
+    "duplicatesOrReordered": 0,
+    "gapsOnHealthyClients": 0,
+    "slowClients": 1,
+    "slowClientsEvictedByServer": 1,
+    "serverCloseCodes": {
+      "1013": 1
+    },
+    "incidents": 0
+  },
+  "server": {
+    "maxHealthyBufferedBytes": 0,
+    "maxSlowBufferedBytes": 355081,
+    "rssBytes": {
+      "start": 114176000,
+      "max": 117469184,
+      "end": 113979392
+    },
+    "eventLoopDelayMs": {
+      "p50": 15.196159,
+      "p99": 19.103743,
+      "max": 19.759103
+    },
+    "incidents": []
+  },
+  "clients": [
+    {
+      "index": 0,
+      "slow": false,
+      "received": 4273,
+      "frameCounts": {
+        "trade": 4273,
+        "marker": 1,
+        "health": 2
+      },
+      "duplicatesOrReordered": 0,
+      "gaps": 0,
+      "latencyMs": {
+        "samples": 4273,
+        "p50": 18,
+        "p95": 19,
+        "p99": 20,
+        "max": 21
+      },
+      "maxBufferedBytes": 0,
+      "serverClose": null,
+      "serverTerminatedAtMs": null,
+      "clientClosed": null
+    },
+    {
+      "index": 1,
+      "slow": false,
+      "received": 4273,
+      "frameCounts": {
+        "trade": 4273,
+        "marker": 1,
+        "health": 2
+      },
+      "duplicatesOrReordered": 0,
+      "gaps": 0,
+      "latencyMs": {
+        "samples": 4273,
+        "p50": 18,
+        "p95": 19,
+        "p99": 20,
+        "max": 21
+      },
+      "maxBufferedBytes": 0,
+      "serverClose": null,
+      "serverTerminatedAtMs": null,
+      "clientClosed": null
+    },
+    {
+      "index": 2,
+      "slow": false,
+      "received": 4273,
+      "frameCounts": {
+        "trade": 4273,
+        "marker": 1,
+        "health": 2
+      },
+      "duplicatesOrReordered": 0,
+      "gaps": 0,
+      "latencyMs": {
+        "samples": 4273,
+        "p50": 18,
+        "p95": 20,
+        "p99": 20,
+        "max": 21
+      },
+      "maxBufferedBytes": 0,
+      "serverClose": null,
+      "serverTerminatedAtMs": null,
+      "clientClosed": null
+    },
+    {
+      "index": 3,
+      "slow": true,
+      "received": 996,
+      "frameCounts": {
+        "trade": 996
+      },
+      "duplicatesOrReordered": 0,
+      "gaps": 0,
+      "latencyMs": {
+        "samples": 996,
+        "p50": 18,
+        "p95": 20,
+        "p99": 20,
+        "max": 20
+      },
+      "maxBufferedBytes": 355081,
+      "pausedAtMs": 1012.803,
+      "resumedAtMs": null,
+      "bufferedSeriesMs": [
+        [
+          109.206,
+          0
+        ],
+        [
+          219.815,
+          0
+        ],
+        [
+          327.404,
+          0
+        ],
+        [
+          438.729,
+          0
+        ],
+        [
+          545.567,
+          0
+        ],
+        [
+          657.115,
+          0
+        ],
+        [
+          764.059,
+          0
+        ],
+        [
+          874.355,
+          0
+        ],
+        [
+          981.454,
+          0
+        ],
+        [
+          1089.405,
+          0
+        ],
+        [
+          1198.292,
+          0
+        ],
+        [
+          1306.28,
+          0
+        ],
+        [
+          1414.005,
+          0
+        ],
+        [
+          1522.109,
+          0
+        ],
+        [
+          1630.725,
+          0
+        ],
+        [
+          1742.811,
+          0
+        ],
+        [
+          1848.658,
+          0
+        ],
+        [
+          1959.492,
+          0
+        ],
+        [
+          2066.918,
+          0
+        ],
+        [
+          2173.776,
+          2388
+        ],
+        [
+          2282.803,
+          23176
+        ],
+        [
+          2390.75,
+          39365
+        ],
+        [
+          2499.583,
+          60665
+        ],
+        [
+          2611.743,
+          79228
+        ],
+        [
+          2718.902,
+          95239
+        ],
+        [
+          2827.713,
+          116194
+        ],
+        [
+          2933.883,
+          132043
+        ],
+        [
+          3033.414,
+          152833
+        ],
+        [
+          3134.653,
+          165959
+        ],
+        [
+          3242.025,
+          187091
+        ],
+        [
+          3352.16,
+          202941
+        ],
+        [
+          3462.234,
+          224399
+        ],
+        [
+          3569.853,
+          240249
+        ],
+        [
+          3680.051,
+          261538
+        ],
+        [
+          3788.483,
+          277383
+        ],
+        [
+          3897.96,
+          298854
+        ],
+        [
+          4008.923,
+          315333
+        ],
+        [
+          4119.32,
+          336401
+        ],
+        [
+          4224.846,
+          355081
+        ]
+      ],
+      "serverClose": {
+        "atMs": 4257.965,
+        "code": 1013,
+        "reason": "Client is too slow to receive market data"
+      },
+      "serverTerminatedAtMs": null,
+      "clientClosed": null
+    }
+  ]
+}

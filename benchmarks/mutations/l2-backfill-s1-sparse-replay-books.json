@@ -1,0 +1,335 @@
+{
+  "mutations": [
+    {
+      "id": "l2-s1.truncate.sparse-never-strips",
+      "file": "apps/runtime/src/indicators/l2-memory/replay-truncate.js",
+      "find": "if (bookMode === \"sparse\" && !seeding) return { ...truncated, book: bestPricesOf(truncated.book), delta };",
+      "replace": "if (false) return { ...truncated, book: bestPricesOf(truncated.book), delta };",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/replay-truncate.test.js"
+      ],
+      "mustFail": [
+        "the first READY after each anchor keeps the whole book; the ones after it keep only the best prices"
+      ]
+    },
+    {
+      "id": "l2-s1.truncate.sparse-strips-the-seeding-frame-too",
+      "file": "apps/runtime/src/indicators/l2-memory/replay-truncate.js",
+      "find": "if (bookMode === \"sparse\" && !seeding) return",
+      "replace": "if (bookMode === \"sparse\") return",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/replay-truncate.test.js"
+      ],
+      "mustFail": [
+        "the first READY after each anchor keeps the whole book; the ones after it keep only the best prices"
+      ]
+    },
+    {
+      "id": "l2-s1.truncate.anchor-does-not-reset-seeding",
+      "file": "apps/runtime/src/indicators/l2-memory/replay-truncate.js",
+      "find": "if (frame?.kind === \"anchor\") lastReadyBook = null;",
+      "replace": "if (false) lastReadyBook = null;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/replay-truncate.test.js"
+      ],
+      "mustFail": [
+        "the first READY after each anchor keeps the whole book; the ones after it keep only the best prices"
+      ]
+    },
+    {
+      "id": "l2-s1.truncate.sparse-book-loses-last-update-id",
+      "file": "apps/runtime/src/indicators/l2-memory/replay-truncate.js",
+      "find": "...(book.lastUpdateId === undefined ? {} : { lastUpdateId: book.lastUpdateId }),",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/replay-truncate.test.js"
+      ],
+      "mustFail": [
+        "the first READY after each anchor keeps the whole book; the ones after it keep only the best prices"
+      ]
+    },
+    {
+      "id": "l2-s1.engine.seed-accepts-best-prices-only",
+      "file": "apps/runtime/src/indicators/l2-memory/memory-engine.js",
+      "find": "requireFullBook(book, \"seed\");",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/memory-engine.test.js"
+      ],
+      "mustFail": [
+        "a frame that carries only best prices cannot seed, and cannot resync after an anchor"
+      ]
+    },
+    {
+      "id": "l2-s1.engine.resync-accepts-best-prices-only",
+      "file": "apps/runtime/src/indicators/l2-memory/memory-engine.js",
+      "find": "requireFullBook(book, \"resync after a gap\");",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/memory-engine.test.js"
+      ],
+      "mustFail": [
+        "a frame that carries only best prices cannot seed, and cannot resync after an anchor"
+      ]
+    },
+    {
+      "id": "l2-s1.remote.validates-nothing-about-a-sparse-book",
+      "file": "apps/runtime/src/indicators/l2-memory/remote-replay-source.js",
+      "find": "return validPriceOrNull(book.bestBid) && validPriceOrNull(book.bestAsk);",
+      "replace": "return true;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/remote-replay-source.test.js"
+      ],
+      "mustFail": [
+        "a book frame may carry the whole book or only its best prices, never a half of each"
+      ]
+    },
+    {
+      "id": "l2-s1.remote.never-asks-for-sparse-books",
+      "file": "apps/runtime/src/indicators/l2-memory/remote-replay-source.js",
+      "find": "...(stats.bookMode === \"sparse\" ? { bookMode: \"sparse\" } : {}),",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/remote-replay-source.test.js"
+      ],
+      "mustFail": [
+        "walks authenticated pages and keeps the token out of frames and stats"
+      ]
+    },
+    {
+      "id": "l2-s1.remote.no-fallback-for-an-older-host",
+      "file": "apps/runtime/src/indicators/l2-memory/remote-replay-source.js",
+      "find": "if (unknownBookModeRefusal(refusal)) {",
+      "replace": "if (false) {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/remote-replay-source.test.js"
+      ],
+      "mustFail": [
+        "a host that does not know bookMode is asked again for full books, once, and the mode is recorded"
+      ]
+    },
+    {
+      "id": "l2-s1.remote.retries-every-400",
+      "file": "apps/runtime/src/indicators/l2-memory/remote-replay-source.js",
+      "find": "if (unknownBookModeRefusal(refusal)) {",
+      "replace": "if (true) {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/remote-replay-source.test.js"
+      ],
+      "mustFail": [
+        "any other 400 is a failure, not a reason to retry"
+      ]
+    },
+    {
+      "id": "l2-s1.route.book-mode-not-validated",
+      "file": "apps/runtime/src/server/live-storage-route.js",
+      "find": "if (options.bookMode !== undefined && !REPLAY_BOOK_MODES.includes(options.bookMode)) return \"BOOK_MODE_INVALID\";",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/live-storage-route.test.js"
+      ],
+      "mustFail": [
+        "replay geometry, cursors, and windows are bounded before a worker is admitted"
+      ]
+    },
+    {
+      "id": "l2-s1.reader.book-mode-not-passed-to-the-worker",
+      "file": "apps/runtime/src/server/replay-page-reader.js",
+      "find": "geometry: { tickSize, clusterTicks, rowClusters, windowRows, windowBp: 1, bookMode },",
+      "replace": "geometry: { tickSize, clusterTicks, rowClusters, windowRows, windowBp: 1 },",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/replay-page-reader.test.js"
+      ],
+      "mustFail": [
+        "sparse book mode sends the whole book once per page and best prices after it, through the real worker"
+      ]
+    },
+    {
+      "id": "l2-s1.reader.book-mode-not-validated-before-the-worker",
+      "file": "apps/runtime/src/server/replay-page-reader.js",
+      "find": "if (!BOOK_MODES.includes(bookMode)) {",
+      "replace": "if (false) {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/replay-page-reader.test.js"
+      ],
+      "mustFail": [
+        "bookMode is not part of the cursor identity, so a page can be resumed in either mode"
+      ]
+    },
+    {
+      "id": "l2-s1.source.trades-read-from-the-anchor-again",
+      "file": "apps/runtime/src/indicators/l2-memory/replay-source.js",
+      "find": "const tradeIterator = selectTrades.iterate(symbol, marketKind, fromTs, toTs);",
+      "replace": "const tradeIterator = selectTrades.iterate(symbol, marketKind, Math.min(fromTs, anchor.captured_at), toTs);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/replay-source.test.js"
+      ],
+      "mustFail": [
+        "trades are read from the window start, never from the anchor, however far back the anchor sits",
+        "uses an anchor captured before the window and only emits books from the window start (spot)"
+      ]
+    },
+    {
+      "id": "l2-s1.assembler.index-never-inserts",
+      "file": "apps/runtime/src/providers/binance/binance-book-assembler.js",
+      "find": "      keys.splice(index, 0, key);",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/providers/binance/binance-book-assembler.test.js"
+      ],
+      "mustFail": [
+        "the sorted book and the best prices always equal a fresh sort of the retained levels, across thousands of best-level deletions"
+      ]
+    },
+    {
+      "id": "l2-s1.assembler.index-never-removes",
+      "file": "apps/runtime/src/providers/binance/binance-book-assembler.js",
+      "find": "    if (found) keys.splice(index, 1);",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/providers/binance/binance-book-assembler.test.js"
+      ],
+      "mustFail": [
+        "the sorted book and the best prices always equal a fresh sort of the retained levels, across thousands of best-level deletions"
+      ]
+    },
+    {
+      "id": "l2-s1.assembler.index-ordered-backwards",
+      "file": "apps/runtime/src/providers/binance/binance-book-assembler.js",
+      "find": "      if (order < 0) low = middle + 1;\n      else high = middle;",
+      "replace": "      if (order > 0) low = middle + 1;\n      else high = middle;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/providers/binance/binance-book-assembler.test.js"
+      ],
+      "mustFail": [
+        "the sorted book and the best prices always equal a fresh sort of the retained levels, across thousands of best-level deletions"
+      ]
+    },
+    {
+      "id": "l2-s1.assembler.best-bid-is-the-lowest",
+      "file": "apps/runtime/src/providers/binance/binance-book-assembler.js",
+      "find": "    if (side === \"bid\") bestBid = levels.highest();",
+      "replace": "    if (side === \"bid\") bestBid = levels.lowest();",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/providers/binance/binance-book-assembler.test.js"
+      ],
+      "mustFail": [
+        "the sorted book and the best prices always equal a fresh sort of the retained levels, across thousands of best-level deletions"
+      ]
+    },
+    {
+      "id": "l2-s1.assembler.touching-best-prices-are-not-crossed",
+      "file": "apps/runtime/src/providers/binance/binance-book-assembler.js",
+      "find": "  return comparePrices(bidSide.highest(), askSide.lowest()) >= 0;",
+      "replace": "  return comparePrices(bidSide.highest(), askSide.lowest()) > 0;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/providers/binance/binance-book-assembler.test.js"
+      ],
+      "mustFail": [
+        "rejects zero-priced and crossed snapshots instead of publishing an impossible ladder"
+      ]
+    },
+    {
+      "id": "l2-s1.source.sparse-strips-the-seeding-frame",
+      "file": "apps/runtime/src/indicators/l2-memory/replay-source.js",
+      "find": "const book = bookMode === \"sparse\" && !seeding && !windowChanged",
+      "replace": "const book = bookMode === \"sparse\" && !windowChanged",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/replay-source.test.js"
+      ],
+      "mustFail": [
+        "sparse mode carries the whole book once per anchor and best prices after it, straight from the source"
+      ]
+    },
+    {
+      "id": "l2-s1.source.sparse-never-strips",
+      "file": "apps/runtime/src/indicators/l2-memory/replay-source.js",
+      "find": "const book = bookMode === \"sparse\" && !seeding && !windowChanged",
+      "replace": "const book = false",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/replay-source.test.js"
+      ],
+      "mustFail": [
+        "sparse mode carries the whole book once per anchor and best prices after it, straight from the source"
+      ]
+    },
+    {
+      "id": "l2-s1.source.window-shift-stays-sparse",
+      "file": "apps/runtime/src/indicators/l2-memory/replay-source.js",
+      "find": "&& !seeding && !windowChanged",
+      "replace": "&& !seeding && true",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/replay-source.test.js"
+      ],
+      "mustFail": [
+        "sparse mode exposes a full internal book when the moving truncation window crosses a row boundary"
+      ]
+    }
+  ]
+}

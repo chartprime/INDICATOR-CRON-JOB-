@@ -1,0 +1,33 @@
+{
+  "name": "terminal-l1-l2",
+  "private": true,
+  "version": "0.0.0",
+  "engines": {
+    "node": "24.21.0"
+  },
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "precheck": "node scripts/verify-node-version.cjs",
+    "pretest": "node scripts/verify-node-version.cjs",
+    "prebuild": "node scripts/verify-node-version.cjs",
+    "build": "npm run build --workspace web",
+    "docs:check": "node scripts/validate-docs.cjs",
+    "mutation:stale": "node apps/runtime/scripts/verify/mutation-stale.js",
+    "doctor": "node --env-file-if-exists=.env apps/runtime/scripts/verify/doctor.js",
+    "bench:o2": "node apps/runtime/scripts/bench/o2-campaign.js",
+    "lint": "eslint . && npm run lint --workspace web",
+    "test": "npm run test --workspaces --if-present",
+    "check": "npm run docs:check && npm run lint && npm test && npm run build",
+    "gate": "node scripts/gate.cjs",
+    "l2-memory:test": "npm run l2-memory:test --workspace @terminal-l1-l2/runtime",
+    "l2-memory:live": "npm run l2-memory:live --workspace @terminal-l1-l2/runtime --"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.0",
+    "eslint": "^9.39.0",
+    "globals": "^15.0.0",
+    "jsdom": "^29.1.1"
+  }
+}

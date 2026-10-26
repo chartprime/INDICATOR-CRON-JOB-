@@ -1,0 +1,121 @@
+{
+  "mutations": [
+    {
+      "id": "r5.config-accepts-a-value-below-its-range",
+      "file": "apps/runtime/src/platform/config-registry.js",
+      "find": "      if (item.gt !== undefined && !(number > item.gt)) return false;\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/platform/config-registry.test.js"],
+      "mustFail": ["assertProcessEnv throws a CONFIG_INVALID error listing every bad setting and passes warnings to its sink"]
+    },
+    {
+      "id": "r5.a-setting-the-code-reads-drops-out-of-the-registry",
+      "file": "apps/runtime/src/platform/config-registry.js",
+      "find": "  entry(\"L2_BAND_BP\", [TERMINAL_C], { kind: \"number\", gt: 0, where: \".env\", doc: \"L2 memory band width in basis points of price\" }),\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/platform/config-registry.test.js"],
+      "mustFail": ["every setting the runtime, its scripts and the conversion code read is registered, so none can be missed by validation or the docs"]
+    },
+    {
+      "id": "r5.entry-points-skip-their-config-check",
+      "file": "apps/runtime/src/platform/process-env.js",
+      "find": "  if (!isMain) return null;\n",
+      "replace": "  if (isMain || !isMain) return null;\n",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/platform/config-registry.test.js", "test/platform/process-env.test.js"],
+      "mustFail": ["Terminal C exits 1 naming the setting before it opens anything", "exits 1 with the setting named, and passes a valid environment"]
+    },
+    {
+      "id": "o-14.terminal-c-loads-every-secret-in-the-shared-env",
+      "file": "apps/runtime/src/platform/process-env.js",
+      "find": "    if (!allowed.has(name)) {",
+      "replace": "    if (!allowed.has(name) && false) {",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/platform/process-env.test.js"],
+      "mustFail": ["Terminal C takes only its own settings from a shared .env that also holds operator secrets"]
+    },
+    {
+      "id": "o-14.terminal-d-loads-every-secret-in-the-shared-env",
+      "file": "apps/web/vite.config.ts",
+      "find": "    load(mode, REPOSITORY_ROOT, TERMINAL_D_ENV_PREFIXES),",
+      "replace": "    load(mode, REPOSITORY_ROOT, ''),",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "vite.config.test.ts"],
+      "mustFail": ["reads only the proxy origins and browser settings from a shared .env that also holds operator secrets"]
+    },
+    {
+      "id": "o-8.launcher-runs-whatever-node-the-shell-has",
+      "file": "scripts/node-launcher.cjs",
+      "find": "  if (currentVersion === version) return",
+      "replace": "  if (currentVersion === version || true) return",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/scripts/node-launcher.test.js"],
+      "mustFail": ["on the wrong Node, picks TT_NODE_BIN from .env when that folder holds the pinned version"]
+    },
+    {
+      "id": "o-8.launcher-kills-the-runtime-on-windows-ctrl-c",
+      "file": "scripts/node-launcher.cjs",
+      "find": "    const handler = platform === \"win32\"\n      ? () => {}\n      : () => {",
+      "replace": "    const handler = false\n      ? () => {}\n      : () => {",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/scripts/node-launcher.test.js"],
+      "mustFail": ["on Windows it never kills the child on Ctrl-C, which would skip the graceful drain; the child gets Ctrl-C from the console"]
+    },
+    {
+      "id": "o-7.declared-severity-ignored",
+      "file": "apps/runtime/src/platform/cli-logger.js",
+      "find": "  if (DECLARED_SEVERITIES.has(entry?.severity)) return entry.severity;\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/providers/dxfeed/dxfeed-data-quality.test.js"],
+      "mustFail": ["O-7: routine filtering (odd lots, corrections, spread legs) is logged as INFO, and only malformed input as a warning, never ERR"]
+    },
+    {
+      "id": "o-7.odd-lot-filtering-declares-no-severity",
+      "file": "apps/runtime/src/providers/dxfeed/dxfeed-data-quality.js",
+      "find": "        severity: REJECTION_SEVERITY[reason] ?? \"warn\",\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/providers/dxfeed/dxfeed-data-quality.test.js"],
+      "mustFail": ["O-7: routine filtering (odd lots, corrections, spread legs) is logged as INFO, and only malformed input as a warning, never ERR"]
+    },
+    {
+      "id": "r6.book-pause-logged-as-an-error",
+      "file": "apps/runtime/src/indicators/passive_liquidity/liquidity-publisher.js",
+      "find": "  if (LIQUIDITY_WARN_LINE.test(text)) return \"warn\";\n  if (LIQUIDITY_ERROR_LINE.test(text)) return \"error\";",
+      "replace": "  if (LIQUIDITY_ERROR_LINE.test(text)) return \"error\";\n  if (LIQUIDITY_WARN_LINE.test(text)) return \"warn\";",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/indicators/passive_liquidity/liquidity-publisher.test.js", "-t", "log levels"],
+      "mustFail": ["liquidity-publisher: book for SPOT:BTCUSDT is unavailable, holding columns -> warn"]
+    },
+    {
+      "id": "w5.doctor-passes-a-setting-the-runtime-refuses",
+      "file": "apps/runtime/scripts/verify/doctor.js",
+      "find": "  if (result.errors.length > 0) {\n    return broken(\"configuration\",",
+      "replace": "  if (result.errors.length > 0 && false) {\n    return broken(\"configuration\",",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/scripts/verify/doctor.test.js"],
+      "mustFail": ["a Terminal C setting that would stop the runtime from starting fails the doctor, named, without its value"]
+    },
+    {
+      "id": "fa-18.continuous-file-claims-the-whole-roll-interval",
+      "file": "apps/runtime/conversion/source_coverage.py",
+      "find": "        if file_start_ns is not None:\n            widened_from = max(widened_from, file_start_ns)\n        if file_end_ns is not None:\n            widened_to = min(widened_to, file_end_ns)\n",
+      "replace": "",
+      "cwd": "apps/runtime/conversion",
+      "command": ["uv", "run", "--frozen", "pytest", "-q", "tests/test_source_coverage.py"],
+      "mustFail": ["test_daily_continuous_files_each_stay_authoritative_for_their_own_day", "test_roll_table_coverage_claims_only_the_time_its_own_file_covers"]
+    },
+    {
+      "id": "fa-18.job-does-not-pass-the-file-window",
+      "file": "apps/runtime/conversion/job.py",
+      "find": "                    roll_rows, r[\"map_family\"], file_start_ns=r[\"meta\"].start_ns, file_end_ns=r[\"meta\"].end_ns,\n                    partial=alias in r[\"meta\"].partial)",
+      "replace": "                    roll_rows, r[\"map_family\"])",
+      "cwd": "apps/runtime/conversion",
+      "command": ["uv", "run", "--frozen", "pytest", "-q", "tests/test_phase3_roll_table_wiring.py", "-k", "own_time_window"],
+      "mustFail": ["test_a_continuous_file_claims_coverage_only_inside_its_own_time_window"]
+    }
+  ]
+}

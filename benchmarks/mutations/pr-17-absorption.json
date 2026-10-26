@@ -1,0 +1,31 @@
+{
+  "mutations": [
+    {
+      "id": "pr17-switch-leaks-spheres",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionEngine.ts",
+      "find": "[rules.instrument, rules.bandRows, rules.wallKey",
+      "replace": "[rules.bandRows, rules.wallKey",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/indicators/absorption-detector/tests/absorptionEngine.test.ts"],
+      "mustFail": ["does not carry wall state or spheres into another instrument with the same numerical rules"]
+    },
+    {
+      "id": "pr17-first-thin-book-sphere-too-dark",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionMerge.ts",
+      "find": "(print.strong ? SECOND_SPHERE_ALPHA : 0)",
+      "replace": "(print.share >= 0.6 ? SECOND_SPHERE_ALPHA : 0)",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/indicators/absorption-detector/tests/absorptionPrimitive.test.ts"],
+      "mustFail": ["darkens a step for every refill the wall had made"]
+    },
+    {
+      "id": "pr17-elapsed-time-bucketing-across-closure",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionPrimitive.ts",
+      "find": "return Number.isFinite(open) && ts < open + intervalMs ? open : null;",
+      "replace": "return Math.floor(ts / intervalMs) * intervalMs;",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/indicators/absorption-detector/tests/absorptionPrimitive.test.ts"],
+      "mustFail": ["uses real candle opens and chart coordinates across market closures"]
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "mutations": [
+    {
+      "id": "fa-3.unordered-coverage-window-admitted",
+      "file": "apps/web/src/lib/archive/archiveClient.ts",
+      "find": "    && BigInt(value.from) < BigInt(value.to);",
+      "replace": "    && true;",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/archive/archiveCoverage.property.test.ts"],
+      "mustFail": ["rejects a zero-length requested window as a contract error"]
+    },
+    {
+      "id": "fa-3.out-of-request-served-window-admitted",
+      "file": "apps/web/src/lib/archive/archiveClient.ts",
+      "find": "  if (served !== null && (BigInt(served.from) < BigInt(requested.from) || BigInt(served.to) > BigInt(requested.to))) return null;\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/archive/archiveCoverage.property.test.ts"],
+      "mustFail": ["rejects a served window outside the request as a contract error"]
+    },
+    {
+      "id": "fa-4.auction-absent-from-strict-wire-schema",
+      "file": "docs/contracts/ws-frame-contract/v1/ws-frame-contract-v1.schema.json",
+      "find": "        \"auction\": {\n          \"const\": true,\n          \"description\": \"dxFeed equity auction/cross print; retained on the tape and in bars but excluded from large-trade visuals.\"\n        },\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/contracts/ws-frame-contract-limits.test.js"],
+      "mustFail": ["the trade frame field set agrees across schema, server builder, and browser parser"]
+    },
+    {
+      "id": "o-3.periodic-auction-code-missing",
+      "file": "apps/runtime/src/providers/dxfeed/dxfeed-trade-adapter.js",
+      "find": "const AUCTION_SALE_CONDITION_CODES = Object.freeze([\"O\", \"5\", \"6\", \"Q\", \"M\", \"9\", \"X\"]);",
+      "replace": "const AUCTION_SALE_CONDITION_CODES = Object.freeze([\"O\", \"5\", \"6\", \"Q\", \"M\", \"9\"]);",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/providers/dxfeed/dxfeed-trade-adapter.test.js"],
+      "mustFail": ["equity conditions \"@  X\" are an auction print: true"]
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "mutations": [
+    {
+      "id": "flow-closure-replay-503-aborts-the-chunk",
+      "file": "apps/runtime/src/indicators/l2-memory/remote-replay-source.js",
+      "find": "if (response.status === 503) {",
+      "replace": "if (response.status === 599) {",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "test/indicators/l2-memory/remote-replay-source.test.js", "--runInBand", "--silent", "-t", "retries the same cursor after a bounded wait"],
+      "mustFail": ["retries the same cursor after a bounded wait and keeps both pages"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "flow-closure-stationary-chart-never-rechecks-older-span",
+      "file": "apps/web/src/lib/indicators/passive-liquidity/heatmapHistory.ts",
+      "find": "if (oldest !== null && oldest !== undefined && from < oldest) {",
+      "replace": "if (false) {",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/indicators/passive-liquidity/tests/heatmapHistory.test.ts", "-t", "discovers older pyramid windows"],
+      "mustFail": ["discovers older pyramid windows built after the first response without reloading a stationary chart"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "flow-closure-historical-delta-estimate-undisclosed",
+      "file": "apps/web/src/components/historical/HistoricalModePanel.tsx",
+      "find": "? \"Estimated from visible candles\"",
+      "replace": "? undefined",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/components/historical/HistoricalModePanel.test.tsx", "-t", "labels the historical Live Delta Profile"],
+      "mustFail": ["labels the historical Live Delta Profile as a candle estimate, not measured price-row flow"],
+      "timeoutMs": 90000
+    },
+    {
+      "id": "flow-closure-trust-label-claims-every-channel",
+      "file": "apps/web/src/lib/indicators/l2-feed-status/l2FeedStatus.ts",
+      "find": "{ label: \"Walls/events trusted\",",
+      "replace": "{ label: \"Trusted\",",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/chart/tests/indicatorL2.test.ts", "-t", "reports trust, the segment"],
+      "mustFail": ["reports trust, the segment, every channel's sync and lag, and what is held"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "flow-closure-archive-bin-floor-undisclosed",
+      "file": "apps/web/src/components/historical/HistoricalModePanel.tsx",
+      "find": "const profileBinSizeNotice = sessionProfileSettings.binSizeMultiplier < ARCHIVE_MIN_BIN_SIZE_MULTIPLIER",
+      "replace": "const profileBinSizeNotice = false && sessionProfileSettings.binSizeMultiplier < ARCHIVE_MIN_BIN_SIZE_MULTIPLIER",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/components/historical/HistoricalModePanel.test.tsx", "-t", "asks the archive for no finer a bin size"],
+      "mustFail": ["asks the archive for no finer a bin size than it accepts, when the shared setting is finer than that"],
+      "timeoutMs": 90000
+    }
+  ]
+}

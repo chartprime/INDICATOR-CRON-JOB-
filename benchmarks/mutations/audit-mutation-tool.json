@@ -1,0 +1,374 @@
+{
+  "mutations": [
+    {
+      "id": "audit-mt.baseline-not-cached",
+      "file": "apps/runtime/scripts/verify/mutation-check.js",
+      "find": "    baselines?.set(baselineKey, baseline);\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/scripts/verify/mutation-check.test.js"
+      ],
+      "mustFail": [
+        "measures a command's clean run once"
+      ]
+    },
+    {
+      "id": "audit-mt.journal-not-removed",
+      "file": "apps/runtime/scripts/verify/mutation-check.js",
+      "find": "    fs.rmSync(journal, { force: true });\n  }",
+      "replace": "  }",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/scripts/verify/mutation-check.test.js"
+      ],
+      "mustFail": [
+        "a run killed mid-mutant leaves a journal"
+      ]
+    },
+    {
+      "id": "audit-mt.recovery-ignores-later-edits",
+      "file": "apps/runtime/scripts/verify/mutation-check.js",
+      "find": "    if (fs.existsSync(entry.target) && sha256Hex(fs.readFileSync(entry.target)) === entry.mutantSha256) {",
+      "replace": "    if (fs.existsSync(entry.target)) {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/scripts/verify/mutation-check.test.js"
+      ],
+      "mustFail": [
+        "a run killed mid-mutant leaves a journal"
+      ]
+    },
+    {
+      "id": "audit-mt.npx-kept-on-linux",
+      "file": "apps/runtime/scripts/verify/mutation-check.js",
+      "find": "  if (platform === \"win32\" || command[0] !== \"npx\"",
+      "replace": "  if (platform !== \"win32\" || command[0] !== \"npx\"",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/scripts/verify/mutation-check.test.js"
+      ],
+      "mustFail": [
+        "runs npx bins directly"
+      ]
+    },
+    {
+      "id": "audit-mt.stale-aborts-the-run",
+      "file": "apps/runtime/scripts/verify/mutation-check.js",
+      "find": "      const outcome = /find text (not found|occurs more than once)|target file not found/.test(message) ? \"STALE\" : \"ERROR\";",
+      "replace": "      if (/find text/.test(message)) throw error;\n      const outcome = \"ERROR\";",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/scripts/verify/mutation-check.test.js"
+      ],
+      "mustFail": [
+        "a stale mutant is reported and skipped"
+      ]
+    },
+    {
+      "id": "audit-mt.workspace-link-shared",
+      "file": "apps/runtime/scripts/verify/mutation-check.js",
+      "find": "    linkEntry(workspace ? path.join(copyRoot, path.relative(repoRoot, real)) : real, to, platform);",
+      "replace": "    linkEntry(real, to, platform);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/scripts/verify/mutation-check.test.js"
+      ],
+      "mustFail": [
+        "its workspace links resolve inside the copy"
+      ]
+    },
+    {
+      "id": "audit-mt.copy-misses-new-files",
+      "file": "apps/runtime/scripts/verify/mutation-check.js",
+      "find": "[\"ls-files\", \"-z\", \"--cached\", \"--others\", \"--exclude-standard\"]",
+      "replace": "[\"ls-files\", \"-z\", \"--cached\"]",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/scripts/verify/mutation-check.test.js"
+      ],
+      "mustFail": [
+        "holds edits not yet committed and new files"
+      ]
+    },
+    {
+      "id": "audit-mt.python-on-a-copy",
+      "file": "apps/runtime/scripts/verify/mutation-check.js",
+      "find": "const IN_PLACE_COMMANDS = new Set([\"uv\", \"python\", \"python3\", \"py\", \"pytest\"]);",
+      "replace": "const IN_PLACE_COMMANDS = new Set([\"uv\"]);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/scripts/verify/mutation-check.test.js"
+      ],
+      "mustFail": [
+        "a Python spec runs in the checkout"
+      ]
+    },
+    {
+      "id": "audit-mt.progress-ignored",
+      "file": "apps/runtime/scripts/verify/mutation-check.js",
+      "find": "        if (entry.outcome === OUTCOME_KILLED) done.add(entry.id);",
+      "replace": "        void entry;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/scripts/verify/mutation-check.test.js"
+      ],
+      "mustFail": [
+        "a progress file skips the ones already killed"
+      ]
+    },
+    {
+      "id": "audit-mt.only-ignored",
+      "file": "apps/runtime/scripts/verify/mutation-check.js",
+      "find": "      if (only !== null && !only.has(spec.id)) continue;\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/scripts/verify/mutation-check.test.js"
+      ],
+      "mustFail": [
+        "--only picks mutants by id"
+      ]
+    },
+    {
+      "id": "audit-mt.checkout-mutated",
+      "file": "apps/runtime/scripts/verify/mutation-check.js",
+      "find": "  const local = inPlace ? [...items] : items.filter(runsInPlace);",
+      "replace": "  const local = [...items];",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/scripts/verify/mutation-check.test.js"
+      ],
+      "mustFail": [
+        "runs on worker copies, so the checkout never holds a mutant"
+      ]
+    },
+    {
+      "id": "audit-mt.missing-file-not-stale",
+      "file": "apps/runtime/scripts/verify/mutation-check.js",
+      "find": "  if (!fs.existsSync(target)) throw new Error(`mutation-check: target file not found: ${spec.file}`);\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/scripts/verify/mutation-check.test.js"
+      ],
+      "mustFail": [
+        "a mutant whose file is gone is stale, a mutant whose run breaks is an error, and neither stops the others"
+      ]
+    },
+    {
+      "id": "audit-mt.error-counted-as-stale",
+      "file": "apps/runtime/scripts/verify/mutation-check.js",
+      "find": ".test(message) ? \"STALE\" : \"ERROR\";",
+      "replace": ".test(message) ? \"STALE\" : \"STALE\";",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/scripts/verify/mutation-check.test.js"
+      ],
+      "mustFail": [
+        "a mutant whose file is gone is stale, a mutant whose run breaks is an error, and neither stops the others"
+      ]
+    },
+    {
+      "id": "audit-mt.live-journal-restored",
+      "file": "apps/runtime/scripts/verify/mutation-check.js",
+      "find": "    if (entry.pid === process.pid || processAlive(entry.pid)) continue;\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/scripts/verify/mutation-check.test.js"
+      ],
+      "mustFail": [
+        "recovery leaves a journal alone while the run that wrote it is still alive"
+      ]
+    },
+    {
+      "id": "audit-mt.ledger-not-compacted",
+      "file": "apps/runtime/scripts/verify/mutation-check.js",
+      "find": "  compactLedger(ledgerPath);\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/scripts/verify/mutation-check.test.js"
+      ],
+      "mustFail": [
+        "folds the ledger to the latest run of each mutant"
+      ]
+    },
+    {
+      "id": "audit-mt.ledger-tie-keeps-the-earlier-line",
+      "file": "apps/runtime/scripts/verify/mutation-check.js",
+      "find": "String(entry.atUtc ?? \"\") >= String(held.entry.atUtc ?? \"\")",
+      "replace": "String(entry.atUtc ?? \"\") > String(held.entry.atUtc ?? \"\")",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/scripts/verify/mutation-check.test.js"
+      ],
+      "mustFail": [
+        "the later line on a tie"
+      ]
+    },
+    {
+      "id": "audit-mt.ledger-unsorted",
+      "file": "apps/runtime/scripts/verify/mutation-check.js",
+      "find": "const ids = [...latest.keys()].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));",
+      "replace": "const ids = [...latest.keys()];",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/scripts/verify/mutation-check.test.js"
+      ],
+      "mustFail": [
+        "compacting keeps each mutant's latest run"
+      ]
+    },
+    {
+      "id": "audit-mt.ledger-drops-unreadable-lines",
+      "file": "apps/runtime/scripts/verify/mutation-check.js",
+      "find": "...ids.map((id) => latest.get(id).line), ...unreadable]",
+      "replace": "...ids.map((id) => latest.get(id).line)]",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/scripts/verify/mutation-check.test.js"
+      ],
+      "mustFail": [
+        "and lines it cannot read"
+      ]
+    },
+    {
+      "id": "audit-mt.ledger-lock-of-a-dead-process-kept",
+      "file": "apps/runtime/scripts/verify/mutation-check.js",
+      "find": "      if (!processAlive(holder)) {\n",
+      "replace": "      if (false) {\n",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/scripts/verify/mutation-check.test.js"
+      ],
+      "mustFail": [
+        "the ledger lock of a process that is gone is taken over"
+      ]
+    },
+    {
+      "id": "audit-mt.ledger-lock-not-released",
+      "file": "apps/runtime/scripts/verify/mutation-check.js",
+      "find": "    return fn();\n  } finally {\n    fs.rmSync(lockPath, { force: true });\n  }\n",
+      "replace": "    return fn();\n  } finally {\n    void 0;\n  }\n",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/scripts/verify/mutation-check.test.js"
+      ],
+      "mustFail": [
+        "the lock is released after"
+      ]
+    },
+    {
+      "id": "audit-mt.carriage-return-accepted",
+      "file": "apps/runtime/scripts/verify/mutation-check.js",
+      "find": "  if (spec.find.includes(\"\\r\") || spec.replace.includes(\"\\r\")) fail(`${spec.id}: find and replace must not contain a carriage return (write line endings as \\\\n)`);\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/scripts/verify/mutation-check.test.js"
+      ],
+      "mustFail": [
+        "refuses a find or replace with a carriage return"
+      ]
+    },
+    {
+      "id": "audit-fanout.temp-dir-left-behind",
+      "file": "apps/runtime/scripts/bench/ws-fanout-load.js",
+      "find": "    fs.rmSync(dir, { recursive: true, force: true });",
+      "replace": "    void dir;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/scripts/bench/ws-fanout-load.test.js",
+        "-t",
+        "temp directory"
+      ],
+      "mustFail": [
+        "leaves no temp directory behind after a run"
+      ]
+    },
+    {
+      "id": "audit-mt.in-place-total-consumed",
+      "file": "apps/runtime/scripts/verify/mutation-check.js",
+      "find": "  const local = inPlace ? [...items] : items.filter(runsInPlace);",
+      "replace": "  const local = inPlace ? items : items.filter(runsInPlace);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/scripts/verify/mutation-check.test.js"
+      ],
+      "mustFail": [
+        "in place, every mutant run is counted in the total"
+      ]
+    }
+  ]
+}

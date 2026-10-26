@@ -1,0 +1,64 @@
+{
+  "mutations": [
+    {
+      "id": "p4c-audit.prune-scans-every-level",
+      "file": "apps/runtime/src/indicators/l2-memory/pyramid/pyramid-store.js",
+      "find": "const PRUNE_LEVELS_SQL = \"DELETE FROM levels WHERE level_ms = ? AND window_ts < ?\";",
+      "replace": "const PRUNE_LEVELS_SQL = \"DELETE FROM levels WHERE level_ms >= ? AND window_ts < ?\";",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/pyramid.test.js"],
+      "mustFail": ["find a window's levels by key"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "p4c-audit.failed-window-kept-as-a-hole",
+      "file": "apps/web/src/lib/indicators/passive-liquidity/heatmapHistory.ts",
+      "find": "      if (window.state === \"FAILED\") {",
+      "replace": "      if (false) {",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/passive-liquidity/tests/heatmapHistory.test.ts"],
+      "mustFail": ["a window the host failed to build is not kept as a hole"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "p4c-audit.web-window-drifts-from-runtime",
+      "file": "apps/web/src/lib/indicators/passive-liquidity/heatmapHistoryDecode.ts",
+      "find": "export const HISTORY_ROW_FACTORS: readonly number[] = Object.freeze([1, 2, 4, 8, 16, 32, 64]);",
+      "replace": "export const HISTORY_ROW_FACTORS: readonly number[] = Object.freeze([1, 2, 4, 8, 16, 32, 64, 128]);",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/passive-liquidity/tests/heatmapHistoryDecode.test.ts"],
+      "mustFail": ["uses the runtime's own window, levels and row factors"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "p4c-audit.runtime-drifts-from-the-committed-fixture",
+      "file": "apps/runtime/src/indicators/l2-memory/pyramid/pyramid-reader.js",
+      "find": "const ROW_FACTORS = Object.freeze([1, 2, 4, 8, 16, 32, 64]);",
+      "replace": "const ROW_FACTORS = Object.freeze([1, 2, 4, 8, 16, 32]);",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/l2-memory/pyramid.test.js"],
+      "mustFail": ["the committed fixture is what the live runtime encodes today"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "p4c-audit.publisher-keeps-the-store-open",
+      "file": "apps/runtime/src/indicators/passive_liquidity/liquidity-publisher.js",
+      "find": "    if (pyramid === \"auto\") pyramidSource?.close?.();",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/passive_liquidity/liquidity-publisher-pyramid.test.js"],
+      "mustFail": ["lets go of its store when the publisher stops"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "p4c-audit.fill-overwrites-restored-columns",
+      "file": "apps/runtime/src/indicators/passive_liquidity/liquidity-history.js",
+      "find": "      if (byTs.has(column.ts)) continue;\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/passive_liquidity/liquidity-publisher-pyramid.test.js"],
+      "mustFail": ["a deep tier restored from Terminal C's own store keeps its columns"],
+      "timeoutMs": 240000
+    }
+  ]
+}

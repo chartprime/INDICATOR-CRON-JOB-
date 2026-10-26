@@ -1,0 +1,13 @@
+# Weekday-only dxFeed collection window (report 49 P1i): the Saturday 00:00
+# UTC half of the pair started by terminal-dxfeed-collector-start.timer.
+[Unit]
+Description=Terminal-L1-L2 dxFeed collector weekday stop schedule
+
+[Timer]
+OnCalendar=Sat *-*-* 00:00:00 UTC
+Unit=terminal-dxfeed-collector-stop.service
+Persistent=false
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

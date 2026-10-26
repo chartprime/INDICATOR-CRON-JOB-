@@ -1,0 +1,74 @@
+{
+  "mutations": [
+    {
+      "id": "j1.wall-profile-ignores-cadence",
+      "file": "apps/runtime/src/indicators/l2-memory/historical-wall-profile.js",
+      "find": "update(JSON.stringify(profile))",
+      "replace": "update(JSON.stringify({ ...profile, sample_ms: 1000 }))",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "test/indicators/l2-memory/historical-wall-profile.test.js", "--runInBand", "--silent"],
+      "mustFail": ["each output-affecting setting has a different identity"],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "j1.wall-stream-obeys-later-caller-mutations",
+      "file": "apps/runtime/src/indicators/l2-memory/historical-wall-stream.js",
+      "find": "const pinnedOptions = { ...projectionOptions, sampleMs, trackerOptions: settings.profile.tracker };",
+      "replace": "const pinnedOptions = { ...projectionOptions, sampleMs };",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "test/indicators/l2-memory/historical-wall-stream.test.js", "--runInBand", "--silent"],
+      "mustFail": ["every sample and completion proof bind the immutable effective settings"],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "j1.wall-index-ignores-source-count",
+      "file": "apps/runtime/src/indicators/l2-memory/historical-wall-index.js",
+      "find": "proof.rows !== expectedRows",
+      "replace": "false",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "test/indicators/l2-memory/historical-wall-index.test.js", "--runInBand", "--silent"],
+      "mustFail": ["an incomplete or rebound proof cannot seal provisional parts"],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "j1.wall-index-admits-other-profile",
+      "file": "apps/runtime/src/indicators/l2-memory/historical-wall-index.js",
+      "find": "value.profile_id !== settings.id",
+      "replace": "false",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "test/indicators/l2-memory/historical-wall-index.test.js", "--runInBand", "--silent"],
+      "mustFail": ["unbound, legacy, future or inexact samples fail closed"],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "j1.wall-index-skips-missing-sample",
+      "file": "apps/runtime/src/indicators/l2-memory/historical-wall-index.js",
+      "find": "active !== null && known !== lastSample + period",
+      "replace": "false",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "test/indicators/l2-memory/historical-wall-index.test.js", "--runInBand", "--silent"],
+      "mustFail": ["dropped callbacks cannot falsely complete the index"],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "j1.wall-index-shows-future-wall-birth",
+      "file": "apps/runtime/src/indicators/l2-memory/historical-wall-index.js",
+      "find": "wall.startTs > cutoffMs",
+      "replace": "false",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "test/indicators/l2-memory/historical-wall-index.test.js", "--runInBand", "--silent"],
+      "mustFail": ["unbound, legacy, future or inexact samples fail closed"],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "j1.wall-index-writer-seals-corrupt-part",
+      "file": "apps/runtime/src/indicators/l2-memory/historical-wall-index-writer.js",
+      "find": "for (const part of manifest.parts) verifyPart(resolved, part);",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "test/indicators/l2-memory/historical-wall-index.test.js", "--runInBand", "--silent"],
+      "mustFail": ["stored part is caught before sealing"],
+      "timeoutMs": 120000
+    }
+  ]
+}

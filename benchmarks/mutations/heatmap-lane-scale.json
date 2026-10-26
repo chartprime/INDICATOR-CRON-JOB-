@@ -1,0 +1,186 @@
+{
+ "mutations": [
+  {
+   "id": "lane.scale-not-per-lane",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatmapLayout.ts",
+   "find": "liquidityReference(settings, laneGrid === null ? grid : drawn, laneGrid === null || laneFoldFor(grid.provider, grid.symbol, grid.marketKind) === \"max\" ? 1 : 2 ** lane)",
+   "replace": "liquidityReference(settings, laneGrid === null ? grid : drawn)",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityLanes.test.ts"
+   ],
+   "mustFail": [
+    "a fixed colour scale reads the same on every lane: the size is per row of the finest lane, so a band of the same price has the same floor and saturation on rows twice as wide"
+   ]
+  },
+  {
+   "id": "lane.reference-ignores-rows",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquiditySettings.ts",
+   "find": "return settings.scaleSize > 0 ? settings.scaleSize * rowsPerDrawnRow : 0;",
+   "replace": "return settings.scaleSize > 0 ? settings.scaleSize : 0;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquiditySettings.test.ts",
+    "src/lib/indicators/passive-liquidity/tests/liquidityLanes.test.ts"
+   ],
+   "mustFail": [
+    "follows the grid in auto mode and the setting in fixed mode; on a lane of wider rows the fixed size, set per row of the finest lane, grows with the row",
+    "a fixed colour scale reads the same on every lane: the size is per row of the finest lane, so a band of the same price has the same floor and saturation on rows twice as wide"
+   ]
+  },
+  {
+   "id": "lane.reference-default-not-one",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquiditySettings.ts",
+   "find": "rowsPerDrawnRow = 1): number {",
+   "replace": "rowsPerDrawnRow = 2): number {",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquiditySettings.test.ts"
+   ],
+   "mustFail": [
+    "follows the grid in auto mode and the setting in fixed mode; on a lane of wider rows the fixed size, set per row of the finest lane, grows with the row"
+   ]
+  },
+  {
+   "id": "lane.crypto-saturation-from-setting",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/cryptoLiquidityStyle.ts",
+   "find": "    return reference * clusterRows;",
+   "replace": "    return settings.scaleSize * clusterRows;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityStyle.test.ts",
+    "src/lib/indicators/passive-liquidity/tests/liquidityLanes.test.ts"
+   ],
+   "mustFail": [
+    "colours against the largest level in view, or half the typical band when that is larger",
+    "a fixed colour scale reads the same on every lane: the size is per row of the finest lane, so a band of the same price has the same floor and saturation on rows twice as wide"
+   ]
+  },
+  {
+   "id": "lane.crypto-floor-from-setting",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/cryptoLiquidityStyle.ts",
+   "find": "      ? reference\n      : column.reference !== undefined && column.reference > 0",
+   "replace": "      ? settings.scaleSize\n      : column.reference !== undefined && column.reference > 0",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityStyle.test.ts",
+    "src/lib/indicators/passive-liquidity/tests/liquidityLanes.test.ts"
+   ],
+   "mustFail": [
+    "paints from the heat-floor share of the typical row, per row of the band, as it always did",
+    "a fixed colour scale reads the same on every lane: the size is per row of the finest lane, so a band of the same price has the same floor and saturation on rows twice as wide"
+   ]
+  },
+  {
+   "id": "lane.index-floor-from-setting",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/indexLiquidityStyle.ts",
+   "find": "      return settings.heatFloor * reference;",
+   "replace": "      return settings.heatFloor * settings.scaleSize;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityStyle.test.ts"
+   ],
+   "mustFail": [
+    "paints only what stands above typical: the higher of the heat floor, 1.25x the median row and 0.6x the 95th percentile"
+   ]
+  },
+  {
+   "id": "lane.index-saturation-from-setting",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/indexLiquidityStyle.ts",
+   "find": "    if (settings.scaleMode === \"fixed\" && settings.scaleSize > 0)\n      return reference;\n    return Math.max(multiple * columnReferenceOf(column, reference), Number.EPSILON);",
+   "replace": "    if (settings.scaleMode === \"fixed\" && settings.scaleSize > 0)\n      return settings.scaleSize;\n    return Math.max(multiple * columnReferenceOf(column, reference), Number.EPSILON);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityStyle.test.ts"
+   ],
+   "mustFail": [
+    "tops the colour out at the column's ceiling, the biggest row near price smoothed over half an hour, never under the server's wall threshold; a fixed scale is the trader's size"
+   ]
+  },
+  {
+   "id": "lane.week-columns-cell-wide",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatmapLayout.ts",
+   "find": "  const columnMs = Math.max(cellMs, shown.levelMs);",
+   "replace": "  const columnMs = cellMs > 0 ? cellMs : shown.levelMs;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatmapLayout.test.ts"
+   ],
+   "mustFail": [
+    "draws the host's five-minute columns five minutes wide when the chart's cells are finer than that, and folds them into the cells when the cells are coarser"
+   ]
+  },
+  {
+   "id": "lane.week-columns-level-wide-in-hour-cells",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatmapLayout.ts",
+   "find": "  const columnMs = Math.max(cellMs, shown.levelMs);",
+   "replace": "  const columnMs = shown.levelMs;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatmapLayout.test.ts"
+   ],
+   "mustFail": [
+    "draws the host's five-minute columns five minutes wide when the chart's cells are finer than that, and folds them into the cells when the cells are coarser"
+   ]
+  },
+  {
+   "id": "lane.week-columns-never-folded",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatmapLayout.ts",
+   "find": "  const columns = cellMs > shown.levelMs ? foldHistory(filler, cellMs) : filler;",
+   "replace": "  const columns = filler;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatmapLayout.test.ts"
+   ],
+   "mustFail": [
+    "draws the host's five-minute columns five minutes wide when the chart's cells are finer than that, and folds them into the cells when the cells are coarser"
+   ]
+  },
+  {
+   "id": "lane.week-columns-folded-into-finer-cells",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatmapLayout.ts",
+   "find": "  const columns = cellMs > shown.levelMs ? foldHistory(filler, cellMs) : filler;",
+   "replace": "  const columns = cellMs > 0 ? foldHistory(filler, cellMs) : filler;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatmapLayout.test.ts"
+   ],
+   "mustFail": [
+    "draws the host's five-minute columns five minutes wide when the chart's cells are finer than that, and folds them into the cells when the cells are coarser"
+   ]
+  }
+ ]
+}

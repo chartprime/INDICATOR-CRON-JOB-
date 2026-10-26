@@ -1,0 +1,199 @@
+{
+ "mutations": [
+  {
+   "id": "p5.sample.s1.ladder-reach",
+   "file": "apps/web/src/lib/indicators/whale-limit-order-heatmap/whalePrimitive.ts",
+   "find": "const reach = Math.max(16, frame.ladderWidth - 92);",
+   "replace": "const reach = Math.max(16, frame.ladderWidth - 90);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/whale-limit-order-heatmap"
+   ]
+  },
+  {
+   "id": "p5.sample.s2.ladder-row-height",
+   "file": "apps/web/src/lib/indicators/whale-limit-order-heatmap/whalePrimitive.ts",
+   "find": "Math.min(11, 5 + 5 * heat,",
+   "replace": "Math.min(11, 5 + 4 * heat,",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/whale-limit-order-heatmap"
+   ]
+  },
+  {
+   "id": "p5.sample.s3.ray-fill-alpha",
+   "file": "apps/web/src/lib/indicators/whale-limit-order-heatmap/whalePrimitive.ts",
+   "find": "const alpha = 0.3 + 0.6 * Math.pow(heat, 0.75);",
+   "replace": "const alpha = 0.3 + 0.5 * Math.pow(heat, 0.75);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/whale-limit-order-heatmap"
+   ]
+  },
+  {
+   "id": "p5.sample.s4.heat-from-peak",
+   "file": "apps/web/src/lib/indicators/whale-limit-order-heatmap/wallStore.ts",
+   "find": "heat[index] = heatOf(wall.usd, bands);",
+   "replace": "heat[index] = heatOf(wall.peak, bands);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/whale-limit-order-heatmap"
+   ]
+  },
+  {
+   "id": "p5.sample.s5.share-floors",
+   "file": "apps/web/src/lib/indicators/whale-limit-order-heatmap/whaleCard.ts",
+   "find": "Math.round((100 * traded) / wall.peak)",
+   "replace": "Math.floor((100 * traded) / wall.peak)",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/whale-limit-order-heatmap"
+   ]
+  },
+  {
+   "id": "p5.sample.s6.fallback-p90",
+   "file": "apps/web/src/lib/indicators/whale-limit-order-heatmap/whaleSettings.ts",
+   "find": "\"PERPETUAL:BTCUSDT\": { p50: 8_288_082, p75: 12_479_940, p90: 18_797_056,",
+   "replace": "\"PERPETUAL:BTCUSDT\": { p50: 8_288_082, p75: 12_479_940, p90: 18_000_000,",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/whale-limit-order-heatmap"
+   ]
+  },
+  {
+   "id": "p5.sample.s7.card-edge-margin",
+   "file": "apps/web/src/lib/indicators/whale-limit-order-heatmap/whaleCardLayout.ts",
+   "find": "const half = WHALE_CARD_WIDTH_PX / 2 + 6;",
+   "replace": "const half = WHALE_CARD_WIDTH_PX / 2 + 0;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/whale-limit-order-heatmap"
+   ]
+  },
+  {
+   "id": "p5.sample.s8.both-has-no-ladder-width",
+   "file": "apps/web/src/lib/indicators/whale-limit-order-heatmap/whalePrimitive.ts",
+   "find": "return mode === \"ladder\" || mode === \"both\" ? Math.min(",
+   "replace": "return mode === \"ladder\" ? Math.min(",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/whale-limit-order-heatmap"
+   ]
+  },
+  {
+   "id": "p5.sample.s9.ladder-label-colours-swapped",
+   "file": "apps/web/src/lib/indicators/whale-limit-order-heatmap/whalePrimitive.ts",
+   "find": "        context.textAlign = \"right\";\n        context.fillStyle = wall.side === 0 ? \"#12803f\" : \"#b02a2a\";",
+   "replace": "        context.textAlign = \"right\";\n        context.fillStyle = wall.side === 0 ? \"#b02a2a\" : \"#12803f\";",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/whale-limit-order-heatmap"
+   ]
+  },
+  {
+   "id": "p5.sample.s10.alpha-curve",
+   "file": "apps/web/src/lib/indicators/whale-limit-order-heatmap/whaleGeometry.ts",
+   "find": "Math.pow(heat, 0.75))",
+   "replace": "Math.pow(heat, 0.5))",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/whale-limit-order-heatmap"
+   ]
+  },
+  {
+   "id": "p5.sample.s11.heat-top-is-p95",
+   "file": "apps/web/src/lib/indicators/whale-limit-order-heatmap/wallStore.ts",
+   "find": "Math.log(bands.p99 / floor)",
+   "replace": "Math.log(bands.p95 / floor)",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/whale-limit-order-heatmap"
+   ]
+  },
+  {
+   "id": "p5.sample.s12.thickest-px",
+   "file": "apps/web/src/lib/indicators/whale-limit-order-heatmap/whalePrimitive.ts",
+   "find": "export const WHALE_THICKEST_PX = 8;",
+   "replace": "export const WHALE_THICKEST_PX = 7;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/whale-limit-order-heatmap"
+   ]
+  },
+  {
+   "id": "p5.sample.s13.ray-hit-margin",
+   "file": "apps/web/src/lib/indicators/whale-limit-order-heatmap/whalePrimitive.ts",
+   "find": "x >= Math.max(0, xNow) - 4 &&",
+   "replace": "x >= Math.max(0, xNow) - 0 &&",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/whale-limit-order-heatmap"
+   ]
+  },
+  {
+   "id": "p5.sample.s14.highlight-line-width",
+   "file": "apps/web/src/lib/indicators/whale-limit-order-heatmap/whalePrimitive.ts",
+   "find": "context.lineWidth = 1.5;\n    context.strokeStyle = \"#141414\";",
+   "replace": "context.lineWidth = 3;\n    context.strokeStyle = \"#141414\";",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/whale-limit-order-heatmap"
+   ]
+  },
+  {
+   "id": "p5.sample.s15.invalidate-boundary",
+   "file": "apps/web/src/lib/l2/wallHistoryStream.ts",
+   "find": "if (start + this._chunkMs > ts) {",
+   "replace": "if (start + this._chunkMs >= ts) {",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/l2/tests/wallHistoryStream.test.ts"
+   ]
+  }
+ ]
+}

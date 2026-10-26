@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "state": "cold",
+  "observedAtUtc": "2026-09-22T00:00:00.000Z",
+  "hostRelease": "full-40-character-commit",
+  "databaseIdentity": "size+mtime+schema-or-snapshot-identity",
+  "catalogIdentity": "catalog-generation-or-not-applicable",
+  "clientIdentity": "machine-and-revision",
+  "networkPath": "WireGuard peer and route",
+  "preparation": "Exact cache reset or warm-up procedure performed",
+  "healthBefore": { "ready": true }
+}

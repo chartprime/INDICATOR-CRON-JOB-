@@ -1,0 +1,696 @@
+{
+ "mutations": [
+  {
+   "id": "abs.shown-before-whole",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionHistory.ts",
+   "find": "    if (wanted === null || !this._whole(wanted) || (shown !== null && shown.first === wanted.first && shown.to === wanted.to)) return;",
+   "replace": "    if (wanted === null || (shown !== null && shown.first === wanted.first && shown.to === wanted.to)) return;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionHistory.test.ts"
+   ],
+   "mustFail": [
+    "shows nothing of a reach before every hour of it is judged, and drops a run the chart asked away from with the hours it had not finished",
+    "shows a day only once whole, keeps it on screen while a longer reach loads, and gives each day the same spheres whatever the reach"
+   ]
+  },
+  {
+   "id": "abs.show-same-reach-again",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionHistory.ts",
+   "find": "    if (wanted === null || !this._whole(wanted) || (shown !== null && shown.first === wanted.first && shown.to === wanted.to)) return;",
+   "replace": "    if (wanted === null || !this._whole(wanted)) return;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionHistory.test.ts"
+   ],
+   "mustFail": [
+    "tells its listeners nothing when asked again for the same stretch"
+   ]
+  },
+  {
+   "id": "abs.prints-outside-shown",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionHistory.ts",
+   "find": "    if (shown !== null) for (const list of this._cache.chunks.values()) for (const record of list) if (record.ts >= shown.first && record.ts < shown.to) merged.push(record);",
+   "replace": "    if (shown !== null) for (const list of this._cache.chunks.values()) for (const record of list) merged.push(record);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionHistory.test.ts"
+   ],
+   "mustFail": [
+    "shows a day only once whole, keeps it on screen while a longer reach loads, and gives each day the same spheres whatever the reach"
+   ]
+  },
+  {
+   "id": "abs.prints-before-shown",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionHistory.ts",
+   "find": "    if (shown !== null) for (const list of this._cache.chunks.values()) for (const record of list) if (record.ts >= shown.first && record.ts < shown.to) merged.push(record);",
+   "replace": "    for (const list of this._cache.chunks.values()) for (const record of list) if (shown === null || (record.ts >= shown.first && record.ts < shown.to)) merged.push(record);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionHistory.test.ts"
+   ],
+   "mustFail": [
+    "shows a day only once whole, keeps it on screen while a longer reach loads, and gives each day the same spheres whatever the reach"
+   ]
+  },
+  {
+   "id": "abs.covers-outside-shown",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionHistory.ts",
+   "find": "    if (shown === null || ts < shown.first || ts >= shown.to) return false;",
+   "replace": "    if (shown === null) return false;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionHistory.test.ts"
+   ],
+   "mustFail": [
+    "shows a day only once whole, keeps it on screen while a longer reach loads, and gives each day the same spheres whatever the reach"
+   ]
+  },
+  {
+   "id": "abs.never-loading",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionHistory.ts",
+   "find": "    const loading = wanted !== null && !this._whole(wanted) && (shown === null || Math.abs(wanted.to - wanted.first - (shown.to - shown.first)) >= STREAM_CHUNK_MS);",
+   "replace": "    const loading = wanted !== null && !this._whole(wanted) && shown === null;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionHistory.test.ts"
+   ],
+   "mustFail": [
+    "shows a day only once whole, keeps it on screen while a longer reach loads, and gives each day the same spheres whatever the reach"
+   ]
+  },
+  {
+   "id": "abs.slide-is-loading",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionHistory.ts",
+   "find": "    const loading = wanted !== null && !this._whole(wanted) && (shown === null || Math.abs(wanted.to - wanted.first - (shown.to - shown.first)) >= STREAM_CHUNK_MS);",
+   "replace": "    const loading = wanted !== null && !this._whole(wanted);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionHistory.test.ts"
+   ],
+   "mustFail": [
+    "carries the newest day on when the live book moves into a new hour: it asks for the new hour, not the day again, and the spheres are the day's",
+    "survives a reload: a loader given the same store shows the reach at once, asks only for the hours it lacks, and another timeframe sees none of it"
+   ]
+  },
+  {
+   "id": "abs.unwarmable-counted",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionHistory.ts",
+   "find": "    this._wanted = { first: Math.min(to, Math.max(chunkOf(from), warmable)), to, seam: seamTs };",
+   "replace": "    this._wanted = { first: Math.min(to, chunkOf(from)), to, seam: seamTs };",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionHistory.test.ts"
+   ],
+   "mustFail": [
+    "reaches only the days the chart's candles can warm up, shows them, and is not loading what it cannot reach"
+   ]
+  },
+  {
+   "id": "abs2.newest-first",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionHistory.ts",
+   "find": "    const first = Math.floor(next / HISTORY_BLOCK_MS) * HISTORY_BLOCK_MS;",
+   "replace": "    const first = Math.floor((wanted.to - 1) / HISTORY_BLOCK_MS) * HISTORY_BLOCK_MS;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionHistory.test.ts"
+   ],
+   "mustFail": [
+    "loads from the past to the live book: the oldest day first"
+   ]
+  },
+  {
+   "id": "abs.tail-from-another-day",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionHistory.ts",
+   "find": "    this._run = tail !== null && tail.storeFrom === first && tail.lastTs >= first && chunkOf(tail.lastTs) <= next",
+   "replace": "    this._run = tail !== null && tail.lastTs >= first && chunkOf(tail.lastTs) <= next",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionHistory.test.ts"
+   ],
+   "mustFail": [
+    "finds over twelve hours across midnight exactly what one continuous tracker finds with the chart's closes"
+   ]
+  },
+  {
+   "id": "abs.tail-asks-the-day-again",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionHistory.ts",
+   "find": "cursor: chunkOf(tail.lastTs)",
+   "replace": "cursor: first - HISTORY_WARMUP_MS",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionHistory.test.ts"
+   ],
+   "mustFail": [
+    "carries the newest day on when the live book moves into a new hour: it asks for the new hour, not the day again, and the spheres are the day's"
+   ]
+  },
+  {
+   "id": "abs2.day-read-again",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionHistory.ts",
+   "find": "    this._tail = run;",
+   "replace": "    this._tail = null;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionHistory.test.ts"
+   ],
+   "mustFail": [
+    "carries the newest day on when the live book moves into a new hour: it asks for the new hour, not the day again, and the spheres are the day's"
+   ]
+  },
+  {
+   "id": "abs2.listeners-churn",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionHistory.ts",
+   "find": "    if (stopped || this._cache.shown !== shown) this._changed();",
+   "replace": "    this._changed();",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionHistory.test.ts"
+   ],
+   "mustFail": [
+    "tells its listeners nothing when asked again for the same stretch"
+   ]
+  },
+  {
+   "id": "abs3.two-ahead",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionHistory.ts",
+   "find": "    this._stream.want(run.cursor, Math.min(run.cursor + 4 * STREAM_CHUNK_MS, run.hostEnd), 0, 0);",
+   "replace": "    this._stream.want(run.cursor, Math.min(run.cursor + 2 * STREAM_CHUNK_MS, run.hostEnd), 0, 0);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionHistory.test.ts"
+   ],
+   "mustFail": [
+    "asks for four hours at a time, so the host's pages come in side by side"
+   ]
+  },
+  {
+   "id": "abs3.two-in-flight",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/columnHistoryStream.ts",
+   "find": "export const STREAM_MAX_IN_FLIGHT = 4;",
+   "replace": "export const STREAM_MAX_IN_FLIGHT = 2;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/columnHistoryStream.test.ts",
+    "src/lib/indicators/absorption-detector/tests/absorptionHistory.test.ts"
+   ],
+   "mustFail": [
+    "keeps four requests in flight and 140 a minute by default: a day of hourly pages, each in two parts, lands in seconds and under the runtime's limit",
+    "asks for four hours at a time, so the host's pages come in side by side"
+   ]
+  },
+  {
+   "id": "abs.stream-sixty-a-minute",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/columnHistoryStream.ts",
+   "find": "export const STREAM_MAX_REQUESTS_PER_MINUTE = 140;",
+   "replace": "export const STREAM_MAX_REQUESTS_PER_MINUTE = 60;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/columnHistoryStream.test.ts"
+   ],
+   "mustFail": [
+    "keeps four requests in flight and 140 a minute by default"
+   ]
+  },
+  {
+   "id": "abs2.slow-rate-retry",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/columnHistoryStream.ts",
+   "find": "this._unavailable === \"RATE_LIMITED\" ? STREAM_RATE_LIMIT_RETRY_MS : this._retryMs",
+   "replace": "this._retryMs",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/columnHistoryStream.test.ts"
+   ],
+   "mustFail": [
+    "asks again within seconds when the runtime gave up on a busy host, not after the long pause"
+   ]
+  },
+  {
+   "id": "abs.rate-limit-retry-slow",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/columnHistoryStream.ts",
+   "find": "export const STREAM_RATE_LIMIT_RETRY_MS = 3_000;",
+   "replace": "export const STREAM_RATE_LIMIT_RETRY_MS = 30_000;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/columnHistoryStream.test.ts"
+   ],
+   "mustFail": [
+    "asks again within seconds when the runtime gave up on a busy host, not after the long pause"
+   ]
+  },
+  {
+   "id": "abs3.over-the-limit",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/requestBudget.ts",
+   "find": "export const COLUMN_HISTORY_MAX_PER_MINUTE = 149;",
+   "replace": "export const COLUMN_HISTORY_MAX_PER_MINUTE = 160;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/requestBudget.test.ts"
+   ],
+   "mustFail": [
+    "keeps the browser's readers of /heatmap/columns under the route's limit together: the heatmap's own budget plus the indicators' shared one, with each indicator's cap inside the shared one"
+   ]
+  },
+  {
+   "id": "abs.shared-budget-below-the-stream",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/requestBudget.ts",
+   "find": "export const COLUMN_HISTORY_MAX_PER_MINUTE = 149;",
+   "replace": "export const COLUMN_HISTORY_MAX_PER_MINUTE = 90;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/requestBudget.test.ts"
+   ],
+   "mustFail": [
+    "keeps the browser's readers of /heatmap/columns under the route's limit together"
+   ]
+  },
+  {
+   "id": "abs.heatmap-budget-not-cut",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/heatmapHistory.ts",
+   "find": "export const HISTORY_MAX_REQUESTS_PER_MINUTE = 90;",
+   "replace": "export const HISTORY_MAX_REQUESTS_PER_MINUTE = 120;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/requestBudget.test.ts"
+   ],
+   "mustFail": [
+    "keeps the browser's readers of /heatmap/columns under the route's limit together"
+   ]
+  },
+  {
+   "id": "abs.reach-in-hours",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionPrimitive.ts",
+   "find": "    const reachMs = absorptionHistoryDaysOf(this._settings) * 86_400_000;",
+   "replace": "    const reachMs = absorptionHistoryDaysOf(this._settings) * 3_600_000;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionPrimitive.test.ts"
+   ],
+   "mustFail": [
+    "shows the history's spheres once each, whatever they rested on, and asks the history for the whole reach behind the live book"
+   ]
+  },
+  {
+   "id": "abs.asks-half-reach",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionPrimitive.ts",
+   "find": "    history.want(seam - reachMs, seam, seam, reachMs,",
+   "replace": "    history.want(seam - reachMs / 2, seam, seam, reachMs,",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionPrimitive.test.ts"
+   ],
+   "mustFail": [
+    "shows the history's spheres once each, whatever they rested on, and asks the history for the whole reach behind the live book"
+   ]
+  },
+  {
+   "id": "abs.kept-hidden-without-history",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionPrimitive.ts",
+   "find": "    if (history === null) this._shownFrom = -Infinity;\n",
+   "replace": "",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionPrimitive.test.ts"
+   ],
+   "mustFail": [
+    "hides a saved sphere older than the history reach, so nothing shows behind History, and brings it back when the reach is lengthened"
+   ]
+  },
+  {
+   "id": "abs.badge-wrong-reach",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionPrimitive.ts",
+   "find": "  if (status.loading) return `PRIME ABSORPTION · LOADING ${historyDaysLabel(days).toUpperCase()}`;",
+   "replace": "  if (status.loading) return `PRIME ABSORPTION · LOADING ${historyDaysLabel(1).toUpperCase()}`;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionPrimitive.test.ts"
+   ],
+   "mustFail": [
+    "names the reach while the history loads, says so when the host refuses it, and shows nothing once it is drawn"
+   ]
+  },
+  {
+   "id": "abs.badge-unavailable-unsaid",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionPrimitive.ts",
+   "find": "  if (status.unavailable !== null && status.reachTs === null) return \"PRIME ABSORPTION · HISTORY UNAVAILABLE\";",
+   "replace": "",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionPrimitive.test.ts"
+   ],
+   "mustFail": [
+    "names the reach while the history loads, says so when the host refuses it, and shows nothing once it is drawn"
+   ]
+  },
+  {
+   "id": "abs.badge-null-status",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionPrimitive.ts",
+   "find": "  if (status === null || days === 0) return null;",
+   "replace": "  if (days === 0) return null;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionPrimitive.test.ts"
+   ],
+   "mustFail": [
+    "names the reach while the history loads, says so when the host refuses it, and shows nothing once it is drawn"
+   ]
+  },
+  {
+   "id": "abs.badge-never-drawn",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionPrimitive.ts",
+   "find": "    this._paneViews = [new AbsorptionPaneView(new AbsorptionRenderer(this)), new AbsorptionPaneView(new AbsorptionStatusRenderer(this))];",
+   "replace": "    this._paneViews = [new AbsorptionPaneView(new AbsorptionRenderer(this))];",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionPrimitive.test.ts"
+   ],
+   "mustFail": [
+    "is drawn in the absorption slot while the history loads"
+   ]
+  },
+  {
+   "id": "abs.default-reach-three-days",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionSettings.ts",
+   "find": "export const DEFAULT_HISTORY_DAYS: LiquidityHistoryDays = 1;",
+   "replace": "export const DEFAULT_HISTORY_DAYS: LiquidityHistoryDays = 3;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionSettings.test.ts"
+   ],
+   "mustFail": [
+    "are opacity, the spheres' size, the two colours, the strong-only switch, the rule's three numbers, History and the shape"
+   ]
+  },
+  {
+   "id": "abs.choice-not-saved",
+   "file": "apps/web/src/lib/indicators/absorption-detector/AbsorptionSettingsModal.tsx",
+   "find": "onChange={() => update({ historyDays: days })}",
+   "replace": "onChange={() => undefined}",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/AbsorptionSettingsModal.test.tsx"
+   ],
+   "mustFail": [
+    "offers history off, 1 day, 3 days, 5 days and 1 week, starts at 1 day, and saves the choice"
+   ]
+  },
+  {
+   "id": "abs.radio-shows-default-only",
+   "file": "apps/web/src/lib/indicators/absorption-detector/AbsorptionSettingsModal.tsx",
+   "find": "checked={absorptionHistoryDaysOf(settings) === days}",
+   "replace": "checked={days === 1}",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/AbsorptionSettingsModal.test.tsx"
+   ],
+   "mustFail": [
+    "offers history off, 1 day, 3 days, 5 days and 1 week, starts at 1 day, and saves the choice"
+   ]
+  },
+  {
+   "id": "abs4.restored-not-settled",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionHistory.ts",
+   "find": "      cache.settled.add(hour.start);\n    }\n    cache.shown = stored.shown;",
+   "replace": "    }\n    cache.shown = stored.shown;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionHistory.test.ts"
+   ],
+   "mustFail": [
+    "survives a reload: a loader given the same store shows the reach at once, asks only for the hours it lacks, and another timeframe sees none of it"
+   ]
+  },
+  {
+   "id": "abs4.shown-not-restored",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionHistory.ts",
+   "find": "    cache.shown = stored.shown;",
+   "replace": "    cache.shown = null;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionHistory.test.ts"
+   ],
+   "mustFail": [
+    "survives a reload: a loader given the same store shows the reach at once, asks only for the hours it lacks, and another timeframe sees none of it"
+   ]
+  },
+  {
+   "id": "abs4.restored-without-spheres",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionHistory.ts",
+   "find": "      cache.chunks.set(hour.start, hour.records);",
+   "replace": "",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionHistory.test.ts"
+   ],
+   "mustFail": [
+    "survives a reload: a loader given the same store shows the reach at once, asks only for the hours it lacks, and another timeframe sees none of it"
+   ]
+  },
+  {
+   "id": "abs4.restored-without-ends",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionHistory.ts",
+   "find": "      cache.ends.set(hour.start, hour.end);",
+   "replace": "",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionHistory.test.ts"
+   ],
+   "mustFail": [
+    "survives a reload: a loader given the same store shows the reach at once, asks only for the hours it lacks, and another timeframe sees none of it"
+   ]
+  },
+  {
+   "id": "abs4.never-kept",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionHistory.ts",
+   "find": "    if (judged || final) this._keep();",
+   "replace": "    if (judged && final && false) this._keep();",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionHistory.test.ts"
+   ],
+   "mustFail": [
+    "survives a reload: a loader given the same store shows the reach at once, asks only for the hours it lacks, and another timeframe sees none of it"
+   ]
+  },
+  {
+   "id": "abs4.store-required",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionHistory.ts",
+   "find": "    if (this._store === null || this._rulesKey === \"\") return;",
+   "replace": "    if (this._rulesKey === \"\") return;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionHistory.test.ts"
+   ],
+   "mustFail": [
+    "finds over twelve hours across midnight exactly what one continuous tracker finds with the chart's closes"
+   ]
+  },
+  {
+   "id": "abs4.no-eviction",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionHistoryStore.ts",
+   "find": "    while (text.length > HISTORY_STORE_MAX_BYTES && all.size > 1) {",
+   "replace": "    while (false) {",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionHistoryStore.test.ts"
+   ],
+   "mustFail": [
+    "drops hours older than eight days, mangled entries, and the least recently used keys once over its budget"
+   ]
+  },
+  {
+   "id": "abs4.evicts-the-newest",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionHistoryStore.ts",
+   "find": "      for (const [other, entry] of all) if (other !== key && (drop === null || entry.at < (all.get(drop) as Entry).at)) drop = other;",
+   "replace": "      for (const [other, entry] of all) if (other !== key && (drop === null || entry.at > (all.get(drop) as Entry).at)) drop = other;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionHistoryStore.test.ts"
+   ],
+   "mustFail": [
+    "drops hours older than eight days, mangled entries, and the least recently used keys once over its budget"
+   ]
+  },
+  {
+   "id": "abs4.keeps-old-hours",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionHistoryStore.ts",
+   "find": "hours.filter((hour) => hour.start >= oldest)",
+   "replace": "hours",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionHistoryStore.test.ts"
+   ],
+   "mustFail": [
+    "drops hours older than eight days, mangled entries, and the least recently used keys once over its budget"
+   ]
+  },
+  {
+   "id": "abs4.mangled-print-read",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionEngine.ts",
+   "find": "  return typeof record.key === \"string\" && (record.side === \"bid\" || record.side === \"ask\") && numbers.every((field) => Number.isFinite(record[field]))\n    && Array.isArray(record.trail) && record.trail.length > 0 && record.trail.every(isTrailEntry) && isTrailEntry(record.latest) && ended;",
+   "replace": "  return typeof record.key === \"string\";",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionHistoryStore.test.ts"
+   ],
+   "mustFail": [
+    "drops hours older than eight days, mangled entries, and the least recently used keys once over its budget"
+   ]
+  },
+  {
+   "id": "abs4.mangled-hour-read",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionHistoryStore.ts",
+   "find": "  if (!isRecord(value) || !Number.isFinite(value.start) || !Number.isFinite(value.end) || !Array.isArray(value.records)) return null;",
+   "replace": "  if (!isRecord(value)) return null;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionHistoryStore.test.ts"
+   ],
+   "mustFail": [
+    "drops hours older than eight days, mangled entries, and the least recently used keys once over its budget"
+   ]
+  },
+  {
+   "id": "abs4.shown-not-read",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionHistoryStore.ts",
+   "find": "  return isRecord(value) && Number.isFinite(value.first) && Number.isFinite(value.to) ? { first: value.first as number, to: value.to as number } : null;",
+   "replace": "  return null;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionHistoryStore.test.ts"
+   ],
+   "mustFail": [
+    "brings an instrument's judged hours and what was on screen back under the same key"
+   ]
+  }
+ ]
+}

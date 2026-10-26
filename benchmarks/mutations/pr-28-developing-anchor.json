@@ -1,0 +1,104 @@
+{
+  "mutations": [
+    {
+      "id": "pr28-developing-anchor-not-clamped",
+      "file": "apps/web/src/lib/indicators/volume-profile/profilePeriodGeometry.ts",
+      "find": "const x1 = isDeveloping ? Math.max(floorPx, anchorX) : anchorX;",
+      "replace": "const x1 = anchorX;",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/indicators/volume-profile/tests/profilePeriodGeometry.test.ts", "-t", "sticks a developing period's anchor"],
+      "mustFail": ["sticks a developing period's anchor to the chart's left edge once the session start is off screen"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "pr28-closed-and-historical-zones-clamped",
+      "file": "apps/web/src/lib/indicators/volume-profile/profilePeriodGeometry.ts",
+      "find": "const x1 = isDeveloping ? Math.max(floorPx, anchorX) : anchorX;",
+      "replace": "const x1 = Math.max(floorPx, anchorX);",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/indicators/volume-profile/tests/profilePeriodGeometry.test.ts", "-t", "leaves a closed or historical period"],
+      "mustFail": ["leaves a closed or historical period at its true off-screen position"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "pr28-clamp-keyed-on-live-instead-of-developing",
+      "file": "apps/web/src/lib/indicators/volume-profile/profilePeriodGeometry.ts",
+      "find": "const x1 = isDeveloping ? Math.max(floorPx, anchorX) : anchorX;",
+      "replace": "const x1 = isLive ? Math.max(floorPx, anchorX) : anchorX;",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/indicators/volume-profile/tests/profilePeriodGeometry.test.ts", "-t", "leaves a closed or historical period"],
+      "mustFail": ["leaves a closed or historical period at its true off-screen position"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "pr28-volume-profile-developing-off-canvas",
+      "file": "apps/web/src/lib/indicators/volume-profile/profilePeriodGeometry.ts",
+      "find": "const x1 = isDeveloping ? Math.max(floorPx, anchorX) : anchorX;",
+      "replace": "const x1 = anchorX;",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/indicators/volume-profile/tests/volumeProfilePrimitive.test.ts", "-t", "developing anchor pinned"],
+      "mustFail": ["draws every bin from x = 0, each keeping its own width"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "pr28-net-delta-profile-developing-off-canvas",
+      "file": "apps/web/src/lib/indicators/volume-profile/profilePeriodGeometry.ts",
+      "find": "const x1 = isDeveloping ? Math.max(floorPx, anchorX) : anchorX;",
+      "replace": "const x1 = anchorX;",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/indicators/net-delta-profile/tests/netDeltaProfilePrimitive.test.ts", "-t", "developing anchor pinned"],
+      "mustFail": ["draws every bin from x = 0, each keeping its own width"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "pr28-delta-profile-developing-axis-off-canvas",
+      "file": "apps/web/src/lib/indicators/volume-profile/profilePeriodGeometry.ts",
+      "find": "const x1 = isDeveloping ? Math.max(floorPx, anchorX) : anchorX;",
+      "replace": "const x1 = anchorX;",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/indicators/delta-profile/tests/deltaProfilePrimitive.test.ts", "-t", "developing axis kept a bar budget"],
+      "mustFail": ["keeps both halves on the pane"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "pr28-delta-profile-floor-ignored",
+      "file": "apps/web/src/lib/indicators/volume-profile/profilePeriodGeometry.ts",
+      "find": "const floorPx = anchorFloor === \"bar-budget\" ? barWidthBudgetPx : 0;",
+      "replace": "const floorPx = 0;",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/indicators/delta-profile/tests/deltaProfilePrimitive.test.ts", "-t", "developing axis kept a bar budget"],
+      "mustFail": ["keeps both halves on the pane", "keeps a full-budget net-sell bar on the pane"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "pr28-delta-profile-asks-for-the-pane-edge",
+      "file": "apps/web/src/lib/indicators/delta-profile/deltaProfilePrimitive.ts",
+      "find": "    settings.developingOpacity,\n    \"bar-budget\",",
+      "replace": "    settings.developingOpacity,\n    \"pane-edge\",",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/indicators/delta-profile/tests/deltaProfilePrimitive.test.ts", "-t", "developing axis kept a bar budget"],
+      "mustFail": ["keeps both halves on the pane", "keeps a full-budget net-sell bar on the pane"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "pr28-every-profile-floored-at-the-budget",
+      "file": "apps/web/src/lib/indicators/volume-profile/profilePeriodGeometry.ts",
+      "find": "const floorPx = anchorFloor === \"bar-budget\" ? barWidthBudgetPx : 0;",
+      "replace": "const floorPx = barWidthBudgetPx;",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/indicators/volume-profile/tests/volumeProfilePrimitive.test.ts", "-t", "developing anchor pinned"],
+      "mustFail": ["draws every bin from x = 0, each keeping its own width"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "pr28-far-in-axis-pulled-to-the-floor",
+      "file": "apps/web/src/lib/indicators/volume-profile/profilePeriodGeometry.ts",
+      "find": "const x1 = isDeveloping ? Math.max(floorPx, anchorX) : anchorX;",
+      "replace": "const x1 = isDeveloping ? floorPx : anchorX;",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/indicators/delta-profile/tests/deltaProfilePrimitive.test.ts", "-t", "developing axis kept a bar budget"],
+      "mustFail": ["leaves an axis further in than the budget at its true session start"],
+      "timeoutMs": 180000
+    }
+  ]
+}

@@ -1,0 +1,1176 @@
+{
+  "days": [
+    {
+      "actions": {
+        "NEW": 424042
+      },
+      "curated_bytes": 21720386,
+      "dataset_version": "w606-l1-v2-glbx-mdp3-mbp-1-es-2026-08",
+      "date": "2026-08-03",
+      "event_ns_max": 1785801599669041631,
+      "event_ns_min": 1785715200022814897,
+      "families": {
+        "trade_level_1m": {
+          "gzip_bytes": 63451,
+          "json_bytes": 277974,
+          "rows": 9352
+        },
+        "trade_minute_1m": {
+          "gzip_bytes": 24950,
+          "json_bytes": 69365,
+          "rows": 1382
+        },
+        "trade_prints_1m": {
+          "gzip_bytes": 138586,
+          "json_bytes": 568079,
+          "rows": 11039
+        },
+        "trade_slice_2s": {
+          "gzip_bytes": 400874,
+          "json_bytes": 1211398,
+          "rows": 31981
+        }
+      },
+      "fetch_seconds": 0.566,
+      "instrument_id": "[\"XCME\",\"FUTURE\",\"ESU6\",\"USD\",\"CONTRACT\"]",
+      "max_trades_per_minute": 8291,
+      "measure_seconds": 0.305,
+      "minutes_with_trades": 1382,
+      "parts": 3,
+      "record_count": 424042,
+      "rows_total": 424042,
+      "sides": {
+        "BUY": 215512,
+        "SELL": 208529,
+        "UNKNOWN": 1
+      },
+      "trades_new": 424042
+    },
+    {
+      "actions": {
+        "NEW": 489462
+      },
+      "curated_bytes": 25008829,
+      "dataset_version": "w606-l1-v2-glbx-mdp3-mbp-1-es-2026-08",
+      "date": "2026-08-04",
+      "event_ns_max": 1785887999554974825,
+      "event_ns_min": 1785801600038251885,
+      "families": {
+        "trade_level_1m": {
+          "gzip_bytes": 71272,
+          "json_bytes": 310606,
+          "rows": 10414
+        },
+        "trade_minute_1m": {
+          "gzip_bytes": 25135,
+          "json_bytes": 69751,
+          "rows": 1382
+        },
+        "trade_prints_1m": {
+          "gzip_bytes": 139336,
+          "json_bytes": 568995,
+          "rows": 11050
+        },
+        "trade_slice_2s": {
+          "gzip_bytes": 411001,
+          "json_bytes": 1227662,
+          "rows": 32241
+        }
+      },
+      "fetch_seconds": 0.558,
+      "instrument_id": "[\"XCME\",\"FUTURE\",\"ESU6\",\"USD\",\"CONTRACT\"]",
+      "max_trades_per_minute": 12791,
+      "measure_seconds": 0.332,
+      "minutes_with_trades": 1382,
+      "parts": 4,
+      "record_count": 489462,
+      "rows_total": 489462,
+      "sides": {
+        "BUY": 244484,
+        "SELL": 244977,
+        "UNKNOWN": 1
+      },
+      "trades_new": 489462
+    },
+    {
+      "actions": {
+        "NEW": 466706
+      },
+      "curated_bytes": 23999396,
+      "dataset_version": "w606-l1-v2-glbx-mdp3-mbp-1-es-2026-08",
+      "date": "2026-08-05",
+      "event_ns_max": 1785974397751778241,
+      "event_ns_min": 1785888000005243639,
+      "families": {
+        "trade_level_1m": {
+          "gzip_bytes": 77945,
+          "json_bytes": 341576,
+          "rows": 11494
+        },
+        "trade_minute_1m": {
+          "gzip_bytes": 24988,
+          "json_bytes": 69439,
+          "rows": 1382
+        },
+        "trade_prints_1m": {
+          "gzip_bytes": 138168,
+          "json_bytes": 568832,
+          "rows": 11046
+        },
+        "trade_slice_2s": {
+          "gzip_bytes": 393160,
+          "json_bytes": 1177702,
+          "rows": 30982
+        }
+      },
+      "fetch_seconds": 0.542,
+      "instrument_id": "[\"XCME\",\"FUTURE\",\"ESU6\",\"USD\",\"CONTRACT\"]",
+      "max_trades_per_minute": 10970,
+      "measure_seconds": 0.32,
+      "minutes_with_trades": 1382,
+      "parts": 4,
+      "record_count": 466706,
+      "rows_total": 466706,
+      "sides": {
+        "BUY": 233457,
+        "SELL": 233247,
+        "UNKNOWN": 2
+      },
+      "trades_new": 466706
+    },
+    {
+      "actions": {
+        "NEW": 426761
+      },
+      "curated_bytes": 21969339,
+      "dataset_version": "w606-l1-v2-glbx-mdp3-mbp-1-es-2026-08",
+      "date": "2026-08-06",
+      "event_ns_max": 1786060794674361123,
+      "event_ns_min": 1785974400014398259,
+      "families": {
+        "trade_level_1m": {
+          "gzip_bytes": 71394,
+          "json_bytes": 317749,
+          "rows": 10771
+        },
+        "trade_minute_1m": {
+          "gzip_bytes": 24395,
+          "json_bytes": 68611,
+          "rows": 1382
+        },
+        "trade_prints_1m": {
+          "gzip_bytes": 137798,
+          "json_bytes": 565632,
+          "rows": 11002
+        },
+        "trade_slice_2s": {
+          "gzip_bytes": 384442,
+          "json_bytes": 1153464,
+          "rows": 30449
+        }
+      },
+      "fetch_seconds": 0.506,
+      "instrument_id": "[\"XCME\",\"FUTURE\",\"ESU6\",\"USD\",\"CONTRACT\"]",
+      "max_trades_per_minute": 8675,
+      "measure_seconds": 0.299,
+      "minutes_with_trades": 1382,
+      "parts": 4,
+      "record_count": 426761,
+      "rows_total": 426761,
+      "sides": {
+        "BUY": 210934,
+        "SELL": 215826,
+        "UNKNOWN": 1
+      },
+      "trades_new": 426761
+    },
+    {
+      "actions": {
+        "NEW": 408827
+      },
+      "curated_bytes": 21022577,
+      "dataset_version": "w606-l1-v2-glbx-mdp3-mbp-1-es-2026-08",
+      "date": "2026-08-07",
+      "event_ns_max": 1786136399841574399,
+      "event_ns_min": 1786060800001145633,
+      "families": {
+        "trade_level_1m": {
+          "gzip_bytes": 64704,
+          "json_bytes": 286729,
+          "rows": 9683
+        },
+        "trade_minute_1m": {
+          "gzip_bytes": 22478,
+          "json_bytes": 62756,
+          "rows": 1261
+        },
+        "trade_prints_1m": {
+          "gzip_bytes": 125447,
+          "json_bytes": 518487,
+          "rows": 10079
+        },
+        "trade_slice_2s": {
+          "gzip_bytes": 347554,
+          "json_bytes": 1046094,
+          "rows": 27556
+        }
+      },
+      "fetch_seconds": 0.419,
+      "instrument_id": "[\"XCME\",\"FUTURE\",\"ESU6\",\"USD\",\"CONTRACT\"]",
+      "max_trades_per_minute": 8622,
+      "measure_seconds": 0.268,
+      "minutes_with_trades": 1261,
+      "parts": 3,
+      "record_count": 408827,
+      "rows_total": 408827,
+      "sides": {
+        "BUY": 210523,
+        "SELL": 198304
+      },
+      "trades_new": 408827
+    },
+    {
+      "actions": {
+        "NEW": 374996
+      },
+      "curated_bytes": 19800873,
+      "dataset_version": "w606-l1-v2-glbx-mdp3-mbp-1-nq-2026-08",
+      "date": "2026-08-03",
+      "event_ns_max": 1785801599669462077,
+      "event_ns_min": 1785715200049801939,
+      "families": {
+        "trade_level_1m": {
+          "gzip_bytes": 267195,
+          "json_bytes": 1669337,
+          "rows": 58609
+        },
+        "trade_minute_1m": {
+          "gzip_bytes": 24939,
+          "json_bytes": 69401,
+          "rows": 1382
+        },
+        "trade_prints_1m": {
+          "gzip_bytes": 138580,
+          "json_bytes": 574576,
+          "rows": 11049
+        },
+        "trade_slice_2s": {
+          "gzip_bytes": 422916,
+          "json_bytes": 1252632,
+          "rows": 32567
+        }
+      },
+      "fetch_seconds": 0.437,
+      "instrument_id": "[\"XCME\",\"FUTURE\",\"NQU6\",\"USD\",\"CONTRACT\"]",
+      "max_trades_per_minute": 4949,
+      "measure_seconds": 0.767,
+      "minutes_with_trades": 1382,
+      "parts": 3,
+      "record_count": 374996,
+      "rows_total": 374996,
+      "sides": {
+        "BUY": 187244,
+        "SELL": 187751,
+        "UNKNOWN": 1
+      },
+      "trades_new": 374996
+    },
+    {
+      "actions": {
+        "NEW": 436206
+      },
+      "curated_bytes": 22958614,
+      "dataset_version": "w606-l1-v2-glbx-mdp3-mbp-1-nq-2026-08",
+      "date": "2026-08-04",
+      "event_ns_max": 1785887999958411737,
+      "event_ns_min": 1785801600009218789,
+      "families": {
+        "trade_level_1m": {
+          "gzip_bytes": 284216,
+          "json_bytes": 1744895,
+          "rows": 61115
+        },
+        "trade_minute_1m": {
+          "gzip_bytes": 25485,
+          "json_bytes": 69988,
+          "rows": 1382
+        },
+        "trade_prints_1m": {
+          "gzip_bytes": 139378,
+          "json_bytes": 574948,
+          "rows": 11052
+        },
+        "trade_slice_2s": {
+          "gzip_bytes": 450855,
+          "json_bytes": 1327585,
+          "rows": 34346
+        }
+      },
+      "fetch_seconds": 0.467,
+      "instrument_id": "[\"XCME\",\"FUTURE\",\"NQU6\",\"USD\",\"CONTRACT\"]",
+      "max_trades_per_minute": 7815,
+      "measure_seconds": 0.82,
+      "minutes_with_trades": 1382,
+      "parts": 3,
+      "record_count": 436206,
+      "rows_total": 436206,
+      "sides": {
+        "BUY": 218172,
+        "SELL": 218032,
+        "UNKNOWN": 2
+      },
+      "trades_new": 436206
+    },
+    {
+      "actions": {
+        "NEW": 415579
+      },
+      "curated_bytes": 21886264,
+      "dataset_version": "w606-l1-v2-glbx-mdp3-mbp-1-nq-2026-08",
+      "date": "2026-08-05",
+      "event_ns_max": 1785974399211932021,
+      "event_ns_min": 1785888000031643233,
+      "families": {
+        "trade_level_1m": {
+          "gzip_bytes": 307232,
+          "json_bytes": 1909159,
+          "rows": 67164
+        },
+        "trade_minute_1m": {
+          "gzip_bytes": 25167,
+          "json_bytes": 69700,
+          "rows": 1382
+        },
+        "trade_prints_1m": {
+          "gzip_bytes": 139833,
+          "json_bytes": 574852,
+          "rows": 11054
+        },
+        "trade_slice_2s": {
+          "gzip_bytes": 437372,
+          "json_bytes": 1295064,
+          "rows": 33668
+        }
+      },
+      "fetch_seconds": 0.567,
+      "instrument_id": "[\"XCME\",\"FUTURE\",\"NQU6\",\"USD\",\"CONTRACT\"]",
+      "max_trades_per_minute": 6632,
+      "measure_seconds": 0.815,
+      "minutes_with_trades": 1382,
+      "parts": 4,
+      "record_count": 415579,
+      "rows_total": 415579,
+      "sides": {
+        "BUY": 206665,
+        "SELL": 208913,
+        "UNKNOWN": 1
+      },
+      "trades_new": 415579
+    },
+    {
+      "actions": {
+        "NEW": 408959
+      },
+      "curated_bytes": 21661153,
+      "dataset_version": "w606-l1-v2-glbx-mdp3-mbp-1-nq-2026-08",
+      "date": "2026-08-06",
+      "event_ns_max": 1786060798173232273,
+      "event_ns_min": 1785974400014712415,
+      "families": {
+        "trade_level_1m": {
+          "gzip_bytes": 307870,
+          "json_bytes": 1929843,
+          "rows": 67908
+        },
+        "trade_minute_1m": {
+          "gzip_bytes": 25169,
+          "json_bytes": 69715,
+          "rows": 1382
+        },
+        "trade_prints_1m": {
+          "gzip_bytes": 139427,
+          "json_bytes": 574695,
+          "rows": 11052
+        },
+        "trade_slice_2s": {
+          "gzip_bytes": 436607,
+          "json_bytes": 1285067,
+          "rows": 33364
+        }
+      },
+      "fetch_seconds": 0.555,
+      "instrument_id": "[\"XCME\",\"FUTURE\",\"NQU6\",\"USD\",\"CONTRACT\"]",
+      "max_trades_per_minute": 5228,
+      "measure_seconds": 0.781,
+      "minutes_with_trades": 1382,
+      "parts": 4,
+      "record_count": 408959,
+      "rows_total": 408959,
+      "sides": {
+        "BUY": 206688,
+        "SELL": 202270,
+        "UNKNOWN": 1
+      },
+      "trades_new": 408959
+    },
+    {
+      "actions": {
+        "NEW": 381664
+      },
+      "curated_bytes": 20200052,
+      "dataset_version": "w606-l1-v2-glbx-mdp3-mbp-1-nq-2026-08",
+      "date": "2026-08-07",
+      "event_ns_max": 1786136399813049457,
+      "event_ns_min": 1786060800032986877,
+      "families": {
+        "trade_level_1m": {
+          "gzip_bytes": 263842,
+          "json_bytes": 1631392,
+          "rows": 57248
+        },
+        "trade_minute_1m": {
+          "gzip_bytes": 22933,
+          "json_bytes": 63452,
+          "rows": 1261
+        },
+        "trade_prints_1m": {
+          "gzip_bytes": 126793,
+          "json_bytes": 524231,
+          "rows": 10083
+        },
+        "trade_slice_2s": {
+          "gzip_bytes": 387967,
+          "json_bytes": 1145115,
+          "rows": 29655
+        }
+      },
+      "fetch_seconds": 0.473,
+      "instrument_id": "[\"XCME\",\"FUTURE\",\"NQU6\",\"USD\",\"CONTRACT\"]",
+      "max_trades_per_minute": 5826,
+      "measure_seconds": 0.733,
+      "minutes_with_trades": 1261,
+      "parts": 3,
+      "record_count": 381664,
+      "rows_total": 381664,
+      "sides": {
+        "BUY": 192614,
+        "SELL": 189049,
+        "UNKNOWN": 1
+      },
+      "trades_new": 381664
+    },
+    {
+      "actions": {
+        "NEW": 244005
+      },
+      "curated_bytes": 12142314,
+      "dataset_version": "w606-l1-v2-xnas-itch-mbp-1-aapl-2026-08",
+      "date": "2026-08-03",
+      "event_ns_max": 1785801598731981536,
+      "event_ns_min": 1785744000201463223,
+      "families": {
+        "trade_level_1m": {
+          "gzip_bytes": 104971,
+          "json_bytes": 476204,
+          "rows": 16118
+        },
+        "trade_level_1m_coarse": {
+          "gzip_bytes": 35229,
+          "json_bytes": 134945,
+          "rows": 4488,
+          "ticks": 5
+        },
+        "trade_minute_1m": {
+          "gzip_bytes": 20710,
+          "json_bytes": 55679,
+          "rows": 945
+        },
+        "trade_prints_1m": {
+          "gzip_bytes": 77078,
+          "json_bytes": 303045,
+          "rows": 5844
+        },
+        "trade_slice_2s": {
+          "gzip_bytes": 179469,
+          "json_bytes": 495853,
+          "rows": 11701
+        }
+      },
+      "fetch_seconds": 0.196,
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"AAPL\",\"USD\",\"SHARE\"]",
+      "max_trades_per_minute": 5007,
+      "measure_seconds": 0.266,
+      "minutes_with_trades": 945,
+      "parts": 1,
+      "record_count": 244005,
+      "rows_total": 244005,
+      "sides": {
+        "BUY": 86309,
+        "SELL": 79765,
+        "UNKNOWN": 77931
+      },
+      "trades_new": 244005
+    },
+    {
+      "actions": {
+        "NEW": 209140
+      },
+      "curated_bytes": 10438522,
+      "dataset_version": "w606-l1-v2-xnas-itch-mbp-1-aapl-2026-08",
+      "date": "2026-08-04",
+      "event_ns_max": 1785887970395524897,
+      "event_ns_min": 1785830400622492981,
+      "families": {
+        "trade_level_1m": {
+          "gzip_bytes": 92031,
+          "json_bytes": 415364,
+          "rows": 13990
+        },
+        "trade_level_1m_coarse": {
+          "gzip_bytes": 31328,
+          "json_bytes": 123139,
+          "rows": 4129,
+          "ticks": 5
+        },
+        "trade_minute_1m": {
+          "gzip_bytes": 20068,
+          "json_bytes": 54574,
+          "rows": 950
+        },
+        "trade_prints_1m": {
+          "gzip_bytes": 74590,
+          "json_bytes": 290656,
+          "rows": 5615
+        },
+        "trade_slice_2s": {
+          "gzip_bytes": 194634,
+          "json_bytes": 535642,
+          "rows": 12586
+        }
+      },
+      "fetch_seconds": 0.214,
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"AAPL\",\"USD\",\"SHARE\"]",
+      "max_trades_per_minute": 4846,
+      "measure_seconds": 0.248,
+      "minutes_with_trades": 950,
+      "parts": 1,
+      "record_count": 209140,
+      "rows_total": 209140,
+      "sides": {
+        "BUY": 71671,
+        "SELL": 76901,
+        "UNKNOWN": 60568
+      },
+      "trades_new": 209140
+    },
+    {
+      "actions": {
+        "NEW": 186030
+      },
+      "curated_bytes": 9322217,
+      "dataset_version": "w606-l1-v2-xnas-itch-mbp-1-aapl-2026-08",
+      "date": "2026-08-05",
+      "event_ns_max": 1785974389189265707,
+      "event_ns_min": 1785916800072966231,
+      "families": {
+        "trade_level_1m": {
+          "gzip_bytes": 93075,
+          "json_bytes": 434920,
+          "rows": 14798
+        },
+        "trade_level_1m_coarse": {
+          "gzip_bytes": 33906,
+          "json_bytes": 136450,
+          "rows": 4651,
+          "ticks": 5
+        },
+        "trade_minute_1m": {
+          "gzip_bytes": 20255,
+          "json_bytes": 54745,
+          "rows": 948
+        },
+        "trade_prints_1m": {
+          "gzip_bytes": 75346,
+          "json_bytes": 295736,
+          "rows": 5722
+        },
+        "trade_slice_2s": {
+          "gzip_bytes": 195324,
+          "json_bytes": 538189,
+          "rows": 12795
+        }
+      },
+      "fetch_seconds": 0.164,
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"AAPL\",\"USD\",\"SHARE\"]",
+      "max_trades_per_minute": 6277,
+      "measure_seconds": 0.206,
+      "minutes_with_trades": 948,
+      "parts": 1,
+      "record_count": 186030,
+      "rows_total": 186030,
+      "sides": {
+        "BUY": 65206,
+        "SELL": 73954,
+        "UNKNOWN": 46870
+      },
+      "trades_new": 186030
+    },
+    {
+      "actions": {
+        "NEW": 162539
+      },
+      "curated_bytes": 8131511,
+      "dataset_version": "w606-l1-v2-xnas-itch-mbp-1-aapl-2026-08",
+      "date": "2026-08-06",
+      "event_ns_max": 1786060782856375050,
+      "event_ns_min": 1786003201789518207,
+      "families": {
+        "trade_level_1m": {
+          "gzip_bytes": 77748,
+          "json_bytes": 351080,
+          "rows": 11827
+        },
+        "trade_level_1m_coarse": {
+          "gzip_bytes": 26768,
+          "json_bytes": 104285,
+          "rows": 3493,
+          "ticks": 5
+        },
+        "trade_minute_1m": {
+          "gzip_bytes": 18039,
+          "json_bytes": 50057,
+          "rows": 896
+        },
+        "trade_prints_1m": {
+          "gzip_bytes": 63484,
+          "json_bytes": 250826,
+          "rows": 4837
+        },
+        "trade_slice_2s": {
+          "gzip_bytes": 168400,
+          "json_bytes": 467143,
+          "rows": 11150
+        }
+      },
+      "fetch_seconds": 0.17,
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"AAPL\",\"USD\",\"SHARE\"]",
+      "max_trades_per_minute": 2725,
+      "measure_seconds": 0.185,
+      "minutes_with_trades": 896,
+      "parts": 1,
+      "record_count": 162539,
+      "rows_total": 162539,
+      "sides": {
+        "BUY": 55570,
+        "SELL": 61161,
+        "UNKNOWN": 45808
+      },
+      "trades_new": 162539
+    },
+    {
+      "actions": {
+        "NEW": 120401
+      },
+      "curated_bytes": 6102887,
+      "dataset_version": "w606-l1-v2-xnas-itch-mbp-1-aapl-2026-08",
+      "date": "2026-08-07",
+      "event_ns_max": 1786147195704166051,
+      "event_ns_min": 1786089600047302531,
+      "families": {
+        "trade_level_1m": {
+          "gzip_bytes": 60928,
+          "json_bytes": 279007,
+          "rows": 9461
+        },
+        "trade_level_1m_coarse": {
+          "gzip_bytes": 21478,
+          "json_bytes": 84497,
+          "rows": 2859,
+          "ticks": 5
+        },
+        "trade_minute_1m": {
+          "gzip_bytes": 16555,
+          "json_bytes": 46682,
+          "rows": 839
+        },
+        "trade_prints_1m": {
+          "gzip_bytes": 59425,
+          "json_bytes": 234124,
+          "rows": 4526
+        },
+        "trade_slice_2s": {
+          "gzip_bytes": 152993,
+          "json_bytes": 429458,
+          "rows": 10413
+        }
+      },
+      "fetch_seconds": 0.148,
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"AAPL\",\"USD\",\"SHARE\"]",
+      "max_trades_per_minute": 5175,
+      "measure_seconds": 0.139,
+      "minutes_with_trades": 839,
+      "parts": 1,
+      "record_count": 120401,
+      "rows_total": 120401,
+      "sides": {
+        "BUY": 40226,
+        "SELL": 42642,
+        "UNKNOWN": 37533
+      },
+      "trades_new": 120401
+    },
+    {
+      "actions": {
+        "NEW": 162539
+      },
+      "curated_bytes": 8182262,
+      "dataset_version": "w606-l1-v3-xnas-itch-mbp-1-tsla-2026-08",
+      "date": "2026-08-03",
+      "event_ns_max": 1785801577070754017,
+      "event_ns_min": 1785744001282497587,
+      "families": {
+        "trade_level_1m": {
+          "gzip_bytes": 115375,
+          "json_bytes": 555459,
+          "rows": 19201
+        },
+        "trade_level_1m_coarse": {
+          "gzip_bytes": 39681,
+          "json_bytes": 160042,
+          "rows": 5454,
+          "ticks": 5
+        },
+        "trade_minute_1m": {
+          "gzip_bytes": 19515,
+          "json_bytes": 53195,
+          "rows": 939
+        },
+        "trade_prints_1m": {
+          "gzip_bytes": 73529,
+          "json_bytes": 284898,
+          "rows": 5508
+        },
+        "trade_slice_2s": {
+          "gzip_bytes": 169810,
+          "json_bytes": 466983,
+          "rows": 11350
+        }
+      },
+      "fetch_seconds": 0.161,
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"TSLA\",\"USD\",\"SHARE\"]",
+      "max_trades_per_minute": 2129,
+      "measure_seconds": 0.195,
+      "minutes_with_trades": 939,
+      "parts": 1,
+      "record_count": 162539,
+      "rows_total": 162539,
+      "sides": {
+        "BUY": 57273,
+        "SELL": 56075,
+        "UNKNOWN": 49191
+      },
+      "trades_new": 162539
+    },
+    {
+      "actions": {
+        "NEW": 136739
+      },
+      "curated_bytes": 6985787,
+      "dataset_version": "w606-l1-v3-xnas-itch-mbp-1-tsla-2026-08",
+      "date": "2026-08-04",
+      "event_ns_max": 1785887980697942247,
+      "event_ns_min": 1785830401595185055,
+      "families": {
+        "trade_level_1m": {
+          "gzip_bytes": 113340,
+          "json_bytes": 570652,
+          "rows": 19980
+        },
+        "trade_level_1m_coarse": {
+          "gzip_bytes": 41908,
+          "json_bytes": 175801,
+          "rows": 6094,
+          "ticks": 5
+        },
+        "trade_minute_1m": {
+          "gzip_bytes": 20281,
+          "json_bytes": 54639,
+          "rows": 957
+        },
+        "trade_prints_1m": {
+          "gzip_bytes": 79896,
+          "json_bytes": 308507,
+          "rows": 5975
+        },
+        "trade_slice_2s": {
+          "gzip_bytes": 172602,
+          "json_bytes": 480260,
+          "rows": 11988
+        }
+      },
+      "fetch_seconds": 0.145,
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"TSLA\",\"USD\",\"SHARE\"]",
+      "max_trades_per_minute": 2835,
+      "measure_seconds": 0.184,
+      "minutes_with_trades": 957,
+      "parts": 1,
+      "record_count": 136739,
+      "rows_total": 136739,
+      "sides": {
+        "BUY": 38421,
+        "SELL": 48724,
+        "UNKNOWN": 49594
+      },
+      "trades_new": 136739
+    },
+    {
+      "actions": {
+        "NEW": 110790
+      },
+      "curated_bytes": 5662059,
+      "dataset_version": "w606-l1-v3-xnas-itch-mbp-1-tsla-2026-08",
+      "date": "2026-08-05",
+      "event_ns_max": 1785974380610535567,
+      "event_ns_min": 1785916806441711809,
+      "families": {
+        "trade_level_1m": {
+          "gzip_bytes": 98823,
+          "json_bytes": 505098,
+          "rows": 17781
+        },
+        "trade_level_1m_coarse": {
+          "gzip_bytes": 37403,
+          "json_bytes": 158097,
+          "rows": 5502,
+          "ticks": 5
+        },
+        "trade_minute_1m": {
+          "gzip_bytes": 19138,
+          "json_bytes": 52499,
+          "rows": 939
+        },
+        "trade_prints_1m": {
+          "gzip_bytes": 73530,
+          "json_bytes": 288323,
+          "rows": 5588
+        },
+        "trade_slice_2s": {
+          "gzip_bytes": 142881,
+          "json_bytes": 399646,
+          "rows": 10112
+        }
+      },
+      "fetch_seconds": 0.112,
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"TSLA\",\"USD\",\"SHARE\"]",
+      "max_trades_per_minute": 3168,
+      "measure_seconds": 0.161,
+      "minutes_with_trades": 939,
+      "parts": 1,
+      "record_count": 110790,
+      "rows_total": 110790,
+      "sides": {
+        "BUY": 32182,
+        "SELL": 37945,
+        "UNKNOWN": 40663
+      },
+      "trades_new": 110790
+    },
+    {
+      "actions": {
+        "NEW": 118340
+      },
+      "curated_bytes": 6038151,
+      "dataset_version": "w606-l1-v3-xnas-itch-mbp-1-tsla-2026-08",
+      "date": "2026-08-06",
+      "event_ns_max": 1786060798042409076,
+      "event_ns_min": 1786003200031126185,
+      "families": {
+        "trade_level_1m": {
+          "gzip_bytes": 96752,
+          "json_bytes": 481524,
+          "rows": 16835
+        },
+        "trade_level_1m_coarse": {
+          "gzip_bytes": 34336,
+          "json_bytes": 141505,
+          "rows": 4871,
+          "ticks": 5
+        },
+        "trade_minute_1m": {
+          "gzip_bytes": 17638,
+          "json_bytes": 49581,
+          "rows": 896
+        },
+        "trade_prints_1m": {
+          "gzip_bytes": 65081,
+          "json_bytes": 252708,
+          "rows": 4885
+        },
+        "trade_slice_2s": {
+          "gzip_bytes": 145166,
+          "json_bytes": 402094,
+          "rows": 9910
+        }
+      },
+      "fetch_seconds": 0.146,
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"TSLA\",\"USD\",\"SHARE\"]",
+      "max_trades_per_minute": 2518,
+      "measure_seconds": 0.161,
+      "minutes_with_trades": 896,
+      "parts": 1,
+      "record_count": 118340,
+      "rows_total": 118340,
+      "sides": {
+        "BUY": 34030,
+        "SELL": 41207,
+        "UNKNOWN": 43103
+      },
+      "trades_new": 118340
+    },
+    {
+      "actions": {
+        "NEW": 152264
+      },
+      "curated_bytes": 7692086,
+      "dataset_version": "w606-l1-v3-xnas-itch-mbp-1-tsla-2026-08",
+      "date": "2026-08-07",
+      "event_ns_max": 1786147194973052491,
+      "event_ns_min": 1786089600057300338,
+      "families": {
+        "trade_level_1m": {
+          "gzip_bytes": 113462,
+          "json_bytes": 545785,
+          "rows": 18886
+        },
+        "trade_level_1m_coarse": {
+          "gzip_bytes": 38374,
+          "json_bytes": 154169,
+          "rows": 5236,
+          "ticks": 5
+        },
+        "trade_minute_1m": {
+          "gzip_bytes": 18404,
+          "json_bytes": 50936,
+          "rows": 914
+        },
+        "trade_prints_1m": {
+          "gzip_bytes": 69039,
+          "json_bytes": 268461,
+          "rows": 5189
+        },
+        "trade_slice_2s": {
+          "gzip_bytes": 165204,
+          "json_bytes": 453657,
+          "rows": 11122
+        }
+      },
+      "fetch_seconds": 0.14,
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"TSLA\",\"USD\",\"SHARE\"]",
+      "max_trades_per_minute": 4662,
+      "measure_seconds": 0.189,
+      "minutes_with_trades": 914,
+      "parts": 1,
+      "record_count": 152264,
+      "rows_total": 152264,
+      "sides": {
+        "BUY": 53229,
+        "SELL": 51443,
+        "UNKNOWN": 47592
+      },
+      "trades_new": 152264
+    },
+    {
+      "actions": {
+        "NEW": 220736
+      },
+      "curated_bytes": 10960690,
+      "dataset_version": "w606-l1-v3-xnas-itch-mbp-1-tsla-2026-08",
+      "date": "2026-08-21",
+      "event_ns_max": 1787356797872334283,
+      "event_ns_min": 1787299200690664386,
+      "families": {
+        "trade_level_1m": {
+          "gzip_bytes": 153356,
+          "json_bytes": 744634,
+          "rows": 25737
+        },
+        "trade_level_1m_coarse": {
+          "gzip_bytes": 51922,
+          "json_bytes": 208882,
+          "rows": 7069,
+          "ticks": 5
+        },
+        "trade_minute_1m": {
+          "gzip_bytes": 19594,
+          "json_bytes": 53200,
+          "rows": 942
+        },
+        "trade_prints_1m": {
+          "gzip_bytes": 72350,
+          "json_bytes": 278199,
+          "rows": 5376
+        },
+        "trade_slice_2s": {
+          "gzip_bytes": 170945,
+          "json_bytes": 464197,
+          "rows": 11232
+        }
+      },
+      "fetch_seconds": 0.249,
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"TSLA\",\"USD\",\"SHARE\"]",
+      "max_trades_per_minute": 4137,
+      "measure_seconds": 0.207,
+      "minutes_with_trades": 942,
+      "parts": 1,
+      "record_count": 220736,
+      "rows_total": 220736,
+      "sides": {
+        "BUY": 80886,
+        "SELL": 62898,
+        "UNKNOWN": 76952
+      },
+      "trades_new": 220736
+    }
+  ],
+  "geometry": {
+    "prints_per_side_per_minute": 4,
+    "slice_ms": 2000
+  },
+  "measured_at": "2026-09-21T14:50:39Z",
+  "snapshot_sha256": "45fe353f21fb296c75bd355fbba175b0a53ba92443ac75e9c2d7abb157fe36a8",
+  "summary": {
+    "[\"XCME\",\"FUTURE\",\"ESU6\",\"USD\",\"CONTRACT\"]": {
+      "days": 5,
+      "families": {
+        "trade_level_1m": {
+          "gzip_bytes": 348766,
+          "json_bytes": 1534634,
+          "max_day_rows": 11494,
+          "rows": 51714
+        },
+        "trade_minute_1m": {
+          "gzip_bytes": 121946,
+          "json_bytes": 339922,
+          "max_day_rows": 1382,
+          "rows": 6789
+        },
+        "trade_prints_1m": {
+          "gzip_bytes": 679335,
+          "json_bytes": 2790025,
+          "max_day_rows": 11050,
+          "rows": 54216
+        },
+        "trade_slice_2s": {
+          "gzip_bytes": 1937031,
+          "json_bytes": 5816320,
+          "max_day_rows": 32241,
+          "rows": 153209
+        }
+      },
+      "trades_new": 2215798
+    },
+    "[\"XCME\",\"FUTURE\",\"NQU6\",\"USD\",\"CONTRACT\"]": {
+      "days": 5,
+      "families": {
+        "trade_level_1m": {
+          "gzip_bytes": 1430355,
+          "json_bytes": 8884626,
+          "max_day_rows": 67908,
+          "rows": 312044
+        },
+        "trade_minute_1m": {
+          "gzip_bytes": 123693,
+          "json_bytes": 342256,
+          "max_day_rows": 1382,
+          "rows": 6789
+        },
+        "trade_prints_1m": {
+          "gzip_bytes": 684011,
+          "json_bytes": 2823302,
+          "max_day_rows": 11054,
+          "rows": 54290
+        },
+        "trade_slice_2s": {
+          "gzip_bytes": 2135717,
+          "json_bytes": 6305463,
+          "max_day_rows": 34346,
+          "rows": 163600
+        }
+      },
+      "trades_new": 2017404
+    },
+    "[\"XNAS\",\"EQUITY\",\"AAPL\",\"USD\",\"SHARE\"]": {
+      "days": 5,
+      "families": {
+        "trade_level_1m": {
+          "gzip_bytes": 428753,
+          "json_bytes": 1956575,
+          "max_day_rows": 16118,
+          "rows": 66194
+        },
+        "trade_level_1m_coarse": {
+          "gzip_bytes": 148709,
+          "json_bytes": 583316,
+          "max_day_rows": 4651,
+          "rows": 19620
+        },
+        "trade_minute_1m": {
+          "gzip_bytes": 95627,
+          "json_bytes": 261737,
+          "max_day_rows": 950,
+          "rows": 4578
+        },
+        "trade_prints_1m": {
+          "gzip_bytes": 349923,
+          "json_bytes": 1374387,
+          "max_day_rows": 5844,
+          "rows": 26544
+        },
+        "trade_slice_2s": {
+          "gzip_bytes": 890820,
+          "json_bytes": 2466285,
+          "max_day_rows": 12795,
+          "rows": 58645
+        }
+      },
+      "trades_new": 922115
+    },
+    "[\"XNAS\",\"EQUITY\",\"TSLA\",\"USD\",\"SHARE\"]": {
+      "days": 6,
+      "families": {
+        "trade_level_1m": {
+          "gzip_bytes": 691108,
+          "json_bytes": 3403152,
+          "max_day_rows": 25737,
+          "rows": 118420
+        },
+        "trade_level_1m_coarse": {
+          "gzip_bytes": 243624,
+          "json_bytes": 998496,
+          "max_day_rows": 7069,
+          "rows": 34226
+        },
+        "trade_minute_1m": {
+          "gzip_bytes": 114570,
+          "json_bytes": 314050,
+          "max_day_rows": 957,
+          "rows": 5587
+        },
+        "trade_prints_1m": {
+          "gzip_bytes": 433425,
+          "json_bytes": 1681096,
+          "max_day_rows": 5975,
+          "rows": 32521
+        },
+        "trade_slice_2s": {
+          "gzip_bytes": 966608,
+          "json_bytes": 2666837,
+          "max_day_rows": 11988,
+          "rows": 65714
+        }
+      },
+      "trades_new": 901408
+    }
+  },
+  "version": 1
+}

@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "kind": "ws-fanout",
+  "name": "o0-ws-slow-client-eviction-shrunk-thresholds",
+  "clients": 4,
+  "warmupMs": 6000,
+  "durationMs": 30000,
+  "sampleEveryMs": 100,
+  "upstream": { "tradesPerPulse": 20, "pulseMs": 20 },
+  "slowClients": { "count": 1, "pauseAfterMs": 1000, "stopAfterEviction": true },
+  "server": { "clientBufferSoftBytes": 300000, "clientBufferHardBytes": 3000000, "clientBufferGraceMs": 300 }
+}

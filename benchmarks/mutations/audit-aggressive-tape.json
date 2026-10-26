@@ -1,0 +1,276 @@
+{
+  "mutations": [
+    {
+      "id": "audit-tape.late-print-appended",
+      "file": "apps/web/src/lib/indicators/aggressive-orders/aggressiveTape.ts",
+      "find": "    if (insertLate && print.ts < this._lastTs) {",
+      "replace": "    if (false) {",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/aggressive-orders"
+      ],
+      "mustFail": [
+        "places a late live print chronologically and invalidates incremental calculations"
+      ]
+    },
+    {
+      "id": "audit-tape.duplicate-live-print",
+      "file": "apps/web/src/lib/indicators/aggressive-orders/aggressiveTape.ts",
+      "find": "    if (this._liveSince === null) this._liveSince = this._now();\n    if (this._ids.has(trade.trade_id)) return;",
+      "replace": "    if (this._liveSince === null) this._liveSince = this._now();",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/aggressive-orders"
+      ],
+      "mustFail": [
+        "takes from a snapshot only the prints it does not hold yet, by trade id, and starts over o"
+      ]
+    },
+    {
+      "id": "audit-tape.live-span-not-kept",
+      "file": "apps/web/src/lib/indicators/aggressive-orders/aggressiveTape.ts",
+      "find": "      this._liveSpans.push({ from: this._liveSince, to: this._lastLiveTs });",
+      "replace": "      void 0;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/chart/tests/indicatorTicks.test.ts"
+      ],
+      "mustFail": [
+        "keeps the stretch before a reconnect complete up to its last live print, and the gap after"
+      ]
+    },
+    {
+      "id": "audit-tape.dropped-live-not-marked",
+      "file": "apps/web/src/lib/indicators/aggressive-orders/aggressiveTape.ts",
+      "find": "    if (!print.history && print.ts > this._liveDroppedThrough) this._liveDroppedThrough = print.ts;",
+      "replace": "    void 0;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/chart/tests/indicatorTicks.test.ts"
+      ],
+      "mustFail": [
+        "calls a window the size cap took live prints from thin, and the windows after the newest o"
+      ]
+    },
+    {
+      "id": "audit-tape.coverage-other-floor-merged",
+      "file": "apps/web/src/lib/indicators/aggressive-orders/aggressiveTape.ts",
+      "find": "      if (entry.floor !== minSize || entry.to < span.from || entry.from > span.to) apart.push(entry);",
+      "replace": "      if (entry.to < span.from || entry.from > span.to) apart.push(entry);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/aggressive-orders"
+      ],
+      "mustFail": [
+        "remembers what history covered per floor: a reply counts for asks at its floor or above, n"
+      ]
+    },
+    {
+      "id": "audit-tape.coverage-higher-floor-counts",
+      "file": "apps/web/src/lib/indicators/aggressive-orders/aggressiveTape.ts",
+      "find": "      if (entry.floor > minSize) continue;",
+      "replace": "      void 0;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/chart/tests/indicatorTicks.test.ts"
+      ],
+      "mustFail": [
+        "calls floor-filtered history thin, and says which half of the window it covers"
+      ]
+    },
+    {
+      "id": "audit-tape.trim-big-prints-first",
+      "file": "apps/web/src/lib/indicators/aggressive-orders/aggressiveTape.ts",
+      "find": "      if (excess > 0 && (keepFrom <= 0 || print.size < keepFrom)) {",
+      "replace": "      if (excess > 0) {",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/aggressive-orders"
+      ],
+      "mustFail": [
+        "over the cap it sheds the small prints first and keeps the big ones history was promised f"
+      ]
+    },
+    {
+      "id": "audit-tape.trim-keeps-coverage",
+      "file": "apps/web/src/lib/indicators/aggressive-orders/aggressiveTape.ts",
+      "find": "    this._uncoverBefore(kept.length === 0 ? Infinity : kept[0].ts);\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/aggressive-orders"
+      ],
+      "mustFail": [
+        "once the tape is full, the history it shed is not asked for again: the wanted edge stays a"
+      ]
+    },
+    {
+      "id": "audit-tape.thin-keeps-all",
+      "file": "apps/web/src/lib/indicators/aggressive-orders/aggressiveTape.ts",
+      "find": "      if (bucket.length <= HISTORY_THIN_PER_MINUTE_SIDE) continue;",
+      "replace": "      continue;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/aggressive-orders"
+      ],
+      "mustFail": [
+        "thins history older than the raw stretch to the biggest prints of each minute and side, an"
+      ]
+    },
+    {
+      "id": "audit-tape.auto-floor-includes-history",
+      "file": "apps/web/src/lib/indicators/aggressive-orders/aggressiveTape.ts",
+      "find": "    for (const print of this._prints) if (!print.history) sizes[n++] = print.size;",
+      "replace": "    for (const print of this._prints) sizes[n++] = print.size;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/aggressive-orders"
+      ],
+      "mustFail": [
+        "measures the automatic floor on live prints only: history, already filtered at a floor, mu"
+      ]
+    },
+    {
+      "id": "audit-tape.cluster-across-sides",
+      "file": "apps/web/src/lib/indicators/aggressive-orders/aggressiveTape.ts",
+      "find": "    if (cluster.side !== print.side) continue;",
+      "replace": "    void 0;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/aggressive-orders"
+      ],
+      "mustFail": [
+        "merges a sweep (same side, same timestamp, several levels) into one bubble even with runs "
+      ]
+    },
+    {
+      "id": "audit-tape.cluster-vwap-unweighted",
+      "file": "apps/web/src/lib/indicators/aggressive-orders/aggressiveTape.ts",
+      "find": "    target.vwap = (target.vwap * (target.volume - print.size) + print.price * print.size) / target.volume;",
+      "replace": "    target.vwap = (target.vwap + print.price) / 2;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/aggressive-orders"
+      ],
+      "mustFail": [
+        "merges a sweep (same side, same timestamp, several levels) into one bubble even with runs "
+      ]
+    },
+    {
+      "id": "audit-tape.cluster-gap-ignored",
+      "file": "apps/web/src/lib/indicators/aggressive-orders/aggressiveTape.ts",
+      "find": "      print.ts - cluster.lastTs <= rules.gapMs &&\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/aggressive-orders"
+      ],
+      "mustFail": [
+        "closes a run after the gap and at the end of its life"
+      ]
+    },
+    {
+      "id": "audit-tape.cluster-bucket-ignored",
+      "file": "apps/web/src/lib/indicators/aggressive-orders/aggressiveTape.ts",
+      "find": "      (rules.bucketMs <= 0 || Math.floor(print.ts / rules.bucketMs) === Math.floor(cluster.ts / rules.bucketMs))\n",
+      "replace": "      true\n",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/aggressive-orders"
+      ],
+      "mustFail": [
+        "keeps a candle's bubbles inside that candle when the rules bind them to one"
+      ]
+    },
+    {
+      "id": "audit-tape.gap-ask-not-capped",
+      "file": "apps/web/src/lib/indicators/aggressive-orders/aggressiveTape.ts",
+      "find": "    const from = Math.max(ask.from, to - HISTORY_ASK_MAX_MS);",
+      "replace": "    const from = ask.from;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/aggressive-orders"
+      ],
+      "mustFail": [
+        "asks for a long hole one piece at a time, the newest first, so no ask is longer than the h"
+      ]
+    },
+    {
+      "id": "audit-tape.given-up-ignored",
+      "file": "apps/web/src/lib/indicators/aggressive-orders/aggressiveTape.ts",
+      "find": "      if (stretch.from < to && stretch.to > ask.from) to = Math.min(to, stretch.from);",
+      "replace": "      void stretch;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/aggressive-orders"
+      ],
+      "mustFail": [
+        "skips a stretch given up on and asks for the piece below it, until the cooldown passes"
+      ]
+    },
+    {
+      "id": "audit-tape.bubbles-window-wrong",
+      "file": "apps/web/src/lib/indicators/aggressive-orders/aggressiveTape.ts",
+      "find": "      if (cluster.ts < fromMs || cluster.ts > toMs) continue;",
+      "replace": "      if (cluster.ts > toMs) continue;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/aggressive-orders"
+      ],
+      "mustFail": [
+        "returns the bubbles whose first print falls in a window, oldest first"
+      ]
+    }
+  ]
+}

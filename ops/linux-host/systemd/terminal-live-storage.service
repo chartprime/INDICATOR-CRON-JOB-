@@ -1,0 +1,56 @@
+# Live-storage service (W6.11). Loopback-only reads of market-data.sqlite,
+# relayed by the archive gateway. Never writes; ttcollect already owns it.
+[Unit]
+Description=Terminal-L1-L2 live-storage service
+Wants=network-online.target
+After=network-online.target time-sync.target
+RequiresMountsFor=/srv/terminal-data
+StartLimitIntervalSec=300
+StartLimitBurst=5
+OnFailure=terminal-alert@%n.service
+
+[Service]
+Type=simple
+User=ttcollect
+Group=ttcollect
+Slice=terminal.slice
+WorkingDirectory=/opt/terminal-l1-l2/current/apps/runtime
+Environment=NODE_ENV=production
+Environment=TT_DATA_ROOT=/srv/terminal-data/capture
+Environment=TT_LOG_DIR=/var/log/terminal-l1-l2/live-storage
+Environment=TT_HEATMAP_DIR=/srv/terminal-data/heatmap
+Environment=TT_ICEBERG_DIR=/srv/terminal-data/iceberg-history
+EnvironmentFile=/etc/terminal-l1-l2/live-storage/service.env
+LogsDirectory=terminal-l1-l2/live-storage
+ExecStartPre=/usr/bin/mountpoint -q /srv/terminal-data
+ExecStartPre=+/opt/terminal-l1-l2/ops/scripts/check-service-env.sh /etc/terminal-l1-l2/live-storage/service.env live-storage
+ExecStartPre=/usr/bin/test -r /srv/terminal-data/capture/live/market-data.sqlite
+ExecStart=/opt/terminal-l1-l2/node-v24.21.0-linux-x64/bin/node /opt/terminal-l1-l2/current/apps/runtime/scripts/serve/run-live-storage-service.js 8003
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=30
+UMask=0077
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+IPAddressDeny=any
+IPAddressAllow=localhost
+ReadOnlyPaths=/srv/terminal-data/capture /srv/terminal-data/iceberg-history
+MemoryHigh=6G
+MemoryMax=8G
+TasksMax=256
+Nice=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=terminal-live-storage
+
+[Install]
+WantedBy=multi-user.target

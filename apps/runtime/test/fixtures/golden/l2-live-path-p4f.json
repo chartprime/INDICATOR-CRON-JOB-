@@ -1,0 +1,45 @@
+{
+  "binanceLive": {
+    "samples": 600,
+    "eventCount": 4563,
+    "eventsSha256": "9e95e8e5f1c26dda11987422454010b2bb0da1e67bfdb486bcfc50719eb09b2b",
+    "liteSha256": "5ecbd079f360869109fce0390b14f57cae548f0af3082fb086bb8d90b4c1e9c0",
+    "ladderSha256": "a205f5f5fce2579a4a0e23c0879a16ed6d361965bc0e072d80e1d33563e58861",
+    "stats": {
+      "seeds": 1,
+      "resyncs": 1,
+      "deltas": 2388,
+      "trades": 2481,
+      "lateEvents": 2470,
+      "unavailable": 1,
+      "outsideRangeSeeds": 5,
+      "bidRecords": 21,
+      "askRecords": 20,
+      "lastTs": 1780000600000
+    },
+    "pendingPrints": 2481,
+    "light": 1200,
+    "full": 1191
+  },
+  "dxfeedLive": {
+    "samples": 600,
+    "eventCount": 26431,
+    "eventsSha256": "710304e3979bf86b155fad59674ed70baf15f5c2ba93df049e89739e389e5483",
+    "liteSha256": "85bd2998373015f9f26ac89fa495258a39ad3c7eca33e88bd378e6ed88cf222f",
+    "ladderSha256": "7feac9b5bc0e5242c37db63ceac43df453a05e526ddcaad30380df1363986475",
+    "stats": {
+      "seeds": 1,
+      "resyncs": 2,
+      "deltas": 2385,
+      "trades": 2136,
+      "lateEvents": 838,
+      "unavailable": 2,
+      "outsideRangeSeeds": 0,
+      "bidRecords": 54,
+      "askRecords": 77,
+      "lastTs": 1780000600120
+    },
+    "pendingPrints": 2136,
+    "orders": 7203
+  }
+}

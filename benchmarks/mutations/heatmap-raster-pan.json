@@ -1,0 +1,795 @@
+{
+ "mutations": [
+  {
+   "id": "raster.changed-bands-ignored",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": "      for (const [y0, y1] of merged(rows)) this._paint(raster, painter, raster.from, raster.to, y0, y1);",
+   "replace": "      for (const [y0, y1] of merged(rows)) this._paint(raster, painter, raster.from, raster.from, y0, y1);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatCache.test.ts"
+   ],
+   "mustFail": [
+    "paints again only the rows of a band whose standing wall grew"
+   ]
+  },
+  {
+   "id": "raster.scale-check-skipped",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": "      if (!sameScale(runs.style, spans, before, runs.saturation)) {",
+   "replace": "      if (false) {",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatCache.test.ts"
+   ],
+   "mustFail": [
+    "paints the view again when a new largest level changes the crypto colour scale"
+   ]
+  },
+  {
+   "id": "raster.split-one-late",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": "      const split = xAt(anchor, liveOpen) + 1 - painter.cap;",
+   "replace": "      const split = xAt(anchor, liveOpen) + 2 - painter.cap;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatCache.test.ts"
+   ],
+   "mustFail": [
+    "draws them as before, pixel for pixel"
+   ]
+  },
+  {
+   "id": "raster.left-strip-skipped",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": "      if (needFrom < raster.from) {",
+   "replace": "      if (needFrom < raster.from && needFrom > 0) {",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatCache.test.ts"
+   ],
+   "mustFail": [
+    "moves the raster on a pan by whole pixels and paints only the strip the pan uncovered"
+   ]
+  },
+  {
+   "id": "raster.reanchor-copy-dropped",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": "        context.drawImage(raster.context.canvas, keepFrom - raster.left, 0, keepTo - keepFrom, height, keepFrom - left, 0, keepTo - keepFrom, height);",
+   "replace": "        context.clearRect(0, 0, 0, 0);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatCache.test.ts"
+   ],
+   "mustFail": [
+    "carries what it painted onto the other canvas when a pan outruns the spare, and paints only what is new"
+   ]
+  },
+  {
+   "id": "raster.never-settles",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": "          if (still) raster = null;",
+   "replace": "          if (false) raster = null;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatCache.test.ts"
+   ],
+   "mustFail": [
+    "draws a pan off the whole pixel at the nearest one, asks for a frame, and paints it exactly once the view stood still"
+   ]
+  },
+  {
+   "id": "raster.search-window-narrow",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": "  const fromMs = msAt(mapping, x0 - painter.livePx - 2);",
+   "replace": "  const fromMs = msAt(mapping, x0) + 1000;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatCache.test.ts"
+   ],
+   "mustFail": [
+    "keeps the very picture a fresh paint makes, step after step"
+   ]
+  },
+  {
+   "id": "raster.column-changes-ignored",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": "    if (changed.length > 0) {",
+   "replace": "    if (changed.length < 0) {",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatCache.test.ts"
+   ],
+   "mustFail": [
+    "paints only a narrow strip where the oldest second drops off a full tier, not the view",
+    "paints again the strip of a column replaced in place with the same time, as a folded cell is"
+   ]
+  },
+  {
+   "id": "raster.replaced-column-unseen",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": "  if (a === b) return true;",
+   "replace": "  if (a !== null) return true;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatCache.test.ts"
+   ],
+   "mustFail": [
+    "paints again the strip of a column replaced in place with the same time, as a folded cell is"
+   ]
+  },
+  {
+   "id": "raster.live-reuse-ignores-book",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": "      if (kept !== null && kept.runs === painter.runs && kept.key === liveKey) {",
+   "replace": "      if (kept !== null && kept.key === liveKey) {",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatCache.test.ts"
+   ],
+   "mustFail": [
+    "keeps the very picture a fresh paint makes, step after step"
+   ]
+  },
+  {
+   "id": "raster.data-start-unclipped",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": "  const left = Math.max(x0, xAt(mapping, painter.dataStart));",
+   "replace": "  const left = x0;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatCache.test.ts"
+   ],
+   "mustFail": [
+    "draws them as before, pixel for pixel"
+   ]
+  },
+  {
+   "id": "raster.run-start-not-jumped",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": "          if (columns[c].ts < run.startTs) c = firstColumnFrom(columns, run.startTs, c, stop);",
+   "replace": "          if (columns[c].ts < run.startTs - 1e12) c = firstColumnFrom(columns, run.startTs, c, stop);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatCache.test.ts"
+   ],
+   "mustFail": [
+    "draws them as before, pixel for pixel"
+   ]
+  },
+  {
+   "id": "raster.column-scale-misread",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": "            const at = (c - first) * 4;",
+   "replace": "            const at = 0;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatRaster.test.ts"
+   ],
+   "mustFail": [
+    "exactly while every column is in view, and but for the edge columns when the view cuts through them"
+   ]
+  },
+  {
+   "id": "raster.open-run-end-unclamped",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": "          list.push(segment.startTs, segment.endTs > endTs ? Infinity : segment.endTs, FATE_CODE[segment.fate], segment.peak);",
+   "replace": "          list.push(segment.startTs, segment.endTs, FATE_CODE[segment.fate], segment.peak);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatCache.test.ts"
+   ],
+   "mustFail": [
+    "paints no raster pixel for a live column that changes no settled run"
+   ]
+  },
+  {
+   "id": "raster.run-peak-unmarked",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": "          list.push(segment.startTs, segment.endTs > endTs ? Infinity : segment.endTs, FATE_CODE[segment.fate], segment.peak);",
+   "replace": "          list.push(segment.startTs, segment.endTs > endTs ? Infinity : segment.endTs, FATE_CODE[segment.fate]);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatCache.test.ts"
+   ],
+   "mustFail": [
+    "paints again only the rows of a band whose standing wall grew"
+   ]
+  },
+  {
+   "id": "raster.hidden-fate-painted",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": "          if (!showsFate(settings, run.fate)) continue;",
+   "replace": "          if (!showsFate(settings, run.fate) && run.fate === \"resting\") continue;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatRaster.test.ts",
+    "-t",
+    "for every Show filter"
+   ],
+   "mustFail": [
+    "for every Show filter and with pulled levels hidden"
+   ]
+  },
+  {
+   "id": "raster.stale-never-repainted",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": "    if (raster.stale) return !still;",
+   "replace": "    if (raster.stale) return true;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatCache.test.ts"
+   ],
+   "mustFail": [
+    "lets a colour scale that moves during a drag wait until the view stands still, then paints it exactly"
+   ]
+  },
+  {
+   "id": "raster.scale-never-deferred",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": "        if (still) return false;",
+   "replace": "        if (still || !still) return false;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatCache.test.ts"
+   ],
+   "mustFail": [
+    "lets a colour scale that moves during a drag wait until the view stands still, then paints it exactly"
+   ]
+  },
+  {
+   "id": "raster.pan-not-moved",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": "from + shift, raster.top, to - from, raster.height);",
+   "replace": "from, raster.top, to - from, raster.height);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatCache.test.ts"
+   ],
+   "mustFail": [
+    "moves the raster on a pan by whole pixels and paints only the strip the pan uncovered"
+   ]
+  },
+  {
+   "id": "raster.live-not-shifted",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": "      const mapping: Mapping = { ...anchor, shift };",
+   "replace": "      const mapping: Mapping = { ...anchor, shift: 0 };",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatCache.test.ts"
+   ],
+   "mustFail": [
+    "moves the raster on a pan by whole pixels and paints only the strip the pan uncovered"
+   ]
+  },
+  {
+   "id": "raster.fraction-taken-as-whole",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": "        if (Math.abs(delta - shift) > WHOLE_PX) {",
+   "replace": "        if (false) {",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatCache.test.ts"
+   ],
+   "mustFail": [
+    "draws a pan off the whole pixel at the nearest one, asks for a frame, and paints it exactly once the view stood still"
+   ]
+  },
+  {
+   "id": "raster.settle-frame-not-asked",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": "          else host.scheduleRepaint(settleIn);",
+   "replace": "          else void settleIn;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatCache.test.ts"
+   ],
+   "mustFail": [
+    "draws a pan off the whole pixel at the nearest one, asks for a frame, and paints it exactly once the view stood still"
+   ]
+  },
+  {
+   "id": "raster.still-one-frame-late",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": "      const still = now - this._movedAt >= SETTLE_MS;",
+   "replace": "      const still = now - this._movedAt > SETTLE_MS;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatCache.test.ts"
+   ],
+   "mustFail": [
+    "draws a pan off the whole pixel at the nearest one, asks for a frame, and paints it exactly once the view stood still"
+   ]
+  },
+  {
+   "id": "raster.pan-not-restarting-settle",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": "      const view = `${key}|${layout.originX}`;",
+   "replace": "      const view = key;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatCache.test.ts"
+   ],
+   "mustFail": [
+    "draws a pan off the whole pixel at the nearest one, asks for a frame, and paints it exactly once the view stood still"
+   ]
+  },
+  {
+   "id": "raster.bands-never-remembered",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": "        this._bands = bands;",
+   "replace": "",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatCache.test.ts"
+   ],
+   "mustFail": [
+    "draws a pan off the whole pixel at the nearest one, asks for a frame, and paints it exactly once the view stood still"
+   ]
+  },
+  {
+   "id": "raster.stale-frame-not-asked",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": "      if (raster !== null && raster.stale) host.scheduleRepaint(settleIn);",
+   "replace": "      if (raster !== null && raster.stale) void settleIn;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatCache.test.ts"
+   ],
+   "mustFail": [
+    "lets a colour scale that moves during a drag wait until the view stands still, then paints it exactly"
+   ]
+  },
+  {
+   "id": "raster.shift-kept-on-repaint",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": "      if (raster === null) shift = 0;",
+   "replace": "",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatCache.test.ts"
+   ],
+   "mustFail": [
+    "draws a pan off the whole pixel at the nearest one, asks for a frame, and paints it exactly once the view stood still"
+   ]
+  },
+  {
+   "id": "raster.live-candle-in-raster",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": "      const liveOpen = liveBar === undefined ? Infinity : liveBar.time;",
+   "replace": "      const liveOpen = Infinity;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatCache.test.ts"
+   ],
+   "mustFail": [
+    "paints no raster pixel for a live column that changes no settled run"
+   ]
+  },
+  {
+   "id": "raster.live-head-cut",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": "      const liveTo = Math.min(width, xAt(mapping, lastEnd) + painter.livePx);",
+   "replace": "      const liveTo = Math.min(width, xAt(mapping, lastEnd));",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatCache.test.ts"
+   ],
+   "mustFail": [
+    "draws them as before, pixel for pixel"
+   ]
+  },
+  {
+   "id": "raster.live-key-ignores-bands",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": "      const liveKey = `${key}|${this._bandsSeen}|${anchor.originX}|${liveFrom - shift}|${liveTo - shift}`;",
+   "replace": "      const liveKey = `${key}|${anchor.originX}|${liveFrom - shift}|${liveTo - shift}`;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatCache.test.ts"
+   ],
+   "mustFail": [
+    "keeps the very picture a fresh paint makes, step after step"
+   ]
+  },
+  {
+   "id": "raster.reused-across-keys",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": "      let raster = this._raster !== null && this._raster.key === key && sameBands(this._raster.bands, bands) ? this._raster : null;",
+   "replace": "      let raster = this._raster !== null && sameBands(this._raster.bands, bands) ? this._raster : null;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatCache.test.ts"
+   ],
+   "mustFail": [
+    "paints the view again on a zoom step, a colour change and a candle close"
+   ]
+  },
+  {
+   "id": "raster.zoom-not-keyed",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": "        layout.pxPerMs, layout.originMs, liveOpen, layout.lane, layout.rowWidth, layout.clusterRows, layout.intervalMs, layout.gaps,",
+   "replace": "        layout.originMs, liveOpen, layout.lane, layout.rowWidth, layout.clusterRows, layout.intervalMs, layout.gaps,",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatCache.test.ts"
+   ],
+   "mustFail": [
+    "paints the view again on a zoom step, a colour change and a candle close"
+   ]
+  },
+  {
+   "id": "raster.settings-not-keyed",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": "        settings, host.bidRgb, host.askRgb, horizontalPixelRatio, verticalPixelRatio, width, height,",
+   "replace": "        host.bidRgb, host.askRgb, horizontalPixelRatio, verticalPixelRatio, width, height,",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatRaster"
+   ],
+   "mustFail": [
+    "through a random walk of pans, zooms, price moves, live columns, candle closes, ledger fates and settings"
+   ]
+  },
+  {
+   "id": "raster.bands-not-checked",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": "      let raster = this._raster !== null && this._raster.key === key && sameBands(this._raster.bands, bands) ? this._raster : null;",
+   "replace": "      let raster = this._raster !== null && this._raster.key === key ? this._raster : null;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatCache.test.ts"
+   ],
+   "mustFail": [
+    "keeps the very picture a fresh paint makes, step after step"
+   ]
+  },
+  {
+   "id": "raster.kept-buffer-not-cleared",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": "      kept.data.fill(0);",
+   "replace": "",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatCache.test.ts"
+   ],
+   "mustFail": [
+    "paints the view again on a zoom step, a colour change and a candle close"
+   ]
+  },
+  {
+   "id": "raster.buffer-size-ignored",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": "    if (kept !== null && kept.width === width && kept.height === height) {",
+   "replace": "    if (kept !== null) {",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatCache.test.ts"
+   ],
+   "mustFail": [
+    "moves the raster on a pan by whole pixels and paints only the strip the pan uncovered"
+   ]
+  },
+  {
+   "id": "raster.spare-canvas-kept",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": "      host.raster(slot === 0 ? 1 : 0, 0, 0);",
+   "replace": "",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatCache.test.ts"
+   ],
+   "mustFail": [
+    "lets the spare canvas go once the view is painted afresh"
+   ]
+  },
+  {
+   "id": "raster.spare-too-wide",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": "export const RASTER_SPARE_VIEWS = 0.25;",
+   "replace": "export const RASTER_SPARE_VIEWS = 1;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatCache.test.ts"
+   ],
+   "mustFail": [
+    "carries what it painted onto the other canvas when a pan outruns the spare, and paints only what is new"
+   ]
+  },
+  {
+   "id": "raster.every-band-repainted",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": "        if (sameMarks(marks[i], raster.marks[i])) continue;",
+   "replace": "        if (sameMarks(marks[i], raster.marks[i]) && i < 0) continue;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatCache.test.ts"
+   ],
+   "mustFail": [
+    "paints no raster pixel for a live column that changes no settled run"
+   ]
+  },
+  {
+   "id": "raster.marks-wrong-band",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": "        const band = painter.bands[i >> 1];",
+   "replace": "        const band = painter.bands[i >> 2];",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatCache.test.ts"
+   ],
+   "mustFail": [
+    "paints again only the rows of a band whose standing wall grew"
+   ]
+  },
+  {
+   "id": "raster.fate-unmarked",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": "const FATE_CODE: Record<RunFate, number> = { resting: 0, consumed: 1, pulled: 2 };",
+   "replace": "const FATE_CODE: Record<RunFate, number> = { resting: 0, consumed: 0, pulled: 0 };",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatRaster"
+   ],
+   "mustFail": [
+    "through a random walk of pans, zooms, price moves, live columns, candle closes, ledger fates and settings"
+   ]
+  },
+  {
+   "id": "raster.ranges-unsorted",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": "  ranges.sort((a, b) => a[0] - b[0]);",
+   "replace": "",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatRaster"
+   ],
+   "mustFail": [
+    "through a random walk of pans, zooms, price moves, live columns, candle closes, ledger fates and settings"
+   ]
+  },
+  {
+   "id": "raster.under-not-recorded",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": "    raster.under = columnsUnder(painter, spans);\n    raster.underMs = painter.tiers.map((tier) => tier.columnMs);",
+   "replace": "    raster.underMs = painter.tiers.map((tier) => tier.columnMs);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatCache.test.ts"
+   ],
+   "mustFail": [
+    "paints no raster pixel for a live column that changes no settled run"
+   ]
+  },
+  {
+   "id": "raster.marks-not-recorded",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": "    raster.marks = marksOf(painter, spans);",
+   "replace": "",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatCache.test.ts"
+   ],
+   "mustFail": [
+    "paints no raster pixel for a live column that changes no settled run"
+   ]
+  },
+  {
+   "id": "raster.folded-columns-repainted",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": "  if (a.lo !== b.lo || a.hi !== b.hi || a.reference !== b.reference || a.median !== b.median || a.ceiling !== b.ceiling || a.bid.length !== b.bid.length || a.ask.length !== b.ask.length) return false;",
+   "replace": "  if (a !== b) return false;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatCache.test.ts"
+   ],
+   "mustFail": [
+    "paints nothing when a tier is folded again into new objects of the very same columns"
+   ]
+  },
+  {
+   "id": "raster.replaced-sizes-unseen",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": "  for (let i = 0; i < a.bid.length; i += 1) if (a.bid[i] !== b.bid[i] || a.ask[i] !== b.ask[i]) return false;",
+   "replace": "",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatCache.test.ts"
+   ],
+   "mustFail": [
+    "paints again the strip of a column replaced in place with the same time, as a folded cell is"
+   ]
+  },
+  {
+   "id": "raster.dropped-column-unseen",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": "        changed.push([gone.ts, gone.ts + tier.columnMs]);",
+   "replace": "        void gone;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatCache.test.ts"
+   ],
+   "mustFail": [
+    "paints only a narrow strip where the oldest second drops off a full tier, not the view"
+   ]
+  },
+  {
+   "id": "raster.run-first-column-skipped",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": "    if (columns[mid].ts < ts) lo = mid + 1;",
+   "replace": "    if (columns[mid].ts <= ts) lo = mid + 1;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatRaster.test.ts",
+    "-t",
+    "exactly while every column is in view"
+   ],
+   "mustFail": [
+    "exactly while every column is in view, and but for the edge columns when the view cuts through them"
+   ]
+  },
+  {
+   "id": "raster.deep-past-its-cut",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatRenderer.ts",
+   "find": "    const stop = Math.min(tier.scanTo, liquidityIndexAtOrAfter(tier.columns, toMs));",
+   "replace": "    const stop = liquidityIndexAtOrAfter(tier.columns, toMs);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/liquidityHeatRaster.test.ts",
+    "-t",
+    "exactly while every column is in view"
+   ],
+   "mustFail": [
+    "exactly while every column is in view, and but for the edge columns when the view cuts through them"
+   ]
+  }
+ ]
+}

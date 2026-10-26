@@ -1,0 +1,11 @@
+[Unit]
+Description=Terminal-L1-L2 collector resource boundary
+
+[Slice]
+CPUAccounting=yes
+MemoryAccounting=yes
+TasksAccounting=yes
+CPUQuota=800%
+MemoryHigh=24G
+MemoryMax=32G
+TasksMax=512

@@ -1,0 +1,212 @@
+{
+  "mutations": [
+    {
+      "id": "audit-dxfeed-token.life.lifetime-cap-ignored",
+      "file": "apps/runtime/src/providers/dxfeed/dxfeed-token-lifecycle.js",
+      "find": "  if (expiresAtMs - nowMs > MAX_TOKEN_LIFETIME_MS) {",
+      "replace": "  if (false) {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/providers/dxfeed/dxfeed-token-lifecycle.test.js"
+      ],
+      "mustFail": [
+        "fails closed on an expiry beyond the approved token lifetime"
+      ]
+    },
+    {
+      "id": "audit-dxfeed-token.life.margin-not-applied",
+      "file": "apps/runtime/src/providers/dxfeed/dxfeed-token-lifecycle.js",
+      "find": "  return expiresAtMs - marginMs;",
+      "replace": "  return expiresAtMs;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/providers/dxfeed/dxfeed-token-lifecycle.test.js"
+      ],
+      "mustFail": [
+        "subtracts the margin from the expiry"
+      ]
+    },
+    {
+      "id": "audit-dxfeed-token.life.past-margin-accepted",
+      "file": "apps/runtime/src/providers/dxfeed/dxfeed-token-lifecycle.js",
+      "find": "  if (shutdownDeadlineMs <= nowMs) {",
+      "replace": "  if (false) {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/providers/dxfeed/dxfeed-token-lifecycle.test.js"
+      ],
+      "mustFail": [
+        "fails closed when the token is already past its safe margin"
+      ]
+    },
+    {
+      "id": "audit-dxfeed-token.life.non-iso-expiry-accepted",
+      "file": "apps/runtime/src/providers/dxfeed/dxfeed-token-lifecycle.js",
+      "find": "new Date(parsed).toISOString() === value ? parsed : null",
+      "replace": "true ? parsed : null",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/providers/dxfeed/dxfeed-token-lifecycle.test.js"
+      ],
+      "mustFail": [
+        "rejects a non-canonical ISO string even if Date.parse would accept it"
+      ]
+    },
+    {
+      "id": "audit-dxfeed-token.broker.http-allowed",
+      "file": "apps/runtime/src/providers/dxfeed/token-broker-client.js",
+      "find": "  if (url.protocol !== \"https:\") {",
+      "replace": "  if (false) {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/providers/dxfeed/token-broker-client.test.js"
+      ],
+      "mustFail": [
+        "rejects a non-https brokerUrl before ever invoking fetchImpl"
+      ]
+    },
+    {
+      "id": "audit-dxfeed-token.broker.any-host-allowed",
+      "file": "apps/runtime/src/providers/dxfeed/token-broker-client.js",
+      "find": "  if (!url.hostname.endsWith(\".ts.net\") || url.hostname.length <= \".ts.net\".length) {",
+      "replace": "  if (false) {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/providers/dxfeed/token-broker-client.test.js"
+      ],
+      "mustFail": [
+        "rejects a non-Tailscale broker host"
+      ]
+    },
+    {
+      "id": "audit-dxfeed-token.broker.credentials-in-url-allowed",
+      "file": "apps/runtime/src/providers/dxfeed/token-broker-client.js",
+      "find": "  if (url.username !== \"\" || url.password !== \"\" || url.search !== \"\" || url.hash !== \"\" || url.pathname !== \"/\") {",
+      "replace": "  if (url.pathname !== \"/\") {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/providers/dxfeed/token-broker-client.test.js"
+      ],
+      "mustFail": [
+        "rejects a non-Tailscale broker host and URL components outside the broker-origin contract"
+      ]
+    },
+    {
+      "id": "audit-dxfeed-token.broker.expired-token-accepted",
+      "file": "apps/runtime/src/providers/dxfeed/token-broker-client.js",
+      "find": "  if (parsed.getTime() <= nowMs) {",
+      "replace": "  if (false) {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/providers/dxfeed/token-broker-client.test.js"
+      ],
+      "mustFail": [
+        "rejects a malformed or already-expired broker expiry"
+      ]
+    },
+    {
+      "id": "audit-dxfeed-token.broker.long-ttl-accepted",
+      "file": "apps/runtime/src/providers/dxfeed/token-broker-client.js",
+      "find": "  if (parsed.getTime() - nowMs > MAX_TOKEN_TTL_MS) {",
+      "replace": "  if (false) {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/providers/dxfeed/token-broker-client.test.js"
+      ],
+      "mustFail": [
+        "rejects a malformed or already-expired broker expiry"
+      ]
+    },
+    {
+      "id": "audit-dxfeed-token.broker.token-pattern-ignored",
+      "file": "apps/runtime/src/providers/dxfeed/token-broker-client.js",
+      "find": "    !TEMP_TOKEN_PATTERN.test(body[TOKEN_FIELD])\n",
+      "replace": "    false\n",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/providers/dxfeed/token-broker-client.test.js"
+      ],
+      "mustFail": [
+        "rejects malformed broker tokens"
+      ]
+    },
+    {
+      "id": "audit-dxfeed-token.broker.size-limit-ignored",
+      "file": "apps/runtime/src/providers/dxfeed/token-broker-client.js",
+      "find": "      if (totalBytes > maxBytes) {",
+      "replace": "      if (false) {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/providers/dxfeed/token-broker-client.test.js"
+      ],
+      "mustFail": [
+        "rejects a response once its streamed byte total exceeds the ceiling"
+      ]
+    },
+    {
+      "id": "audit-dxfeed-token.broker.redirects-followed",
+      "file": "apps/runtime/src/providers/dxfeed/token-broker-client.js",
+      "find": "        redirect: \"error\",",
+      "replace": "        redirect: \"follow\",",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/providers/dxfeed/token-broker-client.test.js"
+      ],
+      "mustFail": [
+        "refuses to follow a redirect"
+      ]
+    },
+    {
+      "id": "audit-dxfeed-token.broker.abort-not-retryable",
+      "file": "apps/runtime/src/providers/dxfeed/token-broker-client.js",
+      "find": "      throw tokenBrokerError(\"dxfeed-token-broker: request timed out\", {\n        code: \"DXFEED_TOKEN_BROKER_TIMEOUT\",\n        retryable: true,",
+      "replace": "      throw tokenBrokerError(\"dxfeed-token-broker: request timed out\", {\n        code: \"DXFEED_TOKEN_BROKER_TIMEOUT\",\n        retryable: false,",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/providers/dxfeed/token-broker-client.test.js"
+      ],
+      "mustFail": [
+        "a transport abort is reported as a retryable timeout"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,233 @@
+{
+  "version": 2,
+  "mutations": [
+    {
+      "id": "hl2.book-cut-ignored",
+      "file": "apps/web/src/lib/archive/historicalBookL2.ts",
+      "find": "        return build(ns < cut ? ns : cut);",
+      "replace": "        return build(cut);",
+      "cwd": "apps/web",
+      "command": [
+        "node",
+        "../../node_modules/vitest/vitest.mjs",
+        "run",
+        "src/lib/archive/historicalBookL2.test.ts"
+      ],
+      "mustFail": [
+        "cuts columns AND price geometry at bar knowledge time, never increasing a previous cut",
+        "reports selected-time archive trust without live age, future columns, or invented wall/event/ladder availability"
+      ],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "hl2.book-cut-exclusive",
+      "file": "apps/web/src/lib/archive/historicalBookL2.ts",
+      "find": "if (known(entries[mid]) <= cut) lo = mid + 1;",
+      "replace": "if (known(entries[mid]) < cut) lo = mid + 1;",
+      "cwd": "apps/web",
+      "command": [
+        "node",
+        "../../node_modules/vitest/vitest.mjs",
+        "run",
+        "src/lib/archive/historicalBookL2.test.ts",
+        "src/lib/archive/historicalWallL2.test.ts"
+      ],
+      "mustFail": [
+        "cuts columns AND price geometry at bar knowledge time, never increasing a previous cut"
+      ],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "hl2.book-trusted-future",
+      "file": "apps/web/src/lib/archive/historicalBookL2.ts",
+      "find": "        if (ns > cut) return false;\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": [
+        "node",
+        "../../node_modules/vitest/vitest.mjs",
+        "run",
+        "src/lib/archive/historicalBookL2.test.ts"
+      ],
+      "mustFail": [
+        "cuts columns AND price geometry at bar knowledge time, never increasing a previous cut"
+      ],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "hl2.book-trusted-stale-second",
+      "file": "apps/web/src/lib/archive/historicalBookL2.ts",
+      "find": "ns - knownSeconds[index] < 1000000000n",
+      "replace": "ns - knownSeconds[index] < 60000000000n",
+      "cwd": "apps/web",
+      "command": [
+        "node",
+        "../../node_modules/vitest/vitest.mjs",
+        "run",
+        "src/lib/archive/historicalBookL2.test.ts"
+      ],
+      "mustFail": [
+        "trusts a recorded second for one second only, so a stretch with no recorded seconds is not trusted"
+      ],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "hl2.liq-cut-ignored",
+      "file": "apps/web/src/lib/archive/historicalBookLiquidity.ts",
+      "find": "        return build(ns < cut ? ns : cut);",
+      "replace": "        return build(cut);",
+      "cwd": "apps/web",
+      "command": [
+        "node",
+        "../../node_modules/vitest/vitest.mjs",
+        "run",
+        "src/lib/archive/historicalBookLiquidity.test.ts",
+        "src/lib/archive/useHistoricalL2.test.tsx"
+      ],
+      "mustFail": [
+        "admits partial coverage at the same second boundary without carrying its rolling evidence into the new segment",
+        "cuts by exact knowledge time, retains unknown cells and does not turn aggregate flow into individual prints"
+      ],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "hl2.liq-cut-exclusive",
+      "file": "apps/web/src/lib/archive/historicalBookLiquidity.ts",
+      "find": "if (entries[mid].known <= cut) lo = mid + 1;",
+      "replace": "if (entries[mid].known < cut) lo = mid + 1;",
+      "cwd": "apps/web",
+      "command": [
+        "node",
+        "../../node_modules/vitest/vitest.mjs",
+        "run",
+        "src/lib/archive/historicalBookLiquidity.test.ts",
+        "src/lib/archive/useHistoricalL2.test.tsx"
+      ],
+      "mustFail": [
+        "admits partial coverage at the same second boundary without carrying its rolling evidence into the new segment",
+        "cuts by exact knowledge time, retains unknown cells and does not turn aggregate flow into individual prints"
+      ],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "hl2.liq-segment-break-ignored",
+      "file": "apps/web/src/lib/archive/historicalBookLiquidity.ts",
+      "find": "if (!admitted || previousSegment !== second.segmentId || open !== previousOpen + 1000000000n) {",
+      "replace": "if (!admitted) {",
+      "cwd": "apps/web",
+      "command": [
+        "node",
+        "../../node_modules/vitest/vitest.mjs",
+        "run",
+        "src/lib/archive/historicalBookLiquidity.test.ts"
+      ],
+      "mustFail": [
+        "admits partial coverage at the same second boundary without carrying its rolling evidence into the new segment",
+        "resets rolling evidence at explicit gaps, partial seconds, changed segments and missing seconds"
+      ],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "hl2.runtime-l2-cut-at-open",
+      "file": "apps/web/src/lib/chart/indicatorRuntime.ts",
+      "find": "    l2: record.l2?.atTime?.(bar.ts_open + bar.interval_ms) ?? record.l2 ?? undefined,",
+      "replace": "    l2: record.l2 ?? undefined,",
+      "cwd": "apps/web",
+      "command": [
+        "node",
+        "../../node_modules/vitest/vitest.mjs",
+        "run",
+        "src/lib/chart/tests/indicatorL2.test.ts"
+      ],
+      "mustFail": [
+        "cuts historical SDK input separately at each bar close during a snapshot replay"
+      ],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "hl2.runtime-liquidity-uncut",
+      "file": "apps/web/src/lib/chart/indicatorRuntime.ts",
+      "find": "? record.liquidity.atTime(bar.ts_open + bar.interval_ms)",
+      "replace": "? record.liquidity",
+      "cwd": "apps/web",
+      "command": [
+        "node",
+        "../../node_modules/vitest/vitest.mjs",
+        "run",
+        "src/lib/chart/tests/indicatorRuntime.test.ts"
+      ],
+      "mustFail": [
+        "cuts historical liquidity at every bar close, including replay, and never replaces a refused cut with the full feed"
+      ],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "pr50.iob-live-edge-read-as-unobserved",
+      "file": "apps/web/src/lib/indicators/institutional-order-blocks/bookEvidence.ts",
+      "find": "    if (edgeUnknown && (from < column.lo || to > column.hi)) return NaN;",
+      "replace": "    if (from < column.lo || to > column.hi) return NaN;",
+      "cwd": "apps/web",
+      "command": [
+        "node",
+        "../../node_modules/vitest/vitest.mjs",
+        "run",
+        "src/lib/indicators/institutional-order-blocks/tests/bookEvidence.test.ts"
+      ],
+      "mustFail": [
+        "reads a band crossing a live or band-history column's edge over the rows the column holds"
+      ],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "pr50.iob-historical-edge-read-as-empty",
+      "file": "apps/web/src/lib/indicators/institutional-order-blocks/bookEvidence.ts",
+      "find": "    if (edgeUnknown && (from < column.lo || to > column.hi)) return NaN;",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": [
+        "node",
+        "../../node_modules/vitest/vitest.mjs",
+        "run",
+        "src/lib/indicators/institutional-order-blocks/tests/bookEvidence.test.ts"
+      ],
+      "mustFail": [
+        "calls a band crossing a historical column's edge unobserved: past it the source saw no depth"
+      ],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "pr50.resting-live-edge-drops-order",
+      "file": "apps/web/src/lib/indicators/live-order-book-profile/restingOrders.ts",
+      "find": "  if (row < column.lo || row > column.hi) return edgeUnknown ? NaN : 0;",
+      "replace": "  if (row < column.lo || row > column.hi) return NaN;",
+      "cwd": "apps/web",
+      "command": [
+        "node",
+        "../../node_modules/vitest/vitest.mjs",
+        "run",
+        "src/lib/indicators/live-order-book-profile/tests/restingOrders.test.ts"
+      ],
+      "mustFail": [
+        "keeps an order through a moment its row is past a live column's edge, and lets it go at once past a historical one's"
+      ],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "pr50.resting-historical-edge-kept",
+      "file": "apps/web/src/lib/indicators/live-order-book-profile/restingOrders.ts",
+      "find": "  if (row < column.lo || row > column.hi) return edgeUnknown ? NaN : 0;",
+      "replace": "  if (row < column.lo || row > column.hi) return 0;",
+      "cwd": "apps/web",
+      "command": [
+        "node",
+        "../../node_modules/vitest/vitest.mjs",
+        "run",
+        "src/lib/indicators/live-order-book-profile/tests/restingOrders.test.ts"
+      ],
+      "mustFail": [
+        "keeps an order through a moment its row is past a live column's edge, and lets it go at once past a historical one's"
+      ],
+      "timeoutMs": 120000
+    }
+  ]
+}

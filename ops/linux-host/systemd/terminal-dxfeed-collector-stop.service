@@ -1,0 +1,30 @@
+# Weekday-only dxFeed collection window (report 49 P1i): triggered by
+# terminal-dxfeed-collector-stop.timer, stops the collector for the weekend.
+# Runs as root (no User=) because instructing systemd to stop another unit
+# is a systemd-internal control action, not filesystem or network access.
+[Unit]
+Description=Terminal-L1-L2 dxFeed collector weekday stop action
+OnFailure=terminal-alert@%n.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/systemctl stop terminal-dxfeed-collector.service
+# systemctl stop blocks until the target's own stop job completes; must
+# exceed terminal-dxfeed-collector.service's TimeoutStopSec=120, or a
+# normal-but-slow graceful shutdown reports here as a spurious failure.
+TimeoutStartSec=150
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictAddressFamilies=AF_UNIX
+MemoryMax=64M
+TasksMax=16
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=terminal-dxfeed-collector-stop

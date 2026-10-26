@@ -1,0 +1,89 @@
+{
+  "mutations": [
+    {
+      "id": "p4e2.tracker.evict-moved-last",
+      "file": "apps/runtime/src/indicators/passive_liquidity/large-level-tracker.js",
+      "find": "moved: 0, pulled: 2",
+      "replace": "moved: 4, pulled: 2",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/passive_liquidity/large-level-tracker.test.js",
+        "-t",
+        "by meaning"
+      ],
+      "mustFail": [
+        "over the cap, ended walls go by meaning"
+      ]
+    },
+    {
+      "id": "p4e2.tracker.evict-flicker-as-pull",
+      "file": "apps/runtime/src/indicators/passive_liquidity/large-level-tracker.js",
+      "find": "if (level.endedBy === \"pulled\" && level.endTs - level.startTs < DEEP_MIN_LIFE_MS) return 1;",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/passive_liquidity/large-level-tracker.test.js",
+        "-t",
+        "by meaning"
+      ],
+      "mustFail": [
+        "over the cap, ended walls go by meaning"
+      ]
+    },
+    {
+      "id": "p4e2.tracker.evict-newest-first-in-class",
+      "file": "apps/runtime/src/indicators/passive_liquidity/large-level-tracker.js",
+      "find": "|| a.endTs - b.endTs).slice(0, list.length - cap)",
+      "replace": "|| b.endTs - a.endTs).slice(0, list.length - cap)",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/passive_liquidity/large-level-tracker.test.js",
+        "-t",
+        "by meaning"
+      ],
+      "mustFail": [
+        "over the cap, ended walls go by meaning"
+      ]
+    },
+    {
+      "id": "p4e2.tracker.evict-by-age-on-adopt",
+      "file": "apps/runtime/src/indicators/passive_liquidity/large-level-tracker.js",
+      "find": "    ended = trimEnded(ended, maxLevels);\n    changed = true;",
+      "replace": "    if (ended.length > maxLevels) ended = ended.slice(ended.length - maxLevels);\n    changed = true;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/passive_liquidity/large-level-tracker.test.js",
+        "-t",
+        "by meaning"
+      ],
+      "mustFail": [
+        "over the cap, ended walls go by meaning"
+      ]
+    },
+    {
+      "id": "p4e2.tracker.evict-by-age-on-update",
+      "file": "apps/runtime/src/indicators/passive_liquidity/large-level-tracker.js",
+      "find": "    ended = trimEnded(ended, maxLevels);\n    if (ended.length !== before) changed = true;",
+      "replace": "    if (ended.length > maxLevels) ended = ended.slice(ended.length - maxLevels);\n    if (ended.length !== before) changed = true;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/passive_liquidity/large-level-tracker.test.js",
+        "-t",
+        "by meaning"
+      ],
+      "mustFail": [
+        "over the cap, ended walls go by meaning"
+      ]
+    }
+  ]
+}

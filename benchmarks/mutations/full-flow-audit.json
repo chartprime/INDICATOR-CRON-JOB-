@@ -1,0 +1,574 @@
+{
+  "mutations": [
+    {
+      "id": "fa-1.hung-handshake-has-no-deadline",
+      "file": "apps/runtime/src/providers/binance/binance-connection.js",
+      "find": "    route.socket = socket;\n    startConnectDeadline(route, socket);\n",
+      "replace": "    route.socket = socket;\n",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/providers/binance/binance-connection.test.js"
+      ],
+      "mustFail": [
+        "a reconnect whose handshake never completes is abandoned and retried, so a route cannot sit CONNECTING forever"
+      ]
+    },
+    {
+      "id": "fa-2.out-of-order-trade-in-open-minute-dropped",
+      "file": "apps/runtime/src/providers/dxfeed/dxfeed-bar-aggregator.js",
+      "find": "      if (tsOpen !== existing.tsOpen) {\n        return { closedBar: null, liveBar: snapshotBucket(existing, false), dropped: true, dropReason: \"OUT_OF_ORDER_TRADE\" };",
+      "replace": "      if (tsOpen === existing.tsOpen || tsOpen !== existing.tsOpen) {\n        return { closedBar: null, liveBar: snapshotBucket(existing, false), dropped: true, dropReason: \"OUT_OF_ORDER_TRADE\" };",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/providers/dxfeed/dxfeed-bar-aggregator.test.js"
+      ],
+      "mustFail": [
+        "an out-of-order trade inside the current bucket still counts; open and close follow exchange time"
+      ]
+    },
+    {
+      "id": "ge-5.sell-side-sent-without-buy-side",
+      "file": "apps/runtime/src/server/frames.js",
+      "find": "    return wholeVolume(sell, volume) ? { buy: 0, sell } : { buy: undefined, sell: undefined };",
+      "replace": "    return { buy: undefined, sell };",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/contracts/wire-parity.property.test.js"
+      ],
+      "mustFail": [
+        "dxFeed bars: every buildable bar is admitted with the same values and sides"
+      ]
+    },
+    {
+      "id": "o-3.auction-flag-not-a-literal-true",
+      "file": "apps/runtime/src/server/frames.js",
+      "find": "    ...(auction ? { auction: true } : {}),",
+      "replace": "    ...(auction ? { auction: 1 } : {}),",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/contracts/wire-parity.property.test.js"
+      ],
+      "mustFail": [
+        "trades from both providers are admitted with identity, time, price, size, side and id intact"
+      ]
+    },
+    {
+      "id": "ge-14.reader-studies-keep-extended-hours",
+      "file": "apps/runtime/src/storage/dxfeed/dxfeed-storage-reader.js",
+      "find": "  if (assetClass === ASSET_CLASSES.EQUITY) return `AND ${EQUITY_CHART_TIME_FUNCTION}(event_time) = 1 `;",
+      "replace": "  if (assetClass === \"NONE\") return `AND ${EQUITY_CHART_TIME_FUNCTION}(event_time) = 1 `;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/storage/dxfeed/dxfeed-storage-reader.test.js"
+      ],
+      "mustFail": [
+        "volume profile, price range, minute rollup and notional reads see only the two regular-session prints"
+      ]
+    },
+    {
+      "id": "ge-14.archive-fold-keeps-extended-hours",
+      "file": "apps/runtime/src/storage/archive-storage-reader.js",
+      "find": "        onRows(assetClass === \"EQUITY\" ? equityChartRows(answer.rows) : answer.rows);",
+      "replace": "        onRows(answer.rows);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/storage/archive-storage-reader.test.js"
+      ],
+      "mustFail": [
+        "equity: only the regular-session minute and print survive, across page boundaries"
+      ]
+    },
+    {
+      "id": "ge-14.calendar-ignores-early-close",
+      "file": "apps/runtime/src/providers/shared/market-calendar.js",
+      "find": "    const close = equity.earlyCloses.has(date) ? equity.earlyClose : equity.regularClose;",
+      "replace": "    const close = equity.regularClose;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/providers/shared/market-calendar.test.js"
+      ],
+      "mustFail": [
+        "a trading day's chart minutes are exactly 390, or 210 on an early close, and 0 on a holiday"
+      ]
+    },
+    {
+      "id": "ge-14.browser-calendar-ignores-holidays",
+      "file": "apps/web/src/lib/chart/marketCalendar.ts",
+      "find": "  if (!WEEKDAYS.has(weekday) || equity.holidays.has(date)) return \"CLOSED\";",
+      "replace": "  if (!WEEKDAYS.has(weekday)) return \"CLOSED\";",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/contracts/market-calendar-parity.property.test.js"
+      ],
+      "mustFail": [
+        "every minute of the DST, holiday and early-close days agrees"
+      ]
+    },
+    {
+      "id": "ge-14.heatmap-keeps-extended-hours-columns",
+      "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityGrid.ts",
+      "find": "      if (!inChartSession(frame, column.ts)) continue;\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/passive-liquidity/tests/liquidityGrid.session.test.ts"
+      ],
+      "mustFail": [
+        "keeps only the regular-session equity columns, decoded from the hidden ones before them"
+      ]
+    },
+    {
+      "id": "ge-14.heatmap-decodes-from-last-kept-column",
+      "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityGrid.ts",
+      "find": "      const prev = tier.last;\n",
+      "replace": "      const prev = tier.columns.length === 0 ? null : tier.columns[tier.columns.length - 1];\n",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/passive-liquidity/tests/liquidityGrid.session.test.ts"
+      ],
+      "mustFail": [
+        "keeps only the regular-session equity columns, decoded from the hidden ones before them"
+      ]
+    },
+    {
+      "id": "ge-14.live-bars-keep-extended-hours",
+      "file": "apps/web/src/hooks/useMarketData.ts",
+      "find": "        if (!inChartSession(frame, frame.ts_open)) return;\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/hooks/useMarketData.session.test.tsx"
+      ],
+      "mustFail": [
+        "equity: the tape keeps the pre-market print; bars, bubbles and markers are regular session only"
+      ]
+    },
+    {
+      "id": "ge-14.historical-minutes-keep-extended-hours",
+      "file": "apps/web/src/lib/archive/archiveChartBars.ts",
+      "find": "  if (resolution !== \"1m\" || !isRegularSessionOnly(instrument.chartIdentity)) return createHistoricalIndicatorSeries(bars, metrics);",
+      "replace": "  if (resolution !== \"1m\" || isRegularSessionOnly(instrument.chartIdentity)) return createHistoricalIndicatorSeries(bars, metrics);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/archive/archiveChartBars.session.test.ts"
+      ],
+      "mustFail": [
+        "drops pre-market and after-hours minutes for an equity"
+      ]
+    },
+    {
+      "id": "o-3.auction-print-becomes-a-marker",
+      "file": "apps/runtime/src/server/dxfeed-eager-market-data-server.js",
+      "find": "        if (!auction && view.markerHistory.wouldRetainMarker(",
+      "replace": "        if (view.markerHistory.wouldRetainMarker(",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/dxfeed-eager-market-data-server.test.js"
+      ],
+      "mustFail": [
+        "a live equity auction print is on tape and in the bar, flagged, and never a marker"
+      ]
+    },
+    {
+      "id": "o-3.closing-cross-code-missing",
+      "file": "apps/runtime/src/providers/dxfeed/dxfeed-trade-adapter.js",
+      "find": "const AUCTION_SALE_CONDITION_CODES = Object.freeze([\"O\", \"5\", \"6\", \"Q\", \"M\", \"9\", \"X\"]);",
+      "replace": "const AUCTION_SALE_CONDITION_CODES = Object.freeze([\"O\", \"5\", \"Q\", \"M\", \"9\", \"X\"]);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/providers/dxfeed/dxfeed-trade-adapter.test.js"
+      ],
+      "mustFail": [
+        "equity conditions \"@  6\" are an auction print: true"
+      ]
+    },
+    {
+      "id": "o-3.sale-conditions-not-counted",
+      "file": "apps/runtime/src/providers/dxfeed/dxfeed-data-quality.js",
+      "find": "    noteSaleCondition(state, symbol, assetClass, item);\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/providers/dxfeed/dxfeed-data-quality.test.js"
+      ],
+      "mustFail": [
+        "counts every distinct sale condition, logs its first sighting once, and stays bounded"
+      ]
+    },
+    {
+      "id": "o-3.auction-print-becomes-a-bubble",
+      "file": "apps/web/src/hooks/useMarketData.ts",
+      "find": "        if (frame.auction !== true) tape.add(frame);",
+      "replace": "        tape.add(frame);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/hooks/useMarketData.session.test.tsx"
+      ],
+      "mustFail": [
+        "an auction print (O-3) is on the tape and in its bar, but never a bubble"
+      ]
+    },
+    {
+      "id": "o-1.profile-edge-by-interval-arithmetic",
+      "file": "apps/web/src/lib/indicators/swing-alphabet-profile/swingAlphabetProfile.ts",
+      "find": "          const time2 = barTimeAfter(state.barTimes, first.time, settings.profileWidthLen, bar.ts_open, bar.interval_ms);",
+      "replace": "          const time2 = first.time + settings.profileWidthLen * bar.interval_ms;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/swing-alphabet-profile/tests/swingAlphabetProfile.barTimes.test.ts"
+      ],
+      "mustFail": [
+        "every finalized profile box edge is a bar time, or on the interval grid past the newest bar"
+      ]
+    },
+    {
+      "id": "o-1.extrapolated-edge-never-re-resolved",
+      "file": "apps/web/src/lib/indicators/swing-alphabet-profile/swingAlphabetProfile.ts",
+      "find": "    if (bin.time2 <= previousTail) continue;",
+      "replace": "    continue;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/swing-alphabet-profile/tests/swingAlphabetProfile.barTimes.test.ts"
+      ],
+      "mustFail": [
+        "every finalized profile box edge is a bar time, or on the interval grid past the newest bar"
+      ]
+    },
+    {
+      "id": "o-10.closed-equity-book-reads-fresh-lazy",
+      "file": "apps/runtime/src/server/dxfeed-market-data-server.js",
+      "find": "    return activeView.bookStale === true || (activeView.assetClass === ASSET_CLASSES.EQUITY && classifyDxFeedSession(activeView.assetClass, now()) === \"CLOSED\");",
+      "replace": "    return activeView.bookStale === true;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/dxfeed-market-data-server.test.js"
+      ],
+      "mustFail": [
+        "an equity book is fresh in the regular session and stale while the equity session is closed (O-10)"
+      ]
+    },
+    {
+      "id": "o-10.closed-equity-book-reads-fresh-eager",
+      "file": "apps/runtime/src/server/dxfeed-eager-market-data-server.js",
+      "find": "    return view.bookStale === true || (view.assetClass === ASSET_CLASSES.EQUITY && classifyDxFeedSession(view.assetClass, now()) === \"CLOSED\");",
+      "replace": "    return view.bookStale === true;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/dxfeed-eager-market-data-server.test.js"
+      ],
+      "mustFail": [
+        "an equity book reads stale while the equity session is closed, though its order book is complete (O-10)"
+      ]
+    },
+    {
+      "id": "f5.coverage-state-vocabulary-open",
+      "file": "apps/web/src/lib/archive/archiveClient.ts",
+      "find": "  if (!isRecord(states) || !Object.entries(states).every(([state, count]) => ARCHIVE_COVERAGE_STATES.includes(state)",
+      "replace": "  if (!isRecord(states) || !Object.entries(states).every(([state, count]) => state.length > 0",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/archive/archiveCoverage.property.test.ts"
+      ],
+      "mustFail": [
+        "rejects a state outside the vocabulary as a contract error"
+      ]
+    },
+    {
+      "id": "fa-5.refusal-closes-with-the-body-unread",
+      "file": "apps/runtime/conversion/archive_http.py",
+      "find": "                if self.command == \"POST\" and not self.body_read:\n                    self._linger_for_unread_body()\n",
+      "replace": "",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_archive_http_refusal_drain.py"
+      ],
+      "mustFail": [
+        "test_a_refusal_reaches_the_caller_even_when_the_body_arrives_after_it"
+      ]
+    },
+    {
+      "id": "ge-17.store-writes-past-its-budget",
+      "file": "apps/runtime/src/indicators/l2-memory/liquidity-store.js",
+      "find": "    if (payload.length > maxBytes) return { ok: false, reason: \"OVER_BUDGET\", bytes: payload.length };\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/liquidity-store.test.js"
+      ],
+      "mustFail": [
+        "a payload over the byte budget is refused and the previous file is kept"
+      ]
+    },
+    {
+      "id": "ge-17.over-budget-save-never-trims",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane-store.js",
+      "find": "    if (result?.reason === \"OVER_BUDGET\") {\n      lane.trimShelfToBudget(state, result.bytes);\n      return;\n    }",
+      "replace": "    if (result?.reason === \"OVER_BUDGET\") return;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/passive_liquidity/liquidity-publisher.test.js"
+      ],
+      "mustFail": [
+        "a long run stays under the byte budget, trims oldest first and advertises the trim"
+      ]
+    },
+    {
+      "id": "l-ay2.restore-refusal-silent",
+      "file": "apps/runtime/src/indicators/l2-memory/liquidity-store.js",
+      "find": "function loadLiquidityHistory({ dir = DEFAULT_STORE_DIR, pairKey, geometry, maxAgeMs = Infinity, now = Date.now(), maxFileBytes = MAX_FILE_BYTES, onReject = () => {} }) {\n  const reject = (reason) => {\n    onReject(reason);\n",
+      "replace": "function loadLiquidityHistory({ dir = DEFAULT_STORE_DIR, pairKey, geometry, maxAgeMs = Infinity, now = Date.now(), maxFileBytes = MAX_FILE_BYTES, onReject = () => {} }) {\n  const reject = (reason) => {\n",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/liquidity-store.test.js"
+      ],
+      "mustFail": [
+        "every refusal to restore names its reason; a missing file is not a refusal"
+      ]
+    },
+    {
+      "id": "fa-6.periodic-save-blocks-the-tick",
+      "file": "apps/runtime/src/indicators/passive_liquidity/liquidity-publisher.js",
+      "find": "      store.saveStateInBackground(state, at);\n      rebuild.startDeepRepair(state, engine, at);",
+      "replace": "      store.saveState(state, at);\n      rebuild.startDeepRepair(state, engine, at);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/passive_liquidity/liquidity-publisher.test.js"
+      ],
+      "mustFail": [
+        "periodic saves go to the background writer, never overlap, and a shutdown save supersedes the one in flight"
+      ]
+    },
+    {
+      "id": "fa-6.superseded-write-still-commits",
+      "file": "apps/runtime/src/indicators/l2-memory/liquidity-store.js",
+      "find": "    if (!shouldCommit()) return { ok: false, reason: \"SUPERSEDED\", bytes };\n    if (fs.existsSync(file)) await fs.promises.copyFile(file, `${file}.prev`);\n    if (!shouldCommit()) return { ok: false, reason: \"SUPERSEDED\", bytes };",
+      "replace": "    if (fs.existsSync(file)) await fs.promises.copyFile(file, `${file}.prev`);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/liquidity-store.test.js"
+      ],
+      "mustFail": [
+        "a write that is no longer wanted when it finishes is discarded, so a newer save always wins"
+      ]
+    },
+    {
+      "id": "o-6.warmup-retries-without-backoff",
+      "file": "apps/runtime/src/server/market-data-server.js",
+      "find": "    if (volumeProfileWarmInFlight.has(key) || Date.now() < (volumeProfileRetry.get(key)?.notBeforeMs ?? 0)) return;",
+      "replace": "    if (volumeProfileWarmInFlight.has(key)) return;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/market-data-server.test.js"
+      ],
+      "mustFail": [
+        "a volume profile warm-up with no trades is DEGRADED, retried on backoff without overlap, then recovers (O-6)"
+      ]
+    },
+    {
+      "id": "o-6.no-trades-left-running",
+      "file": "apps/runtime/src/server/market-data-server.js",
+      "find": "    setReadiness(pairSymbol, pairMarketKind, \"volume_profile\", \"DEGRADED\", { reason: \"RETRY_SCHEDULED\", metrics: { cause, attempt, retryInMs } });\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/market-data-server.test.js"
+      ],
+      "mustFail": [
+        "a volume profile warm-up with no trades is DEGRADED, retried on backoff without overlap, then recovers (O-6)"
+      ]
+    },
+    {
+      "id": "fa-11.late-warmup-installed-on-new-symbol",
+      "file": "apps/runtime/src/server/dxfeed-market-data-server.js",
+      "find": "      if (volumeProfileSession === null || view !== activeView || volumeProfileState !== null) return;",
+      "replace": "      if (volumeProfileSession === null) return;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/dxfeed-market-data-server.test.js"
+      ],
+      "mustFail": [
+        "a volume profile warm-up that lands after a switch is discarded, never shown on the new symbol (FA-11)"
+      ]
+    },
+    {
+      "id": "fa-7.no-capacity-early-warning",
+      "file": "apps/runtime/src/storage/collector-capacity-guard.js",
+      "find": "  return { level: dbFill.level, announce: \"APPROACHING\" };",
+      "replace": "  return { level: dbFill.level, announce: null };",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/storage/collector-capacity-guard.test.js"
+      ],
+      "mustFail": [
+        "a crossing is announced once per level, upward as a warning and downward as a recovery"
+      ]
+    },
+    {
+      "id": "fa-8.relay-caps-aggressive-prints-at-2mb",
+      "file": "apps/runtime/src/server/live-storage-relay.js",
+      "find": "\"recent-candles\": 4_000_000, \"aggressive-prints\": 4_000_000, \"band-history\": 4_000_000 });",
+      "replace": "\"recent-candles\": 4_000_000, \"band-history\": 4_000_000 });",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/live-storage-end-to-end.test.js"
+      ],
+      "mustFail": [
+        "a full 10,000-row dxFeed aggressive-prints page crosses gateway, service and remote client intact (FA-8)"
+      ]
+    },
+    {
+      "id": "fa-8.aggressive-prints-read-whole-rows",
+      "file": "apps/runtime/src/storage/dxfeed/dxfeed-storage-reader.js",
+      "find": "`SELECT ${AGGRESSIVE_PRINT_COLUMNS} FROM dxfeed_time_and_sales",
+      "replace": "`SELECT * FROM dxfeed_time_and_sales",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/live-storage-end-to-end.test.js"
+      ],
+      "mustFail": [
+        "a full 10,000-row dxFeed aggressive-prints page crosses gateway, service and remote client intact (FA-8)"
+      ]
+    },
+    {
+      "id": "fa-9.eager-open-minute-not-seeded",
+      "file": "apps/runtime/src/server/dxfeed-eager-market-data-server.js",
+      "find": "    seedOpenMinutes(activeSession, handleFeedItem);\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/dxfeed-eager-market-data-server.test.js"
+      ],
+      "mustFail": [
+        "the first live bar after a start includes the minute's stored prints, each counted once"
+      ]
+    },
+    {
+      "id": "fa-9.lazy-open-minute-not-seeded",
+      "file": "apps/runtime/src/server/dxfeed-market-data-server.js",
+      "find": "      if (activeSession.seedPending) seedOpenMinute(activeView, activeSession)\n        .catch((error) => {",
+      "replace": "      if (activeSession.seedPending) Promise.resolve()\n        .catch((error) => {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/dxfeed-market-data-server.test.js"
+      ],
+      "mustFail": [
+        "the first live bar of a new session includes the minute's stored prints, each counted once"
+      ]
+    },
+    {
+      "id": "fa-10.live-storage-memory-high-512m",
+      "file": "ops/linux-host/systemd/terminal-live-storage.service",
+      "find": "MemoryHigh=6G",
+      "replace": "MemoryHigh=512M",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/ops/linux-host-operations.test.js"
+      ],
+      "mustFail": [
+        "MemoryHigh leaves at least 1.5 GiB above the service's own memory for the database page cache"
+      ]
+    },
+    {
+      "id": "fa-heartbeat.silent-peer-kept",
+      "file": "apps/runtime/src/server/app.js",
+      "find": "          if (client.isAlive === false) {",
+      "replace": "          if (false) {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/app.test.js",
+        "-t",
+        "misses the heartbeat"
+      ],
+      "mustFail": [
+        "terminates a WebSocket peer that misses the heartbeat instead of letting dead sessions consume capacity indefinitely"
+      ]
+    }
+  ]
+}

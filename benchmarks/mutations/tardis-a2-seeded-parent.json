@@ -1,0 +1,37 @@
+{
+  "mutations": [
+    {
+      "id": "tardis-a2.unpublished-flag-requires-local-artifact",
+      "file": "apps/runtime/conversion/s3_publish.py",
+      "find": "if published_to_s3 or not (local_manifest.exists() or local_manifest.is_symlink()):",
+      "replace": "if published_to_s3:",
+      "cwd": "apps/runtime/conversion",
+      "command": ["uv", "run", "--frozen", "pytest", "-q", "tests/test_s3_publish.py", "-k", "seeded_parent or verifies_remotely_an_unpublished"],
+      "mustFail": [
+        "test_publish_appends_a_month_to_a_seeded_parent_whose_partitions_are_flagged_unpublished",
+        "test_bundle_verifies_remotely_an_unpublished_flagged_partition_that_is_not_held_locally"
+      ]
+    },
+    {
+      "id": "tardis-a2.absent-partition-skipped-without-remote-verification",
+      "file": "apps/runtime/conversion/s3_publish.py",
+      "find": "                already_published.append((prefix, manifest_sha))\n                continue",
+      "replace": "                if published_to_s3:\n                    already_published.append((prefix, manifest_sha))\n                continue",
+      "cwd": "apps/runtime/conversion",
+      "command": ["uv", "run", "--frozen", "pytest", "-q", "tests/test_s3_publish.py", "-k", "neither_locally_nor_remotely or changed_remote_parts"],
+      "mustFail": [
+        "test_bundle_refuses_an_unpublished_flagged_partition_held_neither_locally_nor_remotely",
+        "test_bundle_refuses_an_unpublished_flagged_partition_with_changed_remote_parts"
+      ]
+    },
+    {
+      "id": "tardis-a2.absent-partition-accepted-without-a-store",
+      "file": "apps/runtime/conversion/s3_publish.py",
+      "find": "                if store is None:\n                    raise PublicationError(\"REMOTE_VERIFICATION_REQUIRED\")\n                already_published.append",
+      "replace": "                if store is None:\n                    continue\n                already_published.append",
+      "cwd": "apps/runtime/conversion",
+      "command": ["uv", "run", "--frozen", "pytest", "-q", "tests/test_s3_publish.py", "-k", "without_a_store"],
+      "mustFail": ["test_bundle_without_a_store_refuses_an_unpublished_flagged_partition_not_held_locally"]
+    }
+  ]
+}

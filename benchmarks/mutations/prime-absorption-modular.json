@@ -1,0 +1,1999 @@
+{
+  "mutations": [
+    {
+      "id": "prime-modular.record-gate-percent",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionEngine.ts",
+      "find": "const recordable = absorbed >= (rules.recordPercent / 100) * attack.resting && absorbed >= rules.recordMultiple * attack.yardstick;",
+      "replace": "const recordable = absorbed >= rules.recordMultiple * attack.yardstick;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionEngine.test.ts"
+      ],
+      "mustFail": [
+        "records nothing short of all the wall held"
+      ]
+    },
+    {
+      "id": "prime-modular.record-gate-multiple",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionEngine.ts",
+      "find": "const recordable = absorbed >= (rules.recordPercent / 100) * attack.resting && absorbed >= rules.recordMultiple * attack.yardstick;",
+      "replace": "const recordable = absorbed >= (rules.recordPercent / 100) * attack.resting;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionEngine.test.ts"
+      ],
+      "mustFail": [
+        "records nothing under five times the book's typical level"
+      ]
+    },
+    {
+      "id": "prime-modular.record-gate-from-the-numbers",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionEngine.ts",
+      "find": "const recordable = absorbed >= (rules.recordPercent / 100) * attack.resting && absorbed >= rules.recordMultiple * attack.yardstick;",
+      "replace": "const recordable = absorbed >= (rules.absorbedPercent / 100) * attack.resting && absorbed >= rules.absorbedMultiple * attack.yardstick;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionEngine.test.ts"
+      ],
+      "mustFail": [
+        "records at the sliders' lowest numbers whatever numbers are in hand"
+      ]
+    },
+    {
+      "id": "prime-modular.yardstick-at-first-hit",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionEngine.ts",
+      "find": "absorbed >= rules.recordMultiple * attack.yardstick;",
+      "replace": "absorbed >= rules.recordMultiple * (column.reference || reference);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionEngine.test.ts"
+      ],
+      "mustFail": [
+        "reads the typical level from the column of the attack's first hit"
+      ]
+    },
+    {
+      "id": "prime-modular.standing-gate",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionEngine.ts",
+      "find": "if (wall.current > 0 && mid !== null && holdsAt(wall, mid, rowWidth)) {",
+      "replace": "if (mid !== null && holdsAt(wall, mid, rowWidth)) {",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionEngine.test.ts"
+      ],
+      "mustFail": [
+        "records only while something of the wall still rests"
+      ]
+    },
+    {
+      "id": "prime-modular.mid-gate",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionEngine.ts",
+      "find": "if (wall.current > 0 && mid !== null && holdsAt(wall, mid, rowWidth)) {",
+      "replace": "if (wall.current > 0) {",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionEngine.test.ts"
+      ],
+      "mustFail": [
+        "records with the price at or inside the wall's band, never through it"
+      ]
+    },
+    {
+      "id": "prime-modular.hidden-indicator-keeps-no-rules",
+      "file": "apps/web/src/components/chart/MainPanel.tsx",
+      "find": "absorptionOn && aggressiveTimeframeOk ? absorptionRules : null,",
+      "replace": "aggressiveTimeframeOk ? absorptionRules : null,",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/components/chart/tests/MainPanel.test.tsx"
+      ],
+      "mustFail": [
+        "hands the chart no rules while Prime Absorption is hidden"
+      ]
+    },
+    {
+      "id": "prime-modular.show-broken-off-hides-the-hollow",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionPrimitive.ts",
+      "find": "const shown = this._settings.showBroken === false ? withoutBroken(this.prints) : this.prints;",
+      "replace": "const shown = this.prints;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionPrimitive.test.ts"
+      ],
+      "mustFail": [
+        "Show broken levels off"
+      ]
+    },
+    {
+      "id": "prime-modular.without-broken-drops-the-broken",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionMerge.ts",
+      "find": "return prints.filter((print) => !print.broken);",
+      "replace": "return prints.filter((print) => print.broken);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionMerge.test.ts"
+      ],
+      "mustFail": [
+        "drops the broken spheres and keeps the rest in the order given"
+      ]
+    },
+    {
+      "id": "prime-modular.wall-read-as-the-heatmap-wall-size",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionEngine.ts",
+      "find": "resting: Math.max(life.prevCurrent, rules.wallSize(column, reference)),",
+      "replace": "resting: life.prevCurrent,",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionEngine.test.ts"
+      ],
+      "mustFail": [
+        "measures an attack against the heatmap's wall size when the band showed less, and keeps what it showed"
+      ]
+    },
+    {
+      "id": "prime-modular.record-keeps-what-the-band-showed",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionEngine.ts",
+      "find": "shown: life.prevCurrent, resting:",
+      "replace": "shown: 0, resting:",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionEngine.test.ts"
+      ],
+      "mustFail": [
+        "measures an attack against the heatmap's wall size when the band showed less, and keeps what it showed"
+      ]
+    },
+    {
+      "id": "prime-modular.rules-wall-size-never-under-the-floor",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionSettings.ts",
+      "find": "wallSize: (column, reference) => Math.max(wallFloor(column, reference), style.wallSize(column, contextOf(column, reference))),",
+      "replace": "wallSize: wallFloor,",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionSettings.test.ts"
+      ],
+      "mustFail": [
+        "reads the wall size from the heatmap's style: the full-dark row on an index book, the paint floor on crypto, never under the floor"
+      ]
+    },
+    {
+      "id": "prime-modular.index-wall-is-the-full-dark-row",
+      "file": "apps/web/src/lib/indicators/passive-liquidity/indexLiquidityStyle.ts",
+      "find": "  return (column: LiquidityColumn, context: SaturationContext): number => params.monsterMultiple * threshold(column, context);",
+      "replace": "  return (column: LiquidityColumn, context: SaturationContext): number => threshold(column, context);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/passive-liquidity/tests/liquidityStyle.test.ts"
+      ],
+      "mustFail": [
+        "names the wall size an absorption is measured against: the full-dark row on an index book, the paint floor on crypto"
+      ]
+    },
+    {
+      "id": "prime-modular.chunk-before-the-host-is-done",
+      "file": "apps/web/src/lib/indicators/passive-liquidity/columnHistoryStream.ts",
+      "find": "const beforeTheHost = page.span?.oldest != null && chunk.toTs <= page.span.oldest;",
+      "replace": "const beforeTheHost = false;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/passive-liquidity/tests/columnHistoryStream.test.ts"
+      ],
+      "mustFail": [
+        "finishes a chunk that ends at or before the host's oldest column as done and empty"
+      ]
+    },
+    {
+      "id": "prime-modular.chunk-before-the-host-needs-the-whole-chunk",
+      "file": "apps/web/src/lib/indicators/passive-liquidity/columnHistoryStream.ts",
+      "find": "const beforeTheHost = page.span?.oldest != null && chunk.toTs <= page.span.oldest;",
+      "replace": "const beforeTheHost = page.span?.oldest != null && chunk.cursor <= page.span.oldest;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/passive-liquidity/tests/columnHistoryStream.test.ts"
+      ],
+      "mustFail": [
+        "finishes a chunk that ends at or before the host's oldest column as done and empty"
+      ]
+    },
+    {
+      "id": "prime-modular.far-edge-not-near",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionEngine.ts",
+      "find": "return wall.side === \"bid\" ? mid > rowLo * rowWidth : mid < (rowLo + wall.bandRows) * rowWidth;",
+      "replace": "return wall.side === \"bid\" ? mid >= (rowLo + wall.bandRows) * rowWidth : mid <= rowLo * rowWidth;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionEngine.test.ts"
+      ],
+      "mustFail": [
+        "records with the price at or inside the wall's band, never through it"
+      ]
+    },
+    {
+      "id": "prime-modular.through-at-the-far-edge",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionEngine.ts",
+      "find": "return wall.side === \"bid\" ? mid > rowLo * rowWidth : mid < (rowLo + wall.bandRows) * rowWidth;",
+      "replace": "return wall.side === \"bid\" ? mid >= rowLo * rowWidth : mid <= (rowLo + wall.bandRows) * rowWidth;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionEngine.test.ts"
+      ],
+      "mustFail": [
+        "records with the price at or inside the wall's band, never through it"
+      ]
+    },
+    {
+      "id": "prime-modular.immediate-print",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionEngine.ts",
+      "find": "    held: true,",
+      "replace": "    held: null,",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionEngine.test.ts"
+      ],
+      "mustFail": [
+        "records the attack at the column the sells into the wall reach all of what it held when the attack began"
+      ]
+    },
+    {
+      "id": "prime-modular.replace-not-stack",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionEngine.ts",
+      "find": "attack.record = recorded;",
+      "replace": "attack.record = null;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionEngine.test.ts"
+      ],
+      "mustFail": [
+        "reads the strong ring from the same record when the eating reaches twice the resting size in the same attack"
+      ]
+    },
+    {
+      "id": "prime-modular.trail-grows-by-a-yardstick",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionEngine.ts",
+      "find": "if (attack.next < attack.asks.length && absorbed >= attack.asks[attack.next] && record.trail.length < TRAIL_MAX) {",
+      "replace": "if (record.trail.length < TRAIL_MAX) {",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionEngine.test.ts"
+      ],
+      "mustFail": [
+        "keeps in its trail the first column each number a slider can ask for is met at"
+      ]
+    },
+    {
+      "id": "prime-modular.trail-last-is-the-newest",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionEngine.ts",
+      "find": "const grown = record === null || absorbed > record.latest.absorbed;",
+      "replace": "const grown = true;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionEngine.test.ts"
+      ],
+      "mustFail": [
+        "keeps in its trail the first column each number a slider can ask for is met at"
+      ]
+    },
+    {
+      "id": "prime-modular.trail-capped",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionEngine.ts",
+      "find": " && record.trail.length < TRAIL_MAX) {",
+      "replace": ") {",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionEngine.test.ts"
+      ],
+      "mustFail": [
+        "keeps at most the record's first column and one for each number a slider can ask for"
+      ]
+    },
+    {
+      "id": "prime-modular.read-first-qualifying",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionEngine.ts",
+      "find": "const entry = trail[at];",
+      "replace": "const entry = trail[trail.length - 1];",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionEngine.test.ts"
+      ],
+      "mustFail": [
+        "reads the sphere at the first entry of the trail that reaches the numbers in hand"
+      ]
+    },
+    {
+      "id": "prime-modular.read-strong-later-entry",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionEngine.ts",
+      "find": "const strong = record.latest.absorbed >= strongNeed;",
+      "replace": "const strong = entry.absorbed >= strongNeed;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionEngine.test.ts"
+      ],
+      "mustFail": [
+        "reads the strong ring from the newest reading"
+      ]
+    },
+    {
+      "id": "prime-modular.percent-gate",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionEngine.ts",
+      "find": "const need = Math.max((rules.absorbedPercent / 100) * record.resting, rules.absorbedMultiple * record.yardstick);",
+      "replace": "const need = rules.absorbedMultiple * record.yardstick;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionEngine.test.ts"
+      ],
+      "mustFail": [
+        "reads the sphere at the first entry of the trail that reaches the numbers in hand"
+      ]
+    },
+    {
+      "id": "prime-modular.multiple-gate",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionEngine.ts",
+      "find": "const need = Math.max((rules.absorbedPercent / 100) * record.resting, rules.absorbedMultiple * record.yardstick);",
+      "replace": "const need = (rules.absorbedPercent / 100) * record.resting;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionEngine.test.ts"
+      ],
+      "mustFail": [
+        "reads the sphere at the first entry of the trail that reaches the numbers in hand"
+      ]
+    },
+    {
+      "id": "prime-modular.strong-ignores-the-minimum",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionEngine.ts",
+      "find": ", (rules.strongPercent / rules.absorbedPercent) * rules.absorbedMultiple * record.yardstick);",
+      "replace": ", 0);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionEngine.test.ts"
+      ],
+      "mustFail": [
+        "reads the strong ring from the newest reading"
+      ]
+    },
+    {
+      "id": "prime-modular.broken-on-closed",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionEngine.ts",
+      "find": "(record.endReason === \"closed\" || record.endReason === \"pulled\")",
+      "replace": "record.endReason === \"pulled\"",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionEngine.test.ts"
+      ],
+      "mustFail": [
+        "reads broken from the record's end",
+        "marks the sphere broken, and keeps it, when a bar later closes through its wall"
+      ]
+    },
+    {
+      "id": "prime-modular.broken-on-pulled",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionEngine.ts",
+      "find": "(record.endReason === \"closed\" || record.endReason === \"pulled\")",
+      "replace": "record.endReason === \"closed\"",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionEngine.test.ts"
+      ],
+      "mustFail": [
+        "reads broken from the record's end",
+        "marks the sphere broken when its wall is pulled"
+      ]
+    },
+    {
+      "id": "prime-modular.break-window-unbounded",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionEngine.ts",
+      "find": " && record.endTs !== null && record.endTs - entry.ts <= rules.breakWindowMs;",
+      "replace": ";",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionEngine.test.ts"
+      ],
+      "mustFail": [
+        "reads broken from the record's end",
+        "marks the sphere broken, and keeps it, when a bar later closes through its wall"
+      ]
+    },
+    {
+      "id": "prime-modular.never-deleted",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionEngine.ts",
+      "find": "        record.endTs = wall.endTs;",
+      "replace": "        record.endTs = wall.endTs;\n        this._records.delete(record.key);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionEngine.test.ts"
+      ],
+      "mustFail": [
+        "marks the sphere broken, and keeps it, when a bar later closes through its wall"
+      ]
+    },
+    {
+      "id": "prime-modular.hole-breaks",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionEngine.ts",
+      "find": "? wall.endReason : \"other\";",
+      "replace": "? wall.endReason : \"closed\";",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionEngine.test.ts"
+      ],
+      "mustFail": [
+        "marks the sphere broken when its wall is pulled, and leaves one whose wall ended in a hole"
+      ]
+    },
+    {
+      "id": "prime-modular.pulled-end-dropped",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionEngine.ts",
+      "find": "record.endReason = wall.endReason === \"closed\" || wall.endReason === \"pulled\" ? wall.endReason : \"other\";",
+      "replace": "record.endReason = wall.endReason === \"closed\" ? wall.endReason : \"other\";",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionEngine.test.ts"
+      ],
+      "mustFail": [
+        "marks the sphere broken when its wall is pulled"
+      ]
+    },
+    {
+      "id": "prime-modular.numbers-in-the-engine-key",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionEngine.ts",
+      "find": "  return JSON.stringify([rules.instrument, rules.bandRows, rules.wallKey, rules.quietMs, rowWidth]);",
+      "replace": "  return JSON.stringify([rules.instrument, rules.bandRows, rules.wallKey, rules.quietMs, rowWidth, rules.absorbedPercent, rules.strongPercent, rules.absorbedMultiple, rules.breakWindowMs]);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionEngine.test.ts"
+      ],
+      "mustFail": [
+        "keeps its records when the rule's numbers or the break window change"
+      ]
+    },
+    {
+      "id": "prime-modular.wall-key-not-in-the-engine-key",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionEngine.ts",
+      "find": "  return JSON.stringify([rules.instrument, rules.bandRows, rules.wallKey, rules.quietMs, rowWidth]);",
+      "replace": "  return JSON.stringify([rules.instrument, rules.bandRows, rules.quietMs, rowWidth]);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionEngine.test.ts"
+      ],
+      "mustFail": [
+        "keeps its records when the rule's numbers or the break window change, reading them anew at once, and starts over on the quiet spell or the wall key"
+      ]
+    },
+    {
+      "id": "prime-modular.band-read-the-rules-way",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionEngine.ts",
+      "find": "bandSizeOf: rules.bandSize,",
+      "replace": "bandSizeOf: undefined,",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionEngine.test.ts"
+      ],
+      "mustFail": [
+        "opens a wall only at the column's floor, read the rules' way"
+      ]
+    },
+    {
+      "id": "prime-modular.engine-version",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionEngine.ts",
+      "find": "export const ABSORPTION_ENGINE_VERSION = 6;",
+      "replace": "export const ABSORPTION_ENGINE_VERSION = 5;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionEngine.test.ts"
+      ],
+      "mustFail": [
+        "is the sixth engine: the browser's history store is keyed on it"
+      ]
+    },
+    {
+      "id": "prime-modular.record-without-a-trail-read",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionEngine.ts",
+      "find": "&& Array.isArray(record.trail) && record.trail.length > 0 && record.trail.every(isTrailEntry) && isTrailEntry(record.latest) && ended;",
+      "replace": "&& isTrailEntry(record.latest) && ended;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionStore.test.ts"
+      ],
+      "mustFail": [
+        "survives a storage that is missing, throws or holds rubbish, and reads back only whole records of this engine"
+      ]
+    },
+    {
+      "id": "prime-modular.record-end-unchecked",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionEngine.ts",
+      "find": "&& Array.isArray(record.trail) && record.trail.length > 0 && record.trail.every(isTrailEntry) && isTrailEntry(record.latest) && ended;",
+      "replace": "&& Array.isArray(record.trail) && record.trail.length > 0 && record.trail.every(isTrailEntry) && isTrailEntry(record.latest);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionStore.test.ts"
+      ],
+      "mustFail": [
+        "survives a storage that is missing, throws or holds rubbish, and reads back only whole records of this engine"
+      ]
+    },
+    {
+      "id": "prime-modular.ten-second-feed",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionPrimitive.ts",
+      "find": "fine: { columns: [], columnMs: grid.columnMs },",
+      "replace": "fine: { columns: grid.columns, columnMs: grid.columnMs },",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionPrimitive.test.ts"
+      ],
+      "mustFail": [
+        "reads the live book from the ten-second columns alone"
+      ]
+    },
+    {
+      "id": "prime-modular.live-kept-past-seam",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionPrimitive.ts",
+      "find": "return [...history, ...this._kept.filter((record) => record.ts >= this._shownFrom && !seen.has(record.key) && !twinned(record))];",
+      "replace": "return [...history, ...this._kept.filter((record) => record.ts >= this._shownFrom && !seen.has(record.key) && !twinned(record) && source?.covers(record.ts) !== true)];",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionPrimitive.test.ts"
+      ],
+      "mustFail": [
+        "never takes a live sphere back"
+      ]
+    },
+    {
+      "id": "prime-modular.twin-window",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionPrimitive.ts",
+      "find": "export const LIVE_HISTORY_TWIN_MS = 120_000;",
+      "replace": "export const LIVE_HISTORY_TWIN_MS = 0;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionPrimitive.test.ts"
+      ],
+      "mustFail": [
+        "shows the history's sphere once where a saved sphere of the same side and band is the same attack, begun within two minutes of it"
+      ]
+    },
+    {
+      "id": "prime-modular.twins-by-the-sphere-not-the-attack",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionPrimitive.ts",
+      "find": ".some((ts) => Math.abs(ts - record.attackTs) <= LIVE_HISTORY_TWIN_MS);",
+      "replace": ".some((ts) => Math.abs(ts - record.ts) <= LIVE_HISTORY_TWIN_MS);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionPrimitive.test.ts"
+      ],
+      "mustFail": [
+        "shows the history's sphere once where a saved sphere of the same side and band is the same attack, begun within two minutes of it"
+      ]
+    },
+    {
+      "id": "prime-modular.slider-reloads",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionPrimitive.ts",
+      "find": "    this._history?.setRules(rules, this._grid?.rowWidth ?? 0);",
+      "replace": "    this._history?.setRules(null, this._grid?.rowWidth ?? 0);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionPrimitive.test.ts"
+      ],
+      "mustFail": [
+        "re-reads the saved spheres at once when the rule's numbers change, and asks the history for nothing new"
+      ]
+    },
+    {
+      "id": "prime-modular.read-with-the-lowest-numbers",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionPrimitive.ts",
+      "find": "      const print = readPrint(record, rules);",
+      "replace": "      const print = readPrint(record, { ...rules, absorbedPercent: 100, strongPercent: 200, absorbedMultiple: 5 });",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionPrimitive.test.ts"
+      ],
+      "mustFail": [
+        "re-reads the saved spheres at once when the rule's numbers change, and asks the history for nothing new"
+      ]
+    },
+    {
+      "id": "prime-modular.numbers-in-the-loader-key",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionHistory.ts",
+      "find": "return JSON.stringify([rules.instrument, rules.bandRows, rules.wallKey, rules.quietMs, rowWidth, intervalMs]);",
+      "replace": "return JSON.stringify([rules.instrument, rules.bandRows, rules.wallKey, rules.absorbedPercent, rules.strongPercent, rules.absorbedMultiple, rules.quietMs, rules.breakWindowMs, rowWidth, intervalMs]);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionHistory.test.ts"
+      ],
+      "mustFail": [
+        "keeps the judged day when the rule's numbers change"
+      ]
+    },
+    {
+      "id": "prime-modular.loader-key",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionHistory.ts",
+      "find": "return JSON.stringify([rules.instrument, rules.bandRows, rules.wallKey, rules.quietMs, rowWidth, intervalMs]);",
+      "replace": "return JSON.stringify([rules.instrument, rules.bandRows, rules.quietMs, rowWidth, intervalMs]);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionHistory.test.ts"
+      ],
+      "mustFail": [
+        "keys the judged hours on the walls"
+      ]
+    },
+    {
+      "id": "prime-modular.day-read-to-the-quiet-spell-only",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionHistory.ts",
+      "find": "    const hostEnd = chunkEnd + Math.max(rules.quietMs, rules.breakWindowMs);",
+      "replace": "    const hostEnd = chunkEnd + rules.quietMs;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionHistory.test.ts"
+      ],
+      "mustFail": [
+        "reads past the end of a day by the break window"
+      ]
+    },
+    {
+      "id": "prime-modular.store-grows",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionStore.ts",
+      "find": "if (kept !== undefined && !fuller(record, kept)) continue;",
+      "replace": "if (kept !== undefined) continue;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionStore.test.ts"
+      ],
+      "mustFail": [
+        "lets a record of the same attack grow"
+      ]
+    },
+    {
+      "id": "prime-modular.hour-records-unvalidated",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionHistoryStore.ts",
+      "find": "records: value.records.filter(isAbsorptionRecord)",
+      "replace": "records: value.records",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionHistoryStore.test.ts"
+      ],
+      "mustFail": [
+        "reads back only whole records of this engine: one saved without its trail, or with an end it cannot read, is dropped"
+      ]
+    },
+    {
+      "id": "prime-modular.record-percent-not-the-slider",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionSettings.ts",
+      "find": "export const RECORD_PERCENT = ABSORBED_PERCENT_SLIDER.min;",
+      "replace": "export const RECORD_PERCENT = DEFAULT_ABSORBED_PERCENT;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionSettings.test.ts"
+      ],
+      "mustFail": [
+        "record an attack from the sliders' lowest numbers"
+      ]
+    },
+    {
+      "id": "prime-modular.record-multiple-not-the-slider",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionSettings.ts",
+      "find": "export const RECORD_MULTIPLE = ABSORBED_MULTIPLE_SLIDER.min;",
+      "replace": "export const RECORD_MULTIPLE = DEFAULT_ABSORBED_MULTIPLE;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionSettings.test.ts"
+      ],
+      "mustFail": [
+        "record an attack from the sliders' lowest numbers"
+      ]
+    },
+    {
+      "id": "prime-modular.tracker-wall-size-hook",
+      "file": "apps/web/src/lib/indicators/institutional-order-blocks-v2/bandTracker.ts",
+      "find": "const wallSize = rules.wallSizeAt?.(column) ?? rules.wallSize;",
+      "replace": "const wallSize = rules.wallSize;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/institutional-order-blocks-v2/tests/bandTracker.test.ts"
+      ],
+      "mustFail": [
+        "opens a wall at the column's own wall size, marks strong at the column's own strong size, and reads a band the hook's way"
+      ]
+    },
+    {
+      "id": "prime-modular.default-percent",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionSettings.ts",
+      "find": "export const DEFAULT_ABSORBED_PERCENT = 200;",
+      "replace": "export const DEFAULT_ABSORBED_PERCENT = 250;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionSettings.test.ts"
+      ],
+      "mustFail": [
+        "start at 200% of the wall, 300% for the strong ring and 40 times the book's typical level"
+      ]
+    },
+    {
+      "id": "prime-modular.wall-floor-minimum",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionSettings.ts",
+      "find": "const wallFloor = (column: LiquidityColumn, reference: number) => Math.max(minBandSize, style.paintFloor(column, contextOf(column, reference)));",
+      "replace": "const wallFloor = (column: LiquidityColumn, reference: number) => style.paintFloor(column, contextOf(column, reference));",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionSettings.test.ts"
+      ],
+      "mustFail": [
+        "opens a wall at the heatmap's own paint floor for the column, never under the trader's minimum band size"
+      ]
+    },
+    {
+      "id": "prime-modular.break-window-uncapped",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionSettings.ts",
+      "find": "    breakWindowMs: Math.min(ABSORPTION_BREAK_MAX_MS, Math.max(ABSORPTION_BREAK_BARS * intervalMs, ABSORPTION_BREAK_MIN_MS)),",
+      "replace": "    breakWindowMs: Math.max(ABSORPTION_BREAK_BARS * intervalMs, ABSORPTION_BREAK_MIN_MS),",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionSettings.test.ts"
+      ],
+      "mustFail": [
+        "bands with the heatmap's cluster rows on this chart"
+      ]
+    },
+    {
+      "id": "prime-review.trail-max",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionEngine.ts",
+      "find": "export const TRAIL_MAX = 256;",
+      "replace": "export const TRAIL_MAX = 64;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionEngine.test.ts"
+      ],
+      "mustFail": [
+        "keeps at most the record's first column and one for each number a slider can ask for"
+      ]
+    },
+    {
+      "id": "prime-review.zero-level-opens",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionEngine.ts",
+      "find": "          if (level > 0) life.attack = {",
+      "replace": "          if (level >= 0) life.attack = {",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionEngine.test.ts"
+      ],
+      "mustFail": [
+        "opens no attack without a typical level"
+      ]
+    },
+    {
+      "id": "prime-review.store-budget-lru",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionStore.ts",
+      "find": "    for (const [key, entry] of entries) if (key !== own && (drop === null || entry.at < (entries.get(drop) as Entry).at)) drop = key;",
+      "replace": "    for (const [key, entry] of entries) if (key !== own && (drop === null || entry.at > (entries.get(drop) as Entry).at)) drop = key;",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionStore.test.ts"
+      ],
+      "cwd": "apps/web",
+      "mustFail": [
+        "keeps the store within its budget: over it, the instruments used longest ago go first and whole"
+      ]
+    },
+    {
+      "id": "prime-review.store-budget-own-kept",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionStore.ts",
+      "find": "    for (const [key, entry] of entries) if (key !== own && (drop === null || entry.at < (entries.get(drop) as Entry).at)) drop = key;",
+      "replace": "    for (const [key, entry] of entries) if (drop === null || entry.at < (entries.get(drop) as Entry).at) drop = key;",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionStore.test.ts"
+      ],
+      "cwd": "apps/web",
+      "mustFail": [
+        "cuts an instrument over the budget on its own to its newest records, a whole column at a time"
+      ]
+    },
+    {
+      "id": "prime-review.store-budget-oldest-first",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionStore.ts",
+      "find": "    entry = { at: entry.at, from: records[cut - 1].ts + 1, records: records.slice(cut) };",
+      "replace": "    entry = { at: entry.at, from: records[cut - 1].ts + 1, records: records.slice(0, records.length - cut) };",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionStore.test.ts"
+      ],
+      "cwd": "apps/web",
+      "mustFail": [
+        "cuts an instrument over the budget on its own to its newest records, a whole column at a time"
+      ]
+    },
+    {
+      "id": "prime-review.store-budget-whole-column",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionStore.ts",
+      "find": "    for (; cut < records.length && (over > 0 || records[cut].ts === records[cut - 1].ts); cut += 1) over -= JSON.stringify(records[cut]).length + 1;",
+      "replace": "    for (; cut < records.length && over > 0; cut += 1) over -= JSON.stringify(records[cut]).length + 1;",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionStore.test.ts"
+      ],
+      "cwd": "apps/web",
+      "mustFail": [
+        "cuts an instrument over the budget on its own to its newest records, a whole column at a time"
+      ]
+    },
+    {
+      "id": "prime-review.store-budget-cut-until-fits",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionStore.ts",
+      "find": "  while (text.length > limit && entry !== undefined && entry.records.length > 0) {",
+      "replace": "  if (text.length > limit && entry !== undefined && entry.records.length > 0) {",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionStore.test.ts"
+      ],
+      "cwd": "apps/web",
+      "mustFail": [
+        "on a full storage, lets the instruments used longest ago go first and then its own oldest records"
+      ]
+    },
+    {
+      "id": "prime-review.store-at-last-used",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionStore.ts",
+      "find": "      all.set(walls, { at: nowMs, from: entry?.from ?? 0, records: kept });",
+      "replace": "      all.set(walls, { at: entry?.at ?? nowMs, from: entry?.from ?? 0, records: kept });",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionStore.test.ts"
+      ],
+      "cwd": "apps/web",
+      "mustFail": [
+        "keeps the store within its budget: over it, the instruments used longest ago go first and whole"
+      ]
+    },
+    {
+      "id": "prime-review.store-floor",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionStore.ts",
+      "find": "    const merged = mergeRecords(before, records, nowMs, entry?.from);",
+      "replace": "    const merged = mergeRecords(before, records, nowMs);",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionStore.test.ts"
+      ],
+      "cwd": "apps/web",
+      "mustFail": [
+        "cuts an instrument over the budget on its own to its newest records, a whole column at a time"
+      ]
+    },
+    {
+      "id": "prime-review.store-floor-carried",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionStore.ts",
+      "find": "      all.set(walls, { at: nowMs, from: entry?.from ?? 0, records: kept });",
+      "replace": "      all.set(walls, { at: nowMs, from: 0, records: kept });",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionStore.test.ts"
+      ],
+      "cwd": "apps/web",
+      "mustFail": [
+        "cuts an instrument over the budget on its own to its newest records, a whole column at a time"
+      ]
+    },
+    {
+      "id": "prime-review.store-floor-read-back",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionStore.ts",
+      "find": "  return { at: value.at as number, from: Number.isFinite(value.from) ? (value.from as number) : 0, records: value.records.filter(isAbsorptionRecord) };",
+      "replace": "  return { at: value.at as number, from: 0, records: value.records.filter(isAbsorptionRecord) };",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionStore.test.ts"
+      ],
+      "cwd": "apps/web",
+      "mustFail": [
+        "cuts an instrument over the budget on its own to its newest records, a whole column at a time"
+      ]
+    },
+    {
+      "id": "prime-review.store-floor-mangled",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionStore.ts",
+      "find": "  return { at: value.at as number, from: Number.isFinite(value.from) ? (value.from as number) : 0, records: value.records.filter(isAbsorptionRecord) };",
+      "replace": "  return { at: value.at as number, from: value.from as number, records: value.records.filter(isAbsorptionRecord) };",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionStore.test.ts"
+      ],
+      "cwd": "apps/web",
+      "mustFail": [
+        "survives a storage that is missing, throws or holds rubbish"
+      ]
+    },
+    {
+      "id": "prime-review.store-entry-at",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionStore.ts",
+      "find": "  if (!isObject(value) || !Number.isFinite(value.at) || !Array.isArray(value.records)) return null;",
+      "replace": "  if (!isObject(value) || !Array.isArray(value.records)) return null;",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionStore.test.ts"
+      ],
+      "cwd": "apps/web",
+      "mustFail": [
+        "survives a storage that is missing, throws or holds rubbish"
+      ]
+    },
+    {
+      "id": "prime-review.store-entry-records",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionStore.ts",
+      "find": "  if (!isObject(value) || !Number.isFinite(value.at) || !Array.isArray(value.records)) return null;",
+      "replace": "  if (!isObject(value) || !Number.isFinite(value.at)) return null;",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionStore.test.ts"
+      ],
+      "cwd": "apps/web",
+      "mustFail": [
+        "survives a storage that is missing, throws or holds rubbish"
+      ]
+    },
+    {
+      "id": "prime-review.store-throttle",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionStore.ts",
+      "find": "    if (this._unsaved !== null && nowMs - this._savedAt >= STORE_SAVE_INTERVAL_MS) {",
+      "replace": "    if (this._unsaved !== null) {",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionStore.test.ts"
+      ],
+      "cwd": "apps/web",
+      "mustFail": [
+        "writes the first record at once, then at most once every five seconds"
+      ]
+    },
+    {
+      "id": "prime-review.store-throttle-quiet",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionStore.ts",
+      "find": "    if (this._unsaved !== null && nowMs - this._savedAt >= STORE_SAVE_INTERVAL_MS) {",
+      "replace": "    if (nowMs - this._savedAt >= STORE_SAVE_INTERVAL_MS) {",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionStore.test.ts"
+      ],
+      "cwd": "apps/web",
+      "mustFail": [
+        "writes the first record at once, then at most once every five seconds"
+      ]
+    },
+    {
+      "id": "prime-review.store-throttle-clock",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionStore.ts",
+      "find": "      this._savedAt = nowMs;\n",
+      "replace": "",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionStore.test.ts"
+      ],
+      "cwd": "apps/web",
+      "mustFail": [
+        "writes the first record at once, then at most once every five seconds"
+      ]
+    },
+    {
+      "id": "prime-review.store-throttle-held",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionStore.ts",
+      "find": "    if (merged !== before) {",
+      "replace": "    if (merged === before) return before;\n    {",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionStore.test.ts"
+      ],
+      "cwd": "apps/web",
+      "mustFail": [
+        "writes the first record at once, then at most once every five seconds"
+      ]
+    },
+    {
+      "id": "prime-review.store-flush-clean",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionStore.ts",
+      "find": "    if (own === null) return;\n",
+      "replace": "",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionStore.test.ts"
+      ],
+      "cwd": "apps/web",
+      "mustFail": [
+        "flush writes a store holding unsaved records at once, and nothing when everything is saved"
+      ]
+    },
+    {
+      "id": "prime-review.store-flush-once",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionStore.ts",
+      "find": "    this._unsaved = null;\n",
+      "replace": "",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionStore.test.ts"
+      ],
+      "cwd": "apps/web",
+      "mustFail": [
+        "flush writes a store holding unsaved records at once, and nothing when everything is saved"
+      ]
+    },
+    {
+      "id": "prime-review.store-quota-halve",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionStore.ts",
+      "find": "      const smaller = fit(tried.entries, own, Math.floor(tried.text.length / 2));",
+      "replace": "      const smaller = fit(tried.entries, own, tried.text.length);",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionStore.test.ts"
+      ],
+      "cwd": "apps/web",
+      "mustFail": [
+        "on a full storage, lets the instruments used longest ago go first and then its own oldest records"
+      ]
+    },
+    {
+      "id": "prime-review.store-quota-commit",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionStore.ts",
+      "find": "        this._entries = tried.entries;\n",
+      "replace": "",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionStore.test.ts"
+      ],
+      "cwd": "apps/web",
+      "mustFail": [
+        "on a full storage, lets the instruments used longest ago go first and then its own oldest records"
+      ]
+    },
+    {
+      "id": "prime-review.store-quota-keep-size",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionStore.ts",
+      "find": "        this._maxChars = tried.text.length;\n",
+      "replace": "",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionStore.test.ts"
+      ],
+      "cwd": "apps/web",
+      "mustFail": [
+        "on a full storage, lets the instruments used longest ago go first and then its own oldest records"
+      ]
+    },
+    {
+      "id": "prime-review.store-quota-stop",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionStore.ts",
+      "find": "    this._stopped = true;\n",
+      "replace": "",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionStore.test.ts"
+      ],
+      "cwd": "apps/web",
+      "mustFail": [
+        "on a storage that refuses every write, warns once with what failed"
+      ]
+    },
+    {
+      "id": "prime-review.store-quota-bound",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionStore.ts",
+      "find": "    while (attempts < STORE_WRITE_ATTEMPTS) {",
+      "replace": "    while (attempts < STORE_WRITE_ATTEMPTS + 8) {",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionStore.test.ts"
+      ],
+      "cwd": "apps/web",
+      "mustFail": [
+        "on a storage that refuses every write, warns once with what failed"
+      ]
+    },
+    {
+      "id": "prime-review.store-quota-memory-kept",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionStore.ts",
+      "find": "      tried = smaller;\n",
+      "replace": "      tried = smaller;\n      this._entries = smaller.entries;\n",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionStore.test.ts"
+      ],
+      "cwd": "apps/web",
+      "mustFail": [
+        "on a storage that refuses every write, warns once with what failed"
+      ]
+    },
+    {
+      "id": "prime-review.store-quota-warn-says",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionStore.ts",
+      "find": "    const name = failure instanceof Error ? failure.name : String(failure);",
+      "replace": "    const name = \"an error\";",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionStore.test.ts"
+      ],
+      "cwd": "apps/web",
+      "mustFail": [
+        "on a storage that refuses every write, warns once with what failed"
+      ]
+    },
+    {
+      "id": "prime-review.store-cap-churn",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionStore.ts",
+      "find": "  return kept.length === existing.length && kept.every((record, i) => record === existing[i]) ? existing : kept;",
+      "replace": "  return kept;",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionStore.test.ts"
+      ],
+      "cwd": "apps/web",
+      "mustFail": [
+        "takes back no record the cap let go"
+      ]
+    },
+    {
+      "id": "prime-review.store-retire-v7",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionStore.ts",
+      "find": ", \"terminal.absorption.v6\", \"terminal.absorption.v7\"];",
+      "replace": ", \"terminal.absorption.v6\"];",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionStore.test.ts"
+      ],
+      "cwd": "apps/web",
+      "mustFail": [
+        "saves under v8 and clears the records saved under v1 to v7"
+      ]
+    },
+    {
+      "id": "prime-review.history-retired-keys-left",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionHistoryStore.ts",
+      "find": "      for (const key of RETIRED_HISTORY_STORAGE_KEYS) storage?.removeItem?.(key);\n",
+      "replace": "",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionHistoryStore.test.ts"
+      ],
+      "cwd": "apps/web",
+      "mustFail": [
+        "clears the hours saved under every older engine's key as soon as it is made, and keeps this engine's hours and every other key"
+      ]
+    },
+    {
+      "id": "prime-review.history-retired-keys-take-current",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionHistoryStore.ts",
+      "find": "export const RETIRED_HISTORY_STORAGE_KEYS: readonly string[] = Array.from({ length: ABSORPTION_ENGINE_VERSION - 1 }, (_, i) => `terminal.absorption-history.v${i + 1}`);",
+      "replace": "export const RETIRED_HISTORY_STORAGE_KEYS: readonly string[] = Array.from({ length: ABSORPTION_ENGINE_VERSION }, (_, i) => `terminal.absorption-history.v${i + 1}`);",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionHistoryStore.test.ts"
+      ],
+      "cwd": "apps/web",
+      "mustFail": [
+        "retires every history key from v1 up to the one before this engine's, v4 and the ones before it among them, and never this engine's own",
+        "clears the hours saved under every older engine's key as soon as it is made, and keeps this engine's hours and every other key"
+      ]
+    },
+    {
+      "id": "prime-review.history-retired-keys-miss-newest",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionHistoryStore.ts",
+      "find": "export const RETIRED_HISTORY_STORAGE_KEYS: readonly string[] = Array.from({ length: ABSORPTION_ENGINE_VERSION - 1 }, (_, i) => `terminal.absorption-history.v${i + 1}`);",
+      "replace": "export const RETIRED_HISTORY_STORAGE_KEYS: readonly string[] = Array.from({ length: ABSORPTION_ENGINE_VERSION - 1 }, (_, i) => `terminal.absorption-history.v${i}`);",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionHistoryStore.test.ts"
+      ],
+      "cwd": "apps/web",
+      "mustFail": [
+        "retires every history key from v1 up to the one before this engine's, v4 and the ones before it among them, and never this engine's own",
+        "clears the hours saved under every older engine's key as soon as it is made, and keeps this engine's hours and every other key"
+      ]
+    },
+    {
+      "id": "prime-review.history-retired-cleanup-throws",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionHistoryStore.ts",
+      "find": "    try {\n      for (const key of RETIRED_HISTORY_STORAGE_KEYS) storage?.removeItem?.(key);\n    } catch {}\n",
+      "replace": "    for (const key of RETIRED_HISTORY_STORAGE_KEYS) storage?.removeItem?.(key);\n",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionHistoryStore.test.ts"
+      ],
+      "cwd": "apps/web",
+      "mustFail": [
+        "brings this engine's hours back and saves new ones on a storage that cannot remove, and on one whose remove throws"
+      ]
+    },
+    {
+      "id": "prime-review.databento-setsources-keeps-live",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionPrimitive.ts",
+      "find": "      this._reload();\n    }\n    this._markDirty();\n",
+      "replace": "    }\n    this._markDirty();\n",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionPrimitive.test.ts"
+      ],
+      "cwd": "apps/web",
+      "mustFail": [
+        "drops what a live grid had kept the moment a DATABENTO grid is set",
+        "files its records under the walls they were read with"
+      ]
+    },
+    {
+      "id": "prime-review.databento-setsources-keeps-clock",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionPrimitive.ts",
+      "find": "      if (grid?.provider === \"DATABENTO\") this._computedAt = -Infinity;\n",
+      "replace": "",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionPrimitive.test.ts"
+      ],
+      "cwd": "apps/web",
+      "mustFail": [
+        "drops what a live grid had kept the moment a DATABENTO grid is set"
+      ]
+    },
+    {
+      "id": "prime-review.databento-setrules-loads-store",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionPrimitive.ts",
+      "find": "this._kept = rules === null || this._grid?.provider === \"DATABENTO\" ? [] : this._store.load(this._walls);",
+      "replace": "this._kept = rules === null ? [] : this._store.load(this._walls);",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionPrimitive.test.ts"
+      ],
+      "cwd": "apps/web",
+      "mustFail": [
+        "nor saves its own there"
+      ]
+    },
+    {
+      "id": "prime-review.databento-writes-store",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionPrimitive.ts",
+      "find": "this._kept = historical ? records : this._store.add(this._walls, records, now);",
+      "replace": "this._kept = this._store.add(this._walls, records, now);",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionPrimitive.test.ts"
+      ],
+      "cwd": "apps/web",
+      "mustFail": [
+        "nor saves its own there"
+      ]
+    },
+    {
+      "id": "prime-review.databento-wall-clock",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionPrimitive.ts",
+      "find": "const now = grid.clockMs();",
+      "replace": "const now = Date.now();",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionPrimitive.test.ts"
+      ],
+      "cwd": "apps/web",
+      "mustFail": [
+        "a day of the archive in August and not the wall clock"
+      ]
+    },
+    {
+      "id": "prime-review.databento-recompute-gated",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionPrimitive.ts",
+      "find": "if (this._dirty && (historical || now - this._computedAt >= RECOMPUTE_MIN_INTERVAL_MS)) {",
+      "replace": "if (this._dirty && now - this._computedAt >= RECOMPUTE_MIN_INTERVAL_MS) {",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionPrimitive.test.ts"
+      ],
+      "cwd": "apps/web",
+      "mustFail": [
+        "reads every change of a DATABENTO grid on the next paint"
+      ]
+    },
+    {
+      "id": "prime-review.databento-feed-ignored",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionPrimitive.ts",
+      "find": "    const feed = grid.historicalFeed;",
+      "replace": "    const feed = null;",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionPrimitive.test.ts"
+      ],
+      "cwd": "apps/web",
+      "mustFail": [
+        "a day of the archive in August and not the wall clock"
+      ]
+    },
+    {
+      "id": "prime-review.record-latest-unchecked",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionEngine.ts",
+      "find": "record.trail.every(isTrailEntry) && isTrailEntry(record.latest) && ended;",
+      "replace": "record.trail.every(isTrailEntry) && ended;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionStore.test.ts"
+      ],
+      "mustFail": [
+        "survives a storage that is missing, throws or holds rubbish, and reads back only whole records of this engine"
+      ]
+    },
+    {
+      "id": "prime-review.store-fuller-latest",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionStore.ts",
+      "find": " || incoming.latest.ts > kept.latest.ts",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionStore.test.ts"
+      ],
+      "mustFail": [
+        "lets a record of the same attack grow",
+        "writes what the tracker grows in place"
+      ]
+    },
+    {
+      "id": "prime-review.store-keeps-the-trackers-record",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionStore.ts",
+      "find": "      kept = merged.map((record) => (own.has(record) ? record : snapshot(record)));",
+      "replace": "      kept = merged;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionStore.test.ts"
+      ],
+      "mustFail": [
+        "writes what the tracker grows in place"
+      ]
+    },
+    {
+      "id": "prime-review.store-snapshot-shares-the-trail",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionStore.ts",
+      "find": "  return { ...record, trail: [...record.trail] };",
+      "replace": "  return { ...record };",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionStore.test.ts"
+      ],
+      "mustFail": [
+        "holds the record as it merged it"
+      ]
+    },
+    {
+      "id": "prime-review.flush-on-detach",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionPrimitive.ts",
+      "find": "    this._store.flush();\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionPrimitive.test.ts"
+      ],
+      "mustFail": [
+        "writes what its store still holds when it is taken off the chart"
+      ]
+    },
+    {
+      "id": "prime-review.databento-level-dropped",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionPrimitive.ts",
+      "find": "columns: tier.columns.map((column) => own.get(column.ts) ?? column) });",
+      "replace": "columns: tier.columns });",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionPrimitive.test.ts"
+      ],
+      "mustFail": [
+        "reads #50's own book, one-second columns with no level of their own",
+        "records the same sphere for an attack of #50's book",
+        "reads a deep tier of a DATABENTO feed at the grid's levels too"
+      ]
+    },
+    {
+      "id": "prime-review.asks-never-kept",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionEngine.ts",
+      "find": "if (attack.next < attack.asks.length && absorbed >= attack.asks[attack.next] && record.trail.length < TRAIL_MAX) {",
+      "replace": "if (false) {",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionEngine.test.ts"
+      ],
+      "mustFail": [
+        "keeps in its trail the first column each number a slider can ask for is met at",
+        "reads every setting the sliders can make at the first column whose eating reaches it"
+      ]
+    },
+    {
+      "id": "prime-review.asks-not-passed-after-an-entry",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionEngine.ts",
+      "find": "                record.trail.push(entry);\n                passed(attack, absorbed);\n",
+      "replace": "                record.trail.push(entry);\n",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionEngine.test.ts"
+      ],
+      "mustFail": [
+        "keeps in its trail the first column each number a slider can ask for is met at"
+      ]
+    },
+    {
+      "id": "prime-review.asks-not-passed-at-the-record",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionEngine.ts",
+      "find": "              attack.asks = asksOf(rules, attack.resting, attack.yardstick);\n              passed(attack, absorbed);\n",
+      "replace": "              attack.asks = asksOf(rules, attack.resting, attack.yardstick);\n",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionEngine.test.ts"
+      ],
+      "mustFail": [
+        "keeps in its trail the first column each number a slider can ask for is met at"
+      ]
+    },
+    {
+      "id": "prime-review.asks-without-the-shares",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionEngine.ts",
+      "find": "  return [...rules.askedPercents.map((percent) => (percent / 100) * resting), ...rules.askedMultiples.map((multiple) => multiple * yardstick)].sort((a, b) => a - b);",
+      "replace": "  return [...rules.askedMultiples.map((multiple) => multiple * yardstick)].sort((a, b) => a - b);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionEngine.test.ts"
+      ],
+      "mustFail": [
+        "reads every setting the sliders can make at the first column whose eating reaches it"
+      ]
+    },
+    {
+      "id": "prime-review.asks-without-the-multiples",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionEngine.ts",
+      "find": "  return [...rules.askedPercents.map((percent) => (percent / 100) * resting), ...rules.askedMultiples.map((multiple) => multiple * yardstick)].sort((a, b) => a - b);",
+      "replace": "  return [...rules.askedPercents.map((percent) => (percent / 100) * resting)].sort((a, b) => a - b);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionEngine.test.ts"
+      ],
+      "mustFail": [
+        "reads every setting the sliders can make at the first column whose eating reaches it"
+      ]
+    },
+    {
+      "id": "prime-review.asks-unsorted",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionEngine.ts",
+      "find": "multiple * yardstick)].sort((a, b) => a - b);",
+      "replace": "multiple * yardstick)];",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionEngine.test.ts"
+      ],
+      "mustFail": [
+        "reads every setting the sliders can make at the first column whose eating reaches it"
+      ]
+    },
+    {
+      "id": "prime-review.latest-not-moved",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionEngine.ts",
+      "find": "              record.latest = entry;\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionEngine.test.ts"
+      ],
+      "mustFail": [
+        "keeps in its trail the first column each number a slider can ask for is met at"
+      ]
+    },
+    {
+      "id": "prime-review.slider-not-stepped",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionSettings.ts",
+      "find": "  return Math.min(slider.max, Math.max(slider.min, slider.min + Math.round((value - slider.min) / slider.step) * slider.step));",
+      "replace": "  return Math.min(slider.max, Math.max(slider.min, value));",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionSettings.test.ts"
+      ],
+      "mustFail": [
+        "read a saved number at its slider's nearest step"
+      ]
+    },
+    {
+      "id": "prime-review.asked-percents-not-the-slider",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionSettings.ts",
+      "find": "export const ASKED_PERCENTS = sliderSteps(ABSORBED_PERCENT_SLIDER);",
+      "replace": "export const ASKED_PERCENTS = sliderSteps(STRONG_PERCENT_SLIDER);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionSettings.test.ts"
+      ],
+      "mustFail": [
+        "ask the engine for every number the Absorbed and Minimum absorbed sliders can make"
+      ]
+    },
+    {
+      "id": "prime-review.asked-multiples-not-handed",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionSettings.ts",
+      "find": "    askedMultiples: ASKED_MULTIPLES,\n",
+      "replace": "    askedMultiples: [],\n",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionSettings.test.ts"
+      ],
+      "mustFail": [
+        "ask the engine for every number the Absorbed and Minimum absorbed sliders can make"
+      ]
+    },
+    {
+      "id": "prime-review.history-final-settle-not-kept",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionHistory.ts",
+      "find": "    if (judged || final) this._keep();",
+      "replace": "    if (judged) this._keep();",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionHistory.test.ts"
+      ],
+      "mustFail": [
+        "saves what an hour's records became by the end of the run"
+      ]
+    },
+    {
+      "id": "prime-review.history-final-settle-skipped-when-all-judged",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionHistory.ts",
+      "find": "    if (rules === null || (run.unsettled.size === 0 && !final)) return;",
+      "replace": "    if (rules === null || run.unsettled.size === 0) return;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionHistory.test.ts"
+      ],
+      "mustFail": [
+        "saves what an hour's records became by the end of the run"
+      ]
+    },
+    {
+      "id": "prime-review.history-final-settle-skipped-only-at-the-end",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionHistory.ts",
+      "find": "    if (rules === null || (run.unsettled.size === 0 && !final)) return;",
+      "replace": "    if (rules === null || (run.unsettled.size === 0 && final)) return;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionHistory.test.ts"
+      ],
+      "mustFail": [
+        "saves what an hour's records became by the end of the run"
+      ]
+    },
+    {
+      "id": "prime-review.fold-level-dropped",
+      "file": "apps/web/src/lib/indicators/institutional-order-blocks-v2/bandTracker.ts",
+      "find": "  if (reference > 0) folded.reference = reference;\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/institutional-order-blocks-v2/tests/bandTracker.test.ts"
+      ],
+      "mustFail": [
+        "folds a window of one-second columns with different levels and medians to one column carrying the largest of each"
+      ]
+    },
+    {
+      "id": "prime-review.fold-level-dropped-on-the-archive",
+      "file": "apps/web/src/lib/indicators/institutional-order-blocks-v2/bandTracker.ts",
+      "find": "  if (reference > 0) folded.reference = reference;\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionPrimitive.test.ts"
+      ],
+      "mustFail": [
+        "reads #50's own book, one-second columns with no level of their own",
+        "records the same sphere for an attack of #50's book"
+      ]
+    },
+    {
+      "id": "prime-review.fold-level-last",
+      "file": "apps/web/src/lib/indicators/institutional-order-blocks-v2/bandTracker.ts",
+      "find": "    if (column.reference !== undefined && column.reference > reference) reference = column.reference;",
+      "replace": "    if (column.reference !== undefined && column.reference > 0) reference = column.reference;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/institutional-order-blocks-v2/tests/bandTracker.test.ts"
+      ],
+      "mustFail": [
+        "folds a window of one-second columns with different levels and medians to one column carrying the largest of each"
+      ]
+    },
+    {
+      "id": "prime-review.fold-level-smallest",
+      "file": "apps/web/src/lib/indicators/institutional-order-blocks-v2/bandTracker.ts",
+      "find": "    if (column.reference !== undefined && column.reference > reference) reference = column.reference;",
+      "replace": "    if (column.reference !== undefined && column.reference > 0 && (reference === 0 || column.reference < reference)) reference = column.reference;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/institutional-order-blocks-v2/tests/bandTracker.test.ts"
+      ],
+      "mustFail": [
+        "folds a window of one-second columns with different levels and medians to one column carrying the largest of each"
+      ]
+    },
+    {
+      "id": "prime-review.fold-level-zero-kept",
+      "file": "apps/web/src/lib/indicators/institutional-order-blocks-v2/bandTracker.ts",
+      "find": "  if (reference > 0) folded.reference = reference;",
+      "replace": "  folded.reference = reference;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/institutional-order-blocks-v2/tests/bandTracker.test.ts"
+      ],
+      "mustFail": [
+        "folds a window of one-second columns with different levels and medians to one column carrying the largest of each"
+      ]
+    },
+    {
+      "id": "prime-review.databento-window-end-fallback",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionPrimitive.ts",
+      "find": "    return { ...feed, deep: feed.deep === null ? null : graded(feed.deep), fine: graded(feed.fine) };",
+      "replace": "    return { ...feed, reference: grid.referenceSize, deep: feed.deep === null ? null : graded(feed.deep), fine: graded(feed.fine) };",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionPrimitive.test.ts"
+      ],
+      "mustFail": [
+        "hands a second the grid holds no column for over as it is"
+      ]
+    },
+    {
+      "id": "prime-review.databento-deep-tier-unread",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionPrimitive.ts",
+      "find": "deep: feed.deep === null ? null : graded(feed.deep)",
+      "replace": "deep: feed.deep",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionPrimitive.test.ts"
+      ],
+      "mustFail": [
+        "reads a deep tier of a DATABENTO feed at the grid's levels too"
+      ]
+    },
+    {
+      "id": "prime-review.fold-median-dropped",
+      "file": "apps/web/src/lib/indicators/institutional-order-blocks-v2/bandTracker.ts",
+      "find": "  if (median > 0) folded.median = median;\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/institutional-order-blocks-v2/tests/bandTracker.test.ts"
+      ],
+      "mustFail": [
+        "folds a window of one-second columns with different levels and medians to one column carrying the largest of each"
+      ]
+    },
+    {
+      "id": "prime-review.databento-level-alone",
+      "file": "apps/web/src/lib/indicators/absorption-detector/absorptionPrimitive.ts",
+      "find": "columns: tier.columns.map((column) => own.get(column.ts) ?? column) });",
+      "replace": "columns: tier.columns.map((column) => ({ ...column, reference: own.get(column.ts)?.reference })) });",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/absorption-detector/tests/absorptionPrimitive.test.ts"
+      ],
+      "mustFail": [
+        "reads each second of #50's book as the grid's own column, its median with its level"
+      ]
+    }
+  ]
+}

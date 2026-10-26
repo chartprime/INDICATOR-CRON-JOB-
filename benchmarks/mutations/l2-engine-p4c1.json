@@ -1,0 +1,145 @@
+{
+  "mutations": [
+    {
+      "id": "p4c1.announce-published-frame-by-frame",
+      "file": "apps/runtime/src/indicators/passive_liquidity/liquidity-publisher.js",
+      "find": "if (announced && publishSnapshot !== null) publishSnapshot(frames);",
+      "replace": "if (false) publishSnapshot(frames);",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/passive_liquidity/liquidity-publisher.test.js", "-t", "publishSnapshot"],
+      "mustFail": ["start hands an announced snapshot to publishSnapshot whole, and live columns to publish"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "p4c1.announce-never-flagged",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane-frames.js",
+      "find": "        state.snapshotTick = true;",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/indicators/passive_liquidity/liquidity-publisher.test.js", "-t", "publishSnapshot"],
+      "mustFail": ["start hands an announced snapshot to publishSnapshot whole, and live columns to publish"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "p4c1.announce-pushed-whole",
+      "file": "apps/runtime/src/server/market-data-server-shared.js",
+      "find": "      if (replay) replay.overflowed = true;\n      else start(client, frames);",
+      "replace": "      if (replay) replay.overflowed = true;\n      else for (const frame of frames) safelySend(client, frame);",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/server/market-data-server-shared.test.js", "-t", "announce"],
+      "mustFail": ["paces an announce per client instead of pushing the whole snapshot at once", "waits while a client's buffer is over a quarter of the soft limit"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "p4c1.announce-restarts-a-running-replay",
+      "file": "apps/runtime/src/server/market-data-server-shared.js",
+      "find": "      if (replay) replay.overflowed = true;",
+      "replace": "      if (replay) start(client, frames);",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/server/market-data-server-shared.test.js", "-t", "announce"],
+      "mustFail": ["an announce during a replay does not restart it"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "p4c1.binance-server-broadcasts-announces",
+      "file": "apps/runtime/src/server/market-data-server.js",
+      "find": "      publishSnapshot: (frames) => liquidityReplayer.announce(frames),\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/server/market-data-server.test.js", "-t", "P4c"],
+      "mustFail": ["P4c: a backfill announce waits for a slow client's buffer"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "p4c1.eager-server-broadcasts-announces",
+      "file": "apps/runtime/src/server/dxfeed-eager-market-data-server.js",
+      "find": "      publishSnapshot: (frames) => liquidityReplayer.announce(frames),\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/server/dxfeed-eager-market-data-server.test.js", "-t", "P4c"],
+      "mustFail": ["P4c: a backfill announce waits for a slow client's buffer"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "p4c1.decoder-keeps-a-transferred-column",
+      "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityGrid.ts",
+      "find": "    if (tier.last !== null && columns[columns.length - 1] === tier.last) tier.last = copyColumn(tier.last);",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/passive-liquidity/tests/liquidityGrid.decoder.test.ts"],
+      "mustFail": ["every frame, every tier, every counter"]
+    },
+    {
+      "id": "p4c1.grid-drops-columns-landed-before-a-refusal",
+      "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityGrid.ts",
+      "find": "    } else if (!tier) {\n      this._rejected += 1;\n      return false;\n    }",
+      "replace": "    } else if (!decoded.accepted || !tier) {\n      if (tier) tier.synced = false;\n      this._rejected += 1;\n      return false;\n    }",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/passive-liquidity/tests/liquidityGrid.test.ts"],
+      "mustFail": ["keeps the columns of a delta that decoded before a column went back in time"]
+    },
+    {
+      "id": "p4c1.width-change-keeps-stale-tiers",
+      "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityGrid.ts",
+      "find": "          if (other === tier || other.rowWidth !== decoded.clearWidth) continue;\n          other.columns = [];",
+      "replace": "          if (other === tier || other.rowWidth !== decoded.clearWidth) continue;",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/passive-liquidity/tests/liquidityGrid.test.ts"],
+      "mustFail": ["rows that change and change back do not bring back the deep columns the first change threw away"]
+    },
+    {
+      "id": "p4c1.lane-decoder-reset-trusts-every-tier",
+      "file": "apps/web/src/lib/l2/laneGrids.ts",
+      "find": "    if (frame.reset) this._untrusted.delete(key);\n    this._seqs.set(key, frame.seq);\n    return Object.freeze",
+      "replace": "    if (frame.reset) this._untrusted.clear();\n    this._seqs.set(key, frame.seq);\n    return Object.freeze",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/l2/l2Store.test.ts"],
+      "mustFail": ["a stale frame on a broken deep tier still asks for a resync after the recent tier reset"]
+    },
+    {
+      "id": "p4c1.worker-ships-rows-anyway",
+      "file": "apps/web/src/workers/marketDataWorker.ts",
+      "find": "    return { frame: withoutRows(frame), decodedLiquidity, transfer: transferablesOf(decodedLiquidity.columns) };",
+      "replace": "    return { frame, decodedLiquidity, transfer: transferablesOf(decodedLiquidity.columns) };",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/workers/marketDataWorker.test.ts", "-t", "decodes heatmap and lane columns"],
+      "mustFail": ["decodes heatmap and lane columns here"]
+    },
+    {
+      "id": "p4c1.worker-copies-instead-of-transferring",
+      "file": "apps/web/src/workers/marketDataWorker.ts",
+      "find": "    return { frame: withoutRows(frame), decodedLiquidity, transfer: transferablesOf(decodedLiquidity.columns) };",
+      "replace": "    return { frame: withoutRows(frame), decodedLiquidity, transfer: [] };",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/workers/marketDataWorker.test.ts", "-t", "decodes heatmap and lane columns"],
+      "mustFail": ["decodes heatmap and lane columns here"]
+    },
+    {
+      "id": "p4c1.worker-keeps-decoders-across-a-selection",
+      "file": "apps/web/src/workers/marketDataWorker.ts",
+      "find": "    columnDecoders.clear();\n    socket.send(",
+      "replace": "    socket.send(",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/workers/marketDataWorker.test.ts", "-t", "decodes heatmap and lane columns"],
+      "mustFail": ["decodes heatmap and lane columns here"]
+    },
+    {
+      "id": "p4c1.hook-ignores-decoded-heatmap",
+      "file": "apps/web/src/hooks/useMarketData.ts",
+      "find": "msg.decodedLiquidity === undefined ? liquidityGrid.apply(frame) : liquidityGrid.applyDecoded(frame, msg.decodedLiquidity)",
+      "replace": "liquidityGrid.apply(frame)",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/hooks/useMarketData.l2.test.tsx"],
+      "mustFail": ["takes the worker's decoded columns when it sends them"]
+    },
+    {
+      "id": "p4c1.hook-ignores-decoded-lanes",
+      "file": "apps/web/src/hooks/useMarketData.ts",
+      "find": "l2Store.apply(frame, frame.type === \"l2_view\" ? msg.decodedLane ?? null : null);",
+      "replace": "l2Store.apply(frame);",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/hooks/useMarketData.l2.test.tsx"],
+      "mustFail": ["takes the worker's decoded columns when it sends them"]
+    }
+  ]
+}

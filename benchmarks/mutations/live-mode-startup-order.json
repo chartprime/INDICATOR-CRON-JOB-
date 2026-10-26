@@ -1,0 +1,58 @@
+{
+  "mutations": [
+    {
+      "id": "startup-order.publisher.deep-tier-ignores-admission",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane-rebuild.js",
+      "find": "    return admitDeep(state).then(() => {",
+      "replace": "    return Promise.resolve().then(() => {",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/indicators/passive_liquidity/liquidity-publisher.test.js"],
+      "mustFail": ["the deep tier waits for admission after the recent pass; the recent pass itself never waits"]
+    },
+    {
+      "id": "startup-order.publisher.broken-gate-strands-deep-tier",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane-rebuild.js",
+      "find": "    return Promise.resolve(admission).catch((error) => {\n      log(`liquidity-publisher: deep admission failed for ${state.key}, starting the deep tier now: ${error?.message ?? error}`);\n    });",
+      "replace": "    return Promise.resolve(admission).catch(() => new Promise(() => {}));",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/indicators/passive_liquidity/liquidity-publisher.test.js"],
+      "mustFail": ["a deep admission that throws or rejects starts the deep tier at once, and a non-function is refused at start"]
+    },
+    {
+      "id": "startup-order.server.admission-cap-ignored",
+      "file": "apps/runtime/src/server/market-data-server.js",
+      "find": "          !smallWarmupsSettled(key) &&\n          Date.now() - startedAt < DEEP_ADMISSION_MAX_WAIT_MS\n",
+      "replace": "          !smallWarmupsSettled(key)\n",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/server/market-data-server.test.js"],
+      "mustFail": ["the deep tier's admission waits for the small warm-ups and gives up waiting at the cap"]
+    },
+    {
+      "id": "startup-order.server.admission-never-waits",
+      "file": "apps/runtime/src/server/market-data-server.js",
+      "find": "    if (!warmPairs.has(key)) return true;\n    return (\n      (!largeTradeWarmupApplies()",
+      "replace": "    if (!warmPairs.has(key)) return true;\n    return true || (\n      (!largeTradeWarmupApplies()",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/server/market-data-server.test.js"],
+      "mustFail": ["the deep tier's admission waits for the small warm-ups and gives up waiting at the cap"]
+    },
+    {
+      "id": "startup-order.server.marker-warm-up-restarts-from-scratch",
+      "file": "apps/runtime/src/server/market-data-server.js",
+      "find": "    const resumed = largeTradeWarmProgress.get(key) ?? null;",
+      "replace": "    const resumed = null;",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/server/market-data-server.test.js"],
+      "mustFail": ["a marker warm-up that fails mid-way resumes from the failed chunk, not from the beginning"]
+    },
+    {
+      "id": "startup-order.web.sliding-ask-repeated-every-frame",
+      "file": "apps/web/src/lib/indicators/aggressive-orders/columnPrints.ts",
+      "find": "    (last.ask.to === ask.to || (ask.from >= last.ask.from && ask.from <= last.ask.to));",
+      "replace": "    last.ask.to === ask.to;",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/indicators/aggressive-orders/tests/columnPrints.test.ts"],
+      "mustFail": ["a not-yet-live tape is asked once per re-ask period as the window slides, not once per frame"]
+    }
+  ]
+}

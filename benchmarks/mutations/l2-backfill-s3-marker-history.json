@@ -1,0 +1,282 @@
+{
+  "mutations": [
+    {
+      "id": "l2-s3.frames.side-abbreviation-swapped",
+      "file": "apps/runtime/src/server/frames.js",
+      "find": "marker.side === \"buy\" ? \"b\" : \"s\"",
+      "replace": "marker.side === \"buy\" ? \"s\" : \"b\"",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/frames.test.js"
+      ],
+      "mustFail": [
+        "carries markers as positional rows with the frame's identity hoisted, a third the size of marker frames"
+      ]
+    },
+    {
+      "id": "l2-s3.frames.every-page-resets",
+      "file": "apps/runtime/src/server/frames.js",
+      "find": "frames.push(markerHistoryFrame(identity, { reset: start === 0,",
+      "replace": "frames.push(markerHistoryFrame(identity, { reset: true,",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/frames.test.js"
+      ],
+      "mustFail": [
+        "pages a retained set into reset-first chunks of at most the page cap, and sends nothing for an empty set"
+      ]
+    },
+    {
+      "id": "l2-s3.frames.disorder-accepted",
+      "file": "apps/runtime/src/server/frames.js",
+      "find": "if (ids.has(marker.trade_id) || marker.ts_exchange < previousTs) {",
+      "replace": "if (ids.has(marker.trade_id)) {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/frames.test.js"
+      ],
+      "mustFail": [
+        "refuses the wrong instrument, disorder, duplicates, an oversized page, and bad flags"
+      ]
+    },
+    {
+      "id": "l2-s3.frames.history-is-not-bulk",
+      "file": "apps/runtime/src/server/frames.js",
+      "find": "  marker_history: FRAME_KIND_BULK_HISTORY,",
+      "replace": "  marker_history: FRAME_KIND_INCREMENTAL,",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/frames.test.js"
+      ],
+      "mustFail": [
+        "classifies control, latest-state, incremental, and bulk-history types"
+      ]
+    },
+    {
+      "id": "l2-s3.server.capability-never-starts-history",
+      "file": "apps/runtime/src/server/market-data-server.js",
+      "find": "        markerHistoryReplayer.start(\n          client,\n          markerHistoryFrames(activeIdentity(), buffer.snapshotMarkers()),\n        );\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/market-data-server.test.js"
+      ],
+      "mustFail": [
+        "marker history is withheld from legacy clients and sent reset-first after an explicit capability opt-in"
+      ]
+    },
+    {
+      "id": "l2-s3.server.inline-markers-are-the-oldest",
+      "file": "apps/runtime/src/server/market-data-server.js",
+      "find": "      ? markers.slice(markers.length - MAX_SNAPSHOT_MARKERS)\n",
+      "replace": "      ? markers.slice(0, MAX_SNAPSHOT_MARKERS)\n",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/market-data-server.test.js"
+      ],
+      "mustFail": [
+        "marker history is withheld from legacy clients and sent reset-first after an explicit capability opt-in"
+      ]
+    },
+    {
+      "id": "l2-s3.server.warm-up-increment-resets",
+      "file": "apps/runtime/src/server/market-data-server.js",
+      "find": "      const frame = markerHistoryFrame(identity, {\n        reset: false,\n",
+      "replace": "      const frame = markerHistoryFrame(identity, {\n        reset: true,\n",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/market-data-server.test.js"
+      ],
+      "mustFail": [
+        "a warm-up slice publishes its new markers as an appending history page, not a reset"
+      ]
+    },
+    {
+      "id": "l2-s3.server.warm-up-never-publishes-increment",
+      "file": "apps/runtime/src/server/market-data-server.js",
+      "find": "          broadcastMarkerHistoryIncrement(\n            pairSymbol,\n            pairMarketKind,\n            unpublishedMarkers,\n          );\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/market-data-server.test.js"
+      ],
+      "mustFail": [
+        "a warm-up slice publishes its new markers as an appending history page, not a reset"
+      ]
+    },
+    {
+      "id": "l2-s3.history.cap-back-to-four-days",
+      "file": "apps/runtime/src/server/history.js",
+      "find": "const DEFAULT_MAX_MARKERS = 100_000;",
+      "replace": "const DEFAULT_MAX_MARKERS = 45_000;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/history.test.js"
+      ],
+      "mustFail": [
+        "defaults match the documented marker cap: a full seven-day window at the per-minute density, with headroom"
+      ]
+    },
+    {
+      "id": "l2-s3.contract.browser-retention-drifts",
+      "file": "apps/web/src/hooks/useMarketData.ts",
+      "find": "const MAX_BINANCE_MARKERS = 100_000;",
+      "replace": "const MAX_BINANCE_MARKERS = 60_000;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/contracts/ws-frame-contract-limits.test.js"
+      ],
+      "mustFail": [
+        "the retained marker cap is the same number on the server and in the browser, and exceeds the inline cap"
+      ]
+    },
+    {
+      "id": "l2-s3.parser.side-abbreviation-swapped",
+      "file": "apps/web/src/types/frames.ts",
+      "find": "side: side === \"b\" ? \"buy\" : \"sell\",",
+      "replace": "side: side === \"b\" ? \"sell\" : \"buy\",",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/types/"
+      ],
+      "mustFail": [
+        "parses a marker_history page into marker frames, and rejects a malformed or oversized one"
+      ]
+    },
+    {
+      "id": "l2-s3.parser.disorder-accepted",
+      "file": "apps/web/src/types/frames.ts",
+      "find": "      tsExchange < previousTs ||\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/types/frames.test.ts"
+      ],
+      "mustFail": [
+        "parses a marker_history page into marker frames, and rejects a malformed or oversized one"
+      ]
+    },
+    {
+      "id": "l2-s3.retention.top-k-not-pushed-back",
+      "file": "apps/web/src/lib/chart/markerRetention.ts",
+      "find": "    for (const marker of taken) heapPush(magnitudeHeap, marker, higherMagnitudeFirst);\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/whale-detector/tests/whaleTrades.test.ts"
+      ],
+      "mustFail": [
+        "view-based whale selection equals the array-based oracle"
+      ]
+    },
+    {
+      "id": "l2-s3.retention.magnitude-order-inverted",
+      "file": "apps/web/src/lib/chart/markerRetention.ts",
+      "find": "function higherMagnitudeFirst(candidate: MarkerFrame, incumbent: MarkerFrame): boolean {\n  return lowerMagnitudePriority(incumbent, candidate);",
+      "replace": "function higherMagnitudeFirst(candidate: MarkerFrame, incumbent: MarkerFrame): boolean {\n  return lowerMagnitudePriority(candidate, incumbent);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/whale-detector/tests/whaleTrades.test.ts"
+      ],
+      "mustFail": [
+        "view-based whale selection equals the array-based oracle"
+      ]
+    },
+    {
+      "id": "l2-s3.retention.evicted-markers-still-selected",
+      "file": "apps/web/src/lib/chart/markerRetention.ts",
+      "find": "      if (byId.get(root.trade_id) === root) taken.push(root);",
+      "replace": "      taken.push(root);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/whale-detector/tests/whaleTrades.test.ts"
+      ],
+      "mustFail": [
+        "markers evicted while still physically in the magnitude heap are never selected"
+      ]
+    },
+    {
+      "id": "l2-s3.hook.reset-page-does-not-replace",
+      "file": "apps/web/src/hooks/useMarketData.ts",
+      "find": "        if (frame.reset) {\n          adoptMarkerBuffer(createMarkerBuffer(frame));\n          seenMarkerIds.clear();\n        }\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/hooks/useMarketData.test.tsx"
+      ],
+      "mustFail": [
+        "marker history pages reset then append, and a same-pair snapshot merges rather than wipes"
+      ]
+    },
+    {
+      "id": "l2-s3.hook.snapshot-wipes-paged-history",
+      "file": "apps/web/src/hooks/useMarketData.ts",
+      "find": "        ensureMarkerBuffer(frame).insertAll(chartMarkers(frame, frame.markers));\n        setMarkersVersion((version) => version + 1);\n        return;\n      }\n      if (frame.type === \"marker_history\") {",
+      "replace": "        adoptMarkerBuffer(createMarkerBuffer(frame));\n        markerBuffer!.insertAll(chartMarkers(frame, frame.markers));\n        setMarkersVersion((version) => version + 1);\n        return;\n      }\n      if (frame.type === \"marker_history\") {",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/hooks/useMarketData.test.tsx"
+      ],
+      "mustFail": [
+        "marker history pages reset then append, and a same-pair snapshot merges rather than wipes"
+      ]
+    },
+    {
+      "id": "l2-s3.worker.omits-capability",
+      "file": "apps/web/src/workers/marketDataWorker.ts",
+      "find": "          ...Object.fromEntries(CLIENT_CAPABILITIES.map((flag) => [flag, true])),",
+      "replace": "          ...Object.fromEntries(CLIENT_CAPABILITIES.filter((flag) => flag !== \"marker_history\").map((flag) => [flag, true])),",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/workers/marketDataWorker.test.ts"
+      ],
+      "mustFail": [
+        "declares marker history and the four L2 channels before any selection"
+      ]
+    }
+  ]
+}

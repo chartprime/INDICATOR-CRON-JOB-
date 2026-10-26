@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "kind": "browser",
+  "name": "o0-browser-server-driven-selection-change",
+  "scenario": "selection-change",
+  "durationSeconds": 20,
+  "selectionChangeAtSeconds": 10,
+  "upstream": { "tradesPerPulse": 10, "pulseMs": 20 }
+}

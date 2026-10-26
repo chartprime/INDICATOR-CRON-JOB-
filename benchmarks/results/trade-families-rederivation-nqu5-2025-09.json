@@ -1,0 +1,1388 @@
+{
+  "days": [
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 0,
+        "candle_bars": 23639,
+        "candle_minutes": 1140,
+        "dataset_version": "w606-ohlcv-v1-glbx-mdp3-ohlcv-1s-nq-2025-09",
+        "explained_by_receive_time": 0,
+        "explained_sample": [],
+        "family": "candle",
+        "first_mismatches": [],
+        "minutes_compared": 1140,
+        "mismatches": 0,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2025-09-01",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "3c6ce4bbe2f484592c795c861f79474cbde79053414c6eb2971fa24805368fe8",
+          "recomputed_sha256": "3c6ce4bbe2f484592c795c861f79474cbde79053414c6eb2971fa24805368fe8",
+          "rows": 18459
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "01f09c97c9a76a8bab96960785c5804780c5595ee904a69592c3dc0e5c0200de",
+          "recomputed_sha256": "01f09c97c9a76a8bab96960785c5804780c5595ee904a69592c3dc0e5c0200de",
+          "rows": 1140
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "a9de4d9794b539e921a9b39489bd4d03e398fb446f141310b1dae7245566a04b",
+          "recomputed_sha256": "a9de4d9794b539e921a9b39489bd4d03e398fb446f141310b1dae7245566a04b",
+          "rows": 9034
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "9b1a50295d8f540d2492d5f26a3d7bfeae99190b1389032404a7576ac16d1f4d",
+          "recomputed_sha256": "9b1a50295d8f540d2492d5f26a3d7bfeae99190b1389032404a7576ac16d1f4d",
+          "rows": 18304
+        }
+      },
+      "instrument_id": "[\"XCME\",\"FUTURE\",\"NQU5\",\"USD\",\"CONTRACT\"]",
+      "source_manifest_sha256": "d11f1d9f3d9599b9a6557be7704d693949c17ec08a30bde66b17b91b30048ed2"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 3,
+        "candle_bars": 52264,
+        "candle_minutes": 1380,
+        "dataset_version": "w606-ohlcv-v1-glbx-mdp3-ohlcv-1s-nq-2025-09",
+        "explained_by_receive_time": 6,
+        "explained_sample": [
+          {
+            "arriving": "0",
+            "arriving_prints": 0,
+            "candle_volume": "1006",
+            "delta": "4",
+            "leaving": "4",
+            "leaving_prints": 1,
+            "net": "4",
+            "open_ns": "1756828740000000000",
+            "trade_volume": "1010"
+          },
+          {
+            "arriving": "4",
+            "arriving_prints": 1,
+            "candle_volume": "1634",
+            "delta": "-4",
+            "leaving": "0",
+            "leaving_prints": 0,
+            "net": "-4",
+            "open_ns": "1756828800000000000",
+            "trade_volume": "1630"
+          },
+          {
+            "arriving": "0",
+            "arriving_prints": 0,
+            "candle_volume": "1537",
+            "delta": "3",
+            "leaving": "3",
+            "leaving_prints": 1,
+            "net": "3",
+            "open_ns": "1756834440000000000",
+            "trade_volume": "1540"
+          }
+        ],
+        "family": "candle",
+        "first_mismatches": [
+          {
+            "candle_volume": "1006",
+            "open_ns": "1756828740000000000",
+            "trade_volume": "1010"
+          },
+          {
+            "candle_volume": "1634",
+            "open_ns": "1756828800000000000",
+            "trade_volume": "1630"
+          },
+          {
+            "candle_volume": "1537",
+            "open_ns": "1756834440000000000",
+            "trade_volume": "1540"
+          },
+          {
+            "candle_volume": "1048",
+            "open_ns": "1756834500000000000",
+            "trade_volume": "1045"
+          },
+          {
+            "candle_volume": "1200",
+            "open_ns": "1756844280000000000",
+            "trade_volume": "1201"
+          }
+        ],
+        "minutes_compared": 1380,
+        "mismatches": 6,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2025-09-02",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "a276b6e5ebd387603dc4d4b9dcbbd087b3609a58cb8ea2ee8e2339d19665f68e",
+          "recomputed_sha256": "a276b6e5ebd387603dc4d4b9dcbbd087b3609a58cb8ea2ee8e2339d19665f68e",
+          "rows": 45599
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "b8848e65ec21be0749716a1ea21d9af0f4420df10e2e25b9ba4399f8d94e73b4",
+          "recomputed_sha256": "b8848e65ec21be0749716a1ea21d9af0f4420df10e2e25b9ba4399f8d94e73b4",
+          "rows": 1380
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "fa3100a67fd7462797c924718dbfc02c734a935ba7e6251d5f7a100ddf750fdf",
+          "recomputed_sha256": "fa3100a67fd7462797c924718dbfc02c734a935ba7e6251d5f7a100ddf750fdf",
+          "rows": 10993
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "9b03d87b1cd9cafbfd4b27fd3fc6df88963b09f87bcaac2eac12f5b041b1014c",
+          "recomputed_sha256": "9b03d87b1cd9cafbfd4b27fd3fc6df88963b09f87bcaac2eac12f5b041b1014c",
+          "rows": 31680
+        }
+      },
+      "instrument_id": "[\"XCME\",\"FUTURE\",\"NQU5\",\"USD\",\"CONTRACT\"]",
+      "source_manifest_sha256": "a30551d2e6181897f52c225d0d727c2bf1cbbb9fd312c3fc934aa340e63dc84f"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 5,
+        "candle_bars": 47069,
+        "candle_minutes": 1380,
+        "dataset_version": "w606-ohlcv-v1-glbx-mdp3-ohlcv-1s-nq-2025-09",
+        "explained_by_receive_time": 2,
+        "explained_sample": [
+          {
+            "arriving": "0",
+            "arriving_prints": 0,
+            "candle_volume": "946",
+            "delta": "5",
+            "leaving": "5",
+            "leaving_prints": 5,
+            "net": "5",
+            "open_ns": "1756914660000000000",
+            "trade_volume": "951"
+          },
+          {
+            "arriving": "5",
+            "arriving_prints": 5,
+            "candle_volume": "828",
+            "delta": "-5",
+            "leaving": "0",
+            "leaving_prints": 0,
+            "net": "-5",
+            "open_ns": "1756914720000000000",
+            "trade_volume": "823"
+          }
+        ],
+        "family": "candle",
+        "first_mismatches": [
+          {
+            "candle_volume": "946",
+            "open_ns": "1756914660000000000",
+            "trade_volume": "951"
+          },
+          {
+            "candle_volume": "828",
+            "open_ns": "1756914720000000000",
+            "trade_volume": "823"
+          }
+        ],
+        "minutes_compared": 1380,
+        "mismatches": 2,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2025-09-03",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "8258675597d3cbd04cc59225f365289db5feb157bff968beedf49aef6a4ee32e",
+          "recomputed_sha256": "8258675597d3cbd04cc59225f365289db5feb157bff968beedf49aef6a4ee32e",
+          "rows": 36340
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "efcace783cff42bfecf2c4efc4b0922d66360efb57e5b07681396e21a3282399",
+          "recomputed_sha256": "efcace783cff42bfecf2c4efc4b0922d66360efb57e5b07681396e21a3282399",
+          "rows": 1380
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "ad5fc758218015574d6439f1a335ac13b0e158b408a1d18736ef9b288996d12b",
+          "recomputed_sha256": "ad5fc758218015574d6439f1a335ac13b0e158b408a1d18736ef9b288996d12b",
+          "rows": 10982
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "22e9be52ee762a158db9e4311fb05256a980962bd8fcd42418cb8bdd08bfdb30",
+          "recomputed_sha256": "22e9be52ee762a158db9e4311fb05256a980962bd8fcd42418cb8bdd08bfdb30",
+          "rows": 29519
+        }
+      },
+      "instrument_id": "[\"XCME\",\"FUTURE\",\"NQU5\",\"USD\",\"CONTRACT\"]",
+      "source_manifest_sha256": "c7ad1b80369148ff6284d318e754356164f18a20e0c6e4fa3bbe73482101d5f4"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 1,
+        "candle_bars": 44946,
+        "candle_minutes": 1380,
+        "dataset_version": "w606-ohlcv-v1-glbx-mdp3-ohlcv-1s-nq-2025-09",
+        "explained_by_receive_time": 2,
+        "explained_sample": [
+          {
+            "arriving": "0",
+            "arriving_prints": 0,
+            "candle_volume": "180",
+            "delta": "2",
+            "leaving": "2",
+            "leaving_prints": 1,
+            "net": "2",
+            "open_ns": "1756987440000000000",
+            "trade_volume": "182"
+          },
+          {
+            "arriving": "2",
+            "arriving_prints": 1,
+            "candle_volume": "73",
+            "delta": "-2",
+            "leaving": "0",
+            "leaving_prints": 0,
+            "net": "-2",
+            "open_ns": "1756987500000000000",
+            "trade_volume": "71"
+          }
+        ],
+        "family": "candle",
+        "first_mismatches": [
+          {
+            "candle_volume": "180",
+            "open_ns": "1756987440000000000",
+            "trade_volume": "182"
+          },
+          {
+            "candle_volume": "73",
+            "open_ns": "1756987500000000000",
+            "trade_volume": "71"
+          }
+        ],
+        "minutes_compared": 1380,
+        "mismatches": 2,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2025-09-04",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "7a499831cd101f7051d9d45c7b2ea3731b2a400df4f3a505bfe8551d4ae0a1ac",
+          "recomputed_sha256": "7a499831cd101f7051d9d45c7b2ea3731b2a400df4f3a505bfe8551d4ae0a1ac",
+          "rows": 32468
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "bc1f3a3715b7fd3d7ccd0334538eccd5e3e85bfd2edcc2f7d0b7e7a4d1894610",
+          "recomputed_sha256": "bc1f3a3715b7fd3d7ccd0334538eccd5e3e85bfd2edcc2f7d0b7e7a4d1894610",
+          "rows": 1380
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "395cbba5d9ed6f2a64e4a7399629df88f4379dd7189e40ba1cdbf4f574826d81",
+          "recomputed_sha256": "395cbba5d9ed6f2a64e4a7399629df88f4379dd7189e40ba1cdbf4f574826d81",
+          "rows": 10995
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "08430ef6f3cd9d8a20763d8bc262011de0427d180b1749a0ae5d94a88a43fb45",
+          "recomputed_sha256": "08430ef6f3cd9d8a20763d8bc262011de0427d180b1749a0ae5d94a88a43fb45",
+          "rows": 28691
+        }
+      },
+      "instrument_id": "[\"XCME\",\"FUTURE\",\"NQU5\",\"USD\",\"CONTRACT\"]",
+      "source_manifest_sha256": "fecfc52aa9611e7478bb76f53bcbf7e2eef6bf1115aeb96e144dda0c09229d51"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 4,
+        "candle_bars": 42233,
+        "candle_minutes": 1260,
+        "dataset_version": "w606-ohlcv-v1-glbx-mdp3-ohlcv-1s-nq-2025-09",
+        "explained_by_receive_time": 6,
+        "explained_sample": [
+          {
+            "arriving": "0",
+            "arriving_prints": 0,
+            "candle_volume": "2773",
+            "delta": "1",
+            "leaving": "1",
+            "leaving_prints": 1,
+            "net": "1",
+            "open_ns": "1757082540000000000",
+            "trade_volume": "2774"
+          },
+          {
+            "arriving": "1",
+            "arriving_prints": 1,
+            "candle_volume": "3662",
+            "delta": "-1",
+            "leaving": "0",
+            "leaving_prints": 0,
+            "net": "-1",
+            "open_ns": "1757082600000000000",
+            "trade_volume": "3661"
+          },
+          {
+            "arriving": "0",
+            "arriving_prints": 0,
+            "candle_volume": "624",
+            "delta": "2",
+            "leaving": "2",
+            "leaving_prints": 2,
+            "net": "2",
+            "open_ns": "1757100060000000000",
+            "trade_volume": "626"
+          }
+        ],
+        "family": "candle",
+        "first_mismatches": [
+          {
+            "candle_volume": "2773",
+            "open_ns": "1757082540000000000",
+            "trade_volume": "2774"
+          },
+          {
+            "candle_volume": "3662",
+            "open_ns": "1757082600000000000",
+            "trade_volume": "3661"
+          },
+          {
+            "candle_volume": "624",
+            "open_ns": "1757100060000000000",
+            "trade_volume": "626"
+          },
+          {
+            "candle_volume": "531",
+            "open_ns": "1757100120000000000",
+            "trade_volume": "529"
+          },
+          {
+            "candle_volume": "8983",
+            "open_ns": "1757102340000000000",
+            "trade_volume": "8985"
+          }
+        ],
+        "minutes_compared": 1260,
+        "mismatches": 6,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2025-09-05",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "3bca05686ab673161e5fb57991166232a4523c98f4d70da23e96b8ce1cfc2684",
+          "recomputed_sha256": "3bca05686ab673161e5fb57991166232a4523c98f4d70da23e96b8ce1cfc2684",
+          "rows": 39143
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "c0b4b6fcf8fc66def0882f07f6feb7f0ecf2917e8065d35d362dca300129f52c",
+          "recomputed_sha256": "c0b4b6fcf8fc66def0882f07f6feb7f0ecf2917e8065d35d362dca300129f52c",
+          "rows": 1260
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "39f2ead2c4adbda5dc84ca288d61fe648d0e157793202c2f4722375353d97b9a",
+          "recomputed_sha256": "39f2ead2c4adbda5dc84ca288d61fe648d0e157793202c2f4722375353d97b9a",
+          "rows": 9973
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "c6c0689f01a6ecf340934944ad10d076b84f4c61cf5da19302fb0e43f6ca4b52",
+          "recomputed_sha256": "c6c0689f01a6ecf340934944ad10d076b84f4c61cf5da19302fb0e43f6ca4b52",
+          "rows": 25911
+        }
+      },
+      "instrument_id": "[\"XCME\",\"FUTURE\",\"NQU5\",\"USD\",\"CONTRACT\"]",
+      "source_manifest_sha256": "cb274688dc06601b2163ad14693427c5baa771925b4fa4d960a17a7dc1adb0e7"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 0,
+        "candle_bars": 3275,
+        "candle_minutes": 120,
+        "dataset_version": "w606-ohlcv-v1-glbx-mdp3-ohlcv-1s-nq-2025-09",
+        "explained_by_receive_time": 0,
+        "explained_sample": [],
+        "family": "candle",
+        "first_mismatches": [],
+        "minutes_compared": 120,
+        "mismatches": 0,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2025-09-07",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "471db611bf0b19a98311c31de63da9250265c60f147a8981bc54b8f9ef9aa0f6",
+          "recomputed_sha256": "471db611bf0b19a98311c31de63da9250265c60f147a8981bc54b8f9ef9aa0f6",
+          "rows": 2785
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "986c7f62e904ebc6d578e5429e23f20350e149e5694d042e94fca783044bc2d8",
+          "recomputed_sha256": "986c7f62e904ebc6d578e5429e23f20350e149e5694d042e94fca783044bc2d8",
+          "rows": 120
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "ec96b9a679c66e092f145001962d00c2159ce7a4b04af7557c5b6a006eae072a",
+          "recomputed_sha256": "ec96b9a679c66e092f145001962d00c2159ce7a4b04af7557c5b6a006eae072a",
+          "rows": 959
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "a6e842820abffb8b31b11a7241cf79464f43747c15dcaa50c4bcc2ee3d0182d9",
+          "recomputed_sha256": "a6e842820abffb8b31b11a7241cf79464f43747c15dcaa50c4bcc2ee3d0182d9",
+          "rows": 2388
+        }
+      },
+      "instrument_id": "[\"XCME\",\"FUTURE\",\"NQU5\",\"USD\",\"CONTRACT\"]",
+      "source_manifest_sha256": "84db6b10b6adfbe439ee87043de0930eb006c9e2e7238ade82171d641d36529d"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 10,
+        "candle_bars": 42369,
+        "candle_minutes": 1380,
+        "dataset_version": "w606-ohlcv-v1-glbx-mdp3-ohlcv-1s-nq-2025-09",
+        "explained_by_receive_time": 4,
+        "explained_sample": [
+          {
+            "arriving": "0",
+            "arriving_prints": 0,
+            "candle_volume": "400",
+            "delta": "1",
+            "leaving": "1",
+            "leaving_prints": 1,
+            "net": "1",
+            "open_ns": "1757358360000000000",
+            "trade_volume": "401"
+          },
+          {
+            "arriving": "1",
+            "arriving_prints": 1,
+            "candle_volume": "390",
+            "delta": "-1",
+            "leaving": "0",
+            "leaving_prints": 0,
+            "net": "-1",
+            "open_ns": "1757358420000000000",
+            "trade_volume": "389"
+          },
+          {
+            "arriving": "0",
+            "arriving_prints": 0,
+            "candle_volume": "7542",
+            "delta": "12",
+            "leaving": "12",
+            "leaving_prints": 9,
+            "net": "12",
+            "open_ns": "1757361540000000000",
+            "trade_volume": "7554"
+          }
+        ],
+        "family": "candle",
+        "first_mismatches": [
+          {
+            "candle_volume": "400",
+            "open_ns": "1757358360000000000",
+            "trade_volume": "401"
+          },
+          {
+            "candle_volume": "390",
+            "open_ns": "1757358420000000000",
+            "trade_volume": "389"
+          },
+          {
+            "candle_volume": "7542",
+            "open_ns": "1757361540000000000",
+            "trade_volume": "7554"
+          },
+          {
+            "candle_volume": "2677",
+            "open_ns": "1757361600000000000",
+            "trade_volume": "2665"
+          }
+        ],
+        "minutes_compared": 1380,
+        "mismatches": 4,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2025-09-08",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "047e6e6eb1ca0680510b3905f6cf7cf75493cbb415a9e3ea206d1a5c2fb07a8c",
+          "recomputed_sha256": "047e6e6eb1ca0680510b3905f6cf7cf75493cbb415a9e3ea206d1a5c2fb07a8c",
+          "rows": 28544
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "855333b6aa0d6cf06270df14fbb59cb3efbfafc472c610cfdd2d7694a5e0b00d",
+          "recomputed_sha256": "855333b6aa0d6cf06270df14fbb59cb3efbfafc472c610cfdd2d7694a5e0b00d",
+          "rows": 1380
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "0fe3b0c4b13f14c46a29af8642dd173e0cf44890d5be7fae53af9fa7c5d3dda2",
+          "recomputed_sha256": "0fe3b0c4b13f14c46a29af8642dd173e0cf44890d5be7fae53af9fa7c5d3dda2",
+          "rows": 10955
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "eb3325f8cc23420ec00cee28b1ce77644c0da243faa5f5cbeef4540eac7dff31",
+          "recomputed_sha256": "eb3325f8cc23420ec00cee28b1ce77644c0da243faa5f5cbeef4540eac7dff31",
+          "rows": 27116
+        }
+      },
+      "instrument_id": "[\"XCME\",\"FUTURE\",\"NQU5\",\"USD\",\"CONTRACT\"]",
+      "source_manifest_sha256": "b8fd254ccd7a5478616ec75876aeedc8c9e0a0665d061cfa51d14c32aeb0d05f"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 6,
+        "candle_bars": 43544,
+        "candle_minutes": 1380,
+        "dataset_version": "w606-ohlcv-v1-glbx-mdp3-ohlcv-1s-nq-2025-09",
+        "explained_by_receive_time": 6,
+        "explained_sample": [
+          {
+            "arriving": "0",
+            "arriving_prints": 0,
+            "candle_volume": "62",
+            "delta": "1",
+            "leaving": "1",
+            "leaving_prints": 1,
+            "net": "1",
+            "open_ns": "1757418480000000000",
+            "trade_volume": "63"
+          },
+          {
+            "arriving": "1",
+            "arriving_prints": 1,
+            "candle_volume": "104",
+            "delta": "-1",
+            "leaving": "0",
+            "leaving_prints": 0,
+            "net": "-1",
+            "open_ns": "1757418540000000000",
+            "trade_volume": "103"
+          },
+          {
+            "arriving": "0",
+            "arriving_prints": 0,
+            "candle_volume": "1927",
+            "delta": "7",
+            "leaving": "7",
+            "leaving_prints": 2,
+            "net": "7",
+            "open_ns": "1757428680000000000",
+            "trade_volume": "1934"
+          }
+        ],
+        "family": "candle",
+        "first_mismatches": [
+          {
+            "candle_volume": "62",
+            "open_ns": "1757418480000000000",
+            "trade_volume": "63"
+          },
+          {
+            "candle_volume": "104",
+            "open_ns": "1757418540000000000",
+            "trade_volume": "103"
+          },
+          {
+            "candle_volume": "1927",
+            "open_ns": "1757428680000000000",
+            "trade_volume": "1934"
+          },
+          {
+            "candle_volume": "1293",
+            "open_ns": "1757428740000000000",
+            "trade_volume": "1286"
+          },
+          {
+            "candle_volume": "7678",
+            "open_ns": "1757447940000000000",
+            "trade_volume": "7682"
+          }
+        ],
+        "minutes_compared": 1380,
+        "mismatches": 6,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2025-09-09",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "fbad73a24c73a3b42a401a00415b5e186d479ded7caf249bfe044ad45eedf71e",
+          "recomputed_sha256": "fbad73a24c73a3b42a401a00415b5e186d479ded7caf249bfe044ad45eedf71e",
+          "rows": 28720
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "921952ab58b35456f5327a98d7fca23be46e8853a80621ba8fcb4bd54d5e0ff8",
+          "recomputed_sha256": "921952ab58b35456f5327a98d7fca23be46e8853a80621ba8fcb4bd54d5e0ff8",
+          "rows": 1380
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "6c5fe2ab9852731587c715e809a709ec8d9c43a1f779f2cb2372dfb2813743bb",
+          "recomputed_sha256": "6c5fe2ab9852731587c715e809a709ec8d9c43a1f779f2cb2372dfb2813743bb",
+          "rows": 10898
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "001fd931c69db760ee520e8411b1ee75e4598dbacc6e7ba565ec9c0baf0f71d8",
+          "recomputed_sha256": "001fd931c69db760ee520e8411b1ee75e4598dbacc6e7ba565ec9c0baf0f71d8",
+          "rows": 27688
+        }
+      },
+      "instrument_id": "[\"XCME\",\"FUTURE\",\"NQU5\",\"USD\",\"CONTRACT\"]",
+      "source_manifest_sha256": "45f80b11f370c9ceeba48882a81fd8b772e68af6910fa5fcc78b93d12c7749bb"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 4,
+        "candle_bars": 43462,
+        "candle_minutes": 1379,
+        "dataset_version": "w606-ohlcv-v1-glbx-mdp3-ohlcv-1s-nq-2025-09",
+        "explained_by_receive_time": 4,
+        "explained_sample": [
+          {
+            "arriving": "0",
+            "arriving_prints": 0,
+            "candle_volume": "1244",
+            "delta": "1",
+            "leaving": "1",
+            "leaving_prints": 1,
+            "net": "1",
+            "open_ns": "1757513220000000000",
+            "trade_volume": "1245"
+          },
+          {
+            "arriving": "1",
+            "arriving_prints": 1,
+            "candle_volume": "2610",
+            "delta": "-1",
+            "leaving": "0",
+            "leaving_prints": 0,
+            "net": "-1",
+            "open_ns": "1757513280000000000",
+            "trade_volume": "2609"
+          },
+          {
+            "arriving": "0",
+            "arriving_prints": 0,
+            "candle_volume": "7169",
+            "delta": "4",
+            "leaving": "4",
+            "leaving_prints": 3,
+            "net": "4",
+            "open_ns": "1757534340000000000",
+            "trade_volume": "7173"
+          }
+        ],
+        "family": "candle",
+        "first_mismatches": [
+          {
+            "candle_volume": "1244",
+            "open_ns": "1757513220000000000",
+            "trade_volume": "1245"
+          },
+          {
+            "candle_volume": "2610",
+            "open_ns": "1757513280000000000",
+            "trade_volume": "2609"
+          },
+          {
+            "candle_volume": "7169",
+            "open_ns": "1757534340000000000",
+            "trade_volume": "7173"
+          },
+          {
+            "candle_volume": "3154",
+            "open_ns": "1757534400000000000",
+            "trade_volume": "3150"
+          }
+        ],
+        "minutes_compared": 1379,
+        "mismatches": 4,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2025-09-10",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "462b8f55882166d7f786b7ca945865659aac0b3bc6fa36014de1590207b76734",
+          "recomputed_sha256": "462b8f55882166d7f786b7ca945865659aac0b3bc6fa36014de1590207b76734",
+          "rows": 30849
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "46b4a809a325cbe05f810cbedac362de4b4a50e05ad50400408fd90e19f78746",
+          "recomputed_sha256": "46b4a809a325cbe05f810cbedac362de4b4a50e05ad50400408fd90e19f78746",
+          "rows": 1379
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "5846660d802a6e2908f5fb0a2d7ac31a39d2f7bee678d74302d6a5671176ea80",
+          "recomputed_sha256": "5846660d802a6e2908f5fb0a2d7ac31a39d2f7bee678d74302d6a5671176ea80",
+          "rows": 10833
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "3b0633740599e9a4fbad051db717b825bb46f60e36139cce14f31ce3604557f6",
+          "recomputed_sha256": "3b0633740599e9a4fbad051db717b825bb46f60e36139cce14f31ce3604557f6",
+          "rows": 27258
+        }
+      },
+      "instrument_id": "[\"XCME\",\"FUTURE\",\"NQU5\",\"USD\",\"CONTRACT\"]",
+      "source_manifest_sha256": "1fcd66dbfaa0ee1bdac94642157d7bc71fbcb8a25a45a253e764de5dd2569d1c"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 11,
+        "candle_bars": 41869,
+        "candle_minutes": 1380,
+        "dataset_version": "w606-ohlcv-v1-glbx-mdp3-ohlcv-1s-nq-2025-09",
+        "explained_by_receive_time": 4,
+        "explained_sample": [
+          {
+            "arriving": "0",
+            "arriving_prints": 0,
+            "candle_volume": "653",
+            "delta": "3",
+            "leaving": "3",
+            "leaving_prints": 3,
+            "net": "3",
+            "open_ns": "1757617680000000000",
+            "trade_volume": "656"
+          },
+          {
+            "arriving": "3",
+            "arriving_prints": 3,
+            "candle_volume": "400",
+            "delta": "-3",
+            "leaving": "0",
+            "leaving_prints": 0,
+            "net": "-3",
+            "open_ns": "1757617740000000000",
+            "trade_volume": "397"
+          },
+          {
+            "arriving": "0",
+            "arriving_prints": 0,
+            "candle_volume": "8271",
+            "delta": "13",
+            "leaving": "13",
+            "leaving_prints": 8,
+            "net": "13",
+            "open_ns": "1757620740000000000",
+            "trade_volume": "8284"
+          }
+        ],
+        "family": "candle",
+        "first_mismatches": [
+          {
+            "candle_volume": "653",
+            "open_ns": "1757617680000000000",
+            "trade_volume": "656"
+          },
+          {
+            "candle_volume": "400",
+            "open_ns": "1757617740000000000",
+            "trade_volume": "397"
+          },
+          {
+            "candle_volume": "8271",
+            "open_ns": "1757620740000000000",
+            "trade_volume": "8284"
+          },
+          {
+            "candle_volume": "3039",
+            "open_ns": "1757620800000000000",
+            "trade_volume": "3026"
+          }
+        ],
+        "minutes_compared": 1380,
+        "mismatches": 4,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2025-09-11",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "0f8eb37c88c3fcc0b62dd323795587d2efc60990e2d31eec6ab9a2f597e276d8",
+          "recomputed_sha256": "0f8eb37c88c3fcc0b62dd323795587d2efc60990e2d31eec6ab9a2f597e276d8",
+          "rows": 27855
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "593c9a832613a59c7a8c4dedb0b15cc63f1f247b12042c57bcfbe98cef8a480b",
+          "recomputed_sha256": "593c9a832613a59c7a8c4dedb0b15cc63f1f247b12042c57bcfbe98cef8a480b",
+          "rows": 1380
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "0e30c4a7f4d62028a7b90b3c2776e68daa9fb8b6214fd6c831865931da57e2fd",
+          "recomputed_sha256": "0e30c4a7f4d62028a7b90b3c2776e68daa9fb8b6214fd6c831865931da57e2fd",
+          "rows": 10950
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "d3f9a95eefcd5957f5768785a4ec014b39a329fc3036c55ce0d6b9d30cca91ae",
+          "recomputed_sha256": "d3f9a95eefcd5957f5768785a4ec014b39a329fc3036c55ce0d6b9d30cca91ae",
+          "rows": 26708
+        }
+      },
+      "instrument_id": "[\"XCME\",\"FUTURE\",\"NQU5\",\"USD\",\"CONTRACT\"]",
+      "source_manifest_sha256": "31df69c93a5d31312b2e345764451718a6f99a9c220d2ff8c9f3e4299cd8b1e8"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 11,
+        "candle_bars": 39134,
+        "candle_minutes": 1260,
+        "dataset_version": "w606-ohlcv-v1-glbx-mdp3-ohlcv-1s-nq-2025-09",
+        "explained_by_receive_time": 2,
+        "explained_sample": [
+          {
+            "arriving": "0",
+            "arriving_prints": 0,
+            "candle_volume": "7374",
+            "delta": "18",
+            "leaving": "18",
+            "leaving_prints": 11,
+            "net": "18",
+            "open_ns": "1757707140000000000",
+            "trade_volume": "7392"
+          },
+          {
+            "arriving": "18",
+            "arriving_prints": 11,
+            "candle_volume": "4383",
+            "delta": "-18",
+            "leaving": "0",
+            "leaving_prints": 0,
+            "net": "-18",
+            "open_ns": "1757707200000000000",
+            "trade_volume": "4365"
+          }
+        ],
+        "family": "candle",
+        "first_mismatches": [
+          {
+            "candle_volume": "7374",
+            "open_ns": "1757707140000000000",
+            "trade_volume": "7392"
+          },
+          {
+            "candle_volume": "4383",
+            "open_ns": "1757707200000000000",
+            "trade_volume": "4365"
+          }
+        ],
+        "minutes_compared": 1260,
+        "mismatches": 2,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2025-09-12",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "8dc02330bd4fbf50ef27d9e81425971dec591b00107e5ead66079a126bf4b12a",
+          "recomputed_sha256": "8dc02330bd4fbf50ef27d9e81425971dec591b00107e5ead66079a126bf4b12a",
+          "rows": 21126
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "45769eca0a809f0b9e5eb68146c64a23bd8dc03aa0c9278d9f41053edec97ebd",
+          "recomputed_sha256": "45769eca0a809f0b9e5eb68146c64a23bd8dc03aa0c9278d9f41053edec97ebd",
+          "rows": 1260
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "f4825669dc5004eaaf47c18a29a209c0553bb487969a6f33e0137b7bc70e3f5c",
+          "recomputed_sha256": "f4825669dc5004eaaf47c18a29a209c0553bb487969a6f33e0137b7bc70e3f5c",
+          "rows": 9957
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "e8cbf141edd182411deb3319b1e3cdf193ec25b301e094829e475815182b058b",
+          "recomputed_sha256": "e8cbf141edd182411deb3319b1e3cdf193ec25b301e094829e475815182b058b",
+          "rows": 25047
+        }
+      },
+      "instrument_id": "[\"XCME\",\"FUTURE\",\"NQU5\",\"USD\",\"CONTRACT\"]",
+      "source_manifest_sha256": "56d40e1345830f61ba052be9f59c0d2b1442005299b5bf91e8dbcc45da2beb78"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 0,
+        "candle_bars": 1701,
+        "candle_minutes": 120,
+        "dataset_version": "w606-ohlcv-v1-glbx-mdp3-ohlcv-1s-nq-2025-09",
+        "explained_by_receive_time": 0,
+        "explained_sample": [],
+        "family": "candle",
+        "first_mismatches": [],
+        "minutes_compared": 120,
+        "mismatches": 0,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2025-09-14",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "1f6fee3d2901d88e7ec758845214e19e3c3dc0d5f2193f2d7b0727906f3a7be4",
+          "recomputed_sha256": "1f6fee3d2901d88e7ec758845214e19e3c3dc0d5f2193f2d7b0727906f3a7be4",
+          "rows": 1442
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "f8b3614aaf1ac83970b415d312dbd03e9f29ce1439891acd9831272fa2ac70aa",
+          "recomputed_sha256": "f8b3614aaf1ac83970b415d312dbd03e9f29ce1439891acd9831272fa2ac70aa",
+          "rows": 120
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "2df73675d05b41292031606253bba54fb57c81ed9bc970ee385c8c00107b1d96",
+          "recomputed_sha256": "2df73675d05b41292031606253bba54fb57c81ed9bc970ee385c8c00107b1d96",
+          "rows": 914
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "8a625449d1740a7b3bf9b5ceb4c72cc5f21dfaf428b4195b3c3b9968c61ee2b5",
+          "recomputed_sha256": "8a625449d1740a7b3bf9b5ceb4c72cc5f21dfaf428b4195b3c3b9968c61ee2b5",
+          "rows": 1396
+        }
+      },
+      "instrument_id": "[\"XCME\",\"FUTURE\",\"NQU5\",\"USD\",\"CONTRACT\"]",
+      "source_manifest_sha256": "8fc17149c899e7b7d43b39d2246ce49e9dc89dbf36533aa6cbb9f0013e8f7587"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 8,
+        "candle_bars": 35223,
+        "candle_minutes": 1378,
+        "dataset_version": "w606-ohlcv-v1-glbx-mdp3-ohlcv-1s-nq-2025-09",
+        "explained_by_receive_time": 6,
+        "explained_sample": [
+          {
+            "arriving": "0",
+            "arriving_prints": 0,
+            "candle_volume": "182",
+            "delta": "2",
+            "leaving": "2",
+            "leaving_prints": 1,
+            "net": "2",
+            "open_ns": "1757950560000000000",
+            "trade_volume": "184"
+          },
+          {
+            "arriving": "2",
+            "arriving_prints": 1,
+            "candle_volume": "269",
+            "delta": "-2",
+            "leaving": "0",
+            "leaving_prints": 0,
+            "net": "-2",
+            "open_ns": "1757950620000000000",
+            "trade_volume": "267"
+          },
+          {
+            "arriving": "0",
+            "arriving_prints": 0,
+            "candle_volume": "1041",
+            "delta": "1",
+            "leaving": "1",
+            "leaving_prints": 1,
+            "net": "1",
+            "open_ns": "1757966100000000000",
+            "trade_volume": "1042"
+          }
+        ],
+        "family": "candle",
+        "first_mismatches": [
+          {
+            "candle_volume": "182",
+            "open_ns": "1757950560000000000",
+            "trade_volume": "184"
+          },
+          {
+            "candle_volume": "269",
+            "open_ns": "1757950620000000000",
+            "trade_volume": "267"
+          },
+          {
+            "candle_volume": "1041",
+            "open_ns": "1757966100000000000",
+            "trade_volume": "1042"
+          },
+          {
+            "candle_volume": "831",
+            "open_ns": "1757966160000000000",
+            "trade_volume": "830"
+          },
+          {
+            "candle_volume": "4675",
+            "open_ns": "1757966340000000000",
+            "trade_volume": "4682"
+          }
+        ],
+        "minutes_compared": 1378,
+        "mismatches": 6,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2025-09-15",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "8c4fcf2a1ccb37f03b70df7e88f38c870119cf5ea0e1e3e15c8d85483602d99a",
+          "recomputed_sha256": "8c4fcf2a1ccb37f03b70df7e88f38c870119cf5ea0e1e3e15c8d85483602d99a",
+          "rows": 22319
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "5237dbf9798b415b8bc1c0ac02c460f045054ce6d887aa9166b0487ff629cf51",
+          "recomputed_sha256": "5237dbf9798b415b8bc1c0ac02c460f045054ce6d887aa9166b0487ff629cf51",
+          "rows": 1378
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "1f153a6de0750e9dd6201d40c7c678a09bed9491459a6f15a39d75a83618af4f",
+          "recomputed_sha256": "1f153a6de0750e9dd6201d40c7c678a09bed9491459a6f15a39d75a83618af4f",
+          "rows": 10456
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "cc119e1f98f39c44c028116fc9ff9cd82163ef97eb73a287627a94f28fb2900c",
+          "recomputed_sha256": "cc119e1f98f39c44c028116fc9ff9cd82163ef97eb73a287627a94f28fb2900c",
+          "rows": 23560
+        }
+      },
+      "instrument_id": "[\"XCME\",\"FUTURE\",\"NQU5\",\"USD\",\"CONTRACT\"]",
+      "source_manifest_sha256": "0298eb367af3f170293c6978fbbdceccf5e5a3e3fb5cef250c32e22826583fd7"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 1,
+        "candle_bars": 24569,
+        "candle_minutes": 1375,
+        "dataset_version": "w606-ohlcv-v1-glbx-mdp3-ohlcv-1s-nq-2025-09",
+        "explained_by_receive_time": 2,
+        "explained_sample": [
+          {
+            "arriving": "0",
+            "arriving_prints": 0,
+            "candle_volume": "99",
+            "delta": "1",
+            "leaving": "1",
+            "leaving_prints": 1,
+            "net": "1",
+            "open_ns": "1758037860000000000",
+            "trade_volume": "100"
+          },
+          {
+            "arriving": "1",
+            "arriving_prints": 1,
+            "candle_volume": "116",
+            "delta": "-1",
+            "leaving": "0",
+            "leaving_prints": 0,
+            "net": "-1",
+            "open_ns": "1758037920000000000",
+            "trade_volume": "115"
+          }
+        ],
+        "family": "candle",
+        "first_mismatches": [
+          {
+            "candle_volume": "99",
+            "open_ns": "1758037860000000000",
+            "trade_volume": "100"
+          },
+          {
+            "candle_volume": "116",
+            "open_ns": "1758037920000000000",
+            "trade_volume": "115"
+          }
+        ],
+        "minutes_compared": 1375,
+        "mismatches": 2,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2025-09-16",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "79a3a66290e0b0ed93cc5f61aec03282ba823168944890208837eb70f0b9f0f5",
+          "recomputed_sha256": "79a3a66290e0b0ed93cc5f61aec03282ba823168944890208837eb70f0b9f0f5",
+          "rows": 18136
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "44b1de35783926d1b6aaf74106d6d15a3b54da08db5d4619a97f946888b8eec0",
+          "recomputed_sha256": "44b1de35783926d1b6aaf74106d6d15a3b54da08db5d4619a97f946888b8eec0",
+          "rows": 1375
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "83bac61a3c27fd087948536a4ca76636267e32142e1e93cb57341bf9b750747f",
+          "recomputed_sha256": "83bac61a3c27fd087948536a4ca76636267e32142e1e93cb57341bf9b750747f",
+          "rows": 9823
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "d016feee53ddff74ce04791f569346f77a504ccca08918b0a0517e7704c612e7",
+          "recomputed_sha256": "d016feee53ddff74ce04791f569346f77a504ccca08918b0a0517e7704c612e7",
+          "rows": 18241
+        }
+      },
+      "instrument_id": "[\"XCME\",\"FUTURE\",\"NQU5\",\"USD\",\"CONTRACT\"]",
+      "source_manifest_sha256": "143f975f5962788e980b2089ca737502bb6669666af465eb8a41f7ea9df26947"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 13,
+        "candle_bars": 22559,
+        "candle_minutes": 1356,
+        "dataset_version": "w606-ohlcv-v1-glbx-mdp3-ohlcv-1s-nq-2025-09",
+        "explained_by_receive_time": 12,
+        "explained_sample": [
+          {
+            "arriving": "0",
+            "arriving_prints": 0,
+            "candle_volume": "258",
+            "delta": "1",
+            "leaving": "1",
+            "leaving_prints": 1,
+            "net": "1",
+            "open_ns": "1758116160000000000",
+            "trade_volume": "259"
+          },
+          {
+            "arriving": "1",
+            "arriving_prints": 1,
+            "candle_volume": "347",
+            "delta": "-1",
+            "leaving": "0",
+            "leaving_prints": 0,
+            "net": "-1",
+            "open_ns": "1758116220000000000",
+            "trade_volume": "346"
+          },
+          {
+            "arriving": "0",
+            "arriving_prints": 0,
+            "candle_volume": "237",
+            "delta": "1",
+            "leaving": "1",
+            "leaving_prints": 1,
+            "net": "1",
+            "open_ns": "1758116340000000000",
+            "trade_volume": "238"
+          }
+        ],
+        "family": "candle",
+        "first_mismatches": [
+          {
+            "candle_volume": "258",
+            "open_ns": "1758116160000000000",
+            "trade_volume": "259"
+          },
+          {
+            "candle_volume": "347",
+            "open_ns": "1758116220000000000",
+            "trade_volume": "346"
+          },
+          {
+            "candle_volume": "237",
+            "open_ns": "1758116340000000000",
+            "trade_volume": "238"
+          },
+          {
+            "candle_volume": "279",
+            "open_ns": "1758116400000000000",
+            "trade_volume": "284"
+          },
+          {
+            "candle_volume": "160",
+            "open_ns": "1758116460000000000",
+            "trade_volume": "154"
+          }
+        ],
+        "minutes_compared": 1356,
+        "mismatches": 12,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2025-09-17",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "2cb5eef5b2bf9799e66f965406b44d0eab6d0482a13622014cf3e80db57ae506",
+          "recomputed_sha256": "2cb5eef5b2bf9799e66f965406b44d0eab6d0482a13622014cf3e80db57ae506",
+          "rows": 27289
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "5e29a11ab0cc09fea204693cb187ff66d92bce08ab4a4544cc44e3bab9d4b58d",
+          "recomputed_sha256": "5e29a11ab0cc09fea204693cb187ff66d92bce08ab4a4544cc44e3bab9d4b58d",
+          "rows": 1356
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "8c9ef0ed787ab5b9adfe734904d995ddbacdf7d719bd4c0f3b8ccdf972f799dd",
+          "recomputed_sha256": "8c9ef0ed787ab5b9adfe734904d995ddbacdf7d719bd4c0f3b8ccdf972f799dd",
+          "rows": 8998
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "5b2e5e1c7b9df25bf46c35a6bb25f245a250550d895dd64284a0c5c0a86c2996",
+          "recomputed_sha256": "5b2e5e1c7b9df25bf46c35a6bb25f245a250550d895dd64284a0c5c0a86c2996",
+          "rows": 15981
+        }
+      },
+      "instrument_id": "[\"XCME\",\"FUTURE\",\"NQU5\",\"USD\",\"CONTRACT\"]",
+      "source_manifest_sha256": "a43d24357432f43529ebdc98ca523ee295fa4f1ba28baa27ac537040ea5b195d"
+    }
+  ],
+  "equal": true,
+  "families_version": "w606-l1agg-v1-glbx-mdp3-nq-2025-09",
+  "version": 1
+}

@@ -1,0 +1,58 @@
+{
+  "mutations": [
+    {
+      "id": "o1.selection.reconnect-generation-dropped",
+      "file": "apps/web/src/workers/marketDataWorker.ts",
+      "find": "                marketKind: frame.marketKind,\n                ...(retainedTrace ? { selectionTrace: retainedTrace } : {}),",
+      "replace": "                marketKind: frame.marketKind,",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/workers/marketDataWorker.test.ts"],
+      "mustFail": ["retains the selection generation across reconnect and emits bounded backfill state changes once"]
+    },
+    {
+      "id": "o1.selection.backfill-transition-suppressed",
+      "file": "apps/web/src/workers/marketDataWorker.ts",
+      "find": "if (backfillTraceKey !== lastBackfillTraceKey) {",
+      "replace": "if (false) {",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/workers/marketDataWorker.test.ts"],
+      "mustFail": ["retains the selection generation across reconnect and emits bounded backfill state changes once"]
+    },
+    {
+      "id": "o1.selection.unrelated-shared-selection-inherits-generation",
+      "file": "apps/web/src/workers/marketDataWorker.ts",
+      "find": "const retainedTrace = matchesDesired\n          ? desiredSelection?.selectionTrace\n          : undefined;",
+      "replace": "const retainedTrace = desiredSelection?.selectionTrace;",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/workers/marketDataWorker.test.ts"],
+      "mustFail": ["does not attribute an unrelated shared selection to the previous generation"]
+    },
+    {
+      "id": "o1.selection.wrong-generation-accepted",
+      "file": "apps/web/src/lib/observability/selectionTrace.ts",
+      "find": "const record = buffer.findLast((candidate) => candidate.runId === event.runId && candidate.selectionGeneration === event.selectionGeneration);",
+      "replace": "const record = buffer.findLast((candidate) => candidate.runId === event.runId);",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/observability/selectionTrace.test.ts"],
+      "mustFail": ["rejects a milestone from the wrong selection generation"]
+    },
+    {
+      "id": "o1.selection.backfill-history-unbounded",
+      "file": "apps/web/src/lib/observability/selectionTrace.ts",
+      "find": "    boundedPush(record.backfill, {\n      connectionId: event.connectionId,\n      status: event.backfillStatus,\n      reason: event.backfillReason === null || event.backfillReason === undefined ? null : event.backfillReason.slice(0, 256),\n      atMs: event.mainReceivedAtMs,\n    }, 16);",
+      "replace": "    record.backfill.push({\n      connectionId: event.connectionId,\n      status: event.backfillStatus,\n      reason: event.backfillReason === null || event.backfillReason === undefined ? null : event.backfillReason,\n      atMs: event.mainReceivedAtMs,\n    });",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/observability/selectionTrace.test.ts"],
+      "mustFail": ["retains bounded recovery and backfill milestones after first paint"]
+    },
+    {
+      "id": "o1.browser.missing-span-passes",
+      "file": "apps/runtime/scripts/bench/browser-load.js",
+      "find": "      (manifest.observability?.selectionTrace !== true || selectionTraces.some((trace) => trace.outcome === \"COMPLETE\" && trace.ordered)),",
+      "replace": "      true,",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/scripts/bench/browser-load.test.js", "--runInBand"],
+      "mustFail": ["missing or unordered required selection spans are classified as UNINSTRUMENTED"]
+    }
+  ]
+}

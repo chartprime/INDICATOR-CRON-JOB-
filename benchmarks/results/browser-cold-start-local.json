@@ -1,0 +1,76 @@
+{
+  "contractVersion": 1,
+  "kind": "browser",
+  "name": "o0-browser-cold-start",
+  "scenario": "cold-start",
+  "source": {
+    "git": {
+      "commit": "f127ea4f44a274ad43c3fb5b6639d02c18d8a6f0",
+      "dirty": true,
+      "trackedChanges": 28,
+      "untrackedFiles": 63,
+      "trackedDiffSha256": "48bb9080efde0c9d31d529307ca908786ebf96c25e85ddad7906e98a6e2baf4c"
+    },
+    "scriptSha256": "67d425d19c922f5724eb1b3c9faff65d66484583319efccd1ad0084b3d1551b7",
+    "manifestSha256": "e9a8abe4e5e4fe6ea01d3e3487b66c562cfe6281a80a341beec47810b4ec2775",
+    "nodeVersion": "v25.2.1",
+    "webDist": {
+      "fileCount": 5,
+      "totalBytes": 869994,
+      "sha256": "312b4ab3ba5f2d28a182a3d6388420a62d630d7d08b82b4cf8c141d8a3b87fa9"
+    },
+    "browser": "Chrome/152.0.7977.84"
+  },
+  "startedAtUtc": "2026-09-20T03:53:02.166Z",
+  "settings": {
+    "durationSeconds": 5,
+    "upstream": {
+      "tradesPerPulse": 10,
+      "pulseMs": 20
+    },
+    "selectionChangeAtSeconds": null
+  },
+  "timings": {
+    "navigationToWebSocketConnectMs": 311,
+    "firstTradePublishedToFirstCommitMs": 20
+  },
+  "tape": {
+    "published": 1610,
+    "committed": 1610,
+    "newestCommittedId": 1610,
+    "rowsRetained": 60,
+    "eventToDomCommitMs": {
+      "samples": 1610,
+      "p50": 18,
+      "p95": 25,
+      "p99": 27,
+      "max": 30
+    }
+  },
+  "longTaskMs": {
+    "samples": 2,
+    "p50": 51,
+    "p95": 63,
+    "p99": 63,
+    "max": 63
+  },
+  "memory": [
+    {
+      "seconds": 5,
+      "heapUsed": 8428688,
+      "nodes": 1352,
+      "layoutCount": 173,
+      "taskDuration": 3.55192
+    }
+  ],
+  "pageErrors": [],
+  "invariants": {
+    "latestPublishedTradeReachedTheDom": true,
+    "noPageErrors": true,
+    "tapeRowsBounded": true,
+    "chartCanvasesPresent": true,
+    "tapeWithdrawnOnDisconnect": true,
+    "selectionHonoured": null
+  },
+  "pass": true
+}

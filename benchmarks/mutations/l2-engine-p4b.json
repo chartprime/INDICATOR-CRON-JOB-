@@ -1,0 +1,329 @@
+{
+  "mutations": [
+    {
+      "id": "p4b.parser-lane-unbounded",
+      "file": "apps/web/src/types/frames.ts",
+      "find": "    raw.lane > MAX_L2_LANE ||",
+      "replace": "    false ||",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/types/l2Frames.test.ts"],
+      "mustFail": ["l2_view: refuses lane 7"]
+    },
+    {
+      "id": "p4b.parser-lane-prints-admitted",
+      "file": "apps/web/src/types/frames.ts",
+      "find": "if (!parsed || parsed.prints !== undefined || parsed.prints_floor !== undefined) return null;",
+      "replace": "if (!parsed) return null;",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/types/l2Frames.test.ts"],
+      "mustFail": ["l2_view: refuses a column with prints"]
+    },
+    {
+      "id": "p4b.parser-wall-reset-with-removals",
+      "file": "apps/web/src/types/frames.ts",
+      "find": "    (raw.reset && raw.removed.length > 0) ||",
+      "replace": "    false ||",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/types/l2Frames.test.ts"],
+      "mustFail": ["l2_walls: refuses a reset that also removes"]
+    },
+    {
+      "id": "p4b.parser-life-ms-either-way",
+      "file": "apps/web/src/types/frames.ts",
+      "find": "!(ended ? isNonNegativeSafeInteger(detail.life_ms) : detail.life_ms === null) ||",
+      "replace": "!(detail.life_ms === null || isNonNegativeSafeInteger(detail.life_ms)) ||",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/types/l2Frames.test.ts"],
+      "mustFail": ["l2_walls: life_ms is null exactly while a wall is active"]
+    },
+    {
+      "id": "p4b.parser-events-unordered",
+      "file": "apps/web/src/types/frames.ts",
+      "find": "if (!event || event.ts < previousTs) return null;",
+      "replace": "if (!event) return null;",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/types/l2Frames.test.ts"],
+      "mustFail": ["l2_events: refuses events out of time order"]
+    },
+    {
+      "id": "p4b.parser-missed-only-refused",
+      "file": "apps/web/src/types/frames.ts",
+      "find": "    (!raw.reset && raw.events.length === 0 && raw.missed === 0)",
+      "replace": "    (!raw.reset && raw.events.length === 0)",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/types/l2Frames.test.ts"],
+      "mustFail": ["a missed-only increment is admitted"]
+    },
+    {
+      "id": "p4b.parser-locked-ladder",
+      "file": "apps/web/src/types/frames.ts",
+      "find": "if (bids.length > 0 && asks.length > 0 && bids[0][0] >= asks[0][0]) return null;",
+      "replace": "if (bids.length > 0 && asks.length > 0 && bids[0][0] > asks[0][0]) return null;",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/types/l2Frames.test.ts"],
+      "mustFail": ["l2_ladder: refuses a locked book"]
+    },
+    {
+      "id": "p4b.client-bound-drifts-from-schema",
+      "file": "apps/web/src/types/frames.ts",
+      "find": "const MAX_L2_EVENTS = 500;",
+      "replace": "const MAX_L2_EVENTS = 600;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/contracts/ws-frame-contract-limits.test.js"],
+      "mustFail": ["the events per frame bound is the schema's"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "p4b.client-omits-ladder",
+      "file": "apps/web/src/types/frames.ts",
+      "find": "Object.freeze([\"marker_history\", \"l2_view\", \"l2_walls\", \"l2_walls_lanes\", \"l2_events\", \"l2_ladder\", \"iceberg_orders\", \"exhaustion_shades\", \"initiative_bands\"]);",
+      "replace": "Object.freeze([\"marker_history\", \"l2_view\", \"l2_walls\", \"l2_walls_lanes\", \"l2_events\", \"iceberg_orders\", \"exhaustion_shades\", \"initiative_bands\"]);",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/workers/marketDataWorker.test.ts"],
+      "mustFail": ["declares marker history and the four L2 channels"]
+    },
+    {
+      "id": "p4b.walls-duplicate-treated-as-gap",
+      "file": "apps/web/src/lib/l2/wallBook.ts",
+      "find": "if (this._synced && this._seq !== null && frame.seq <= this._seq) return \"duplicate\";",
+      "replace": "if (false) return \"duplicate\";",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/l2/l2Store.test.ts"],
+      "mustFail": ["an increment the snapshot already contains is dropped without asking again"]
+    },
+    {
+      "id": "p4b.walls-gap-applied",
+      "file": "apps/web/src/lib/l2/wallBook.ts",
+      "find": "if (!this._synced || this._seq === null || frame.seq !== this._seq + 1) {",
+      "replace": "if (!this._synced || this._seq === null) {",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/l2/l2Store.test.ts"],
+      "mustFail": ["a gap makes the channel untrusted, asks once per debounce window"]
+    },
+    {
+      "id": "p4b.events-missed-only-dropped",
+      "file": "apps/web/src/lib/l2/eventRing.ts",
+      "find": "(frame.events.length === 0 ? frame.seq < this._seq : frame.seq <= this._seq)",
+      "replace": "frame.seq <= this._seq",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/l2/l2Store.test.ts"],
+      "mustFail": ["a reset replaces, increments continue the chain, missed accumulates"]
+    },
+    {
+      "id": "p4b.events-since-exact-before-reset",
+      "file": "apps/web/src/lib/l2/eventRing.ts",
+      "find": "sinceSeq >= this._resetSeq && ",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/l2/l2Store.test.ts"],
+      "mustFail": ["since(seq) is exact after the reset and says so"]
+    },
+    {
+      "id": "p4b.events-ring-unbounded",
+      "file": "apps/web/src/lib/l2/eventRing.ts",
+      "find": "if (this._events.length > this._capacity) this._events.splice(0, this._events.length - this._capacity);",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/l2/l2Store.test.ts"],
+      "mustFail": ["the client ring keeps the newest events up to its capacity"]
+    },
+    {
+      "id": "p4b.lanes-duplicate-treated-as-gap",
+      "file": "apps/web/src/lib/l2/laneGrids.ts",
+      "find": "if (!frame.reset && last !== undefined && !this._untrusted.has(key) && frame.seq <= last) return Object.freeze({ outcome: \"duplicate\", decoded: null });",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/l2/l2Store.test.ts"],
+      "mustFail": ["each lane chains per tier; the increment a snapshot already holds is dropped, not a gap"]
+    },
+    {
+      "id": "p4b.resync-not-debounced",
+      "file": "apps/web/src/lib/l2/l2Store.ts",
+      "find": "    if (at < (this._resyncNotBefore.get(channel) ?? 0)) return;",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/l2/l2Store.test.ts"],
+      "mustFail": ["a gap makes the channel untrusted, asks once per debounce window"]
+    },
+    {
+      "id": "p4b.pair-switch-keeps-ladder",
+      "file": "apps/web/src/lib/l2/l2Store.ts",
+      "find": "    this.ladder.clear();",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/l2/l2Store.test.ts"],
+      "mustFail": ["a pair switch clears all four models even when no snapshot follows"]
+    },
+    {
+      "id": "p4b.socket-drop-leaves-ladder-synced",
+      "file": "apps/web/src/lib/l2/l2Store.ts",
+      "find": "    this.ladder.markUntrusted();",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/l2/l2Store.test.ts"],
+      "mustFail": ["a dropped socket keeps what is held but untrusted until the resets arrive"]
+    },
+    {
+      "id": "p4b.hook-socket-drop-clears",
+      "file": "apps/web/src/hooks/useMarketData.ts",
+      "find": "if (keepLiquidity) l2Store.markUntrusted();",
+      "replace": "if (false) l2Store.markUntrusted();",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/hooks/useMarketData.l2.test.tsx"],
+      "mustFail": ["a dropped socket keeps the models untrusted until the server's resets arrive"]
+    },
+    {
+      "id": "p4b.hook-pair-switch-keeps",
+      "file": "apps/web/src/hooks/useMarketData.ts",
+      "find": "else l2Store.clear();",
+      "replace": "else l2Store.markUntrusted();",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/hooks/useMarketData.l2.test.tsx"],
+      "mustFail": ["a pair switch clears all four models even though no snapshot for the new pair has arrived"]
+    },
+    {
+      "id": "p4b.hook-other-pair-admitted",
+      "file": "apps/web/src/hooks/useMarketData.ts",
+      "find": "        if (!frameMatchesLivePair(frame.symbol, frame)) return;\n        const created = l2Store === null;",
+      "replace": "        const created = l2Store === null;",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/hooks/useMarketData.l2.test.tsx"],
+      "mustFail": ["ignores another pair's channels"]
+    },
+    {
+      "id": "p4b.runtime-source-not-handed-to-records",
+      "file": "apps/web/src/lib/chart/indicatorRuntime.ts",
+      "find": "for (const record of records.values()) record.l2 = next;",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/chart/tests/indicatorL2.test.ts"],
+      "mustFail": ["replays an L2 indicator when the source changes"]
+    },
+    {
+      "id": "p4b.runtime-same-source-replays",
+      "file": "apps/web/src/lib/chart/indicatorRuntime.ts",
+      "find": "if (next === l2) return;",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/chart/tests/indicatorL2.test.ts"],
+      "mustFail": ["replays an L2 indicator when the source changes"]
+    },
+    {
+      "id": "p4b.sdk-trusted-ignores-segment-start",
+      "file": "apps/web/src/lib/chart/indicatorL2.ts",
+      "find": "return start !== null && ts >= start;",
+      "replace": "return true;",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/chart/tests/indicatorL2.test.ts"],
+      "mustFail": ["trusted(ts) holds only from the current LIVE segment's start"]
+    },
+    {
+      "id": "p4b.sdk-lanefor-ignores-lower-bound",
+      "file": "apps/web/src/lib/chart/indicatorL2.ts",
+      "find": "if (info.priceLo <= lo && info.priceHi >= hi) return info.lane;",
+      "replace": "if (info.priceHi >= hi) return info.lane;",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/chart/tests/indicatorL2.test.ts"],
+      "mustFail": ["laneFor picks the finest lane that covers the range"]
+    },
+    {
+      "id": "p4b.status-hides-missed",
+      "file": "apps/web/src/lib/indicators/l2-feed-status/l2FeedStatus.ts",
+      "find": "tone: events.missed > 0 ? \"bad\" : \"neutral\"",
+      "replace": "tone: \"neutral\"",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/chart/tests/indicatorL2.test.ts"],
+      "mustFail": ["reports trust, the segment, every channel's sync and lag, and what is held"]
+    },
+    {
+      "id": "p4b.chart-historical-gets-live-l2",
+      "file": "apps/web/src/components/chart/ChartPanel.tsx",
+      "find": "capabilities !== null ? historicalL2Ref.current : liveL2Ref.current,",
+      "replace": "liveL2Ref.current,",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/components/chart/tests/ChartPanel.lifecycle.test.tsx"],
+      "mustFail": ["hands L2 indicators the live store, the historical source in Historical Mode"]
+    },
+    {
+      "id": "p4b.chart-live-store-replaces-historical",
+      "file": "apps/web/src/components/chart/ChartPanel.tsx",
+      "find": "      if (historicalIndicatorCapabilitiesRef.current !== null) return;\n      indicatorRuntimeRef.current.setL2(liveL2Ref.current, allBarsRef.current);",
+      "replace": "      indicatorRuntimeRef.current.setL2(liveL2Ref.current, allBarsRef.current);",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/components/chart/tests/ChartPanel.lifecycle.test.tsx"],
+      "mustFail": ["hands L2 indicators the live store, the historical source in Historical Mode"]
+    },
+    {
+      "id": "p4b.chart-live-advance-reaches-historical",
+      "file": "apps/web/src/components/chart/ChartPanel.tsx",
+      "find": "          if (historicalIndicatorCapabilitiesRef.current !== null) return;\n          indicatorRuntimeRef.current.onL2Advanced(allBarsRef.current);",
+      "replace": "          indicatorRuntimeRef.current.onL2Advanced(allBarsRef.current);",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/components/chart/tests/ChartPanel.lifecycle.test.tsx"],
+      "mustFail": ["hands L2 indicators the live store, the historical source in Historical Mode"]
+    },
+    {
+      "id": "p4b.audit-events-claims-complete-after-missed",
+      "file": "apps/web/src/lib/l2/eventRing.ts",
+      "find": "complete: exact && this._synced && afterReportedLoss",
+      "replace": "complete: exact && this._synced",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/l2/l2Store.test.ts"],
+      "mustFail": ["never calls a slice complete after the publisher reports omitted events"]
+    },
+    {
+      "id": "p4b.audit-gap-does-not-publish-trust-loss",
+      "file": "apps/web/src/lib/l2/l2Store.ts",
+      "find": "      if (wasSynced) this._version += 1;",
+      "replace": "      if (false) this._version += 1;",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/l2/l2Store.test.ts"],
+      "mustFail": ["publishes a newly broken channel without treating its rejected frame as fresh"]
+    },
+    {
+      "id": "p4b.audit-recent-reset-hides-deep-gap",
+      "file": "apps/web/src/lib/l2/laneGrids.ts",
+      "find": "    if (frame.reset) this._untrusted.delete(key);\n    this._seqs.set(key, frame.seq);\n    this._lastTs",
+      "replace": "    if (frame.reset) this._untrusted.clear();\n    this._seqs.set(key, frame.seq);\n    this._lastTs",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/l2/l2Store.test.ts"],
+      "mustFail": ["a recent-tier reset cannot hide a gap in the same lane's deep tier"]
+    },
+    {
+      "id": "p4b.audit-old-snapshot-rewinds-segment",
+      "file": "apps/web/src/lib/l2/l2Store.ts",
+      "find": "      if (incomingStart < currentStart) return;",
+      "replace": "      if (false) return;",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/l2/l2Store.test.ts"],
+      "mustFail": ["a delayed channel snapshot cannot rewind the current segment"]
+    },
+    {
+      "id": "p4b.audit-first-gap-hidden-until-snapshot",
+      "file": "apps/web/src/hooks/useMarketData.ts",
+      "find": "        if (created || l2Store.version !== previousVersion) {",
+      "replace": "        if (l2Store.version !== previousVersion) {",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/hooks/useMarketData.l2.test.tsx"],
+      "mustFail": ["shows an untrusted feed when its first frame is an increment without a snapshot"]
+    },
+    {
+      "id": "p4b.audit-same-timestamp-snapshot-rewinds-ladder",
+      "file": "apps/web/src/lib/l2/l2Store.ts",
+      "find": "      if (incomingStart === currentStart && !orderedEvent && (\n        (this._segmentFromEvents && segment.state !== this._segment?.state) || priority < this._segmentPriority\n      )) return;",
+      "replace": "      if (incomingStart === currentStart && !orderedEvent && (\n        (this._segmentFromEvents && segment.state !== this._segment?.state)\n      )) return;",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/l2/l2Store.test.ts"],
+      "mustFail": ["a delayed channel snapshot cannot rewind the current segment"]
+    },
+    {
+      "id": "p4b.audit-new-segment-keeps-old-channel-priority",
+      "file": "apps/web/src/lib/l2/l2Store.ts",
+      "find": "currentStart === null || (incomingStart !== null && incomingStart > currentStart)",
+      "replace": "false",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/l2/l2Store.test.ts"],
+      "mustFail": ["a delayed channel snapshot cannot rewind the current segment"]
+    }
+  ]
+}

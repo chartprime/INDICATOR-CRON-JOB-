@@ -1,0 +1,76 @@
+{
+  "mutations": [
+    {
+      "id": "a6.saved-custom-settings-ignored-on-load",
+      "file": "apps/web/src/lib/chart/liveIndicatorExtras.ts",
+      "find": "    return encoded === null ? defaultLiveIndicatorExtras() : restoreLiveIndicatorExtras(JSON.parse(encoded));",
+      "replace": "    return encoded === null ? defaultLiveIndicatorExtras() : defaultLiveIndicatorExtras();",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/chart/tests/liveIndicatorExtras.test.ts"],
+      "mustFail": ["brings every custom indicator setting back after a reload"]
+    },
+    {
+      "id": "a6.incomplete-per-market-entry-kept",
+      "file": "apps/web/src/lib/chart/liveIndicatorExtras.ts",
+      "find": "    if (!Object.hasOwn(raw, key) || !fieldIsValid(key, raw[key], reference)) return null;",
+      "replace": "    if (!Object.hasOwn(raw, key) || !fieldIsValid(key, raw[key], reference)) continue;",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/lib/chart/tests/liveIndicatorExtras.test.ts"],
+      "mustFail": ["drops a per-instrument or per-style entry that is incomplete or invalid, so that market falls back to its own defaults"]
+    },
+    {
+      "id": "a6.panel-starts-from-defaults-not-the-saved-book-map",
+      "file": "apps/web/src/components/chart/MainPanel.tsx",
+      "find": "  const [l2BookMapSettings, setL2BookMapSettings] = useState<L2BookMapSettings>(\n    savedExtras.l2BookMap,\n  );",
+      "replace": "  const [l2BookMapSettings, setL2BookMapSettings] = useState<L2BookMapSettings>(\n    { ...savedExtras.l2BookMap, priceBinRows: 20 },\n  );",
+      "cwd": "apps/web",
+      "command": ["npx", "vitest", "run", "src/components/chart/tests/MainPanel.test.tsx", "-t", "custom indicator settings survive a reload"],
+      "mustFail": ["hands the chart the saved L2 levels, Book Map, heatmap, aggressive and absorption settings on mount"]
+    },
+    {
+      "id": "o-22.expired-contract-store-kept",
+      "file": "apps/runtime/src/indicators/l2-memory/liquidity-store.js",
+      "find": "    if (!base.endsWith(\".json\") || keepStems.some((stem) => base.startsWith(stem))) continue;",
+      "replace": "    if (!base.endsWith(\".json\") || keepStems.some((stem) => base.startsWith(stem)) || true) continue;",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/indicators/l2-memory/liquidity-store.test.js"],
+      "mustFail": ["removes an expired contract's store and its backup, and leaves every current contract, equity and crypto store alone"]
+    },
+    {
+      "id": "o-22.prune-reaches-equity-and-crypto-stores",
+      "file": "apps/runtime/src/indicators/l2-memory/liquidity-store.js",
+      "find": "    if (!name.startsWith(\"FUTURE_\")) continue;\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/indicators/l2-memory/liquidity-store.test.js"],
+      "mustFail": ["removes an expired contract's store and its backup, and leaves every current contract, equity and crypto store alone"]
+    },
+    {
+      "id": "o-21.abandoned-warm-up-left-running",
+      "file": "apps/runtime/src/server/market-data-server.js",
+      "find": "          setReadiness(pairSymbol, pairMarketKind, \"large_trades\", \"IDLE\", { reason: \"CANCELLED\", metrics: { chunksCompleted, markersRecorded } });\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/server/market-data-server.test.js", "-t", "O-21"],
+      "mustFail": ["O-21: a large-trade warm-up abandoned by a switch reports IDLE (CANCELLED) instead of RUNNING, and resumes where it stopped"]
+    },
+    {
+      "id": "b8.recorder-keeps-only-the-last-window-delay",
+      "file": "apps/runtime/scripts/bench/health-recorder.js",
+      "find": "      window.maxDelayMs = Math.max(window.maxDelayMs, runtime.eventLoopMaxDelayMs ?? 0);",
+      "replace": "      window.maxDelayMs = runtime.eventLoopMaxDelayMs ?? 0;",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/scripts/bench/health-recorder.test.js"],
+      "mustFail": ["a one-second stall that falls between 30 s windows is still caught, because every 1 s window is read"]
+    },
+    {
+      "id": "b8.recorder-treats-a-dead-runtime-as-quiet",
+      "file": "apps/runtime/scripts/bench/health-recorder.js",
+      "find": "      window.failures += 1;\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/scripts/bench/health-recorder.test.js"],
+      "mustFail": ["a runtime that stops answering is counted as failed probes, not as a healthy quiet window"]
+    }
+  ]
+}

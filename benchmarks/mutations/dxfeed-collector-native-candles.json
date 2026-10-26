@@ -1,0 +1,31 @@
+{
+  "mutations": [
+    {
+      "id": "collector-native-candle.empty-candle-not-skipped",
+      "file": "apps/runtime/scripts/collect/run-dxfeed-collector.js",
+      "find": "          if (isEmptyNativeCandle(item)) continue;\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/scripts/collect/run-dxfeed-collector.test.js"],
+      "mustFail": ["an empty candle for a minute without trading is skipped and capture carries on"]
+    },
+    {
+      "id": "collector-native-candle.malformed-candle-stops-capture",
+      "file": "apps/runtime/scripts/collect/run-dxfeed-collector.js",
+      "find": "            continue;\n          }\n          const key = `${context.assetClass}:${context.symbol}`;",
+      "replace": "            throw error;\n          }\n          const key = `${context.assetClass}:${context.symbol}`;",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/scripts/collect/run-dxfeed-collector.test.js"],
+      "mustFail": ["a malformed candle is reported once and skipped, and never stops trade and book capture"]
+    },
+    {
+      "id": "collector-native-candle.rejection-warned-every-time",
+      "file": "apps/runtime/scripts/collect/run-dxfeed-collector.js",
+      "find": "            if (!reportedDegradedCells.has(cell)) {\n              reportedDegradedCells.add(cell);\n              logger.warn(\"native candle rejected",
+      "replace": "            if (true) {\n              reportedDegradedCells.add(cell);\n              logger.warn(\"native candle rejected",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/scripts/collect/run-dxfeed-collector.test.js"],
+      "mustFail": ["a malformed candle is reported once and skipped, and never stops trade and book capture"]
+    }
+  ]
+}

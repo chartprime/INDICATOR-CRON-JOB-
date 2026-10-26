@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "timeZone": "America/New_York",
+  "future": {
+    "sessionOpen": "18:00",
+    "maintenanceStart": "17:00",
+    "maintenanceEnd": "18:00"
+  },
+  "equity": {
+    "chartSession": "REGULAR",
+    "regularOpen": "09:30",
+    "regularClose": "16:00",
+    "earlyClose": "13:00",
+    "extendedOpen": "04:00",
+    "extendedClose": "20:00",
+    "coverage": { "from": "2025-09-01", "to": "2027-12-31" },
+    "holidays": [
+      "2025-09-01", "2025-11-27", "2025-12-25",
+      "2026-01-01", "2026-01-19", "2026-02-16", "2026-04-03", "2026-05-25", "2026-06-19", "2026-07-03", "2026-09-07", "2026-11-26", "2026-12-25",
+      "2027-01-01", "2027-01-18", "2027-02-15", "2027-03-26", "2027-05-31", "2027-06-18", "2027-07-05", "2027-09-06", "2027-11-25", "2027-12-24"
+    ],
+    "earlyCloses": ["2025-11-28", "2025-12-24", "2026-11-27", "2026-12-24", "2027-11-26"],
+    "sources": [
+      { "venue": "NYSE", "url": "https://www.nyse.com/markets/hours-calendars", "fetched": "2026-09-24" },
+      { "venue": "Nasdaq", "url": "https://www.nasdaq.com/market-activity/stock-market-holiday-schedule", "fetched": "2026-09-24", "note": "2026 matches NYSE; 2027 not yet published by Nasdaq" }
+    ]
+  }
+}

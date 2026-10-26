@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "name": "o6-archive-probe-one-page-per-family-2026-09-20",
+  "users": 1,
+  "rounds": 1,
+  "requests": [
+    {
+      "kind": "archive-query",
+      "route": "archive-query",
+      "body": {
+        "instrumentId": "[\"XCME\",\"FUTURE\",\"NQU6\",\"USD\",\"CONTRACT\"]",
+        "family": "candle_1m",
+        "from": "1785715200000000000",
+        "to": "1785801600000000000",
+        "limit": 100
+      }
+    },
+    {
+      "kind": "archive-query",
+      "route": "archive-query",
+      "body": {
+        "instrumentId": "[\"XCME\",\"FUTURE\",\"NQU6\",\"USD\",\"CONTRACT\"]",
+        "family": "candle_1d",
+        "from": "1781654400000000000",
+        "to": "1788220800000000000",
+        "limit": 100
+      }
+    },
+    {
+      "kind": "archive-query",
+      "route": "archive-query",
+      "body": {
+        "instrumentId": "[\"BINANCE\",\"SPOT\",\"BTCUSDT\",\"USDT\",\"COIN\"]",
+        "family": "candle_1m",
+        "from": "1785715200000000000",
+        "to": "1785801600000000000",
+        "limit": 100
+      }
+    },
+    {
+      "kind": "archive-query",
+      "route": "archive-query",
+      "body": {
+        "instrumentId": "[\"XNAS\",\"EQUITY\",\"AAPL\",\"USD\",\"SHARE\"]",
+        "family": "trade",
+        "from": "1785769200000000000",
+        "to": "1785772800000000000",
+        "limit": 100
+      }
+    },
+    {
+      "kind": "archive-query",
+      "route": "archive-query",
+      "body": {
+        "instrumentId": "[\"XNAS\",\"EQUITY\",\"AAPL\",\"USD\",\"SHARE\"]",
+        "family": "quote",
+        "from": "1785769200000000000",
+        "to": "1785772800000000000",
+        "limit": 100
+      }
+    }
+  ]
+}

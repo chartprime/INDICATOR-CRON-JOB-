@@ -1,0 +1,946 @@
+{
+ "mutations": [
+  {
+   "id": "pr47-review.pool.in-flight-cap-past-the-route",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/requestBudget.ts",
+   "find": "export const COLUMN_HISTORY_MAX_IN_FLIGHT = 4;",
+   "replace": "export const COLUMN_HISTORY_MAX_IN_FLIGHT = 5;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/requestBudget.test.ts"
+   ],
+   "mustFail": [
+    "holds open no more reads of /heatmap/columns at once, across the heatmap, the column stream and the band store, than the route serves at once"
+   ]
+  },
+  {
+   "id": "pr47-review.pool.full-pool-has-room",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/requestBudget.ts",
+   "find": "    return this._held < this.max;",
+   "replace": "    return this._held <= this.max;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/requestBudget.test.ts"
+   ],
+   "mustFail": [
+    "counts the reads its readers hold open up to its cap, and never below zero"
+   ]
+  },
+  {
+   "id": "pr47-review.pool.take-holds-nothing",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/requestBudget.ts",
+   "find": "    this._held += 1;\n",
+   "replace": "",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/requestBudget.test.ts"
+   ],
+   "mustFail": [
+    "counts the reads its readers hold open up to its cap, and never below zero"
+   ]
+  },
+  {
+   "id": "pr47-review.pool.free-below-zero",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/requestBudget.ts",
+   "find": "    this._held = Math.max(0, this._held - count);",
+   "replace": "    this._held = this._held - count;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/requestBudget.test.ts"
+   ],
+   "mustFail": [
+    "counts the reads its readers hold open up to its cap, and never below zero"
+   ]
+  },
+  {
+   "id": "pr47-review.pool.free-ignores-count",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/requestBudget.ts",
+   "find": "    this._held = Math.max(0, this._held - count);",
+   "replace": "    this._held = Math.max(0, this._held - 1);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/columnHistoryStream.test.ts"
+   ],
+   "mustFail": [
+    "shares one in-flight pool with the heatmap's reader: together they hold open no more than the route serves at once",
+    "a fork holds its reads in its parent's pool, so the lanes together hold open no more than the route serves at once"
+   ]
+  },
+  {
+   "id": "pr47-review.pool.free-default-two",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/requestBudget.ts",
+   "find": "  free(count = 1): void {",
+   "replace": "  free(count = 2): void {",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/requestBudget.test.ts"
+   ],
+   "mustFail": [
+    "counts the reads its readers hold open up to its cap, and never below zero"
+   ]
+  },
+  {
+   "id": "pr47-review.heatmap.handed-pool-ignored",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/heatmapHistory.ts",
+   "find": "    this._pool = pool;",
+   "replace": "    this._pool = new InFlightPool(maxInFlight);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/heatmapHistory.test.ts"
+   ],
+   "mustFail": [
+    "waits for a slot of the route's pool another reader holds, and wakes a stationary chart within a second of one freeing"
+   ]
+  },
+  {
+   "id": "pr47-review.heatmap.pool-not-checked",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/heatmapHistory.ts",
+   "find": "return this._inFlight.size < this._maxInFlight && this._pool.left() && this._requestTimes.length < this._maxPerMinute;",
+   "replace": "return this._inFlight.size < this._maxInFlight && this._requestTimes.length < this._maxPerMinute;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/heatmapHistory.test.ts"
+   ],
+   "mustFail": [
+    "waits for a slot of the route's pool another reader holds, and wakes a stationary chart within a second of one freeing"
+   ]
+  },
+  {
+   "id": "pr47-review.heatmap.send-takes-no-slot",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/heatmapHistory.ts",
+   "find": "    this._requestTimes.push(at);\n    this._pool.take();\n",
+   "replace": "    this._requestTimes.push(at);\n",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/heatmapHistory.test.ts"
+   ],
+   "mustFail": [
+    "waits for a slot of the route's pool another reader holds, and wakes a stationary chart within a second of one freeing",
+    "frees the pool's slots of the answers it will drop: on a host re-pin and on a pair switch"
+   ]
+  },
+  {
+   "id": "pr47-review.heatmap.answer-keeps-its-slot",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/heatmapHistory.ts",
+   "find": "    this._inFlight.delete(requestId);\n    this._pool.free();\n    const { request } = entry;",
+   "replace": "    this._inFlight.delete(requestId);\n    const { request } = entry;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/heatmapHistory.test.ts"
+   ],
+   "mustFail": [
+    "waits for a slot of the route's pool another reader holds, and wakes a stationary chart within a second of one freeing",
+    "frees the pool's slots of the answers it will drop: on a host re-pin and on a pair switch"
+   ]
+  },
+  {
+   "id": "pr47-review.heatmap.failure-keeps-its-slot",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/heatmapHistory.ts",
+   "find": "    this._inFlight.delete(requestId);\n    this._pool.free();\n    const slot = this._slot(entry.request.levelMs",
+   "replace": "    this._inFlight.delete(requestId);\n    const slot = this._slot(entry.request.levelMs",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/heatmapHistory.test.ts"
+   ],
+   "mustFail": [
+    "asks again after the delay the host named when it was busy, and after the long retry for a failure it gave no delay for"
+   ]
+  },
+  {
+   "id": "pr47-review.heatmap.pair-switch-keeps-slots",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/heatmapHistory.ts",
+   "find": "    this._dropInFlight();\n    this._bytes = 0;\n    this._pinned = null;",
+   "replace": "    this._inFlight.clear();\n    this._bytes = 0;\n    this._pinned = null;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/heatmapHistory.test.ts"
+   ],
+   "mustFail": [
+    "frees the pool's slots of the answers it will drop: on a host re-pin and on a pair switch"
+   ]
+  },
+  {
+   "id": "pr47-review.heatmap.re-pin-keeps-slots",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/heatmapHistory.ts",
+   "find": "        this._dropInFlight();",
+   "replace": "        this._inFlight.clear();",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/heatmapHistory.test.ts"
+   ],
+   "mustFail": [
+    "frees the pool's slots of the answers it will drop: on a host re-pin and on a pair switch"
+   ]
+  },
+  {
+   "id": "pr47-review.heatmap.drop-frees-one",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/heatmapHistory.ts",
+   "find": "    this._pool.free(this._inFlight.size);",
+   "replace": "    this._pool.free();",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/heatmapHistory.test.ts"
+   ],
+   "mustFail": [
+    "frees the pool's slots of the answers it will drop: on a host re-pin and on a pair switch"
+   ]
+  },
+  {
+   "id": "pr47-review.heatmap.no-wake-for-a-held-pool",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/heatmapHistory.ts",
+   "find": "    const poolHeld = !this._pool.left() && this._inFlight.size < this._maxInFlight;",
+   "replace": "    const poolHeld = false;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/heatmapHistory.test.ts"
+   ],
+   "mustFail": [
+    "waits for a slot of the route's pool another reader holds, and wakes a stationary chart within a second of one freeing"
+   ]
+  },
+  {
+   "id": "pr47-review.heatmap.pool-wake-late",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/heatmapHistory.ts",
+   "find": "const POOL_WAIT_MS = 1_000;",
+   "replace": "const POOL_WAIT_MS = 5_000;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/heatmapHistory.test.ts"
+   ],
+   "mustFail": [
+    "waits for a slot of the route's pool another reader holds, and wakes a stationary chart within a second of one freeing"
+   ]
+  },
+  {
+   "id": "pr47-review.stream.handed-pool-ignored",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/columnHistoryStream.ts",
+   "find": "    this._pool = pool;",
+   "replace": "    this._pool = new InFlightPool(maxInFlight);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/columnHistoryStream.test.ts"
+   ],
+   "mustFail": [
+    "shares one in-flight pool with the heatmap's reader: together they hold open no more than the route serves at once"
+   ]
+  },
+  {
+   "id": "pr47-review.stream.fork-own-pool",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/columnHistoryStream.ts",
+   "find": "retryMs, shared: this._shared, pool: this._pool });",
+   "replace": "retryMs, shared: this._shared });",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/columnHistoryStream.test.ts"
+   ],
+   "mustFail": [
+    "a fork holds its reads in its parent's pool, so the lanes together hold open no more than the route serves at once"
+   ]
+  },
+  {
+   "id": "pr47-review.stream.drop-frees-one",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/columnHistoryStream.ts",
+   "find": "    this._pool.free(this._byRequest.size);",
+   "replace": "    this._pool.free();",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/columnHistoryStream.test.ts"
+   ],
+   "mustFail": [
+    "shares one in-flight pool with the heatmap's reader: together they hold open no more than the route serves at once",
+    "a fork holds its reads in its parent's pool, so the lanes together hold open no more than the route serves at once"
+   ]
+  },
+  {
+   "id": "pr47-review.stream.send-takes-no-slot",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/columnHistoryStream.ts",
+   "find": "    this._budget.take(at);\n    this._pool.take();\n",
+   "replace": "    this._budget.take(at);\n",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/columnHistoryStream.test.ts"
+   ],
+   "mustFail": [
+    "shares one in-flight pool with the heatmap's reader: together they hold open no more than the route serves at once"
+   ]
+  },
+  {
+   "id": "pr47-review.stream.answer-keeps-its-slot",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/columnHistoryStream.ts",
+   "find": "    this._pool.free();\n    chunk.requestId = null;\n    const at = this._now();",
+   "replace": "    chunk.requestId = null;\n    const at = this._now();",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/columnHistoryStream.test.ts"
+   ],
+   "mustFail": [
+    "asks for a chunk's next page only with a slot free in the shared pool"
+   ]
+  },
+  {
+   "id": "pr47-review.stream.failure-keeps-its-slot",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/columnHistoryStream.ts",
+   "find": "    this._pool.free();\n    chunk.requestId = null;\n    this._finish(chunk, false,",
+   "replace": "    chunk.requestId = null;\n    this._finish(chunk, false,",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/columnHistoryStream.test.ts"
+   ],
+   "mustFail": [
+    "shares one in-flight pool with the heatmap's reader: together they hold open no more than the route serves at once"
+   ]
+  },
+  {
+   "id": "pr47-review.stream.new-chunk-ignores-pool",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/columnHistoryStream.ts",
+   "find": "    return this._canSend(at) && this._active.size < this._maxInFlight;",
+   "replace": "    return this._rateLeft(at) && this._active.size < this._maxInFlight;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/columnHistoryStream.test.ts"
+   ],
+   "mustFail": [
+    "shares one in-flight pool with the heatmap's reader: together they hold open no more than the route serves at once",
+    "a fork holds its reads in its parent's pool, so the lanes together hold open no more than the route serves at once"
+   ]
+  },
+  {
+   "id": "pr47-review.stream.next-page-ignores-pool",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/columnHistoryStream.ts",
+   "find": "      if (this._canSend(at)) this._send(chunk, at);",
+   "replace": "      if (this._rateLeft(at)) this._send(chunk, at);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/columnHistoryStream.test.ts"
+   ],
+   "mustFail": [
+    "asks for a chunk's next page only with a slot free in the shared pool"
+   ]
+  },
+  {
+   "id": "pr47-review.stream.resend-ignores-pool",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/columnHistoryStream.ts",
+   "find": "      if (!this._canSend(at)) {",
+   "replace": "      if (!this._rateLeft(at)) {",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/columnHistoryStream.test.ts"
+   ],
+   "mustFail": [
+    "asks for a chunk's next page only with a slot free in the shared pool"
+   ]
+  },
+  {
+   "id": "pr47-review.stream.pool-wake-late",
+   "file": "apps/web/src/lib/indicators/passive-liquidity/columnHistoryStream.ts",
+   "find": "const POOL_WAIT_MS = 1_000;",
+   "replace": "const POOL_WAIT_MS = 5_000;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/passive-liquidity/tests/columnHistoryStream.test.ts"
+   ],
+   "mustFail": [
+    "shares one in-flight pool with the heatmap's reader: together they hold open no more than the route serves at once",
+    "asks for a chunk's next page only with a slot free in the shared pool"
+   ]
+  },
+  {
+   "id": "pr47-review.band.handed-pool-ignored",
+   "file": "apps/web/src/lib/chart/bandHistory.ts",
+   "find": "    this._pool = pool;",
+   "replace": "    this._pool = new InFlightPool(COLUMN_HISTORY_MAX_IN_FLIGHT);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/chart/tests/bandHistoryHost.test.ts"
+   ],
+   "mustFail": [
+    "holds its one column read in the route's shared pool: none while other readers hold every slot, the slot freed on the answer and when the ask expires"
+   ]
+  },
+  {
+   "id": "pr47-review.band.pool-not-checked",
+   "file": "apps/web/src/lib/chart/bandHistory.ts",
+   "find": "    if (!this._budget.left(nowMs) || !this._pool.left()) return;",
+   "replace": "    if (!this._budget.left(nowMs)) return;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/chart/tests/bandHistoryHost.test.ts"
+   ],
+   "mustFail": [
+    "holds its one column read in the route's shared pool: none while other readers hold every slot, the slot freed on the answer and when the ask expires"
+   ]
+  },
+  {
+   "id": "pr47-review.band.ask-takes-no-slot",
+   "file": "apps/web/src/lib/chart/bandHistory.ts",
+   "find": "    this._budget.take(nowMs);\n    this._pool.take();\n",
+   "replace": "    this._budget.take(nowMs);\n",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/chart/tests/bandHistoryHost.test.ts"
+   ],
+   "mustFail": [
+    "holds its one column read in the route's shared pool: none while other readers hold every slot, the slot freed on the answer and when the ask expires"
+   ]
+  },
+  {
+   "id": "pr47-review.band.answer-keeps-its-slot",
+   "file": "apps/web/src/lib/chart/bandHistory.ts",
+   "find": "    this._asked = null;\n    this._pool.free();\n    const before = this._version;",
+   "replace": "    this._asked = null;\n    const before = this._version;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/chart/tests/bandHistoryHost.test.ts"
+   ],
+   "mustFail": [
+    "holds its one column read in the route's shared pool: none while other readers hold every slot, the slot freed on the answer and when the ask expires"
+   ]
+  },
+  {
+   "id": "pr47-review.band.expired-ask-keeps-its-slot",
+   "file": "apps/web/src/lib/chart/bandHistory.ts",
+   "find": "      this._asked = null;\n      this._pool.free();\n",
+   "replace": "      this._asked = null;\n",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/chart/tests/bandHistoryHost.test.ts"
+   ],
+   "mustFail": [
+    "holds its one column read in the route's shared pool: none while other readers hold every slot, the slot freed on the answer and when the ask expires"
+   ]
+  },
+  {
+   "id": "pr47-review.hook.pool-with-no-slot",
+   "file": "apps/web/src/hooks/useMarketData.ts",
+   "find": "    const columnReads = new InFlightPool(COLUMN_HISTORY_MAX_IN_FLIGHT);",
+   "replace": "    const columnReads = new InFlightPool(0);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/hooks/useMarketData.l2.test.tsx",
+    "src/hooks/useMarketData.test.tsx"
+   ],
+   "mustFail": [
+    "follows the confirmed pair, asks the worker for 10 s pages under its own ids",
+    "follows the confirmed pair, asks the worker for pages, and never counts a page as a delivered frame",
+    "asks the host's columns for a band first and lays the page into the band store"
+   ]
+  },
+  {
+   "id": "pr47-review.abs-store.budget-three-megabytes",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionHistoryStore.ts",
+   "find": "export const HISTORY_STORE_MAX_BYTES = 512 * 1024;",
+   "replace": "export const HISTORY_STORE_MAX_BYTES = 3 * 1024 * 1024;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionHistoryStore.test.ts"
+   ],
+   "mustFail": [
+    "keeps to a small share of the origin's storage, and names the engine's version in its key"
+   ]
+  },
+  {
+   "id": "pr47-review.abs-store.key-without-version",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionHistoryStore.ts",
+   "find": "export const ABSORPTION_HISTORY_STORAGE_KEY = `terminal.absorption-history.v${ABSORPTION_ENGINE_VERSION}`;",
+   "replace": "export const ABSORPTION_HISTORY_STORAGE_KEY = \"terminal.absorption-history\";",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionHistoryStore.test.ts"
+   ],
+   "mustFail": [
+    "keeps to a small share of the origin's storage, and names the engine's version in its key"
+   ]
+  },
+  {
+   "id": "pr47-review.abs-store.own-key-not-cut",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionHistoryStore.ts",
+   "find": "    if (text.length > HISTORY_STORE_MAX_BYTES) {\n      const own",
+   "replace": "    if (false) {\n      const own",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionHistoryStore.test.ts"
+   ],
+   "mustFail": [
+    "cuts a key over the budget on its own to its newest hours, and what was on screen to the hours it kept"
+   ]
+  },
+  {
+   "id": "pr47-review.abs-store.oldest-hours-kept",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionHistoryStore.ts",
+   "find": "      own.hours = own.hours.slice(cut);",
+   "replace": "      own.hours = own.hours.slice(0, own.hours.length - cut);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionHistoryStore.test.ts"
+   ],
+   "mustFail": [
+    "cuts a key over the budget on its own to its newest hours, and what was on screen to the hours it kept"
+   ]
+  },
+  {
+   "id": "pr47-review.abs-store.shown-not-cut",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionHistoryStore.ts",
+   "find": "      if (own.shown !== null && own.shown.first < kept) own.shown = kept < own.shown.to ? { first: kept, to: own.shown.to } : null;\n",
+   "replace": "",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionHistoryStore.test.ts"
+   ],
+   "mustFail": [
+    "cuts a key over the budget on its own to its newest hours, and what was on screen to the hours it kept"
+   ]
+  },
+  {
+   "id": "pr47-review.abs-store.shown-kept-past-its-end",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionHistoryStore.ts",
+   "find": "kept < own.shown.to ? { first: kept, to: own.shown.to } : null;",
+   "replace": "{ first: kept, to: own.shown.to };",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionHistoryStore.test.ts"
+   ],
+   "mustFail": [
+    "cuts a key over the budget on its own to its newest hours, and what was on screen to the hours it kept"
+   ]
+  },
+  {
+   "id": "pr47-review.abs-store.untrimmed-text-written",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionHistoryStore.ts",
+   "find": "      text = this._text(all);\n    }\n    try {",
+   "replace": "    }\n    try {",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionHistoryStore.test.ts"
+   ],
+   "mustFail": [
+    "cuts a key over the budget on its own to its newest hours, and what was on screen to the hours it kept"
+   ]
+  },
+  {
+   "id": "pr47-review.settings.off-not-offered",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionSettings.ts",
+   "find": "Object.freeze([[0, \"Off\"], ...LIQUIDITY_HISTORY_OPTIONS]);",
+   "replace": "Object.freeze([...LIQUIDITY_HISTORY_OPTIONS]);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionSettings.test.ts"
+   ],
+   "mustFail": [
+    "offers history off beside the heatmap's reaches, and turns the hours saved before the reaches into the nearest one"
+   ]
+  },
+  {
+   "id": "pr47-review.settings.off-read-as-a-day",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionSettings.ts",
+   "find": "  if (settings?.historyDays === 0) return 0;\n",
+   "replace": "",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionSettings.test.ts"
+   ],
+   "mustFail": [
+    "offers history off beside the heatmap's reaches, and turns the hours saved before the reaches into the nearest one"
+   ]
+  },
+  {
+   "id": "pr47-review.settings.zero-hours-read-as-a-day",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionSettings.ts",
+   "find": "  if (hours === 0) return 0;\n",
+   "replace": "",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionSettings.test.ts"
+   ],
+   "mustFail": [
+    "offers history off beside the heatmap's reaches, and turns the hours saved before the reaches into the nearest one"
+   ]
+  },
+  {
+   "id": "pr47-review.settings.bad-hours-turn-history-off",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionSettings.ts",
+   "find": "  if (!(hours > 0)) return DEFAULT_HISTORY_DAYS;",
+   "replace": "  if (!(hours > 0)) return 0;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionSettings.test.ts"
+   ],
+   "mustFail": [
+    "offers history off beside the heatmap's reaches, and turns the hours saved before the reaches into the nearest one"
+   ]
+  },
+  {
+   "id": "pr47-review.settings.ties-to-the-longer",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionSettings.ts",
+   "find": "if (Math.abs(days * 24 - hours) < Math.abs(nearest * 24 - hours)) nearest = days;",
+   "replace": "if (Math.abs(days * 24 - hours) <= Math.abs(nearest * 24 - hours)) nearest = days;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionSettings.test.ts"
+   ],
+   "mustFail": [
+    "offers history off beside the heatmap's reaches, and turns the hours saved before the reaches into the nearest one"
+   ]
+  },
+  {
+   "id": "pr47-review.settings.small-hours-read-as-off",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionSettings.ts",
+   "find": "  for (const [days] of LIQUIDITY_HISTORY_OPTIONS) if (Math.abs(",
+   "replace": "  for (const [days] of ABSORPTION_HISTORY_OPTIONS) if (Math.abs(",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionSettings.test.ts"
+   ],
+   "mustFail": [
+    "offers history off beside the heatmap's reaches, and turns the hours saved before the reaches into the nearest one"
+   ]
+  },
+  {
+   "id": "pr47-review.dialog.off-not-offered",
+   "file": "apps/web/src/lib/indicators/absorption-detector/AbsorptionSettingsModal.tsx",
+   "find": "{ABSORPTION_HISTORY_OPTIONS.map(([days, label]) => (",
+   "replace": "{ABSORPTION_HISTORY_OPTIONS.slice(1).map(([days, label]) => (",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/AbsorptionSettingsModal.test.tsx"
+   ],
+   "mustFail": [
+    "offers history off, 1 day, 3 days, 5 days and 1 week, starts at 1 day, and saves the choice"
+   ]
+  },
+  {
+   "id": "pr47-review.primitive.badge-while-off",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionPrimitive.ts",
+   "find": "  if (status === null || days === 0) return null;",
+   "replace": "  if (status === null) return null;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionPrimitive.test.ts"
+   ],
+   "mustFail": [
+    "stops the history and asks it for nothing, draws none of its spheres nor a badge, shows a saved sphere only from the live book on"
+   ]
+  },
+  {
+   "id": "pr47-review.primitive.history-spheres-while-off",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionPrimitive.ts",
+   "find": "    const source = absorptionHistoryDaysOf(this._settings) === 0 ? null : this._history;",
+   "replace": "    const source = this._history;",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionPrimitive.test.ts"
+   ],
+   "mustFail": [
+    "stops the history and asks it for nothing, draws none of its spheres nor a badge, shows a saved sphere only from the live book on"
+   ]
+  },
+  {
+   "id": "pr47-review.primitive.history-judges-while-off",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionPrimitive.ts",
+   "find": "    history.setRules(reachMs === 0 ? null : rules, grid.rowWidth, bars.intervalMs);",
+   "replace": "    history.setRules(rules, grid.rowWidth, bars.intervalMs);",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionPrimitive.test.ts"
+   ],
+   "mustFail": [
+    "stops the history and asks it for nothing, draws none of its spheres nor a badge, shows a saved sphere only from the live book on"
+   ]
+  },
+  {
+   "id": "pr47-review.primitive.history-asked-while-off",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionPrimitive.ts",
+   "find": "    if (reachMs === 0) return;\n    history.want(",
+   "replace": "    history.want(",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionPrimitive.test.ts"
+   ],
+   "mustFail": [
+    "stops the history and asks it for nothing, draws none of its spheres nor a badge, shows a saved sphere only from the live book on"
+   ]
+  },
+  {
+   "id": "pr47-review.primitive.saved-spheres-behind-the-book-while-off",
+   "file": "apps/web/src/lib/indicators/absorption-detector/absorptionPrimitive.ts",
+   "find": "    this._shownFrom = seam - reachMs;\n    if (reachMs === 0) return;\n",
+   "replace": "    if (reachMs === 0) return;\n    this._shownFrom = seam - reachMs;\n",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/indicators/absorption-detector/tests/absorptionPrimitive.test.ts"
+   ],
+   "mustFail": [
+    "stops the history and asks it for nothing, draws none of its spheres nor a badge, shows a saved sphere only from the live book on"
+   ]
+  },
+  {
+   "id": "pr47-review.extras.hours-not-carried-over",
+   "file": "apps/web/src/lib/chart/liveIndicatorExtras.ts",
+   "find": "    absorptionByInstrument: absorptionEntries(raw.absorptionByInstrument),",
+   "replace": "    absorptionByInstrument: keyedEntries(raw.absorptionByInstrument, DEFAULT_ABSORPTION_SETTINGS),",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/chart/tests/liveIndicatorExtras.test.ts"
+   ],
+   "mustFail": [
+    "carries hours saved before the reaches over as the nearest reach, off staying off"
+   ]
+  },
+  {
+   "id": "pr47-review.extras.hours-over-a-chosen-reach",
+   "file": "apps/web/src/lib/chart/liveIndicatorExtras.ts",
+   "find": "if (!Object.hasOwn(saved, \"historyDays\") && typeof saved.historyHours === \"number\"",
+   "replace": "if (typeof saved.historyHours === \"number\"",
+   "cwd": "apps/web",
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/lib/chart/tests/liveIndicatorExtras.test.ts"
+   ],
+   "mustFail": [
+    "carries hours saved before the reaches over as the nearest reach, off staying off"
+   ]
+  },
+  {
+   "id": "pr47-review.history.merge-not-counted",
+   "file": "apps/runtime/src/indicators/passive_liquidity/liquidity-history.js",
+   "find": "    merges += 1;\n    const merged",
+   "replace": "    const merged",
+   "cwd": "apps/runtime",
+   "command": [
+    "npx",
+    "jest",
+    "test/indicators/passive_liquidity/liquidity-history.test.js",
+    "test/indicators/passive_liquidity/liquidity-publisher.test.js",
+    "-t",
+    "PR #47 review"
+   ],
+   "mustFail": [
+    "counts the merges that added columns, so a store can tell a rebuilt tier from one that only kept its seq",
+    "a rebuild that merges older columns while no live column moves seq is still written on the clock, once"
+   ]
+  },
+  {
+   "id": "pr47-review.history.empty-merge-counted",
+   "file": "apps/runtime/src/indicators/passive_liquidity/liquidity-history.js",
+   "find": "    if (added === 0) return 0;\n    merges += 1;",
+   "replace": "    merges += 1;\n    if (added === 0) return 0;",
+   "cwd": "apps/runtime",
+   "command": [
+    "npx",
+    "jest",
+    "test/indicators/passive_liquidity/liquidity-history.test.js"
+   ],
+   "mustFail": [
+    "counts the merges that added columns, so a store can tell a rebuilt tier from one that only kept its seq"
+   ]
+  },
+  {
+   "id": "pr47-review.history.clear-keeps-count",
+   "file": "apps/runtime/src/indicators/passive_liquidity/liquidity-history.js",
+   "find": "    seq = 0;\n    merges = 0;",
+   "replace": "    seq = 0;",
+   "cwd": "apps/runtime",
+   "command": [
+    "npx",
+    "jest",
+    "test/indicators/passive_liquidity/liquidity-history.test.js"
+   ],
+   "mustFail": [
+    "counts the merges that added columns, so a store can tell a rebuilt tier from one that only kept its seq"
+   ]
+  },
+  {
+   "id": "pr47-review.history.count-not-read",
+   "file": "apps/runtime/src/indicators/passive_liquidity/liquidity-history.js",
+   "find": "    get merges() {\n      return merges;\n    },",
+   "replace": "    get merges() {\n      return 0;\n    },",
+   "cwd": "apps/runtime",
+   "command": [
+    "npx",
+    "jest",
+    "test/indicators/passive_liquidity/liquidity-history.test.js",
+    "test/indicators/passive_liquidity/liquidity-publisher.test.js",
+    "-t",
+    "PR #47 review"
+   ],
+   "mustFail": [
+    "counts the merges that added columns, so a store can tell a rebuilt tier from one that only kept its seq",
+    "a rebuild that merges older columns while no live column moves seq is still written on the clock, once"
+   ]
+  },
+  {
+   "id": "pr47-review.store.merges-not-in-fingerprint",
+   "file": "apps/runtime/src/indicators/l2-memory/compact/lane-store.js",
+   "find": "    return tier ? `${tier.seq}+${tier.merges ?? 0}` : \"0\";",
+   "replace": "    return tier ? `${tier.seq}` : \"0\";",
+   "cwd": "apps/runtime",
+   "command": [
+    "npx",
+    "jest",
+    "test/indicators/passive_liquidity/liquidity-publisher.test.js",
+    "-t",
+    "PR #47 review"
+   ],
+   "mustFail": [
+    "a rebuild that merges older columns while no live column moves seq is still written on the clock, once"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://terminal-l1-l2/contracts/binance-feed-health/v1",
+  "title": "Binance Feed Health Contract v1",
+  "description": "Return shape of getFeedHealth(marketKind, symbol, eventType, interval). The method itself returns undefined (not representable here) for a tuple that isn't currently subscribed; this schema covers the shape for an active tuple.",
+  "type": "object",
+  "required": ["stale", "recoveryState"],
+  "properties": {
+    "stale": { "type": "boolean" },
+    "recoveryState": { "enum": ["READY", "RECOVERING", "UNAVAILABLE"] }
+  },
+  "additionalProperties": false,
+  "not": {
+    "description": "UNAVAILABLE and RECOVERING always force stale: true.",
+    "type": "object",
+    "required": ["recoveryState", "stale"],
+    "properties": {
+      "recoveryState": { "enum": ["RECOVERING", "UNAVAILABLE"] },
+      "stale": { "const": false }
+    }
+  }
+}

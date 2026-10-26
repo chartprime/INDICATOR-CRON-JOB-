@@ -1,0 +1,8 @@
+{
+  "mutations": [
+    {"id":"p5.decoder.continuity.stored-shape-ignored","file":"apps/web/src/lib/l2/hostWalls.ts","find":"const stored = isRecord(value.continuity) ? nullableInt(value.continuity.gapMs) : null;","replace":"const stored = null;","cwd":"apps/web","command":["npx","vitest","run","src/lib/l2/tests/hostWalls.test.ts"],"mustFail":["reads how long after the previous wall this one appeared"]},
+    {"id":"p5.decoder.continuity.flat-field-ignored","file":"apps/web/src/lib/l2/hostWalls.ts","find":"return stored ?? nullableInt(value.continuityGapMs);","replace":"return stored;","cwd":"apps/web","command":["npx","vitest","run","src/lib/l2/tests/hostWalls.test.ts"],"mustFail":["reads how long after the previous wall this one appeared"]},
+    {"id":"p5.decoder.continuity.flat-field-wins","file":"apps/web/src/lib/l2/hostWalls.ts","find":"return stored ?? nullableInt(value.continuityGapMs);","replace":"return nullableInt(value.continuityGapMs) ?? stored;","cwd":"apps/web","command":["npx","vitest","run","src/lib/l2/tests/hostWalls.test.ts"],"mustFail":["reads how long after the previous wall this one appeared"]},
+    {"id":"p5.decoder.continuity.zero-gap-lost","file":"apps/web/src/lib/l2/hostWalls.ts","find":"return stored ?? nullableInt(value.continuityGapMs);","replace":"return stored || nullableInt(value.continuityGapMs);","cwd":"apps/web","command":["npx","vitest","run","src/lib/l2/tests/hostWalls.test.ts"],"mustFail":["reads how long after the previous wall this one appeared"]}
+  ]
+}

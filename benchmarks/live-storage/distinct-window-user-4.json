@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "name": "o5-distinct-window-user-4-2026-09-19",
+  "users": 1,
+  "rounds": 1,
+  "requests": [
+    { "route": "replay-page", "body": { "symbol": "BTCUSDT", "marketKind": "SPOT", "options": { "fromTs": 1789617600000, "toTs": 1789632000000, "tickSize": 0.01, "clusterTicks": 50, "rowClusters": 8, "windowRows": 1023, "cursor": null } }, "paginate": { "maxPages": 20 } }
+  ]
+}

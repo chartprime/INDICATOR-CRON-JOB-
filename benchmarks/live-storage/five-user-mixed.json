@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "name": "o2-live-storage-five-user-mixed-2026-09-18",
+  "users": 5,
+  "rounds": 5,
+  "requests": [
+    {
+      "route": "recording-age",
+      "body": { "symbol": "BTCUSDT", "marketKind": "SPOT", "options": { "nowMs": 1789689600000 } }
+    },
+    {
+      "route": "recent-candles",
+      "body": { "provider": "dxfeed", "symbol": "AAPL", "assetClass": "EQUITY", "options": { "windowMs": 604800000, "nowMs": 1789689600000 } }
+    },
+    {
+      "route": "minute-rollup",
+      "body": { "symbol": "BTCUSDT", "marketKind": "SPOT", "options": { "fromTs": 1789084800000, "toTs": 1789689600000, "tickSize": 0.32 } }
+    },
+    {
+      "route": "replay-page",
+      "body": { "provider": "dxfeed", "symbol": "/NQU26:XCME", "assetClass": "FUTURE", "options": { "fromTs": 1789688400000, "toTs": 1789689600000, "tickSize": 0.25, "clusterTicks": 1, "rowClusters": 1, "windowRows": 200, "cursor": null } }
+    }
+  ]
+}

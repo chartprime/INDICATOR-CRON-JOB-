@@ -1,0 +1,242 @@
+{
+  "mutations": [
+    {
+      "id": "p4e2.column-flow.print-not-clipped",
+      "file": "apps/runtime/src/indicators/passive_liquidity/column-flow.js",
+      "find": "const size = Math.min(print.size, MAX_WIRE_MAGNITUDE);",
+      "replace": "const size = print.size;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/passive_liquidity/column-flow.test.js",
+        "-t",
+        "over the wire magnitude"
+      ],
+      "mustFail": [
+        "a print over the wire magnitude is capped at it"
+      ]
+    },
+    {
+      "id": "p4e2.column-flow.row-sum-not-clipped",
+      "file": "apps/runtime/src/indicators/passive_liquidity/column-flow.js",
+      "find": "out.push([i, Math.min(size, MAX_WIRE_MAGNITUDE)]);",
+      "replace": "out.push([i, size]);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/passive_liquidity/column-flow.test.js",
+        "-t",
+        "over the wire magnitude"
+      ],
+      "mustFail": [
+        "a print over the wire magnitude is capped at it"
+      ]
+    },
+    {
+      "id": "p4e2.column-flow.row-clip-not-counted",
+      "file": "apps/runtime/src/indicators/passive_liquidity/column-flow.js",
+      "find": "if (size > MAX_WIRE_MAGNITUDE) clipped += 1;",
+      "replace": "if (false) clipped += 1;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/passive_liquidity/column-flow.test.js",
+        "-t",
+        "over the wire magnitude"
+      ],
+      "mustFail": [
+        "a print over the wire magnitude is capped at it"
+      ]
+    },
+    {
+      "id": "p4e2.publisher.clipped-not-in-stats",
+      "file": "apps/runtime/src/indicators/passive_liquidity/liquidity-publisher.js",
+      "find": "flowClipped: [...states.values()].reduce((sum, state) => sum + (state.flow ? state.flow.clipped : 0), 0),",
+      "replace": "flowClipped: 0,",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/passive_liquidity/liquidity-publisher.test.js",
+        "-t",
+        "clipped where the column is made"
+      ],
+      "mustFail": [
+        "a print over the wire magnitude is clipped where the column is made"
+      ]
+    },
+    {
+      "id": "p4e2.lane-frames.bad-column-kept-pair-dropped",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane-frames.js",
+      "find": "if (dropped > 0) {",
+      "replace": "if (false) {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/passive_liquidity/liquidity-publisher.test.js",
+        "-t",
+        "loses that column, not the pair"
+      ],
+      "mustFail": [
+        "a restored store holding a column over the wire magnitude loses that column, not the pair"
+      ]
+    },
+    {
+      "id": "p4e2.lane-frames.unsendable-column-not-filtered",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane-frames.js",
+      "find": "      return !bad;",
+      "replace": "      return true;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/passive_liquidity/liquidity-publisher.test.js",
+        "-t",
+        "loses that column, not the pair"
+      ],
+      "mustFail": [
+        "a restored store holding a column over the wire magnitude loses that column, not the pair"
+      ]
+    },
+    {
+      "id": "p4e2.lane-frames.no-snapshot-after-drop",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane-frames.js",
+      "find": "        state.announce = true;\n        state.announceNow = true;\n        return [];",
+      "replace": "        return [];",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/passive_liquidity/liquidity-publisher.test.js",
+        "-t",
+        "loses that column, not the pair"
+      ],
+      "mustFail": [
+        "a restored store holding a column over the wire magnitude loses that column, not the pair"
+      ]
+    },
+    {
+      "id": "p4e2.lane-l2.snapshot-ts-last-event-only",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane-l2.js",
+      "find": "for (const event of l2.recent) if (event.ts > lastEventTs) lastEventTs = event.ts;",
+      "replace": "if (l2.recent.length > 0) lastEventTs = Math.max(ts, l2.recent[l2.recent.length - 1].ts);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/lane-l2.test.js",
+        "-t",
+        "covers every event in the ring"
+      ],
+      "mustFail": [
+        "the snapshot's ts covers every event in the ring"
+      ]
+    },
+    {
+      "id": "p4e2.pyramid-warmup.no-retry",
+      "file": "apps/runtime/src/indicators/l2-memory/pyramid/pyramid-warmup.js",
+      "find": "if (attempt >= RETRY_WAITS_MS.length) return",
+      "replace": "if (true) return",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/pyramid-warmup.test.js",
+        "-t",
+        "asked again after a short wait"
+      ],
+      "mustFail": [
+        "a refused or failed page is asked again after a short wait"
+      ]
+    },
+    {
+      "id": "p4e2.pyramid-warmup.retry-without-waiting",
+      "file": "apps/runtime/src/indicators/l2-memory/pyramid/pyramid-warmup.js",
+      "find": "await wait(RETRY_WAITS_MS[attempt]);",
+      "replace": "await wait(0);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/pyramid-warmup.test.js",
+        "-t",
+        "asked again after a short wait"
+      ],
+      "mustFail": [
+        "a refused or failed page is asked again after a short wait"
+      ]
+    },
+    {
+      "id": "p4e2.pyramid-warmup.tries-not-named",
+      "file": "apps/runtime/src/indicators/l2-memory/pyramid/pyramid-warmup.js",
+      "find": "reason: `${reason} after ${attempt + 1} tries`",
+      "replace": "reason",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/pyramid-warmup.test.js",
+        "-t",
+        "asked again after a short wait"
+      ],
+      "mustFail": [
+        "a refused or failed page is asked again after a short wait"
+      ]
+    },
+    {
+      "id": "p4e2.pyramid-warmup.unbounded-in-flight",
+      "file": "apps/runtime/src/indicators/l2-memory/pyramid/pyramid-warmup.js",
+      "find": "if (inFlight < MAX_IN_FLIGHT) {",
+      "replace": "if (true) {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/pyramid-warmup.test.js",
+        "-t",
+        "at most two pairs read the host at once"
+      ],
+      "mustFail": [
+        "at most two pairs read the host at once"
+      ]
+    },
+    {
+      "id": "p4e2.pyramid-warmup.detail-dropped",
+      "file": "apps/runtime/src/indicators/l2-memory/pyramid/pyramid-warmup.js",
+      "find": "return page && page.available === false && note.last !== null ? { ...page, detail: note.last } : page;",
+      "replace": "return page;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/pyramid-warmup.test.js",
+        "-t",
+        "last line explains a refusal"
+      ],
+      "mustFail": [
+        "the reader's last line explains a refusal"
+      ]
+    },
+    {
+      "id": "p4e2.pyramid-warmup.stale-detail-kept",
+      "file": "apps/runtime/src/indicators/l2-memory/pyramid/pyramid-warmup.js",
+      "find": "    note.last = null;\n    const page = await read(...args);",
+      "replace": "    const page = await read(...args);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/pyramid-warmup.test.js",
+        "-t",
+        "last line explains a refusal"
+      ],
+      "mustFail": [
+        "the reader's last line explains a refusal"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,292 @@
+{
+  "mutations": [
+    {
+      "id": "audit-archive.auth.any-token-matches",
+      "file": "apps/runtime/src/server/archive-auth.js",
+      "find": "if (crypto.timingSafeEqual(presented, entry.hash)) matched = entry.clientId;",
+      "replace": "matched = entry.clientId;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/server/archive-auth.test.js"
+      ],
+      "mustFail": [
+        "refuses an unknown token"
+      ]
+    },
+    {
+      "id": "audit-archive.auth.scheme-not-checked",
+      "file": "apps/runtime/src/server/archive-auth.js",
+      "find": "  if (!authorization.startsWith(\"Bearer \")) return null;\n  const token = authorization.slice(\"Bearer \".length);",
+      "replace": "  const token = authorization.replace(/^\\S+ /, \"\");",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/server/archive-auth.test.js"
+      ],
+      "mustFail": [
+        "refuses the wrong scheme"
+      ]
+    },
+    {
+      "id": "audit-archive.auth.token-charset-not-checked",
+      "file": "apps/runtime/src/server/archive-auth.js",
+      "find": "  return isToken68(token) ? token : null;",
+      "replace": "  return token;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/server/archive-auth.test.js"
+      ],
+      "mustFail": [
+        "extracts exactly one space-delimited bearer value"
+      ]
+    },
+    {
+      "id": "audit-archive.auth.oversized-header-accepted",
+      "file": "apps/runtime/src/server/archive-auth.js",
+      "find": "  if (authorization.length > MAX_AUTHORIZATION_LENGTH) return null;\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/server/archive-auth.test.js"
+      ],
+      "mustFail": [
+        "refuses an Authorization header longer than the cap"
+      ]
+    },
+    {
+      "id": "audit-archive.auth.short-secret-accepted",
+      "file": "apps/runtime/src/server/archive-auth.js",
+      "find": "    if (secret.length < MIN_TOKEN_LENGTH) {",
+      "replace": "    if (false) {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/server/archive-auth.test.js"
+      ],
+      "mustFail": [
+        "rejects a token shorter than the floor at construction"
+      ]
+    },
+    {
+      "id": "audit-archive.auth.duplicate-client-accepted",
+      "file": "apps/runtime/src/server/archive-auth.js",
+      "find": "    if (seen.has(clientId)) throw new Error",
+      "replace": "    if (false) throw new Error",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/server/archive-auth.test.js"
+      ],
+      "mustFail": [
+        "rejects a duplicate client id at construction"
+      ]
+    },
+    {
+      "id": "audit-archive.route.unauthenticated-proxied",
+      "file": "apps/runtime/src/server/archive-route.js",
+      "find": "    if (clientId === null) {\n      counters.unauthorized += 1;",
+      "replace": "    if (false) {\n      counters.unauthorized += 1;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/server/archive-route.test.js"
+      ],
+      "mustFail": [
+        "refuses no credential before reaching the archive service"
+      ]
+    },
+    {
+      "id": "audit-archive.route.rate-budget-off-by-one",
+      "file": "apps/runtime/src/server/archive-route.js",
+      "find": "    if (fresh.length >= rateLimit.max) {\n      requestTimes.set(clientId, fresh);",
+      "replace": "    if (fresh.length > rateLimit.max) {\n      requestTimes.set(clientId, fresh);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/server/archive-route.test.js"
+      ],
+      "mustFail": [
+        "spends a client's rate budget per client, not globally"
+      ]
+    },
+    {
+      "id": "audit-archive.route.one-client-runs-twice",
+      "file": "apps/runtime/src/server/archive-route.js",
+      "find": "    if (inFlight >= maxConcurrent || activeClients.has(clientId)) {",
+      "replace": "    if (inFlight >= maxConcurrent) {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/server/archive-route.test.js"
+      ],
+      "mustFail": [
+        "queues a second request from one client while another client can use the free slot"
+      ]
+    },
+    {
+      "id": "audit-archive.route.client-queue-limit-ignored",
+      "file": "apps/runtime/src/server/archive-route.js",
+      "find": "      if (queuedForClient >= maxQueuedPerClient) {",
+      "replace": "      if (false) {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/server/archive-route.test.js"
+      ],
+      "mustFail": [
+        "does not let one client consume every shared waiting slot"
+      ]
+    },
+    {
+      "id": "audit-archive.route.queue-full-ignored",
+      "file": "apps/runtime/src/server/archive-route.js",
+      "find": "      if (queue.length >= maxQueued) {",
+      "replace": "      if (false) {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/server/archive-route.test.js"
+      ],
+      "mustFail": [
+        "refuses a client with room in its own share once the shared queue is full"
+      ]
+    },
+    {
+      "id": "audit-archive.route.client-header-from-request",
+      "file": "apps/runtime/src/server/archive-route.js",
+      "find": "          \"x-archive-client\": clientId,",
+      "replace": "          \"x-archive-client\": request.headers[\"x-archive-client\"] ?? clientId,",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/server/archive-route.test.js"
+      ],
+      "mustFail": [
+        "names the authenticated client to the archive service"
+      ]
+    },
+    {
+      "id": "audit-archive.route.unknown-fields-forwarded",
+      "file": "apps/runtime/src/server/archive-route.js",
+      "find": "  if (unknown.length > 0) {\n    return errorBody(MALFORMED_REQUEST, `UNKNOWN_REQUEST_FIELDS",
+      "replace": "  if (false) {\n    return errorBody(MALFORMED_REQUEST, `UNKNOWN_REQUEST_FIELDS",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/server/archive-route.test.js"
+      ],
+      "mustFail": [
+        "refuses an unknown field"
+      ]
+    },
+    {
+      "id": "audit-archive.route.reply-rows-over-limit-passed",
+      "file": "apps/runtime/src/server/archive-route.js",
+      "find": "      && body.rows.length <= (request.limit ?? MAX_LIMIT)\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/server/archive-route.test.js"
+      ],
+      "mustFail": [
+        "refuses more rows than the query's limit"
+      ]
+    },
+    {
+      "id": "audit-archive.route.reply-family-not-matched",
+      "file": "apps/runtime/src/server/archive-route.js",
+      "find": "    return body.family === request.family\n      && FAMILIES",
+      "replace": "    return FAMILIES",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/server/archive-route.test.js"
+      ],
+      "mustFail": [
+        "refuses a page of another family"
+      ]
+    },
+    {
+      "id": "audit-archive.route.error-status-not-matched",
+      "file": "apps/runtime/src/server/archive-route.js",
+      "find": "    && REFUSAL_STATUS[body.error] === status\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/server/archive-route.test.js"
+      ],
+      "mustFail": [
+        "refuses a refusal code under another code's status"
+      ]
+    },
+    {
+      "id": "audit-archive.route.window-order-not-checked",
+      "file": "apps/runtime/src/server/archive-route.js",
+      "find": "  if (BigInt(payload.to) <= BigInt(payload.from)) {",
+      "replace": "  if (false) {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/server/archive-route.test.js"
+      ],
+      "mustFail": [
+        "refuses a query the contract cannot accept before spending a round trip"
+      ]
+    },
+    {
+      "id": "audit-archive.route.queued-wait-never-expires",
+      "file": "apps/runtime/src/server/archive-route.js",
+      "find": "      entry.timer = setTimeout(() => expire(entry), maxQueueWaitMs);",
+      "replace": "      entry.timer = setTimeout(() => undefined, maxQueueWaitMs);",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/server/archive-route.test.js"
+      ],
+      "mustFail": [
+        "refuses a queued request at its deadline"
+      ]
+    }
+  ]
+}

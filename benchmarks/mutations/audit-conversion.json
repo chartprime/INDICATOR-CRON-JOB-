@@ -1,0 +1,913 @@
+{
+  "mutations": [
+    {
+      "id": "audit-rollup.open-from-last",
+      "file": "apps/runtime/conversion/candle_rollup.py",
+      "find": "            \"open\": _fixed9_text(members[0][1][\"open\"]),",
+      "replace": "            \"open\": _fixed9_text(members[-1][1][\"open\"]),",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_candle_rollup.py",
+        "tests/test_candle_rollup_equity_session.py",
+        "tests/test_candle_rollup_golden.py"
+      ],
+      "mustFail": [
+        "test_an_hour_takes_its_edges_from_the_minutes_not_the_extremes"
+      ]
+    },
+    {
+      "id": "audit-rollup.close-from-first",
+      "file": "apps/runtime/conversion/candle_rollup.py",
+      "find": "            \"close\": _fixed9_text(members[-1][1][\"close\"]),",
+      "replace": "            \"close\": _fixed9_text(members[0][1][\"close\"]),",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_candle_rollup.py",
+        "tests/test_candle_rollup_equity_session.py",
+        "tests/test_candle_rollup_golden.py"
+      ],
+      "mustFail": [
+        "test_an_hour_takes_its_edges_from_the_minutes_not_the_extremes"
+      ]
+    },
+    {
+      "id": "audit-rollup.high-is-min",
+      "file": "apps/runtime/conversion/candle_rollup.py",
+      "find": "            \"high\": _fixed9_text(max(high for high, _low in prices)),",
+      "replace": "            \"high\": _fixed9_text(min(high for high, _low in prices)),",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_candle_rollup.py",
+        "tests/test_candle_rollup_equity_session.py",
+        "tests/test_candle_rollup_golden.py"
+      ],
+      "mustFail": [
+        "test_an_hour_takes_its_edges_from_the_minutes_not_the_extremes"
+      ]
+    },
+    {
+      "id": "audit-rollup.members-unsorted",
+      "file": "apps/runtime/conversion/candle_rollup.py",
+      "find": "        members = sorted(buckets[bucket], key=lambda pair: pair[0])",
+      "replace": "        members = buckets[bucket]",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_candle_rollup.py",
+        "tests/test_candle_rollup_equity_session.py",
+        "tests/test_candle_rollup_golden.py"
+      ],
+      "mustFail": [
+        "test_minutes_arriving_out_of_order_still_give_the_hour"
+      ]
+    },
+    {
+      "id": "audit-rollup.price-rounded",
+      "file": "apps/runtime/conversion/candle_rollup.py",
+      "find": "    if scaled != scaled.to_integral_value():\n        raise RollupError(f\"PRICE_NOT",
+      "replace": "    if False:\n        raise RollupError(f\"PRICE_NOT",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_candle_rollup.py",
+        "tests/test_candle_rollup_equity_session.py",
+        "tests/test_candle_rollup_golden.py"
+      ],
+      "mustFail": [
+        "test_a_price_that_cannot_round_trip_is_refused_rather_than_rounded"
+      ]
+    },
+    {
+      "id": "audit-rollup.multi-symbol-allowed",
+      "file": "apps/runtime/conversion/candle_rollup.py",
+      "find": "        if len(symbols) != 1:",
+      "replace": "        if False:",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_candle_rollup.py",
+        "tests/test_candle_rollup_equity_session.py",
+        "tests/test_candle_rollup_golden.py"
+      ],
+      "mustFail": [
+        "test_two_instruments_are_never_folded_into_one_bar"
+      ]
+    },
+    {
+      "id": "audit-rollup.dst-off",
+      "file": "apps/runtime/conversion/candle_rollup.py",
+      "find": "    dst = _nth_sunday_utc_ns(day.year, 3, 2, 7) <= midday < _nth_sunday_utc_ns(day.year, 11, 1, 6)",
+      "replace": "    dst = False",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_candle_rollup.py",
+        "tests/test_candle_rollup_equity_session.py",
+        "tests/test_candle_rollup_golden.py"
+      ],
+      "mustFail": [
+        "test_equity_hours_open_at_0930_and_leave_extended_hours_out"
+      ]
+    },
+    {
+      "id": "audit-rollup.dst-start-wrong-sunday",
+      "file": "apps/runtime/conversion/candle_rollup.py",
+      "find": "_nth_sunday_utc_ns(day.year, 3, 2, 7)",
+      "replace": "_nth_sunday_utc_ns(day.year, 3, 1, 7)",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_candle_rollup.py",
+        "tests/test_candle_rollup_equity_session.py",
+        "tests/test_candle_rollup_golden.py"
+      ],
+      "mustFail": [
+        "test_the_clocks_change_on_the_second_sunday_of_march_not_the_first"
+      ]
+    },
+    {
+      "id": "audit-rollup.early-close-ignored",
+      "file": "apps/runtime/conversion/candle_rollup.py",
+      "find": "    close = calendar[\"early_close\"] if date_iso in calendar[\"early_closes\"] else calendar[\"close\"]",
+      "replace": "    close = calendar[\"close\"]",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_candle_rollup.py",
+        "tests/test_candle_rollup_equity_session.py",
+        "tests/test_candle_rollup_golden.py"
+      ],
+      "mustFail": [
+        "test_winter_time_and_an_early_close_move_the_session"
+      ]
+    },
+    {
+      "id": "audit-rollup.holiday-traded",
+      "file": "apps/runtime/conversion/candle_rollup.py",
+      "find": "    if day.weekday() >= 5 or date_iso in calendar[\"holidays\"]:",
+      "replace": "    if day.weekday() >= 5:",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_candle_rollup.py",
+        "tests/test_candle_rollup_equity_session.py",
+        "tests/test_candle_rollup_golden.py"
+      ],
+      "mustFail": [
+        "test_a_holiday_or_an_uncovered_date_never_passes_as_a_session"
+      ]
+    },
+    {
+      "id": "audit-rollup.session-end-inclusive",
+      "file": "apps/runtime/conversion/candle_rollup.py",
+      "find": "        if session is not None and session[0] <= open_ns < session[1]:",
+      "replace": "        if session is not None and session[0] <= open_ns <= session[1]:",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_candle_rollup.py",
+        "tests/test_candle_rollup_equity_session.py",
+        "tests/test_candle_rollup_golden.py"
+      ],
+      "mustFail": [
+        "test_equity_hours_open_at_0930_and_leave_extended_hours_out"
+      ]
+    },
+    {
+      "id": "audit-rollup.equity-hour-utc",
+      "file": "apps/runtime/conversion/candle_rollup.py",
+      "find": "                        lambda open_ns: open_ns - (open_ns - session_open[open_ns]) % HOUR_NS)",
+      "replace": "                        None)",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_candle_rollup.py",
+        "tests/test_candle_rollup_equity_session.py",
+        "tests/test_candle_rollup_golden.py"
+      ],
+      "mustFail": [
+        "test_equity_hours_open_at_0930_and_leave_extended_hours_out"
+      ]
+    },
+    {
+      "id": "audit-rollup.unaligned-minute-allowed",
+      "file": "apps/runtime/conversion/candle_rollup.py",
+      "find": "    if open_ns % MINUTE_NS != 0:\n        raise",
+      "replace": "    if False:\n        raise",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_candle_rollup.py",
+        "tests/test_candle_rollup_equity_session.py",
+        "tests/test_candle_rollup_golden.py"
+      ],
+      "mustFail": [
+        "test_a_source_that_is_not_a_minute_bar_is_refused"
+      ]
+    },
+    {
+      "id": "audit-roll.negative-fixed9-sign-lost",
+      "file": "apps/runtime/conversion/roll_table.py",
+      "find": "    return (\"-\" if n < 0 else \"\") + body",
+      "replace": "    return body",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_roll_table.py",
+        "tests/test_phase3_roll_table_wiring.py"
+      ],
+      "mustFail": [
+        "test_a_negative_definition_keeps_its_sign_so_validation_refuses_it"
+      ]
+    },
+    {
+      "id": "audit-roll.fixed9-not-padded",
+      "file": "apps/runtime/conversion/roll_table.py",
+      "find": "    digits = str(abs(n)).rjust(10, \"0\")",
+      "replace": "    digits = str(abs(n))",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_roll_table.py",
+        "tests/test_phase3_roll_table_wiring.py"
+      ],
+      "mustFail": [
+        "test_definition_snapshots_from_rows_groups_by_instrument_and_converts_fixed9_tic"
+      ]
+    },
+    {
+      "id": "audit-roll.conflicting-definition-kept",
+      "file": "apps/runtime/conversion/roll_table.py",
+      "find": "        if prior is not None and prior != facts:",
+      "replace": "        if False:",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_roll_table.py",
+        "tests/test_phase3_roll_table_wiring.py"
+      ],
+      "mustFail": [
+        "test_definition_snapshots_from_rows_refuses_conflicting_same_day_facts"
+      ]
+    },
+    {
+      "id": "audit-roll.as-of-future-snapshot",
+      "file": "apps/runtime/conversion/roll_table.py",
+      "find": "        if snap_date > date:\n            break",
+      "replace": "        if False:\n            break",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_roll_table.py",
+        "tests/test_phase3_roll_table_wiring.py"
+      ],
+      "mustFail": [
+        "test_a_later_snapshot_never_applies_retroactively_to_earlier_dates"
+      ]
+    },
+    {
+      "id": "audit-roll.definition-gap-allowed",
+      "file": "apps/runtime/conversion/roll_table.py",
+      "find": "            if entry is None:\n                raise RollTableError(f\"DEFINITION_GAP",
+      "replace": "            if entry is None:\n                continue\n                raise RollTableError(f\"DEFINITION_GAP",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_roll_table.py",
+        "tests/test_phase3_roll_table_wiring.py"
+      ],
+      "mustFail": [
+        "test_a_date_before_the_earliest_known_snapshot_fails_loudly_not_silently"
+      ]
+    },
+    {
+      "id": "audit-roll.inconsistent-definition-allowed",
+      "file": "apps/runtime/conversion/roll_table.py",
+      "find": "            elif key != (facts[\"raw_symbol\"], str(facts[\"tick_size\"]), str(facts[\"multiplier\"])):",
+      "replace": "            elif False:",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_roll_table.py",
+        "tests/test_phase3_roll_table_wiring.py"
+      ],
+      "mustFail": [
+        "test_a_later_snapshot_never_applies_retroactively_to_earlier_dates"
+      ]
+    },
+    {
+      "id": "audit-roll.end-date-inclusive",
+      "file": "apps/runtime/conversion/roll_table.py",
+      "find": "    while date < end:",
+      "replace": "    while date <= end:",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_roll_table.py",
+        "tests/test_phase3_roll_table_wiring.py"
+      ],
+      "mustFail": [
+        "test_a_zero_length_continuous_interval_is_refused"
+      ]
+    },
+    {
+      "id": "audit-roll.bridge-different-contracts",
+      "file": "apps/runtime/conversion/roll_table.py",
+      "find": "        if merged and merged[-1][\"symbol\"] == interval[\"symbol\"]:",
+      "replace": "        if merged:",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_roll_table.py",
+        "tests/test_phase3_roll_table_wiring.py"
+      ],
+      "mustFail": [
+        "test_merge_never_bridges_across_two_different_contracts"
+      ]
+    },
+    {
+      "id": "audit-roll.bridge-not-reported",
+      "file": "apps/runtime/conversion/roll_table.py",
+      "find": "            if interval[\"start_date\"] > merged[-1][\"end_date\"]:",
+      "replace": "            if False:",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_roll_table.py",
+        "tests/test_phase3_roll_table_wiring.py"
+      ],
+      "mustFail": [
+        "test_merge_bridges_a_gap_when_the_same_contract_is_on_both_sides"
+      ]
+    },
+    {
+      "id": "audit-roll.non-contiguous-allowed",
+      "file": "apps/runtime/conversion/roll_table.py",
+      "find": "        if prev[\"to_ns\"] != nxt[\"from_ns\"]:",
+      "replace": "        if False:",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_roll_table.py",
+        "tests/test_phase3_roll_table_wiring.py"
+      ],
+      "mustFail": [
+        "test_validate_rejects_a_non_contiguous_roll_table"
+      ]
+    },
+    {
+      "id": "audit-roll.bad-contract-code-allowed",
+      "file": "apps/runtime/conversion/roll_table.py",
+      "find": "        if pattern is None or not pattern.fullmatch(row[\"contract_code\"]):",
+      "replace": "        if pattern is None:",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_roll_table.py",
+        "tests/test_phase3_roll_table_wiring.py"
+      ],
+      "mustFail": [
+        "test_validate_rejects_a_contract_code_that_does_not_match_the_expected_pattern"
+      ]
+    },
+    {
+      "id": "audit-roll.roll-warning-off",
+      "file": "apps/runtime/conversion/roll_table.py",
+      "find": "        if abs(row[\"to_ns\"] - expiration_ns) > _ROLL_BOUNDARY_WARN_NS:",
+      "replace": "        if False:",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_roll_table.py",
+        "tests/test_phase3_roll_table_wiring.py"
+      ],
+      "mustFail": [
+        "test_validate_warns_but_does_not_fail_when_a_real_roll_is_far_from_expiration"
+      ]
+    },
+    {
+      "id": "audit-roll.last-interval-warned",
+      "file": "apps/runtime/conversion/roll_table.py",
+      "find": "        if index == len(mine) - 1:\n            continue",
+      "replace": "        if False:\n            continue",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_roll_table.py",
+        "tests/test_phase3_roll_table_wiring.py"
+      ],
+      "mustFail": [
+        "test_validate_warns_but_does_not_fail_when_a_real_roll_is_far_from_expiration"
+      ]
+    },
+    {
+      "id": "audit-roll.version-order-sensitive",
+      "file": "apps/runtime/conversion/roll_table.py",
+      "find": "    material = {\"sources\": sorted(source_hashes),",
+      "replace": "    material = {\"sources\": list(source_hashes),",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_roll_table.py",
+        "tests/test_phase3_roll_table_wiring.py"
+      ],
+      "mustFail": [
+        "test_the_version_does_not_depend_on_the_order_its_sources_are_listed"
+      ]
+    },
+    {
+      "id": "audit-roll.tolerance-not-applied",
+      "file": "apps/runtime/conversion/roll_table.py",
+      "find": "            \"fromNs\": str(max(0, row[\"from_ns\"] - tolerance_ns)), \"toNs\": str(row[\"to_ns\"] + tolerance_ns),",
+      "replace": "            \"fromNs\": str(row[\"from_ns\"]), \"toNs\": str(row[\"to_ns\"]),",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_roll_table.py",
+        "tests/test_phase3_roll_table_wiring.py"
+      ],
+      "mustFail": [
+        "test_to_mappings_widens_each_interval_by_the_identity_resolution_tolerance"
+      ]
+    },
+    {
+      "id": "audit-csv.ohlcv-ragged-row",
+      "file": "apps/runtime/conversion/csv_decode.py",
+      "find": "            if len(fields) != len(_OHLCV_COLUMNS):\n                raise CsvError(f\"RAGGED_CSV_ROW",
+      "replace": "            if False:\n                raise CsvError(f\"RAGGED_CSV_ROW",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_csv.py",
+        "tests/test_csv_futures_identity.py"
+      ],
+      "mustFail": [
+        "test_decode_ohlcv_rejects_a_bad_header_and_ragged_rows"
+      ]
+    },
+    {
+      "id": "audit-csv.ohlcv-empty-field",
+      "file": "apps/runtime/conversion/csv_decode.py",
+      "find": "            if any(value == \"\" for value in fields):\n                raise CsvError(f\"EMPTY_CSV_FIELD",
+      "replace": "            if False:\n                raise CsvError(f\"EMPTY_CSV_FIELD",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_csv.py",
+        "tests/test_csv_futures_identity.py"
+      ],
+      "mustFail": [
+        "test_decode_ohlcv_refuses_a_row_with_an_empty_field"
+      ]
+    },
+    {
+      "id": "audit-csv.kline-multi-member",
+      "file": "apps/runtime/conversion/csv_decode.py",
+      "find": "    if len(members) != 1:",
+      "replace": "    if len(members) < 1:",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_binance_klines.py",
+        "tests/test_csv.py"
+      ],
+      "mustFail": [
+        "test_an_archive_that_is_not_one_file_is_refused"
+      ]
+    },
+    {
+      "id": "audit-csv.kline-header-eaten",
+      "file": "apps/runtime/conversion/csv_decode.py",
+      "find": "            if not first[0].isdigit():",
+      "replace": "            if False:",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_binance_klines.py",
+        "tests/test_csv.py"
+      ],
+      "mustFail": [
+        "test_spot_has_no_header_and_futures_does"
+      ]
+    },
+    {
+      "id": "audit-csv.kline-unit-ms-as-us",
+      "file": "apps/runtime/conversion/csv_decode.py",
+      "find": "    for unit, per_ns in ((\"us\", 1_000), (\"ms\", 1_000_000)):",
+      "replace": "    for unit, per_ns in ((\"us\", 1_000), (\"us\", 1_000_000)):",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_binance_klines.py",
+        "tests/test_csv.py"
+      ],
+      "mustFail": [
+        "test_the_timestamp_unit_is_proven_by_the_bar_span_not_guessed"
+      ]
+    },
+    {
+      "id": "audit-csv.kline-mixed-units",
+      "file": "apps/runtime/conversion/csv_decode.py",
+      "find": "        elif unit != timestamp_unit:",
+      "replace": "        elif False:",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_binance_klines.py",
+        "tests/test_csv.py"
+      ],
+      "mustFail": [
+        "test_a_month_that_mixes_microsecond_and_millisecond_rows_is_refused"
+      ]
+    },
+    {
+      "id": "audit-csv.kline-gap-allowed",
+      "file": "apps/runtime/conversion/csv_decode.py",
+      "find": "        if open_ns != expected:\n            raise CsvError(f\"KLINE_MONTH_NONCONTIGUOUS",
+      "replace": "        if False:\n            raise CsvError(f\"KLINE_MONTH_NONCONTIGUOUS",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_binance_klines.py",
+        "tests/test_csv.py"
+      ],
+      "mustFail": [
+        "test_a_gap_or_duplicate_in_a_month_is_refused_before_conversion"
+      ]
+    },
+    {
+      "id": "audit-csv.kline-short-month-allowed",
+      "file": "apps/runtime/conversion/csv_decode.py",
+      "find": "    if expected != end_ns:\n        raise CsvError(f\"KLINE_MONTH_INCOMPLETE",
+      "replace": "    if False:\n        raise CsvError(f\"KLINE_MONTH_INCOMPLETE",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_binance_klines.py",
+        "tests/test_csv.py"
+      ],
+      "mustFail": [
+        "test_a_partial_month_never_reaches_a_binance_partition_through_the_real_converte"
+      ]
+    },
+    {
+      "id": "audit-csv.cont-reset-ignored",
+      "file": "apps/runtime/conversion/continuity.py",
+      "find": "    elif action == \"R\":",
+      "replace": "    elif False:",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_continuity.py"
+      ],
+      "mustFail": [
+        "test_an_observed_reset_action_opens_a_new_epoch"
+      ]
+    },
+    {
+      "id": "audit-csv.cont-bad-book-ignored",
+      "file": "apps/runtime/conversion/continuity.py",
+      "find": "    elif flags & MAYBE_BAD_BOOK:",
+      "replace": "    elif False:",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_continuity.py"
+      ],
+      "mustFail": [
+        "test_a_maybe_bad_book_flag_opens_a_new_epoch_as_gap_suspected"
+      ]
+    },
+    {
+      "id": "audit-csv.cont-file-boundary-ok",
+      "file": "apps/runtime/conversion/continuity.py",
+      "find": "    elif file_boundary:\n        continuity = \"UNKNOWN\"",
+      "replace": "    elif False:\n        continuity = \"UNKNOWN\"",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_continuity.py"
+      ],
+      "mustFail": [
+        "test_a_file_boundary_with_no_other_signal_is_unknown_and_opens_a_new_epoch"
+      ]
+    },
+    {
+      "id": "audit-csv.cont-unknown-same-epoch",
+      "file": "apps/runtime/conversion/continuity.py",
+      "find": "        continuity = \"UNKNOWN\"\n        state[\"epoch\"] += 1",
+      "replace": "        continuity = \"UNKNOWN\"",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_continuity.py"
+      ],
+      "mustFail": [
+        "test_a_file_boundary_with_no_other_signal_is_unknown_and_opens_a_new_epoch"
+      ]
+    },
+    {
+      "id": "audit-csv.cont-first-row-reset",
+      "file": "apps/runtime/conversion/continuity.py",
+      "find": "    if not state[\"have_predecessor\"]:\n        continuity = \"OK\"",
+      "replace": "    if False:\n        continuity = \"OK\"",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_continuity.py"
+      ],
+      "mustFail": [
+        "test_the_very_first_row_a_stream_ever_sees_is_ok_regardless_of_its_own_flags"
+      ]
+    },
+    {
+      "id": "audit-csv.cont-delta-sign",
+      "file": "apps/runtime/conversion/continuity.py",
+      "find": "        \"delta\": None if state[\"prev_sequence\"] is None else sequence - state[\"prev_sequence\"],",
+      "replace": "        \"delta\": None if state[\"prev_sequence\"] is None else state[\"prev_sequence\"] - sequence,",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_continuity.py"
+      ],
+      "mustFail": [
+        "test_two_ordinary_consecutive_rows_stay_ok_in_the_same_epoch"
+      ]
+    },
+    {
+      "id": "audit-csv.cont-summary-span",
+      "file": "apps/runtime/conversion/continuity.py",
+      "find": "        entry[\"to_ns\"] = max(entry[\"to_ns\"], row[\"event_ns\"])",
+      "replace": "        entry[\"to_ns\"] = row[\"event_ns\"]",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_continuity.py"
+      ],
+      "mustFail": [
+        "test_summarize_spans_an_epoch_from_its_earliest_to_its_latest_event_in_any_order"
+      ]
+    }
+  ]
+}

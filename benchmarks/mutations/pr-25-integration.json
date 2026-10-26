@@ -1,0 +1,64 @@
+{
+  "mutations": [
+    {
+      "id": "pr25-thin-box-rule-applies-to-every-indicator",
+      "file": "apps/web/src/lib/chart/draw/kernelPrimitive.ts",
+      "find": "(!box.textFitsHeight || box.textAfterBox ||",
+      "replace": "(box.textAfterBox ||",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/chart/draw/tests/kernelPrimitive.test.ts", "-t", "keeps the words of a box that did not ask to fit its height"],
+      "mustFail": ["keeps the words of a box that did not ask to fit its height"],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "pr25-order-blocks-stop-fitting-their-height",
+      "file": "apps/web/src/lib/indicators/institutional-order-blocks/institutionalOrderBlocks.ts",
+      "find": "textFitsHeight: true,",
+      "replace": "textFitsHeight: false,",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/indicators/institutional-order-blocks/tests/institutionalOrderBlocks.test.ts", "-t", "makes every zone ask to keep its words within its own height"],
+      "mustFail": ["makes every zone ask to keep its words within its own height"],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "pr25-book-map-profile-not-an-axis-occupant",
+      "file": "apps/web/src/components/chart/ChartPanel.tsx",
+      "find": "(l2BookMapPrimitiveRef.current?.settings.showProfile ?? false)",
+      "replace": "false",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/components/chart/tests/ChartPanel.lifecycle.test.tsx", "-t", "keeps room at the price axis for the Book Map's profile"],
+      "mustFail": ["keeps room at the price axis for the Book Map's profile while it is drawn"],
+      "timeoutMs": 180000
+    },
+    {
+      "id": "pr25-extend-right-ignores-the-axis-room",
+      "file": "apps/web/src/lib/chart/draw/kernelPrimitive.ts",
+      "find": "x2: data.extendRight === true ? rightEdgePx : Math.max(x1, x2),",
+      "replace": "x2: data.extendRight === true ? paneWidthPx : Math.max(x1, x2),",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/chart/draw/tests/kernelPrimitive.test.ts", "-t", "stops a box that extends right, and a fading tail"],
+      "mustFail": ["stops a box that extends right, and a fading tail"],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "pr25-dark-chart-ink-ignored",
+      "file": "apps/web/src/lib/chart/draw/kernelPrimitive.ts",
+      "find": "textColor: dark && data.textColorOnDark ? data.textColorOnDark : data.textColor,",
+      "replace": "textColor: data.textColor,",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/indicators/institutional-order-blocks/tests/institutionalRender.test.ts", "-t", "take a light ink on the dark chart"],
+      "mustFail": ["take a light ink on the dark chart"],
+      "timeoutMs": 120000
+    },
+    {
+      "id": "pr25-ladder-room-ignores-free-space",
+      "file": "apps/web/src/lib/indicators/passive-liquidity/liquidityHeatmapPrimitive.ts",
+      "find": "return LADDER_EDGE_GAP_PX + Math.max(LADDER_LABEL_WIDTH_PX, ladderReachPx(this, paneWidth, 1));",
+      "replace": "return LADDER_EDGE_GAP_PX + Math.max(LADDER_LABEL_WIDTH_PX, this.settings.ladderReach * paneWidth);",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/indicators/passive-liquidity/tests/liquidityHeatmapPrimitive.test.ts", "-t", "is the width the ladder draws"],
+      "mustFail": ["is the width the ladder draws"],
+      "timeoutMs": 120000
+    }
+  ]
+}

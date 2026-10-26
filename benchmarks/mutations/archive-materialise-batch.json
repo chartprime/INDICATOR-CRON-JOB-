@@ -1,0 +1,58 @@
+{
+  "mutations": [
+    {
+      "id": "archive-materialise.manifests-read-sequentially",
+      "file": "apps/runtime/conversion/archive_cache.py",
+      "find": "        manifests = list(zip(partitions, pool.map(_manifest, partitions)))",
+      "replace": "        manifests = list(zip(partitions, map(_manifest, partitions)))",
+      "cwd": "apps/runtime/conversion",
+      "command": ["uv", "run", "--frozen", "pytest", "-q", "tests/test_archive_cache.py"],
+      "mustFail": ["test_manifests_of_one_request_are_read_concurrently_and_kept_in_partition_order"]
+    },
+    {
+      "id": "archive-materialise.manifests-paired-with-wrong-partition",
+      "file": "apps/runtime/conversion/archive_cache.py",
+      "find": "        manifests = list(zip(partitions, pool.map(_manifest, partitions)))",
+      "replace": "        manifests = list(zip(reversed(partitions), pool.map(_manifest, partitions)))",
+      "cwd": "apps/runtime/conversion",
+      "command": ["uv", "run", "--frozen", "pytest", "-q", "tests/test_archive_cache.py"],
+      "mustFail": ["test_manifests_of_one_request_are_read_concurrently_and_kept_in_partition_order"]
+    },
+    {
+      "id": "archive-materialise.warm-parts-pinned-one-transaction-each",
+      "file": "apps/runtime/conversion/archive_cache.py",
+      "find": "    warm_paths, pin_counts = cache.acquire_warm_many((part[\"sha256\"], part[\"bytes\"]) for _partition, part in wanted)",
+      "replace": "    warm_paths, pin_counts = {}, Counter()\n    for _partition, part in wanted:\n        path = cache.acquire_warm(part[\"sha256\"], part[\"bytes\"])\n        if path is not None:\n            warm_paths[part[\"sha256\"]] = path\n            pin_counts[part[\"sha256\"]] += 1",
+      "cwd": "apps/runtime/conversion",
+      "command": ["uv", "run", "--frozen", "pytest", "-q", "tests/test_archive_cache.py"],
+      "mustFail": ["test_warm_parts_of_one_request_are_observed_and_pinned_in_one_index_transaction"]
+    },
+    {
+      "id": "archive-materialise.repeated-artifact-pinned-once",
+      "file": "apps/runtime/conversion/archive_cache.py",
+      "find": "                if sha in counts:\n                    counts[sha] += 1\n                    continue",
+      "replace": "                if sha in counts:\n                    continue",
+      "cwd": "apps/runtime/conversion",
+      "command": ["uv", "run", "--frozen", "pytest", "-q", "tests/test_archive_cache.py"],
+      "mustFail": ["test_acquire_warm_many_pins_each_artifact_as_often_as_the_request_names_it"]
+    },
+    {
+      "id": "archive-materialise.warm-artifacts-never-pinned",
+      "file": "apps/runtime/conversion/archive_cache.py",
+      "find": "                if path is not None:\n                    paths[sha] = path\n                    counts[sha] += 1",
+      "replace": "                if path is not None:\n                    paths[sha] = path",
+      "cwd": "apps/runtime/conversion",
+      "command": ["uv", "run", "--frozen", "pytest", "-q", "tests/test_archive_cache.py"],
+      "mustFail": ["test_warm_parts_of_one_request_are_observed_and_pinned_in_one_index_transaction", "test_acquire_warm_many_pins_each_artifact_as_often_as_the_request_names_it"]
+    },
+    {
+      "id": "archive-materialise.cold-artifact-treated-as-warm",
+      "file": "apps/runtime/conversion/archive_cache.py",
+      "find": "            if part[\"sha256\"] not in warm_paths:\n                cold_by_sha.setdefault(part[\"sha256\"], (partition, part))",
+      "replace": "            if part[\"sha256\"] not in warm_paths and part[\"bytes\"] > 64:\n                cold_by_sha.setdefault(part[\"sha256\"], (partition, part))",
+      "cwd": "apps/runtime/conversion",
+      "command": ["uv", "run", "--frozen", "pytest", "-q", "tests/test_archive_cache.py"],
+      "mustFail": ["test_manifests_of_one_request_are_read_concurrently_and_kept_in_partition_order"]
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+[Unit]
+Description=Terminal dated file-log retention
+OnFailure=terminal-alert@%n.service
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/terminal-l1-l2/ops/scripts/prune-logs.py
+TimeoutStartSec=120
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ReadWritePaths=/var/log/terminal-l1-l2
+MemoryMax=128M
+TasksMax=32
+UMask=0077

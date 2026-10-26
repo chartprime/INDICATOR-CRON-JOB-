@@ -1,0 +1,132 @@
+{
+  "description": "Hand-derived expectations for the four trade-derived families (report 54). The Python conversion stage (trade_families.py) and the live dxFeed storage reads (readMinuteRollup, readSlicedNotional, readLargeTrades, readDailyNotional) are both held to these numbers. Filters: NEW executions only; futures additionally require a valid tick, equities do not (the live reader's rule). trade_minute and trade_level count every side; trade_slice and trade_prints count BUY/SELL only. Print magnitude is size for futures and price*size for equities; ties go to the later execution, then the later row. The equity_block case carries single executions above one million in notional, where a DECIMAL(18,6) product overflowed on the first host month.",
+  "baseMs": 1785850200000,
+  "sliceMs": 2000,
+  "printsPerSide": 4,
+  "cases": {
+    "futures": {
+      "market": "FUTURE",
+      "tickSize": "0.25",
+      "trades": [
+        {"entity": "f1", "atMs": 0, "price": "7657.50", "size": "2", "side": "BUY", "action": "NEW", "validTick": true},
+        {"entity": "f2", "atMs": 0, "price": "7657.50", "size": "3", "side": "BUY", "action": "NEW", "validTick": true},
+        {"entity": "f3", "atMs": 500, "price": "7657.75", "size": "1", "side": "SELL", "action": "NEW", "validTick": true},
+        {"entity": "f4", "atMs": 1500, "price": "7657.25", "size": "5", "side": "SELL", "action": "NEW", "validTick": true},
+        {"entity": "f5", "atMs": 2000, "price": "7657.50", "size": "4", "side": "BUY", "action": "NEW", "validTick": true},
+        {"entity": "f6", "atMs": 2100, "price": "7657.50", "size": "4", "side": "BUY", "action": "NEW", "validTick": true},
+        {"entity": "f7", "atMs": 3999, "price": "7657.00", "size": "7", "side": "UNKNOWN", "action": "NEW", "validTick": true},
+        {"entity": "f8", "atMs": 5000, "price": "7657.50", "size": "9", "side": "BUY", "action": "CANCEL", "validTick": true},
+        {"entity": "f9", "atMs": 6000, "price": "7658.00", "size": "6", "side": "SELL", "action": "NEW", "validTick": false},
+        {"entity": "f10", "atMs": 7000, "price": "7657.50", "size": "1", "side": "BUY", "action": "NEW", "validTick": true},
+        {"entity": "f11", "atMs": 8000, "price": "7657.50", "size": "1", "side": "BUY", "action": "NEW", "validTick": true},
+        {"entity": "f12", "atMs": 9000, "price": "7657.50", "size": "1", "side": "BUY", "action": "NEW", "validTick": true},
+        {"entity": "f13", "atMs": 60000, "price": "7657.25", "size": "2", "side": "SELL", "action": "NEW", "validTick": true},
+        {"entity": "f14", "atMs": 61999, "price": "7656.90", "size": "1", "side": "BUY", "action": "NEW", "validTick": true}
+      ],
+      "expected": {
+        "trade_minute": [
+          {"minuteMs": 0, "volume": "29", "buyVolume": "16", "sellVolume": "6", "undefinedVolume": "7", "buyNotional": "122520", "sellNotional": "45944", "tradeCount": 10},
+          {"minuteMs": 60000, "volume": "3", "buyVolume": "1", "sellVolume": "2", "undefinedVolume": "0", "buyNotional": "7656.9", "sellNotional": "15314.5", "tradeCount": 2}
+        ],
+        "trade_level": [
+          {"minuteMs": 0, "ordinal": 0, "priceBucket": 30628, "volume": "7", "buyVolume": "0", "sellVolume": "0", "tradeCount": 1},
+          {"minuteMs": 0, "ordinal": 1, "priceBucket": 30629, "volume": "5", "buyVolume": "0", "sellVolume": "5", "tradeCount": 1},
+          {"minuteMs": 0, "ordinal": 2, "priceBucket": 30630, "volume": "16", "buyVolume": "16", "sellVolume": "0", "tradeCount": 7},
+          {"minuteMs": 0, "ordinal": 3, "priceBucket": 30631, "volume": "1", "buyVolume": "0", "sellVolume": "1", "tradeCount": 1},
+          {"minuteMs": 60000, "ordinal": 0, "priceBucket": 30627, "volume": "1", "buyVolume": "1", "sellVolume": "0", "tradeCount": 1},
+          {"minuteMs": 60000, "ordinal": 1, "priceBucket": 30629, "volume": "2", "buyVolume": "0", "sellVolume": "2", "tradeCount": 1}
+        ],
+        "trade_slice": [
+          {"sliceMs": 0, "lastTradeMs": 1500, "buyNotional": "38287.5", "sellNotional": "45944", "tradeCount": 4},
+          {"sliceMs": 2000, "lastTradeMs": 2100, "buyNotional": "61260", "sellNotional": "0", "tradeCount": 2},
+          {"sliceMs": 6000, "lastTradeMs": 7000, "buyNotional": "7657.5", "sellNotional": "0", "tradeCount": 1},
+          {"sliceMs": 8000, "lastTradeMs": 9000, "buyNotional": "15315", "sellNotional": "0", "tradeCount": 2},
+          {"sliceMs": 60000, "lastTradeMs": 61999, "buyNotional": "7656.9", "sellNotional": "15314.5", "tradeCount": 2}
+        ],
+        "trade_prints": [
+          {"minuteMs": 0, "ordinal": 0, "side": "BUY", "rank": 1, "entity": "f6", "tradeMs": 2100, "price": "7657.5", "size": "4"},
+          {"minuteMs": 0, "ordinal": 1, "side": "BUY", "rank": 2, "entity": "f5", "tradeMs": 2000, "price": "7657.5", "size": "4"},
+          {"minuteMs": 0, "ordinal": 2, "side": "BUY", "rank": 3, "entity": "f2", "tradeMs": 0, "price": "7657.5", "size": "3"},
+          {"minuteMs": 0, "ordinal": 3, "side": "BUY", "rank": 4, "entity": "f1", "tradeMs": 0, "price": "7657.5", "size": "2"},
+          {"minuteMs": 0, "ordinal": 4, "side": "SELL", "rank": 1, "entity": "f4", "tradeMs": 1500, "price": "7657.25", "size": "5"},
+          {"minuteMs": 0, "ordinal": 5, "side": "SELL", "rank": 2, "entity": "f3", "tradeMs": 500, "price": "7657.75", "size": "1"},
+          {"minuteMs": 60000, "ordinal": 0, "side": "BUY", "rank": 1, "entity": "f14", "tradeMs": 61999, "price": "7656.9", "size": "1"},
+          {"minuteMs": 60000, "ordinal": 4, "side": "SELL", "rank": 1, "entity": "f13", "tradeMs": 60000, "price": "7657.25", "size": "2"}
+        ],
+        "dailyNotional": "191435.4"
+      }
+    },
+    "equity": {
+      "market": "EQUITY",
+      "tickSize": "0.01",
+      "trades": [
+        {"entity": "e1", "atMs": 0, "price": "306.85", "size": "3", "side": "SELL", "action": "NEW", "validTick": true},
+        {"entity": "e2", "atMs": 0, "price": "306.86", "size": "100", "side": "UNKNOWN", "action": "NEW", "validTick": true},
+        {"entity": "e3", "atMs": 100, "price": "306.849", "size": "10", "side": "BUY", "action": "NEW", "validTick": true},
+        {"entity": "e4", "atMs": 1999, "price": "306.90", "size": "50", "side": "BUY", "action": "NEW", "validTick": true},
+        {"entity": "e5", "atMs": 2000, "price": "306.80", "size": "60", "side": "BUY", "action": "NEW", "validTick": true},
+        {"entity": "e6", "atMs": 2500, "price": "307.00", "size": "40", "side": "SELL", "action": "NEW", "validTick": true},
+        {"entity": "e7", "atMs": 2500, "price": "306.95", "size": "41", "side": "SELL", "action": "NEW", "validTick": true},
+        {"entity": "e8", "atMs": 3000, "price": "306.00", "size": "1", "side": "BUY", "action": "NEW", "validTick": true},
+        {"entity": "e9", "atMs": 4000, "price": "306.50", "size": "2", "side": "SELL", "action": "NEW", "validTick": false}
+      ],
+      "expected": {
+        "trade_minute": [
+          {"minuteMs": 0, "volume": "307", "buyVolume": "121", "sellVolume": "86", "undefinedVolume": "100", "buyNotional": "37127.49", "sellNotional": "26398.5", "tradeCount": 9}
+        ],
+        "trade_level": [
+          {"minuteMs": 0, "ordinal": 0, "priceBucket": 30600, "volume": "1", "buyVolume": "1", "sellVolume": "0", "tradeCount": 1},
+          {"minuteMs": 0, "ordinal": 1, "priceBucket": 30650, "volume": "2", "buyVolume": "0", "sellVolume": "2", "tradeCount": 1},
+          {"minuteMs": 0, "ordinal": 2, "priceBucket": 30680, "volume": "60", "buyVolume": "60", "sellVolume": "0", "tradeCount": 1},
+          {"minuteMs": 0, "ordinal": 3, "priceBucket": 30684, "volume": "10", "buyVolume": "10", "sellVolume": "0", "tradeCount": 1},
+          {"minuteMs": 0, "ordinal": 4, "priceBucket": 30685, "volume": "3", "buyVolume": "0", "sellVolume": "3", "tradeCount": 1},
+          {"minuteMs": 0, "ordinal": 5, "priceBucket": 30686, "volume": "100", "buyVolume": "0", "sellVolume": "0", "tradeCount": 1},
+          {"minuteMs": 0, "ordinal": 6, "priceBucket": 30690, "volume": "50", "buyVolume": "50", "sellVolume": "0", "tradeCount": 1},
+          {"minuteMs": 0, "ordinal": 7, "priceBucket": 30695, "volume": "41", "buyVolume": "0", "sellVolume": "41", "tradeCount": 1},
+          {"minuteMs": 0, "ordinal": 8, "priceBucket": 30700, "volume": "40", "buyVolume": "0", "sellVolume": "40", "tradeCount": 1}
+        ],
+        "trade_slice": [
+          {"sliceMs": 0, "lastTradeMs": 1999, "buyNotional": "18413.49", "sellNotional": "920.55", "tradeCount": 3},
+          {"sliceMs": 2000, "lastTradeMs": 3000, "buyNotional": "18714", "sellNotional": "24864.95", "tradeCount": 4},
+          {"sliceMs": 4000, "lastTradeMs": 4000, "buyNotional": "0", "sellNotional": "613", "tradeCount": 1}
+        ],
+        "trade_prints": [
+          {"minuteMs": 0, "ordinal": 0, "side": "BUY", "rank": 1, "entity": "e5", "tradeMs": 2000, "price": "306.8", "size": "60"},
+          {"minuteMs": 0, "ordinal": 1, "side": "BUY", "rank": 2, "entity": "e4", "tradeMs": 1999, "price": "306.9", "size": "50"},
+          {"minuteMs": 0, "ordinal": 2, "side": "BUY", "rank": 3, "entity": "e3", "tradeMs": 100, "price": "306.849", "size": "10"},
+          {"minuteMs": 0, "ordinal": 3, "side": "BUY", "rank": 4, "entity": "e8", "tradeMs": 3000, "price": "306", "size": "1"},
+          {"minuteMs": 0, "ordinal": 4, "side": "SELL", "rank": 1, "entity": "e7", "tradeMs": 2500, "price": "306.95", "size": "41"},
+          {"minuteMs": 0, "ordinal": 5, "side": "SELL", "rank": 2, "entity": "e6", "tradeMs": 2500, "price": "307", "size": "40"},
+          {"minuteMs": 0, "ordinal": 6, "side": "SELL", "rank": 3, "entity": "e1", "tradeMs": 0, "price": "306.85", "size": "3"},
+          {"minuteMs": 0, "ordinal": 7, "side": "SELL", "rank": 4, "entity": "e9", "tradeMs": 4000, "price": "306.5", "size": "2"}
+        ],
+        "dailyNotional": "63525.99"
+      }
+    },
+    "equity_block": {
+      "market": "EQUITY",
+      "tickSize": "0.01",
+      "trades": [
+        {"entity": "b1", "atMs": 0, "price": "310.00", "size": "5051", "side": "BUY", "action": "NEW", "validTick": true},
+        {"entity": "b2", "atMs": 500, "price": "310.50", "size": "4000", "side": "SELL", "action": "NEW", "validTick": true}
+      ],
+      "expected": {
+        "trade_minute": [
+          {"minuteMs": 0, "volume": "9051", "buyVolume": "5051", "sellVolume": "4000", "undefinedVolume": "0", "buyNotional": "1565810", "sellNotional": "1242000", "tradeCount": 2}
+        ],
+        "trade_level": [
+          {"minuteMs": 0, "ordinal": 0, "priceBucket": 31000, "volume": "5051", "buyVolume": "5051", "sellVolume": "0", "tradeCount": 1},
+          {"minuteMs": 0, "ordinal": 1, "priceBucket": 31050, "volume": "4000", "buyVolume": "0", "sellVolume": "4000", "tradeCount": 1}
+        ],
+        "trade_slice": [
+          {"sliceMs": 0, "lastTradeMs": 500, "buyNotional": "1565810", "sellNotional": "1242000", "tradeCount": 2}
+        ],
+        "trade_prints": [
+          {"minuteMs": 0, "ordinal": 0, "side": "BUY", "rank": 1, "entity": "b1", "tradeMs": 0, "price": "310", "size": "5051"},
+          {"minuteMs": 0, "ordinal": 4, "side": "SELL", "rank": 1, "entity": "b2", "tradeMs": 500, "price": "310.5", "size": "4000"}
+        ],
+        "dailyNotional": "2807810"
+      }
+    }
+  }
+}

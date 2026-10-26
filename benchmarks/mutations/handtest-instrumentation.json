@@ -1,0 +1,134 @@
+{
+  "mutations": [
+    {
+      "id": "handtest-flow-pause-reason-dropped",
+      "file": "apps/web/src/workers/marketDataWorker.ts",
+      "find": "postMessage({ kind: \"status\", status: \"closed\", reason: `flow-paused:${pendingDeliveryBytes.length - 1}/${pendingBytes}+${bytes}:${message.kind === \"frame\" ? message.frame.type : message.kind}` });",
+      "replace": "postMessage({ kind: \"status\", status: \"closed\" });",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/workers/marketDataWorker.test.ts", "-t", "bounds delivery to a frozen main thread"],
+      "mustFail": ["bounds delivery to a frozen main thread"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "handtest-server-close-code-dropped",
+      "file": "apps/web/src/workers/marketDataWorker.ts",
+      "find": "reason: `server-close:${event.code}:${event.reason.slice(0, 64)}`",
+      "replace": "reason: \"server-close\"",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/workers/marketDataWorker.test.ts", "-t", "close code and reason"],
+      "mustFail": ["close code and reason"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "handtest-parse-rejection-not-described",
+      "file": "apps/web/src/workers/marketDataWorker.ts",
+      "find": "failCurrentSocket(socket, `parse-rejected:${rejection}`);",
+      "replace": "failCurrentSocket(socket, \"parse-rejected\");",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/workers/marketDataWorker.test.ts", "-t", "oversized size when a liquidity column is rejected"],
+      "mustFail": ["oversized size when a liquidity column is rejected"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "handtest-rejection-scan-skips-bid-sizes",
+      "file": "apps/web/src/types/frames.ts",
+      "find": "const TIME_LIKE_KEY = /^(ts|id|seq)$|_ts$|Ts$|_ms$|Ms$|[Tt]ime|[Ss]eq[A-Z_]|_id$|Id$/;",
+      "replace": "const TIME_LIKE_KEY = /(^ts$|_ts$|Ts$|_ms$|Ms$|time|seq|^id$|_id$|Id$)/i;",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/workers/marketDataWorker.test.ts", "-t", "oversized size when a liquidity column is rejected"],
+      "mustFail": ["oversized size when a liquidity column is rejected"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "handtest-connect-timeout-untagged",
+      "file": "apps/web/src/workers/marketDataWorker.ts",
+      "find": "failCurrentSocket(socket, `connect-timeout:${socket.readyState}`);",
+      "replace": "failCurrentSocket(socket, \"socket-error\");",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/workers/marketDataWorker.test.ts", "-t", "never proves the application protocol"],
+      "mustFail": ["never proves the application protocol"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "handtest-main-thread-does-not-record-close",
+      "file": "apps/web/src/hooks/useMarketData.ts",
+      "find": "          recordConnectionClose(msg.reason);\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/hooks/useMarketData.test.tsx", "-t", "resets to null when the browser's own connection"],
+      "mustFail": ["resets to null when the browser's own connection"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "handtest-close-trace-counts-full-reason",
+      "file": "apps/web/src/lib/observability/connectionTrace.ts",
+      "find": "const category = connectionCloseCategory(bounded);",
+      "replace": "const category = bounded;",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/observability/connectionTrace.test.ts"],
+      "mustFail": ["counts closes by the reason's category"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "handtest-close-trace-unbounded",
+      "file": "apps/web/src/lib/observability/connectionTrace.ts",
+      "find": "if (trace.recent.length > MAX_CONNECTION_CLOSES) trace.recent.splice(0, trace.recent.length - MAX_CONNECTION_CLOSES);",
+      "replace": "void MAX_CONNECTION_CLOSES;",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/observability/connectionTrace.test.ts"],
+      "mustFail": ["bounds the recent list"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "handtest-server-heartbeat-cause-unmarked",
+      "file": "apps/runtime/src/server/app.js",
+      "find": "markClientClose(client, \"heartbeat-missed-pong\");",
+      "replace": "void 0;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/server/app.test.js", "-t", "misses the heartbeat"],
+      "mustFail": ["misses the heartbeat"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "handtest-server-disconnect-not-logged",
+      "file": "apps/runtime/src/server/app.js",
+      "find": "        logClientDisconnect(socket, code, reasonBuffer);\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/server/app.test.js", "-t", "peer-initiated disconnect"],
+      "mustFail": ["peer-initiated disconnect"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "handtest-server-rate-limit-cause-unmarked",
+      "file": "apps/runtime/src/server/app.js",
+      "find": "    markClientClose(socket, `server-${code}`);\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/server/app.test.js", "-t", "bypasses selection-specific rate limits"],
+      "mustFail": ["bypasses selection-specific rate limits"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "handtest-wire-range-error-omits-value",
+      "file": "apps/runtime/src/server/wire-fields.js",
+      "find": "      `${field}: decimal value is outside the supported wire-number range (value ${describeWireValue(value)}, ceiling ${ceiling})`,\n    );\n  }\n  return converted;",
+      "replace": "      `${field}: decimal value is outside the supported wire-number range`,\n    );\n  }\n  return converted;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/server/frames.test.js", "-t", "still refuses a row above the profile volume ceiling"],
+      "mustFail": ["still refuses a row above the profile volume ceiling"],
+      "timeoutMs": 240000
+    },
+    {
+      "id": "handtest-replay-timeout-silent",
+      "file": "apps/runtime/src/server/market-data-server-shared.js",
+      "find": "        client.closeCause = \"snapshot-replay-timeout\";",
+      "replace": "        void 0;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "--runInBand", "--silent", "--runTestsByPath", "test/server/market-data-server-shared.test.js", "-t", "cannot drain before the replay deadline"],
+      "mustFail": ["cannot drain before the replay deadline"],
+      "timeoutMs": 240000
+    }
+  ]
+}

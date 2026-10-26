@@ -1,0 +1,293 @@
+{
+  "mutations": [
+    {
+      "id": "p4e2.wall-history.duplicates",
+      "file": "apps/runtime/src/indicators/l2-memory/history/wall-history.js",
+      "find": "const known = walls.get(key);",
+      "replace": "const known = undefined;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/history/wall-history.test.js",
+        "-t",
+        "never duplicated"
+      ],
+      "mustFail": [
+        "never duplicated"
+      ]
+    },
+    {
+      "id": "p4e2.wall-history.counts-unchanged-as-updated",
+      "file": "apps/runtime/src/indicators/l2-memory/history/wall-history.js",
+      "find": "&& JSON.stringify(next.detail) === JSON.stringify(known.detail)) continue;",
+      "replace": "&& JSON.stringify(next.detail) === JSON.stringify(known.detail)) { /* */ }",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/history/wall-history.test.js",
+        "-t",
+        "never duplicated"
+      ],
+      "mustFail": [
+        "never duplicated"
+      ]
+    },
+    {
+      "id": "p4e2.wall-history.prune-keeps-everything",
+      "file": "apps/runtime/src/indicators/l2-memory/history/wall-history.js",
+      "find": "if (wall.endTs >= cutoff) continue;",
+      "replace": "if (wall.endTs >= 0) continue;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/history/wall-history.test.js",
+        "-t",
+        "go on prune"
+      ],
+      "mustFail": [
+        "go on prune"
+      ]
+    },
+    {
+      "id": "p4e2.wall-history.trim-by-age-only",
+      "file": "apps/runtime/src/indicators/l2-memory/history/wall-history.js",
+      "find": ".sort((a, b) => evictionRank(a) - evictionRank(b) || a.endTs - b.endTs).slice(0, count)",
+      "replace": ".sort((a, b) => a.endTs - b.endTs).slice(0, count)",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/history/wall-history.test.js",
+        "-t",
+        "go on prune"
+      ],
+      "mustFail": [
+        "go on prune"
+      ]
+    },
+    {
+      "id": "p4e2.wall-history.query-ignores-time",
+      "file": "apps/runtime/src/indicators/l2-memory/history/wall-history.js",
+      "find": "if (wall.endTs < fromTs || wall.startTs > toTs) continue;",
+      "replace": "if (false) continue;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/history/wall-history.test.js",
+        "-t",
+        "a page at a time"
+      ],
+      "mustFail": [
+        "a page at a time"
+      ]
+    },
+    {
+      "id": "p4e2.wall-history.cursor-repeats-last",
+      "file": "apps/runtime/src/indicators/l2-memory/history/wall-history.js",
+      "find": "(wall.endTs === cursor.endTs && wall.hid <= cursor.hid)",
+      "replace": "(wall.endTs === cursor.endTs && wall.hid < cursor.hid)",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/history/wall-history.test.js",
+        "-t",
+        "a page at a time"
+      ],
+      "mustFail": [
+        "a page at a time"
+      ]
+    },
+    {
+      "id": "p4e2.wall-history.query-ignores-rows",
+      "file": "apps/runtime/src/indicators/l2-memory/history/wall-history.js",
+      "find": "if (!overlapsRows(wall, rowLo, rowHi)) continue;",
+      "replace": "if (false) continue;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/history/wall-history.test.js",
+        "-t",
+        "a page at a time"
+      ],
+      "mustFail": [
+        "a page at a time"
+      ]
+    },
+    {
+      "id": "p4e2.wall-history.bytes-trim-to-the-cap",
+      "file": "apps/runtime/src/indicators/l2-memory/history/wall-history.js",
+      "find": "Math.ceil((bytes - TRIM_TARGET * maxBytes) / perWall)",
+      "replace": "Math.ceil((bytes - maxBytes) / perWall)",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/history/wall-history.test.js",
+        "-t",
+        "byte cap"
+      ],
+      "mustFail": [
+        "byte cap"
+      ]
+    },
+    {
+      "id": "p4e2.wall-history.load-accepts-hid-past-counter",
+      "file": "apps/runtime/src/indicators/l2-memory/history/wall-history.js",
+      "find": "|| wall.hid >= saved.nextId) return false;",
+      "replace": "|| false) return false;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/history/wall-history.test.js",
+        "-t",
+        "round-trips"
+      ],
+      "mustFail": [
+        "round-trips"
+      ]
+    },
+    {
+      "id": "p4e2.wall-service.onended-silent",
+      "file": "apps/runtime/src/indicators/l2-memory/wall-service.js",
+      "find": "if (level !== undefined) onEnded(Object.freeze({ ...level, detail: detailOf(own, level) }));",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/l2-memory/wall-service.test.js",
+        "-t",
+        "onEnded"
+      ],
+      "mustFail": [
+        "onEnded hands over each wall"
+      ]
+    },
+    {
+      "id": "p4e2.lane.history-not-fed-on-end",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane.js",
+      "find": "onEnded: (wall) => state.wallHistory.record([wall]),",
+      "replace": "onEnded: null,",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/passive_liquidity/liquidity-publisher.test.js",
+        "-t",
+        "takes a wall the moment it ends"
+      ],
+      "mustFail": [
+        "takes a wall the moment it ends"
+      ]
+    },
+    {
+      "id": "p4e2.lane-store.no-sweep",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane-store.js",
+      "find": "history.record(state.tracker.walls().filter((wall) => wall.endTs !== null));",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/passive_liquidity/liquidity-publisher.test.js",
+        "-t",
+        "takes a wall the moment it ends"
+      ],
+      "mustFail": [
+        "takes a wall the moment it ends"
+      ]
+    },
+    {
+      "id": "p4e2.lane-store.saves-when-clean",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane-store.js",
+      "find": "      series.sweep(at);\n      if (!series.model.dirty) continue;\n      state[series.flag] = true;",
+      "replace": "      series.sweep(at);\n      state[series.flag] = true;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/passive_liquidity/liquidity-publisher.test.js",
+        "-t",
+        "takes a wall the moment it ends"
+      ],
+      "mustFail": [
+        "takes a wall the moment it ends"
+      ]
+    },
+    {
+      "id": "p4e2.lane-store.never-marks-saved",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane-store.js",
+      "find": "    if (result?.ok) {\n      series.model.markSaved();\n      return;\n    }",
+      "replace": "    if (result?.ok) {\n      return;\n    }",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/passive_liquidity/liquidity-publisher.test.js",
+        "-t",
+        "takes a wall the moment it ends"
+      ],
+      "mustFail": [
+        "takes a wall the moment it ends"
+      ]
+    },
+    {
+      "id": "p4e2.lane-store.restore-ignores-file",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane-store.js",
+      "find": "      if (!series.model.load(saved.history)) {",
+      "replace": "      if (true) {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/passive_liquidity/liquidity-publisher.test.js",
+        "-t",
+        "takes a wall the moment it ends"
+      ],
+      "mustFail": [
+        "takes a wall the moment it ends"
+      ]
+    },
+    {
+      "id": "p4e2.lane-store.sync-save-gives-up-over-budget",
+      "file": "apps/runtime/src/indicators/l2-memory/compact/lane-store.js",
+      "find": "      if (result?.reason === \"OVER_BUDGET\" && series.model.trimToBytes(result.bytes) > 0) result = saveWallHistory(historyRequest(state, series, at));\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/passive_liquidity/liquidity-publisher.test.js",
+        "-t",
+        "over its byte budget"
+      ],
+      "mustFail": [
+        "over its byte budget"
+      ]
+    },
+    {
+      "id": "p4e2.publisher.history-not-restored",
+      "file": "apps/runtime/src/indicators/passive_liquidity/liquidity-publisher.js",
+      "find": "    store.restoreHistories(state, now());\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/passive_liquidity/liquidity-publisher.test.js",
+        "-t",
+        "takes a wall the moment it ends"
+      ],
+      "mustFail": [
+        "takes a wall the moment it ends"
+      ]
+    }
+  ]
+}

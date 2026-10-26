@@ -1,0 +1,139 @@
+{
+  "mutations": [
+    {
+      "id": "o0-m2.load.timeout-labelled-as-abort",
+      "file": "apps/runtime/scripts/bench/live-storage-load.js",
+      "find": "[ABORT_CAUSE_TIMEOUT]: \"CLIENT_TIMEOUT\",",
+      "replace": "[ABORT_CAUSE_TIMEOUT]: \"CLIENT_ABORTED\",",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/scripts/bench/live-storage-load-cancellation.test.js"],
+      "mustFail": ["the runner's own timeout is CLIENT_TIMEOUT", "a timeout that fires before the abort timer wins"]
+    },
+    {
+      "id": "o0-m2.load.abort-credited-without-abort-rejection",
+      "file": "apps/runtime/scripts/bench/live-storage-load.js",
+      "find": " && isAbortRejection(cause, controller)) {",
+      "replace": ") {",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/scripts/bench/live-storage-load-cancellation.test.js"],
+      "mustFail": ["a socket failure that arrives after the abort fired is not credited to the abort"]
+    },
+    {
+      "id": "o0-m2.load.abort-race-never-recorded",
+      "file": "apps/runtime/scripts/bench/live-storage-load.js",
+      "find": "const abortRaced = abortCause !== null && !abortAttributed;",
+      "replace": "const abortRaced = false;",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/scripts/bench/live-storage-load-cancellation.test.js"],
+      "mustFail": ["a response that completes although the abort timer fired", "a socket failure that arrives after the abort fired"]
+    },
+    {
+      "id": "o0-m2.load.interrupt-keeps-starting-requests",
+      "file": "apps/runtime/scripts/bench/live-storage-load.js",
+      "find": "        if (interrupted) return;\n        const request = manifest.requests[requestIndex];",
+      "replace": "        const request = manifest.requests[requestIndex];",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/scripts/bench/live-storage-load-cancellation.test.js"],
+      "mustFail": ["a signal that is already aborted starts nothing"]
+    },
+    {
+      "id": "o0-m2.load.abort-bound-removed",
+      "file": "apps/runtime/scripts/bench/live-storage-load.js",
+      "find": "request.abort.afterMs > MAX_ABORT_AFTER_MS",
+      "replace": "false",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/scripts/bench/live-storage-load-cancellation.test.js"],
+      "mustFail": ["accepts a bounded abort and rejects anything else"]
+    },
+    {
+      "id": "o0-m2.load.unattributed-traffic-not-quantified",
+      "file": "apps/runtime/scripts/bench/live-storage-load.js",
+      "find": "unattributedRequests: Math.max(0, delta.requests - runRequests)",
+      "replace": "unattributedRequests: 0",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/scripts/bench/live-storage-load-cancellation.test.js"],
+      "mustFail": ["labels the delta host-wide and quantifies traffic the run cannot account for"]
+    },
+    {
+      "id": "o0-m2.load.counter-reset-reported-as-negative-work",
+      "file": "apps/runtime/scripts/bench/live-storage-load.js",
+      "find": "if (Object.values(delta).some((value) => value < 0)) return null;",
+      "replace": "if (false) return null;",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/scripts/bench/live-storage-load-cancellation.test.js"],
+      "mustFail": ["a server restart between the scrapes is reported as a counter reset"]
+    },
+    {
+      "id": "o0-m2.load.drain-claimed-without-inflight-data",
+      "file": "apps/runtime/scripts/bench/live-storage-load.js",
+      "find": "if (before.inFlight === null || after.inFlight === null) break;",
+      "replace": "if (false) break;",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/scripts/bench/live-storage-load-cancellation.test.js"],
+      "mustFail": ["does not claim a drain when the server does not report in-flight work"]
+    },
+    {
+      "id": "o0-m2.load.health-scrape-sends-credentials",
+      "file": "apps/runtime/scripts/bench/live-storage-load.js",
+      "find": "headers: { accept: \"application/json\" }",
+      "replace": "headers: { accept: \"application/json\", authorization: \"Bearer leaked\" }",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/scripts/bench/live-storage-load-cancellation.test.js"],
+      "mustFail": ["sends no credentials"]
+    },
+    {
+      "id": "o0-m2.load.health-failure-reasons-unfiltered",
+      "file": "apps/runtime/scripts/bench/live-storage-load.js",
+      "find": "HEALTH_FAILURE_REASONS.has(reason) && Number.isSafeInteger(count)",
+      "replace": "Number.isSafeInteger(count)",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/scripts/bench/live-storage-load-cancellation.test.js"],
+      "mustFail": ["keeps only bounded integer counters and known failure reasons"]
+    },
+    {
+      "id": "o0-m2.load.server-delta-without-manifest-opt-in",
+      "file": "apps/runtime/scripts/bench/live-storage-load.js",
+      "find": "const wantsServerDelta = manifest.serverDelta === true;",
+      "replace": "const wantsServerDelta = true;",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/scripts/bench/live-storage-load-cancellation.test.js"],
+      "mustFail": ["a manifest without serverDelta never touches the health endpoint"]
+    },
+    {
+      "id": "o0-m2.compare.abort-outcomes-compared-exactly",
+      "file": "apps/runtime/scripts/bench/compare-live-storage-reports.js",
+      "find": "if (left.abort !== undefined || right.abort !== undefined) {",
+      "replace": "if (false) {",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/scripts/bench/compare-live-storage-reports.test.js"],
+      "mustFail": ["their outcome depends on which side won the race"]
+    },
+    {
+      "id": "o0-m2.compare.everything-treated-as-abort-timing",
+      "file": "apps/runtime/scripts/bench/compare-live-storage-reports.js",
+      "find": "if (left.abort !== undefined || right.abort !== undefined) {",
+      "replace": "if (true) {",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/scripts/bench/compare-live-storage-reports.test.js"],
+      "mustFail": ["un-aborted samples in the same report are still compared exactly"]
+    },
+    {
+      "id": "o0-m2.manifests.deep-window-exceeds-route-bound",
+      "file": "benchmarks/live-storage/deep-binance-daily-notional-31d.json",
+      "find": "\"fromTs\": 1787011200000",
+      "replace": "\"fromTs\": 1787011199999",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/scripts/bench/manifests.test.js"],
+      "mustFail": ["deep-binance-daily-notional-31d.json#0 daily-notional"]
+    },
+    {
+      "id": "o0-m2.manifests.cancellation-manifest-without-abort",
+      "file": "benchmarks/live-storage/cancel-minute-rollup-abort-200ms.json",
+      "find": "\"abort\": { \"afterMs\": 200 }",
+      "replace": "\"note\": \"no abort\"",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/scripts/bench/manifests.test.js"],
+      "mustFail": ["every cancellation manifest aborts at least one request"]
+    }
+  ]
+}

@@ -1,0 +1,1762 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://terminal-l1-l2/contracts/archive-query/v1",
+  "title": "Archive Query Contract v1",
+  "description": "Every historical read request and response crossing the boundary between the Node data service and the isolated Python reader workers. The two sides cannot share a module -- one is Node, one is Python -- so the bounds in this file are the authority and a reconciliation test asserts both implementations agree with it, exactly as ws-frame-contract-v1 does across the runtime/web workspace boundary. Instruments are deliberately NOT an enum: the published catalog decides which instruments exist, so an enum here would need editing whenever one is published. Families ARE an enum because they are a closed subset of the market-observation contract's FAMILIES and every one needs a reader implementation.",
+  "$defs": {
+    "admissionLimits": {
+      "type": "object",
+      "description": "Mirrors server/aggressive-history.js, which already bounds the terminal's other paged history path. Concurrency is capped globally and at one in-flight read per client, so a single caller cannot monopolise the readers. Readers are separate processes because W6.03 measured eight in-process readers at p95 5.58 s against 101.5 ms across processes.",
+      "properties": {
+        "maxConcurrentReads": {
+          "const": 2
+        },
+        "maxQueued": {
+          "const": 32
+        },
+        "maxQueueWaitMs": {
+          "const": 15000
+        },
+        "rateLimitMax": {
+          "const": 72
+        },
+        "rateLimitWindowMs": {
+          "const": 60000
+        }
+      },
+      "additionalProperties": false
+    },
+    "httpLimits": {
+      "type": "object",
+      "description": "Loopback HTTP request-body bounds. The body limit is deliberately above the largest schema-valid request, while keeping one request unable to consume unbounded server memory. The timeout bounds an incomplete Content-Length body before it can occupy an HTTP thread indefinitely. The inbound handler bound is separate from archive admission: admission limits reader work, while the HTTP server reserves an inbound slot before creating a handler thread and otherwise returns an immediate overload refusal.",
+      "properties": {
+        "maxRequestBytes": {
+          "const": 65536
+        },
+        "requestBodyTimeoutSeconds": {
+          "const": 5
+        },
+        "maxInboundHandlers": {
+          "const": 16
+        }
+      },
+      "additionalProperties": false
+    },
+    "archiveRow": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/tradeRow"
+        },
+        {
+          "$ref": "#/$defs/quoteRow"
+        },
+        {
+          "$ref": "#/$defs/candleRow"
+        },
+        {
+          "$ref": "#/$defs/depthRow"
+        },
+        {
+          "$ref": "#/$defs/trade_minuteRow"
+        },
+        {
+          "$ref": "#/$defs/trade_levelRow"
+        },
+        {
+          "$ref": "#/$defs/trade_sliceRow"
+        },
+        {
+          "$ref": "#/$defs/trade_printsRow"
+        }
+      ],
+      "description": "A complete, flat persisted Parquet row. The response family selects the matching row variant. Exact decimal and 64-bit values are strings so the Python-to-Node boundary cannot silently round them."
+    },
+    "derivedRowBase": {
+      "type": "object",
+      "description": "The envelope a derived aggregate carries on the wire. A trade_* row is a bucket, not an observation: the request names the instrument and the catalog vouches for the lineage, so serving the full identity envelope would cost about four times the payload for nothing a consumer can use.",
+      "required": [
+        "event_ns"
+      ],
+      "properties": {
+        "event_ns": {
+          "$ref": "#/$defs/unsigned64"
+        }
+      }
+    },
+    "archiveRowBase": {
+      "type": "object",
+      "required": [
+        "record_id",
+        "event_ns",
+        "source_rank",
+        "stable_position",
+        "ordinal",
+        "sequence",
+        "receive_ns",
+        "ingest_ns",
+        "time_precision",
+        "time_origin",
+        "instrument_id",
+        "venue",
+        "market",
+        "symbol",
+        "currency",
+        "size_unit",
+        "contract",
+        "source_provider",
+        "source_dataset",
+        "source_schema",
+        "source_population",
+        "source_dataset_version",
+        "source_method_version",
+        "source_symbol",
+        "mapping_version",
+        "mapping_reference",
+        "stream_id",
+        "lineage_sha256",
+        "lineage_row",
+        "quality_state",
+        "quality_flags"
+      ],
+      "properties": {
+        "record_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "event_ns": {
+          "$ref": "#/$defs/eventNs"
+        },
+        "source_rank": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65535
+        },
+        "stable_position": {
+          "$ref": "#/$defs/unsigned64"
+        },
+        "ordinal": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295
+        },
+        "sequence": {
+          "$ref": "#/$defs/nullableInteger64"
+        },
+        "receive_ns": {
+          "$ref": "#/$defs/nullableUnsigned64"
+        },
+        "ingest_ns": {
+          "$ref": "#/$defs/nullableUnsigned64"
+        },
+        "time_precision": {
+          "$ref": "#/$defs/nullableText"
+        },
+        "time_origin": {
+          "$ref": "#/$defs/nullableText"
+        },
+        "instrument_id": {
+          "$ref": "#/$defs/instrumentId"
+        },
+        "venue": {
+          "$ref": "#/$defs/nullableText"
+        },
+        "market": {
+          "$ref": "#/$defs/nullableText"
+        },
+        "symbol": {
+          "$ref": "#/$defs/nullableText"
+        },
+        "currency": {
+          "$ref": "#/$defs/nullableText"
+        },
+        "size_unit": {
+          "$ref": "#/$defs/nullableText"
+        },
+        "contract": {
+          "$ref": "#/$defs/nullableText"
+        },
+        "source_provider": {
+          "$ref": "#/$defs/nullableText"
+        },
+        "source_dataset": {
+          "$ref": "#/$defs/nullableText"
+        },
+        "source_schema": {
+          "$ref": "#/$defs/nullableText"
+        },
+        "source_population": {
+          "$ref": "#/$defs/nullableText"
+        },
+        "source_dataset_version": {
+          "$ref": "#/$defs/nullableText"
+        },
+        "source_method_version": {
+          "$ref": "#/$defs/nullableText"
+        },
+        "source_symbol": {
+          "$ref": "#/$defs/nullableText"
+        },
+        "mapping_version": {
+          "$ref": "#/$defs/nullableText"
+        },
+        "mapping_reference": {
+          "$ref": "#/$defs/nullableText"
+        },
+        "stream_id": {
+          "$ref": "#/$defs/nullableText"
+        },
+        "lineage_sha256": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lineage_row": {
+          "$ref": "#/$defs/nullableUnsigned64"
+        },
+        "quality_state": {
+          "$ref": "#/$defs/nullableText"
+        },
+        "quality_flags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "byteCount": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991,
+      "description": "A non-negative byte count kept within JavaScript's exact integer range. The estimate may exceed the synchronous request cap."
+    },
+    "bytesPerRow": {
+      "type": "object",
+      "description": "Measured bytes per row per family, used for the pre-fetch scan estimate because the catalog records record_count and part_count but no byte size. Calibrated against 12 published manifests per family: quote holds within 3% of its median, candle 8%, trade 21%. Each value is that family's measured maximum so the estimate errs high. Validated end to end against a real partition at 1.023x actual. Depth is a placeholder: no depth partition has ever been published, so an uncalibrated non-empty depth window is refused with ESTIMATE_UNVERIFIED rather than admitted on a guess. candle_1m and candle_1h carry candle's rate because they share its exact column set, not because either has been measured; both are due re-calibration against their own published manifests, and the shared row shape makes that an adjustment rather than a guess. The four trade_* aggregates are measured from their own published manifests (the six largest partitions of each, on the production archive), rounded up: they are estimates of what a partition holds on disk, while the wire carries only the declared payload, so the estimate errs high for them by design.",
+      "properties": {
+        "candle": {
+          "const": 59
+        },
+        "candle_1m": {
+          "const": 59
+        },
+        "candle_1h": {
+          "const": 59
+        },
+        "candle_1d": {
+          "const": 59
+        },
+        "trade": {
+          "const": 60
+        },
+        "quote": {
+          "const": 49
+        },
+        "depth": {
+          "const": 600
+        },
+        "trade_minute_1m": {
+          "const": 99
+        },
+        "trade_level_1m": {
+          "const": 47
+        },
+        "trade_slice_2s": {
+          "const": 70
+        },
+        "trade_prints_1m": {
+          "const": 60
+        }
+      },
+      "additionalProperties": false
+    },
+    "bytesPerRowUnverified": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/family"
+      },
+      "const": [
+        "depth"
+      ],
+      "description": "Families whose bytes-per-row is not calibrated against a published partition."
+    },
+    "cacheLimits": {
+      "type": "object",
+      "description": "Serving-cache and snapshot-registry bounds. Provisional pending D09, which owns retention policy. The cache cap comfortably holds the catalogued archive (20.42 GB measured) and near-term L1 growth; the free-disk reserve protects conversion staging and the live collector, which share the volume. Snapshot bounds are part of the serving contract because they determine how long a pointer token remains usable and how many independent page chains the service can retain. Declared here because they are operator decisions, not implementation details -- an earlier revision of this schema carried bounds that a rewrite dropped, leaving numbers recorded nowhere but Python.",
+      "properties": {
+        "maxCacheBytes": {
+          "const": 274877906944
+        },
+        "minFreeDiskBytes": {
+          "const": 214748364800
+        },
+        "fetchConcurrency": {
+          "const": 8
+        },
+        "snapshotTtlSeconds": {
+          "const": 900
+        },
+        "maxSnapshotEntries": {
+          "const": 256
+        },
+        "maxSnapshotEntriesPerClient": {
+          "const": 16
+        }
+      },
+      "additionalProperties": false
+    },
+    "candleRow": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/archiveRowBase"
+        },
+        {
+          "type": "object",
+          "required": [
+            "open_ns",
+            "close_ns",
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume",
+            "buy_volume",
+            "closed",
+            "method",
+            "quote_volume",
+            "taker_buy_quote_volume",
+            "taker_sell_base_volume",
+            "taker_sell_quote_volume",
+            "trade_count"
+          ],
+          "properties": {
+            "open_ns": {
+              "$ref": "#/$defs/nullableUnsigned64"
+            },
+            "close_ns": {
+              "$ref": "#/$defs/nullableUnsigned64"
+            },
+            "open": {
+              "$ref": "#/$defs/nullableExactDecimal"
+            },
+            "high": {
+              "$ref": "#/$defs/nullableExactDecimal"
+            },
+            "low": {
+              "$ref": "#/$defs/nullableExactDecimal"
+            },
+            "close": {
+              "$ref": "#/$defs/nullableExactDecimal"
+            },
+            "volume": {
+              "$ref": "#/$defs/nullableExactDecimal"
+            },
+            "buy_volume": {
+              "$ref": "#/$defs/nullableExactDecimal"
+            },
+            "closed": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "method": {
+              "$ref": "#/$defs/nullableText"
+            },
+            "quote_volume": {
+              "$ref": "#/$defs/nullableExactDecimal",
+              "description": "Turnover in the quote currency. Source-supplied, not derived from volume and price, because a bar's trades happen at many prices. Null wherever the source does not report it."
+            },
+            "taker_buy_quote_volume": {
+              "$ref": "#/$defs/nullableExactDecimal",
+              "description": "Quote-currency turnover taken by aggressive buyers. Null wherever the source does not report it."
+            },
+            "taker_sell_base_volume": {
+              "$ref": "#/$defs/nullableExactDecimal",
+              "description": "volume minus buy_volume by exact decimal subtraction. A source reporting taker-buy above total volume is rejected at conversion rather than clamped, so this is never negative."
+            },
+            "taker_sell_quote_volume": {
+              "$ref": "#/$defs/nullableExactDecimal",
+              "description": "quote_volume minus taker_buy_quote_volume by exact decimal subtraction, under the same rejection rule."
+            },
+            "trade_count": {
+              "$ref": "#/$defs/nullableInteger64",
+              "description": "Trades that composed the bar. Null is the honest value for a source that does not report it -- zero would assert an empty bar. Databento OHLCV carries no trade count, so every Databento candle reports null here."
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "coverage": {
+      "type": "object",
+      "required": [
+        "requested",
+        "served",
+        "partitions",
+        "states"
+      ],
+      "properties": {
+        "requested": {
+          "$ref": "#/$defs/window"
+        },
+        "served": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/window"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "partitions": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "states": {
+          "type": "object",
+          "description": "Counts per W6.07 coverage state. The vocabulary is closed and inherited, not redefined here.",
+          "propertyNames": {
+            "enum": [
+              "PUBLISHED",
+              "QUIET",
+              "MARKET_CLOSED",
+              "MISSING",
+              "QUARANTINED",
+              "FAILED",
+              "CORRUPT",
+              "UNKNOWN"
+            ]
+          },
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "gaps": {
+          "type": "array",
+          "maxItems": 512,
+          "items": {
+            "type": "object",
+            "required": [
+              "date",
+              "state"
+            ],
+            "properties": {
+              "date": {
+                "type": "string",
+                "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+              },
+              "state": {
+                "enum": [
+                  "MISSING",
+                  "QUARANTINED",
+                  "FAILED",
+                  "CORRUPT",
+                  "UNKNOWN"
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "corrupt": {
+          "type": "array",
+          "maxItems": 512,
+          "items": {
+            "type": "object",
+            "required": [
+              "date"
+            ],
+            "properties": {
+              "date": {
+                "type": "string",
+                "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+              },
+              "reason": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 128
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "cursor": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "description": "Opaque base64url of the canonical sort key plus the pointer identity it was issued against. Keyset, never offset: offset pagination cannot be stable across tied timestamps."
+    },
+    "cursorPayload": {
+      "type": "object",
+      "required": [
+        "version",
+        "expiresAt",
+        "queryFingerprint",
+        "pointerSha256",
+        "eventNs",
+        "sourceRank",
+        "stablePosition",
+        "ordinal",
+        "tag"
+      ],
+      "properties": {
+        "version": {
+          "const": 1
+        },
+        "expiresAt": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "pointerSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "eventNs": {
+          "$ref": "#/$defs/eventNs"
+        },
+        "sourceRank": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "stablePosition": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]{0,19})$"
+        },
+        "ordinal": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "queryFingerprint": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "SHA-256 over contractVersion, pointer identity, instrumentId, family, from, to and the sort-key semantics. A cursor is valid only for the query that issued it."
+        },
+        "tag": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "depthLevel": {
+      "type": "object",
+      "required": [
+        "price",
+        "size"
+      ],
+      "properties": {
+        "price": {
+          "$ref": "#/$defs/exactDecimal"
+        },
+        "size": {
+          "$ref": "#/$defs/exactDecimal"
+        }
+      },
+      "additionalProperties": false
+    },
+    "depthRow": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/archiveRowBase"
+        },
+        {
+          "type": "object",
+          "required": [
+            "depth_action",
+            "depth_model",
+            "depth_limit",
+            "bids",
+            "asks",
+            "first_sequence",
+            "last_sequence",
+            "previous_sequence",
+            "batch_id",
+            "batch_end",
+            "reset",
+            "book_epoch",
+            "continuity",
+            "dbn_source_flags",
+            "dbn_publisher_id"
+          ],
+          "properties": {
+            "depth_action": {
+              "$ref": "#/$defs/nullableText"
+            },
+            "depth_model": {
+              "$ref": "#/$defs/nullableText"
+            },
+            "depth_limit": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "bids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/depthLevel"
+              }
+            },
+            "asks": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/depthLevel"
+              }
+            },
+            "first_sequence": {
+              "$ref": "#/$defs/nullableInteger64"
+            },
+            "last_sequence": {
+              "$ref": "#/$defs/nullableInteger64"
+            },
+            "previous_sequence": {
+              "$ref": "#/$defs/nullableInteger64"
+            },
+            "batch_id": {
+              "$ref": "#/$defs/nullableText"
+            },
+            "batch_end": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "reset": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "book_epoch": {
+              "oneOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 4294967295
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "continuity": {
+              "$ref": "#/$defs/nullableText"
+            },
+            "dbn_source_flags": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "dbn_publisher_id": {
+              "$ref": "#/$defs/nullableInteger64"
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "error": {
+      "type": "object",
+      "required": [
+        "contractVersion",
+        "error"
+      ],
+      "properties": {
+        "contractVersion": {
+          "const": "archive-query/1"
+        },
+        "error": {
+          "$ref": "#/$defs/errorCode"
+        },
+        "family": {
+          "$ref": "#/$defs/family"
+        },
+        "detail": {
+          "type": "string",
+          "maxLength": 512
+        },
+        "requestedWindowNs": {
+          "$ref": "#/$defs/unsigned64"
+        },
+        "maxWindowNs": {
+          "$ref": "#/$defs/unsigned64"
+        },
+        "estimatedScanBytes": {
+          "$ref": "#/$defs/byteCount"
+        },
+        "effectiveMaxScanBytes": {
+          "$ref": "#/$defs/scanBytes"
+        },
+        "retryAfterMs": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Present on OVERLOADED. How long before the caller's rate budget or a reader slot is expected to free, so a client backs off by instruction rather than by guess."
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "error"
+            ],
+            "properties": {
+              "error": {
+                "const": "RANGE_TOO_LARGE"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "estimatedScanBytes",
+              "effectiveMaxScanBytes"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "error"
+            ],
+            "properties": {
+              "error": {
+                "const": "WINDOW_TOO_LARGE"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "family",
+              "requestedWindowNs",
+              "maxWindowNs"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "error"
+            ],
+            "properties": {
+              "error": {
+                "const": "ESTIMATE_UNVERIFIED"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "family"
+            ]
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "errorCode": {
+      "enum": [
+        "CACHE_CAPACITY_EXCEEDED",
+        "CANCELLED",
+        "CATALOG_INTEGRITY_FAILURE",
+        "CURSOR_MALFORMED",
+        "CURSOR_POINTER_MISMATCH",
+        "ESTIMATE_UNVERIFIED",
+        "INVALID_WINDOW",
+        "MALFORMED_REQUEST",
+        "OVERLOADED",
+        "PARTITION_VERIFICATION_FAILED",
+        "POINTER_TOKEN_INVALID",
+        "RANGE_TOO_LARGE",
+        "READER_UNAVAILABLE",
+        "UNAUTHORIZED",
+        "UNKNOWN_INSTRUMENT",
+        "UNSUPPORTED_FAMILY",
+        "WINDOW_TOO_LARGE"
+      ]
+    },
+    "httpStatusByError": {
+      "type": "object",
+      "description": "HTTP status for every declared error envelope emitted by the loopback archive service. This mapping is contract metadata and is reconciled against the service rather than allowing an unmapped error to fall through as an accidental 500.",
+      "properties": {
+        "CACHE_CAPACITY_EXCEEDED": {"const": 503},
+        "CANCELLED": {"const": 499},
+        "CATALOG_INTEGRITY_FAILURE": {"const": 500},
+        "CURSOR_MALFORMED": {"const": 400},
+        "CURSOR_POINTER_MISMATCH": {"const": 400},
+        "ESTIMATE_UNVERIFIED": {"const": 503},
+        "INVALID_WINDOW": {"const": 400},
+        "MALFORMED_REQUEST": {"const": 400},
+        "OVERLOADED": {"const": 429},
+        "PARTITION_VERIFICATION_FAILED": {"const": 500},
+        "POINTER_TOKEN_INVALID": {"const": 409},
+        "RANGE_TOO_LARGE": {"const": 413},
+        "READER_UNAVAILABLE": {"const": 503},
+        "UNAUTHORIZED": {"const": 401},
+        "UNKNOWN_INSTRUMENT": {"const": 404},
+        "UNSUPPORTED_FAMILY": {"const": 400},
+        "WINDOW_TOO_LARGE": {"const": 413}
+      },
+      "additionalProperties": false
+    },
+    "eventNs": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,19})$",
+      "maxLength": 20,
+      "description": "Epoch nanoseconds as a decimal string. Never a JSON number: 2^53 is exceeded by nanosecond timestamps and a float would silently lose precision."
+    },
+    "exactDecimal": {
+      "type": "string",
+      "pattern": "^-?(?:0|[1-9][0-9]{0,25})(?:\\.[0-9]{1,12})?$",
+      "maxLength": 40,
+      "description": "Exact DuckDB DECIMAL(38,12) text. It is never a JSON number because a binary float may round either price or size."
+    },
+    "family": {
+      "description": "Row family. Candle families name their bar resolution; 'candle' is the original one-second family and keeps that name so published partitions need no migration. The trade_* families are aggregates derived from trade, and carry only their payload on the wire.",
+      "enum": [
+        "candle",
+        "candle_1m",
+        "candle_1h",
+        "candle_1d",
+        "trade",
+        "quote",
+        "depth",
+        "trade_minute_1m",
+        "trade_level_1m",
+        "trade_slice_2s",
+        "trade_prints_1m"
+      ]
+    },
+    "instrumentId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "integer64": {
+      "type": "string",
+      "pattern": "^-?(?:0|[1-9][0-9]{0,18})$",
+      "maxLength": 20,
+      "description": "A signed 64-bit integer represented as exact decimal text."
+    },
+    "limit": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10000,
+      "default": 1000
+    },
+    "message": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/request"
+        },
+        {
+          "$ref": "#/$defs/response"
+        },
+        {
+          "$ref": "#/$defs/error"
+        }
+      ],
+      "description": "Root union. Without this a generic validator accepts any JSON, which is what the unbound v1 draft did."
+    },
+    "nullableExactDecimal": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/exactDecimal"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "nullableInteger64": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/integer64"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "nullableText": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "nullableUnsigned64": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/unsigned64"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "pointer": {
+      "type": "object",
+      "required": [
+        "dataset_version",
+        "catalog_key",
+        "catalog_sha256",
+        "publisher_fence"
+      ],
+      "properties": {
+        "dataset_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "catalog_key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "catalog_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "publisher_fence": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991,
+          "description": "Monotonic publication fence. It remains a JSON number only while it is exactly representable by both Python and Node."
+        },
+        "converter_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "contract_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "roll_table_key": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "published_at": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "pointerToken": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "pattern": "^[A-Za-z0-9_-]+$",
+      "description": "Opaque server-issued handle for a pinned, already-verified catalog snapshot. Clients never supply a catalog_key or path; the server resolves tokens only to approved immutable snapshots."
+    },
+    "quoteRow": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/archiveRowBase"
+        },
+        {
+          "type": "object",
+          "required": [
+            "bid_price",
+            "bid_size",
+            "ask_price",
+            "ask_size",
+            "dbn_source_flags",
+            "dbn_publisher_id",
+            "dbn_source_action"
+          ],
+          "properties": {
+            "bid_price": {
+              "$ref": "#/$defs/nullableExactDecimal"
+            },
+            "bid_size": {
+              "$ref": "#/$defs/nullableExactDecimal"
+            },
+            "ask_price": {
+              "$ref": "#/$defs/nullableExactDecimal"
+            },
+            "ask_size": {
+              "$ref": "#/$defs/nullableExactDecimal"
+            },
+            "dbn_source_flags": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "dbn_publisher_id": {
+              "$ref": "#/$defs/nullableInteger64"
+            },
+            "dbn_source_action": {
+              "$ref": "#/$defs/nullableText"
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "readerLimits": {
+      "type": "object",
+      "description": "Transport and page bounds for the isolated reader. The frame size is the converter bridge's own, so one protocol serves both directions of the boundary. A page is bounded by bytes as well as rows because rows alone cannot bound the transport: measured on the production archive, 10,000 trade rows serialise to 14.81 MB of a 16 MB frame, and depth carries level arrays in 46 columns and is wider again.",
+      "properties": {
+        "maxFrameBytes": {
+          "const": 16777216
+        },
+        "maxPageBytes": {
+          "const": 8388608
+        },
+        "maxCursorBytes": {
+          "const": 512
+        },
+        "cursorTtlSeconds": {
+          "const": 900
+        },
+        "readerThreads": {
+          "const": 1
+        },
+        "maxTempDirectoryBytes": {
+          "const": 2147483648
+        }
+      },
+      "additionalProperties": false
+    },
+    "request": {
+      "type": "object",
+      "required": [
+        "contractVersion",
+        "instrumentId",
+        "family",
+        "from",
+        "to"
+      ],
+      "properties": {
+        "contractVersion": {
+          "const": "archive-query/1"
+        },
+        "instrumentId": {
+          "$ref": "#/$defs/instrumentId"
+        },
+        "family": {
+          "$ref": "#/$defs/family"
+        },
+        "from": {
+          "$ref": "#/$defs/eventNs"
+        },
+        "to": {
+          "$ref": "#/$defs/eventNs"
+        },
+        "limit": {
+          "$ref": "#/$defs/limit"
+        },
+        "cursor": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/cursor"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "maxScanBytes": {
+          "$ref": "#/$defs/scanBytes"
+        },
+        "pointerToken": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/pointerToken"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "response": {
+      "type": "object",
+      "required": [
+        "contractVersion",
+        "pointer",
+        "pointerToken",
+        "family",
+        "rows",
+        "nextCursor",
+        "queryFingerprint",
+        "coverage",
+        "scan"
+      ],
+      "properties": {
+        "contractVersion": {
+          "const": "archive-query/1"
+        },
+        "pointer": {
+          "$ref": "#/$defs/pointer"
+        },
+        "pointerToken": {
+          "$ref": "#/$defs/pointerToken"
+        },
+        "family": {
+          "$ref": "#/$defs/family"
+        },
+        "rows": {
+          "type": "array",
+          "maxItems": 10000,
+          "items": {
+            "$ref": "#/$defs/archiveRow"
+          }
+        },
+        "nextCursor": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/cursor"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "queryFingerprint": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "coverage": {
+          "$ref": "#/$defs/coverage"
+        },
+        "scan": {
+          "$ref": "#/$defs/scan"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "family"
+            ],
+            "properties": {
+              "family": {
+                "const": "trade"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "rows": {
+                "items": {
+                  "$ref": "#/$defs/tradeRow"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "family"
+            ],
+            "properties": {
+              "family": {
+                "const": "quote"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "rows": {
+                "items": {
+                  "$ref": "#/$defs/quoteRow"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "family"
+            ],
+            "properties": {
+              "family": {
+                "enum": [
+                  "candle",
+                  "candle_1m",
+                  "candle_1h",
+                  "candle_1d"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "rows": {
+                "items": {
+                  "$ref": "#/$defs/candleRow"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "family"
+            ],
+            "properties": {
+              "family": {
+                "const": "depth"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "rows": {
+                "items": {
+                  "$ref": "#/$defs/depthRow"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "family"
+            ],
+            "properties": {
+              "family": {
+                "const": "trade_minute_1m"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "rows": {
+                "items": {
+                  "$ref": "#/$defs/trade_minuteRow"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "family"
+            ],
+            "properties": {
+              "family": {
+                "const": "trade_level_1m"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "rows": {
+                "items": {
+                  "$ref": "#/$defs/trade_levelRow"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "family"
+            ],
+            "properties": {
+              "family": {
+                "const": "trade_slice_2s"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "rows": {
+                "items": {
+                  "$ref": "#/$defs/trade_sliceRow"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "family"
+            ],
+            "properties": {
+              "family": {
+                "const": "trade_prints_1m"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "rows": {
+                "items": {
+                  "$ref": "#/$defs/trade_printsRow"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "scan": {
+      "type": "object",
+      "required": [
+        "partitionsRead",
+        "partitionsSelected",
+        "partsOpened",
+        "exactScanBytes",
+        "bytesRead",
+        "cacheHits",
+        "cacheMisses",
+        "fetchMs",
+        "queryMs"
+      ],
+      "properties": {
+        "partitionsRead": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "partitionsSelected": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "partsOpened": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "exactScanBytes": {
+          "$ref": "#/$defs/byteCount"
+        },
+        "bytesRead": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cacheHits": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cacheMisses": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "fetchMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "queryMs": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "description": "Cold and warm must be distinguishable per response: measured cold 629 ms versus warm 10.7 ms for the same month, so an aggregate latency number hides the only thing that matters."
+    },
+    "scanBytes": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 268435456,
+      "description": "Effective server-side cap for a synchronous interactive read. Omitting maxScanBytes means this default, never unlimited."
+    },
+    "scanBytesDefault": {
+      "const": 268435456
+    },
+    "targets": {
+      "type": "object",
+      "description": "Provisional D14 targets, derived from measurements on the production catalog, not chosen in the abstract. Tightened at W6.16.",
+      "properties": {
+        "catalogResolveP95Ms": {
+          "const": 10
+        },
+        "warmPagedReadP95Ms": {
+          "const": 100
+        },
+        "coldFirstTouchP95Ms": {
+          "const": 5000
+        },
+        "concurrentWarmReadsP95Ms": {
+          "const": 500
+        },
+        "concurrentWarmReaders": {
+          "const": 8
+        },
+        "defaultPageLimit": {
+          "const": 1000
+        },
+        "synchronousMaxScanBytes": {
+          "const": 268435456
+        }
+      },
+      "additionalProperties": false
+    },
+    "tradeRow": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/archiveRowBase"
+        },
+        {
+          "type": "object",
+          "required": [
+            "trade_entity_id",
+            "price",
+            "size",
+            "side",
+            "trade_action",
+            "valid_tick",
+            "replaces",
+            "dbn_publisher_id",
+            "dbn_source_flags",
+            "dbn_source_action"
+          ],
+          "properties": {
+            "trade_entity_id": {
+              "$ref": "#/$defs/nullableText"
+            },
+            "price": {
+              "$ref": "#/$defs/nullableExactDecimal"
+            },
+            "size": {
+              "$ref": "#/$defs/nullableExactDecimal"
+            },
+            "side": {
+              "$ref": "#/$defs/nullableText"
+            },
+            "trade_action": {
+              "$ref": "#/$defs/nullableText"
+            },
+            "valid_tick": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "replaces": {
+              "$ref": "#/$defs/nullableText"
+            },
+            "dbn_publisher_id": {
+              "$ref": "#/$defs/nullableInteger64"
+            },
+            "dbn_source_flags": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "dbn_source_action": {
+              "$ref": "#/$defs/nullableText"
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "unsigned64": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,19})$",
+      "maxLength": 20,
+      "description": "An unsigned 64-bit integer represented as exact decimal text."
+    },
+    "window": {
+      "type": "object",
+      "required": [
+        "from",
+        "to"
+      ],
+      "properties": {
+        "from": {
+          "$ref": "#/$defs/eventNs"
+        },
+        "to": {
+          "$ref": "#/$defs/eventNs"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Half-open [from, to). Closed windows double-count the boundary record where partitions and pages meet."
+    },
+    "windowLimitNs": {
+      "type": "object",
+      "description": "Per-family window cap, applied before the catalog is opened. Density differs by nearly two orders of magnitude between families -- a day of candles is 3.5 MB against 491 MB for the busiest measured day of quotes -- so one cap across all of them either does nothing for candles or admits a single quote day far past the scan budget. Nanoseconds as decimal strings, matching every other time value in this contract.",
+      "properties": {
+        "candle": {
+          "const": "2678400000000000"
+        },
+        "candle_1m": {
+          "const": "34560000000000000"
+        },
+        "candle_1h": {
+          "const": "157680000000000000"
+        },
+        "candle_1d": {
+          "const": "788400000000000000"
+        },
+        "trade": {
+          "const": "604800000000000"
+        },
+        "quote": {
+          "const": "86400000000000"
+        },
+        "depth": {
+          "const": "86400000000000"
+        },
+        "trade_minute_1m": {
+          "const": "2678400000000000"
+        },
+        "trade_level_1m": {
+          "const": "604800000000000"
+        },
+        "trade_slice_2s": {
+          "const": "604800000000000"
+        },
+        "trade_prints_1m": {
+          "const": "2678400000000000"
+        }
+      },
+      "additionalProperties": false
+    },
+    "trade_minuteRow": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/derivedRowBase"
+        },
+        {
+          "type": "object",
+          "required": [
+            "open_ns",
+            "close_ns",
+            "volume",
+            "buy_volume",
+            "sell_volume",
+            "undefined_volume",
+            "buy_notional",
+            "sell_notional",
+            "trade_count",
+            "method"
+          ],
+          "properties": {
+            "open_ns": {
+              "$ref": "#/$defs/unsigned64"
+            },
+            "close_ns": {
+              "$ref": "#/$defs/unsigned64"
+            },
+            "volume": {
+              "$ref": "#/$defs/exactDecimal"
+            },
+            "buy_volume": {
+              "$ref": "#/$defs/exactDecimal"
+            },
+            "sell_volume": {
+              "$ref": "#/$defs/exactDecimal"
+            },
+            "undefined_volume": {
+              "$ref": "#/$defs/exactDecimal"
+            },
+            "buy_notional": {
+              "$ref": "#/$defs/exactDecimal"
+            },
+            "sell_notional": {
+              "$ref": "#/$defs/exactDecimal"
+            },
+            "trade_count": {
+              "$ref": "#/$defs/integer64"
+            },
+            "method": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false,
+      "description": "One UTC minute of executions derived from the trade family (report 54): every NEW execution counts in volume and trade_count, buy and sell volumes split by aggressor, undefined_volume is the remainder, notionals are BUY and SELL only. Persisted layout; served from archive-query/1 once the family is admitted to the request family set."
+    },
+    "trade_levelRow": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/derivedRowBase"
+        },
+        {
+          "type": "object",
+          "required": [
+            "open_ns",
+            "close_ns",
+            "tick_size",
+            "price_bucket",
+            "volume",
+            "buy_volume",
+            "sell_volume",
+            "trade_count",
+            "method"
+          ],
+          "properties": {
+            "open_ns": {
+              "$ref": "#/$defs/unsigned64"
+            },
+            "close_ns": {
+              "$ref": "#/$defs/unsigned64"
+            },
+            "tick_size": {
+              "$ref": "#/$defs/exactDecimal"
+            },
+            "price_bucket": {
+              "$ref": "#/$defs/integer64"
+            },
+            "volume": {
+              "$ref": "#/$defs/exactDecimal"
+            },
+            "buy_volume": {
+              "$ref": "#/$defs/exactDecimal"
+            },
+            "sell_volume": {
+              "$ref": "#/$defs/exactDecimal"
+            },
+            "trade_count": {
+              "$ref": "#/$defs/integer64"
+            },
+            "method": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false,
+      "description": "One minute x one price bucket at the instrument tick, price_bucket = floor(price / tick_size) in exact integer arithmetic. Persisted layout, as trade_minuteRow."
+    },
+    "trade_sliceRow": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/derivedRowBase"
+        },
+        {
+          "type": "object",
+          "required": [
+            "open_ns",
+            "close_ns",
+            "last_trade_ns",
+            "buy_notional",
+            "sell_notional",
+            "trade_count",
+            "method"
+          ],
+          "properties": {
+            "open_ns": {
+              "$ref": "#/$defs/unsigned64"
+            },
+            "close_ns": {
+              "$ref": "#/$defs/unsigned64"
+            },
+            "last_trade_ns": {
+              "$ref": "#/$defs/unsigned64"
+            },
+            "buy_notional": {
+              "$ref": "#/$defs/exactDecimal"
+            },
+            "sell_notional": {
+              "$ref": "#/$defs/exactDecimal"
+            },
+            "trade_count": {
+              "$ref": "#/$defs/integer64"
+            },
+            "method": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false,
+      "description": "One 2 s slice of BUY and SELL notional with the last execution's time inside it, the live sliced-notional read's shape. Persisted layout, as trade_minuteRow."
+    },
+    "trade_printsRow": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/derivedRowBase"
+        },
+        {
+          "type": "object",
+          "required": [
+            "open_ns",
+            "close_ns",
+            "side",
+            "rank",
+            "trade_ns",
+            "price",
+            "size",
+            "trade_entity_id",
+            "method"
+          ],
+          "properties": {
+            "open_ns": {
+              "$ref": "#/$defs/unsigned64"
+            },
+            "close_ns": {
+              "$ref": "#/$defs/unsigned64"
+            },
+            "side": {
+              "enum": [
+                "BUY",
+                "SELL"
+              ]
+            },
+            "rank": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 64
+            },
+            "trade_ns": {
+              "$ref": "#/$defs/unsigned64"
+            },
+            "price": {
+              "$ref": "#/$defs/exactDecimal"
+            },
+            "size": {
+              "$ref": "#/$defs/exactDecimal"
+            },
+            "trade_entity_id": {
+              "$ref": "#/$defs/nullableText"
+            },
+            "method": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false,
+      "description": "One of the ranked largest BUY or SELL executions of a minute, the live large-trade read's shape. Persisted layout, as trade_minuteRow."
+    }
+  },
+  "$ref": "#/$defs/message"
+}

@@ -1,0 +1,2 @@
+# Replaced by terminal-log-retention.timer for dated CLI logs.
+# Periodic retention is not a hard quota. Active-day overflow signals failure.

@@ -1,0 +1,139 @@
+{
+  "mutations": [
+    {
+      "id": "l2-s4.server.warm-up-limit-back-to-retention-cap",
+      "file": "apps/runtime/src/server/market-data-server.js",
+      "find": "const LARGE_TRADE_QUERY_LIMIT = MAX_ROW_LIMIT_BY_ROUTE[\"large-trades\"];",
+      "replace": "const LARGE_TRADE_QUERY_LIMIT = 100_000;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/market-data-server.test.js"
+      ],
+      "mustFail": [
+        "the warm-up asks storage for a chunk the live-storage route will accept, whatever the marker retention cap is"
+      ]
+    },
+    {
+      "id": "l2-s4.route.slow-window-rewritten-onto-the-hour",
+      "file": "apps/runtime/src/server/live-storage-route.js",
+      "find": "    const options = payload.options ?? {};",
+      "replace": "    const options = (() => { const o = payload.options ?? {}; if (!SLOW_AGGREGATE_ROUTES[routeName] || !Number.isSafeInteger(o.toTs)) return o; const t = Math.floor(o.toTs / 3_600_000) * 3_600_000; return Number.isSafeInteger(o.fromTs) ? { ...o, fromTs: Math.max(0, t - (o.toTs - o.fromTs)), toTs: t } : { ...o, toTs: t }; })();",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/live-storage-route.test.js"
+      ],
+      "mustFail": [
+        "minute-rollup and daily-notional windows off the hour reach the reader unshifted"
+      ]
+    },
+    {
+      "id": "l2-s4.vpin.calibration-window-not-hour-aligned",
+      "file": "apps/runtime/src/indicators/vpin/vpin-compute.js",
+      "find": "  const calibrationToTs = Math.floor(calibrationEndTs / CALIBRATION_ALIGN_MS) * CALIBRATION_ALIGN_MS;",
+      "replace": "  const calibrationToTs = calibrationEndTs;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/indicators/vpin/vpin-warmup-worker.test.js"
+      ],
+      "mustFail": [
+        "calibrates over an hour-aligned window ending at or before nowMs, floored at zero"
+      ]
+    },
+    {
+      "id": "l2-s4.reader.candle-timeout-back-to-flat-default",
+      "file": "apps/runtime/src/storage/remote-storage-reader.js",
+      "find": "const TIMEOUT_MS_BY_ROUTE = Object.freeze({ \"recent-candles\": 30_000,",
+      "replace": "const TIMEOUT_MS_BY_ROUTE = Object.freeze({ \"recent-candles\": 5_000,",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/storage/remote-storage-reader.test.js"
+      ],
+      "mustFail": [
+        "the candle timeout covers the candle byte cap at the measured 200 KB/s link rate; other routes keep the default"
+      ]
+    },
+    {
+      "id": "l2-s4.reader.route-timeout-ignored",
+      "file": "apps/runtime/src/storage/remote-storage-reader.js",
+      "find": "    const routeTimeoutMs = timeoutMsByRoute[routeName] ?? timeoutMs;",
+      "replace": "    const routeTimeoutMs = timeoutMs;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/storage/remote-storage-reader.test.js"
+      ],
+      "mustFail": [
+        "a route-specific timeout outlives the default one, and only for that route"
+      ]
+    },
+    {
+      "id": "l2-s4.reader.timeout-logged-as-malformed",
+      "file": "apps/runtime/src/storage/remote-storage-reader.js",
+      "find": "      if (!parsed.ok && timedOut) {",
+      "replace": "      if (false) {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/storage/remote-storage-reader.test.js"
+      ],
+      "mustFail": [
+        "a body that is still streaming when the timeout fires is logged as a timeout, not as malformed"
+      ]
+    },
+    {
+      "id": "l2-s4.dxfeed-reader.route-timeout-ignored",
+      "file": "apps/runtime/src/storage/dxfeed/remote-dxfeed-storage-reader.js",
+      "find": "    const routeTimeoutMs = timeoutMsByRoute[routeName] ?? timeoutMs;",
+      "replace": "    const routeTimeoutMs = timeoutMs;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/storage/dxfeed/remote-dxfeed-storage-reader.test.js"
+      ],
+      "mustFail": [
+        "a route-specific timeout outlives the default one, and only for that route"
+      ]
+    },
+    {
+      "id": "l2-s4.relay.never-compresses",
+      "file": "apps/runtime/src/server/live-storage-relay.js",
+      "find": "    const compress = encoded.length >= MIN_COMPRESS_BYTES && acceptsGzip(response);",
+      "replace": "    const compress = false;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/live-storage-relay.test.js"
+      ],
+      "mustFail": [
+        "gzips a large body for a client that accepts gzip, and sends identity to one that does not"
+      ]
+    },
+    {
+      "id": "l2-s4.relay.compresses-without-consent",
+      "file": "apps/runtime/src/server/live-storage-relay.js",
+      "find": "    const compress = encoded.length >= MIN_COMPRESS_BYTES && acceptsGzip(response);",
+      "replace": "    const compress = encoded.length >= MIN_COMPRESS_BYTES;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "test/server/live-storage-relay.test.js"
+      ],
+      "mustFail": [
+        "gzips a large body for a client that accepts gzip, and sends identity to one that does not"
+      ]
+    }
+  ]
+}

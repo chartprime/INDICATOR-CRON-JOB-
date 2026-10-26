@@ -1,0 +1,196 @@
+{
+  "mutations": [
+    {
+      "id": "audit-structure.choch-never",
+      "file": "apps/web/src/lib/indicators/market-structure/marketStructure.ts",
+      "find": "  return lastTrend === opposite ? \"CHoCH\" : \"BOS\";",
+      "replace": "  return \"BOS\";",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/market-structure"
+      ],
+      "mustFail": [
+        "labels an unbroken swing projection the way the break would be classified"
+      ]
+    },
+    {
+      "id": "audit-structure.grade-sign-ignored",
+      "file": "apps/web/src/lib/indicators/market-structure/marketStructure.ts",
+      "find": "  const aligned = kind === \"bullish\" ? ratio : -ratio;",
+      "replace": "  const aligned = ratio;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/market-structure"
+      ],
+      "mustFail": [
+        "grades every band on both sides"
+      ]
+    },
+    {
+      "id": "audit-structure.grade-against-trend-graded",
+      "file": "apps/web/src/lib/indicators/market-structure/marketStructure.ts",
+      "find": "  if (aligned <= 0) return \"~\";\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/market-structure"
+      ],
+      "mustFail": [
+        "assigns the divergent grade ~ when a bullish breakout occurs on negative net delta"
+      ]
+    },
+    {
+      "id": "audit-structure.span-skips-break-bar",
+      "file": "apps/web/src/lib/indicators/market-structure/marketStructure.ts",
+      "find": "  for (let i = pivotIndex; i <= breakIndex; i += 1) {",
+      "replace": "  for (let i = pivotIndex; i < breakIndex; i += 1) {",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/market-structure"
+      ],
+      "mustFail": [
+        "detects swings, accumulates breakout candle deltas"
+      ]
+    },
+    {
+      "id": "audit-structure.span-unknown-delta-ignored",
+      "file": "apps/web/src/lib/indicators/market-structure/marketStructure.ts",
+      "find": "    if (barDelta === null) return { delta: null, ratio: null, midTime };\n",
+      "replace": "    if (barDelta === null) continue;\n",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/market-structure"
+      ],
+      "mustFail": [
+        "does not grade a break whose span holds a bar without aggressor classification"
+      ]
+    },
+    {
+      "id": "audit-structure.break-on-touch",
+      "file": "apps/web/src/lib/indicators/market-structure/marketStructure.ts",
+      "find": "      bar.close > state.lastSwingHighPrice\n",
+      "replace": "      bar.close >= state.lastSwingHighPrice\n",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/market-structure"
+      ],
+      "mustFail": [
+        "needs a close beyond the swing"
+      ]
+    },
+    {
+      "id": "audit-structure.break-on-wick",
+      "file": "apps/web/src/lib/indicators/market-structure/marketStructure.ts",
+      "find": "      bar.close < state.lastSwingLowPrice\n",
+      "replace": "      bar.low < state.lastSwingLowPrice\n",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/market-structure"
+      ],
+      "mustFail": [
+        "breaks a swing low only on a close below it"
+      ]
+    },
+    {
+      "id": "audit-structure.swing-not-consumed",
+      "file": "apps/web/src/lib/indicators/market-structure/marketStructure.ts",
+      "find": "      state.lastTrend = \"bullish\";\n      state.lastSwingHighPrice = null;",
+      "replace": "      state.lastTrend = \"bullish\";",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/market-structure"
+      ],
+      "mustFail": [
+        "hides the pivot dot together with its line and label"
+      ]
+    },
+    {
+      "id": "audit-structure.open-bar-breaks",
+      "file": "apps/web/src/lib/indicators/market-structure/marketStructure.ts",
+      "find": "    if (!bar.closed) return;\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/market-structure"
+      ],
+      "mustFail": [
+        "commits swings and breaks only on closed bars"
+      ]
+    },
+    {
+      "id": "audit-structure.replace-pushes-new-bar",
+      "file": "apps/web/src/lib/indicators/market-structure/marketStructure.ts",
+      "find": "    if (!replace) {\n      state.barTimes.push(bar.ts_open);",
+      "replace": "    if (true) {\n      state.barTimes.push(bar.ts_open);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/market-structure"
+      ],
+      "mustFail": [
+        "a candle re-delivered while it forms is one bar"
+      ]
+    },
+    {
+      "id": "audit-structure.events-unbounded",
+      "file": "apps/web/src/lib/indicators/market-structure/marketStructure.ts",
+      "find": "  if (state.events.length > MAX_STRUCTURE_OBJECTS) state.events.shift();",
+      "replace": "  void 0;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/market-structure"
+      ],
+      "mustFail": [
+        "bounds the event history to MAX_STRUCTURE_OBJECTS"
+      ]
+    },
+    {
+      "id": "audit-structure.label-offset-wrong-side",
+      "file": "apps/web/src/lib/indicators/market-structure/marketStructure.ts",
+      "find": "        state.lastSwingLowPrice - atr * 0.3,",
+      "replace": "        state.lastSwingLowPrice + atr * 0.3,",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/lib/indicators/market-structure"
+      ],
+      "mustFail": [
+        "breaks a swing low only on a close below it, and labels the break below the line"
+      ]
+    }
+  ]
+}

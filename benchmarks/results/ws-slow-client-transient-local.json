@@ -1,0 +1,683 @@
+{
+  "contractVersion": 1,
+  "kind": "ws-fanout",
+  "name": "o0-ws-slow-client-transient-stall-production-thresholds",
+  "source": {
+    "git": {
+      "commit": "f127ea4f44a274ad43c3fb5b6639d02c18d8a6f0",
+      "dirty": true,
+      "trackedChanges": 26,
+      "untrackedFiles": 55,
+      "trackedDiffSha256": "48ff14d5846e2773ce2e6a771f4d5dc88474e25b8990267464b011144545ac4a"
+    },
+    "scriptSha256": "3ba4799c2cdd9603147913fe55ab087b07edd1d3c205cd919faa5e50c0de5687",
+    "manifestSha256": "cb6c4f8626da77fd2499fc4e451dd113311e9311b1c0c6e7974d98706c31dbcf",
+    "nodeVersion": "v25.2.1",
+    "wsVersion": "8.21.3"
+  },
+  "startedAtUtc": "2026-09-20T03:35:12.723Z",
+  "settings": {
+    "clients": 4,
+    "warmupMs": 6000,
+    "durationMs": 10000,
+    "sampleEveryMs": 100,
+    "upstream": {
+      "tradesPerPulse": 20,
+      "pulseMs": 20
+    },
+    "slowClients": {
+      "count": 1,
+      "pauseAfterMs": 1000,
+      "resumeAfterMs": 4000
+    },
+    "server": null
+  },
+  "wallMs": 16272.869,
+  "measuredWallMs": 10001.988,
+  "sent": {
+    "total": 15981,
+    "measured": 9988,
+    "nominalTradesPerSecond": 1000,
+    "achievedTradesPerSecond": 999,
+    "pulseIntervalMs": {
+      "samples": 343,
+      "p50": 30.71980000000076,
+      "p95": 31.8762999999999,
+      "p99": 32.3762999999999,
+      "max": 32.64249999999993
+    }
+  },
+  "latencyMs": {
+    "healthy": {
+      "samples": 29964,
+      "p50": 18,
+      "p95": 19,
+      "p99": 20,
+      "max": 25
+    }
+  },
+  "timelineClient0": [
+    {
+      "second": 0,
+      "trades": 978,
+      "latencyMs": {
+        "samples": 978,
+        "p50": 18,
+        "p95": 19,
+        "p99": 20,
+        "max": 20
+      },
+      "frames": {}
+    },
+    {
+      "second": 1,
+      "trades": 1005,
+      "latencyMs": {
+        "samples": 1005,
+        "p50": 18,
+        "p95": 19,
+        "p99": 20,
+        "max": 20
+      },
+      "frames": {
+        "marker": 1
+      }
+    },
+    {
+      "second": 2,
+      "trades": 1007,
+      "latencyMs": {
+        "samples": 1007,
+        "p50": 17,
+        "p95": 19,
+        "p99": 21,
+        "max": 21
+      },
+      "frames": {}
+    },
+    {
+      "second": 3,
+      "trades": 988,
+      "latencyMs": {
+        "samples": 988,
+        "p50": 17,
+        "p95": 20,
+        "p99": 24,
+        "max": 24
+      },
+      "frames": {
+        "health": 2
+      }
+    },
+    {
+      "second": 4,
+      "trades": 1003,
+      "latencyMs": {
+        "samples": 1003,
+        "p50": 18,
+        "p95": 19,
+        "p99": 23,
+        "max": 23
+      },
+      "frames": {}
+    },
+    {
+      "second": 5,
+      "trades": 1012,
+      "latencyMs": {
+        "samples": 1012,
+        "p50": 18,
+        "p95": 19,
+        "p99": 20,
+        "max": 20
+      },
+      "frames": {}
+    },
+    {
+      "second": 6,
+      "trades": 993,
+      "latencyMs": {
+        "samples": 993,
+        "p50": 18,
+        "p95": 20,
+        "p99": 20,
+        "max": 20
+      },
+      "frames": {}
+    },
+    {
+      "second": 7,
+      "trades": 1013,
+      "latencyMs": {
+        "samples": 1013,
+        "p50": 18,
+        "p95": 19,
+        "p99": 19,
+        "max": 19
+      },
+      "frames": {
+        "marker": 1
+      }
+    },
+    {
+      "second": 8,
+      "trades": 978,
+      "latencyMs": {
+        "samples": 978,
+        "p50": 18,
+        "p95": 19,
+        "p99": 20,
+        "max": 20
+      },
+      "frames": {
+        "marker": 1
+      }
+    },
+    {
+      "second": 9,
+      "trades": 1011,
+      "latencyMs": {
+        "samples": 1011,
+        "p50": 18,
+        "p95": 20,
+        "p99": 20,
+        "max": 20
+      },
+      "frames": {}
+    }
+  ],
+  "invariants": {
+    "producerKeptUp": true,
+    "healthyClientsReceivedEverySentTrade": true,
+    "resumedSlowClientsReceivedEverySentTrade": true,
+    "healthyClientsMinReceived": 9988,
+    "healthyClientsMaxReceived": 9988,
+    "duplicatesOrReordered": 0,
+    "gapsOnHealthyClients": 0,
+    "slowClients": 1,
+    "slowClientsEvictedByServer": 0,
+    "serverCloseCodes": {},
+    "incidents": 0
+  },
+  "server": {
+    "maxHealthyBufferedBytes": 0,
+    "maxSlowBufferedBytes": 329819,
+    "rssBytes": {
+      "start": 115126272,
+      "max": 116535296,
+      "end": 108285952
+    },
+    "eventLoopDelayMs": {
+      "p50": 15.327231,
+      "p99": 19.185663,
+      "max": 23.707647
+    },
+    "incidents": []
+  },
+  "clients": [
+    {
+      "index": 0,
+      "slow": false,
+      "received": 9988,
+      "frameCounts": {
+        "trade": 9988,
+        "marker": 3,
+        "health": 2
+      },
+      "duplicatesOrReordered": 0,
+      "gaps": 0,
+      "latencyMs": {
+        "samples": 9988,
+        "p50": 18,
+        "p95": 19,
+        "p99": 20,
+        "max": 24
+      },
+      "maxBufferedBytes": 0,
+      "serverClose": null,
+      "serverTerminatedAtMs": null,
+      "clientClosed": null
+    },
+    {
+      "index": 1,
+      "slow": false,
+      "received": 9988,
+      "frameCounts": {
+        "trade": 9988,
+        "marker": 3,
+        "health": 2
+      },
+      "duplicatesOrReordered": 0,
+      "gaps": 0,
+      "latencyMs": {
+        "samples": 9988,
+        "p50": 18,
+        "p95": 19,
+        "p99": 20,
+        "max": 25
+      },
+      "maxBufferedBytes": 0,
+      "serverClose": null,
+      "serverTerminatedAtMs": null,
+      "clientClosed": null
+    },
+    {
+      "index": 2,
+      "slow": false,
+      "received": 9988,
+      "frameCounts": {
+        "trade": 9988,
+        "marker": 3,
+        "health": 2
+      },
+      "duplicatesOrReordered": 0,
+      "gaps": 0,
+      "latencyMs": {
+        "samples": 9988,
+        "p50": 18,
+        "p95": 20,
+        "p99": 20,
+        "max": 25
+      },
+      "maxBufferedBytes": 0,
+      "serverClose": null,
+      "serverTerminatedAtMs": null,
+      "clientClosed": null
+    },
+    {
+      "index": 3,
+      "slow": true,
+      "received": 9988,
+      "frameCounts": {
+        "trade": 9988,
+        "marker": 3,
+        "health": 2
+      },
+      "duplicatesOrReordered": 0,
+      "gaps": 0,
+      "latencyMs": {
+        "samples": 9988,
+        "p50": 19,
+        "p95": 2539,
+        "p99": 2927,
+        "max": 3020
+      },
+      "maxBufferedBytes": 329819,
+      "pausedAtMs": 1004.479,
+      "resumedAtMs": 4006.873,
+      "bufferedSeriesMs": [
+        [
+          109.033,
+          0
+        ],
+        [
+          217.515,
+          0
+        ],
+        [
+          323.177,
+          0
+        ],
+        [
+          432.393,
+          0
+        ],
+        [
+          538.165,
+          0
+        ],
+        [
+          645.564,
+          0
+        ],
+        [
+          756.55,
+          0
+        ],
+        [
+          866.941,
+          0
+        ],
+        [
+          973.486,
+          0
+        ],
+        [
+          1080.975,
+          0
+        ],
+        [
+          1188.287,
+          0
+        ],
+        [
+          1295.999,
+          0
+        ],
+        [
+          1408.387,
+          0
+        ],
+        [
+          1517.297,
+          0
+        ],
+        [
+          1625.777,
+          0
+        ],
+        [
+          1735.859,
+          0
+        ],
+        [
+          1842.333,
+          0
+        ],
+        [
+          1951.169,
+          0
+        ],
+        [
+          2058.06,
+          0
+        ],
+        [
+          2168.842,
+          16359
+        ],
+        [
+          2275.72,
+          32380
+        ],
+        [
+          2383.463,
+          53511
+        ],
+        [
+          2493.813,
+          69356
+        ],
+        [
+          2600.258,
+          90303
+        ],
+        [
+          2709.085,
+          106144
+        ],
+        [
+          2821.865,
+          127271
+        ],
+        [
+          2928.77,
+          145847
+        ],
+        [
+          3033.397,
+          161520
+        ],
+        [
+          3139.676,
+          180617
+        ],
+        [
+          3246.791,
+          200553
+        ],
+        [
+          3354.751,
+          216060
+        ],
+        [
+          3464.027,
+          234621
+        ],
+        [
+          3570.456,
+          255581
+        ],
+        [
+          3680.504,
+          271762
+        ],
+        [
+          3788.965,
+          292715
+        ],
+        [
+          3896.586,
+          308226
+        ],
+        [
+          4006.69,
+          329819
+        ],
+        [
+          4115.458,
+          0
+        ],
+        [
+          4223.134,
+          0
+        ],
+        [
+          4330.486,
+          0
+        ],
+        [
+          4436.655,
+          0
+        ],
+        [
+          4544.866,
+          0
+        ],
+        [
+          4653.101,
+          0
+        ],
+        [
+          4765.422,
+          0
+        ],
+        [
+          4871.929,
+          0
+        ],
+        [
+          4977.546,
+          0
+        ],
+        [
+          5088.651,
+          0
+        ],
+        [
+          5197.963,
+          0
+        ],
+        [
+          5305.39,
+          0
+        ],
+        [
+          5416.124,
+          0
+        ],
+        [
+          5524.117,
+          0
+        ],
+        [
+          5632.182,
+          0
+        ],
+        [
+          5744.441,
+          0
+        ],
+        [
+          5850.96,
+          0
+        ],
+        [
+          5962.036,
+          0
+        ],
+        [
+          6061.666,
+          0
+        ],
+        [
+          6178.722,
+          0
+        ],
+        [
+          6287.632,
+          0
+        ],
+        [
+          6396.447,
+          0
+        ],
+        [
+          6502.606,
+          0
+        ],
+        [
+          6611.626,
+          0
+        ],
+        [
+          6718.543,
+          0
+        ],
+        [
+          6829.163,
+          0
+        ],
+        [
+          6937.316,
+          0
+        ],
+        [
+          7047.185,
+          0
+        ],
+        [
+          7157.263,
+          0
+        ],
+        [
+          7265.887,
+          0
+        ],
+        [
+          7376.239,
+          0
+        ],
+        [
+          7483.336,
+          0
+        ],
+        [
+          7592.297,
+          0
+        ],
+        [
+          7700.694,
+          0
+        ],
+        [
+          7811.39,
+          0
+        ],
+        [
+          7921.442,
+          0
+        ],
+        [
+          8029.661,
+          0
+        ],
+        [
+          8138.611,
+          0
+        ],
+        [
+          8245.642,
+          0
+        ],
+        [
+          8354.999,
+          0
+        ],
+        [
+          8463.739,
+          0
+        ],
+        [
+          8570.845,
+          0
+        ],
+        [
+          8678.487,
+          0
+        ],
+        [
+          8790.171,
+          0
+        ],
+        [
+          8897.38,
+          0
+        ],
+        [
+          9007.311,
+          0
+        ],
+        [
+          9118.674,
+          0
+        ],
+        [
+          9227.994,
+          0
+        ],
+        [
+          9336.332,
+          0
+        ],
+        [
+          9442.928,
+          0
+        ],
+        [
+          9551.262,
+          0
+        ],
+        [
+          9660.132,
+          0
+        ],
+        [
+          9770.522,
+          0
+        ],
+        [
+          9880.448,
+          0
+        ],
+        [
+          9985.716,
+          0
+        ]
+      ],
+      "serverClose": null,
+      "serverTerminatedAtMs": null,
+      "clientClosed": null
+    }
+  ]
+}

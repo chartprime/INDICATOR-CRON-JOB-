@@ -1,0 +1,228 @@
+{
+  "mutations": [
+    {
+      "id": "audit-server.mds.evict.grace-ignored",
+      "file": "apps/runtime/src/server/market-data-server-shared.js",
+      "find": "const withinGrace = !runaway && atMs - since < graceMs;",
+      "replace": "const withinGrace = false;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/server/market-data-server.test.js"
+      ],
+      "mustFail": [
+        "a client briefly over the outbound buffer budget is not closed and resumes"
+      ]
+    },
+    {
+      "id": "audit-server.mds.evict.hard-ceiling-ignored",
+      "file": "apps/runtime/src/server/market-data-server-shared.js",
+      "find": "const runaway = buffered > hardBytes;",
+      "replace": "const runaway = false;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/server/market-data-server.test.js"
+      ],
+      "mustFail": [
+        "a client past the hard buffer ceiling is closed immediately"
+      ]
+    },
+    {
+      "id": "audit-server.mds.evict.incremental-dropped-in-grace",
+      "file": "apps/runtime/src/server/market-data-server-shared.js",
+      "find": " || kind === FRAME_KIND_INCREMENTAL)) {\n        return attemptSend();",
+      "replace": ")) {\n        return attemptSend();",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/server/market-data-server.test.js"
+      ],
+      "mustFail": [
+        "during the grace window control and incremental frames remain lossless"
+      ]
+    },
+    {
+      "id": "audit-server.mds.evict.latest-state-dropped-in-grace",
+      "file": "apps/runtime/src/server/market-data-server-shared.js",
+      "find": "kind === FRAME_KIND_CONTROL || kind === FRAME_KIND_LATEST_STATE || kind === FRAME_KIND_INCREMENTAL)) {",
+      "replace": "kind === FRAME_KIND_CONTROL || kind === FRAME_KIND_INCREMENTAL)) {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/server/market-data-server.test.js"
+      ],
+      "mustFail": [
+        "a client briefly over the outbound buffer budget is not closed and resumes"
+      ]
+    },
+    {
+      "id": "audit-server.mds.evict.bulk-sent-in-grace",
+      "file": "apps/runtime/src/server/market-data-server-shared.js",
+      "find": "      if (withinGrace) {\n        return false;\n      }\n",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/server/market-data-server.test.js"
+      ],
+      "mustFail": [
+        "during the grace window a bulk history reply is skipped"
+      ]
+    },
+    {
+      "id": "audit-server.mds.evict.over-since-never-cleared",
+      "file": "apps/runtime/src/server/market-data-server-shared.js",
+      "find": "    overSince.delete(client);\n    return attemptSend();",
+      "replace": "    return attemptSend();",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/server/market-data-server.test.js"
+      ],
+      "mustFail": [
+        "a client briefly over the outbound buffer budget is not closed and resumes"
+      ]
+    },
+    {
+      "id": "audit-server.mds.evict.client-not-released",
+      "file": "apps/runtime/src/server/market-data-server-shared.js",
+      "find": "      closeClient(client, 1013, \"Client is too slow to receive market data\");\n      releaseClient(client);",
+      "replace": "      closeClient(client, 1013, \"Client is too slow to receive market data\");",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/server/market-data-server.test.js"
+      ],
+      "mustFail": [
+        "a client that stays over the outbound buffer budget past the grace window is closed and removed"
+      ]
+    },
+    {
+      "id": "audit-server.mds.send-failure-client-not-released",
+      "file": "apps/runtime/src/server/market-data-server-shared.js",
+      "find": "        releaseClient(client);\n        closeClient(client, 1011,",
+      "replace": "        closeClient(client, 1011,",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/server/market-data-server.test.js"
+      ],
+      "mustFail": [
+        "a client whose send() throws does not stop the broadcast"
+      ]
+    },
+    {
+      "id": "audit-server.mds.resync-extra-fields-accepted",
+      "file": "apps/runtime/src/server/market-data-server.js",
+      "find": "      if (Object.keys(parsed).length !== 1) {\n        console.warn(\n          \"market data server: dropped liquidity_resync",
+      "replace": "      if (false) {\n        console.warn(\n          \"market data server: dropped liquidity_resync",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/server/market-data-server.test.js"
+      ],
+      "mustFail": [
+        "a liquidity_resync with surplus fields is dropped"
+      ]
+    },
+    {
+      "id": "audit-server.shared.selection-limit-off-by-one",
+      "file": "apps/runtime/src/server/market-data-server-shared.js",
+      "find": "      return window.selections <= maxPerWindow;",
+      "replace": "      return window.selections <= maxPerWindow + 1;",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/server/market-data-server-shared.test.js"
+      ],
+      "mustFail": [
+        "allows up to the cap inside one window, then refuses"
+      ]
+    },
+    {
+      "id": "audit-server.shared.selection-window-never-resets",
+      "file": "apps/runtime/src/server/market-data-server-shared.js",
+      "find": " || nowMs - window.startedAtMs >= windowMs) {",
+      "replace": ") {",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/server/market-data-server-shared.test.js"
+      ],
+      "mustFail": [
+        "starts a fresh window once the old one has elapsed"
+      ]
+    },
+    {
+      "id": "audit-server.mds.sender-wired-without-grace",
+      "file": "apps/runtime/src/server/market-data-server.js",
+      "find": "    graceMs: clientBufferGraceMs,\n",
+      "replace": "    graceMs: 0,\n",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/server/market-data-server.test.js"
+      ],
+      "mustFail": [
+        "a client briefly over the outbound buffer budget"
+      ]
+    },
+    {
+      "id": "audit-server.lazy.sender-wired-without-grace",
+      "file": "apps/runtime/src/server/dxfeed-market-data-server.js",
+      "find": "    graceMs: clientBufferGraceMs,\n",
+      "replace": "    graceMs: 0,\n",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/server/dxfeed-market-data-server.test.js"
+      ],
+      "mustFail": [
+        "during the grace window"
+      ]
+    },
+    {
+      "id": "audit-server.eager.sender-wired-without-grace",
+      "file": "apps/runtime/src/server/dxfeed-eager-market-data-server.js",
+      "find": "    graceMs: clientBufferGraceMs,\n",
+      "replace": "    graceMs: 0,\n",
+      "cwd": "apps/runtime",
+      "command": [
+        "npx",
+        "jest",
+        "--runInBand",
+        "test/server/dxfeed-eager-market-data-server.test.js"
+      ],
+      "mustFail": [
+        "during the grace window"
+      ]
+    }
+  ]
+}

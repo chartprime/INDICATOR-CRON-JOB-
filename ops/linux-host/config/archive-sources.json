@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "sources": [
+    {
+      "name": "databento",
+      "identities": ["XCME", "XNAS"],
+      "catalogRoot": "/srv/terminal-data/query-catalogs/databento",
+      "cacheRoot": "/srv/terminal-data/query-cache/databento"
+    },
+    {
+      "name": "binance",
+      "identities": ["BINANCE"],
+      "catalogRoot": "/srv/terminal-data/query-catalogs/binance",
+      "cacheRoot": "/srv/terminal-data/query-cache/binance"
+    }
+  ]
+}

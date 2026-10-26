@@ -1,0 +1,268 @@
+{
+  "generatedAt": "2026-09-24T16:42:01.602Z",
+  "rows": 400,
+  "bars": 10080,
+  "liveBars": true,
+  "liquidityFrames": 17,
+  "phases": {
+    "loadSeconds": 20,
+    "steadySeconds": 20,
+    "hoverSeconds": 10,
+    "panSettleSeconds": 3
+  },
+  "results": [
+    {
+      "scenario": "everything",
+      "favorites": [
+        "rsi",
+        "ema",
+        "bollinger",
+        "sma",
+        "largeTradeBubbles",
+        "killzones",
+        "orderFlow",
+        "largeTradeDetector",
+        "deltaDivergence",
+        "volumeProfile",
+        "deltaProfile",
+        "sessionDeltaProfile",
+        "vpinCloud",
+        "volumeDeltaProfileOhlc",
+        "pivotPoints",
+        "pivotSupportResistance",
+        "passiveLiquidity",
+        "marketStructure",
+        "swingAlphabetProfile",
+        "aggressiveOrders",
+        "absorptionDetector",
+        "fvgBoxes",
+        "l2SupportResistance",
+        "l2BookMap",
+        "fvgDelta",
+        "classicOrderBlocks",
+        "institutionalOrderBlocks",
+        "institutionalOrderBlocksV2",
+        "l1OrderBlocks"
+      ],
+      "pageState": {
+        "chartCanvas": true,
+        "ohlcReadout": true,
+        "liveBadge": true,
+        "indicatorRows": 29,
+        "hiddenIndicatorRows": 0,
+        "liquidityLoaded": true
+      },
+      "phases": {
+        "load": {
+          "longTaskMs": {
+            "count": 94,
+            "p50": 219,
+            "p95": 344,
+            "p99": 618,
+            "max": 1247
+          },
+          "frameIntervalMs": {
+            "count": 99,
+            "p50": 216.6,
+            "p95": 349.9,
+            "p99": 749.9,
+            "max": 1416.6
+          }
+        },
+        "steady": {
+          "longTaskMs": {
+            "count": 100,
+            "p50": 240,
+            "p95": 264,
+            "p99": 276,
+            "max": 277
+          },
+          "frameIntervalMs": {
+            "count": 99,
+            "p50": 233.4,
+            "p95": 266.8,
+            "p99": 283.4,
+            "max": 533.3
+          }
+        },
+        "hover": {
+          "longTaskMs": {
+            "count": 42,
+            "p50": 249,
+            "p95": 294,
+            "p99": 299,
+            "max": 319
+          },
+          "frameIntervalMs": {
+            "count": 43,
+            "p50": 250,
+            "p95": 300,
+            "p99": 316.6,
+            "max": 333.3
+          }
+        },
+        "pan": {
+          "longTaskMs": {
+            "count": 74,
+            "p50": 269,
+            "p95": 305,
+            "p99": 404,
+            "max": 663
+          },
+          "frameIntervalMs": {
+            "count": 74,
+            "p50": 266.8,
+            "p95": 300.1,
+            "p99": 416.7,
+            "max": 666.6
+          }
+        }
+      },
+      "mainThreadBusySeconds": {
+        "steady": 20.0084,
+        "hover": 10.091700000000001,
+        "pan": 20.5143
+      },
+      "hoverMoves": 42,
+      "heapUsedMb": 154.8,
+      "domNodes": 1442,
+      "pageErrors": [],
+      "profileTop": [
+        {
+          "name": "? node_modules/lightweight-charts/dist/lightweight-charts.development.mjs:6037",
+          "ms": 4878.8,
+          "share": 23.6
+        },
+        {
+          "name": "? node_modules/lightweight-charts/dist/lightweight-charts.development.mjs:3559",
+          "ms": 2301.4,
+          "share": 11.2
+        },
+        {
+          "name": "(program) :0:0",
+          "ms": 1629,
+          "share": 7.9
+        },
+        {
+          "name": "? src/lib/indicators/passive-liquidity/liquidityRuns.ts:185",
+          "ms": 1402.9,
+          "share": 6.8
+        },
+        {
+          "name": "? src/lib/chart/draw/kernelPrimitive.ts:142",
+          "ms": 1363.8,
+          "share": 6.6
+        },
+        {
+          "name": "(garbage collector) :0:0",
+          "ms": 1351.1,
+          "share": 6.5
+        },
+        {
+          "name": "? node_modules/lightweight-charts/dist/lightweight-charts.development.mjs:5052",
+          "ms": 669.5,
+          "share": 3.2
+        },
+        {
+          "name": "? node_modules/lightweight-charts/dist/lightweight-charts.development.mjs:2863",
+          "ms": 554.4,
+          "share": 2.7
+        },
+        {
+          "name": "? node_modules/lightweight-charts/dist/lightweight-charts.development.mjs:11817",
+          "ms": 341.5,
+          "share": 1.7
+        },
+        {
+          "name": "? src/lib/chart/draw/kernelPrimitive.ts:691",
+          "ms": 319.9,
+          "share": 1.6
+        },
+        {
+          "name": "? src/lib/indicators/l2-book-map/l2BookMapPrimitive.ts:464",
+          "ms": 287.7,
+          "share": 1.4
+        },
+        {
+          "name": "? node_modules/lightweight-charts/dist/lightweight-charts.development.mjs:11517",
+          "ms": 262.3,
+          "share": 1.3
+        },
+        {
+          "name": "? node_modules/lightweight-charts/dist/lightweight-charts.development.mjs:13738",
+          "ms": 260,
+          "share": 1.3
+        },
+        {
+          "name": "? src/lib/indicators/session-delta-profile/sessionDeltaProfilePrimitive.ts:182",
+          "ms": 253.3,
+          "share": 1.2
+        },
+        {
+          "name": "? node_modules/lightweight-charts/dist/lightweight-charts.development.mjs:12598",
+          "ms": 232.2,
+          "share": 1.1
+        },
+        {
+          "name": "? node_modules/lightweight-charts/dist/lightweight-charts.development.mjs:12560",
+          "ms": 184.4,
+          "share": 0.9
+        },
+        {
+          "name": "fillRect :0:0",
+          "ms": 183.1,
+          "share": 0.9
+        },
+        {
+          "name": "? src/lib/indicators/killzones/killzones.ts:113",
+          "ms": 182.4,
+          "share": 0.9
+        },
+        {
+          "name": "? src/lib/indicators/session-delta-profile/sessionDeltaProfilePrimitive.ts:461",
+          "ms": 151.4,
+          "share": 0.7
+        },
+        {
+          "name": "? node_modules/lightweight-charts/dist/lightweight-charts.development.mjs:11488",
+          "ms": 150,
+          "share": 0.7
+        }
+      ]
+    }
+  ],
+  "verdict": {
+    "budgets": {
+      "steadyLongTaskMaxMs": 100,
+      "frameIntervalP95Ms": 33,
+      "perIndicatorAddedP95Ms": 8
+    },
+    "checks": [
+      {
+        "scenario": "everything",
+        "check": "steady long task ≤ 100 ms",
+        "value": 277,
+        "pass": false
+      },
+      {
+        "scenario": "everything",
+        "check": "steady frame interval p95 ≤ 33 ms",
+        "value": 266.8,
+        "pass": false
+      },
+      {
+        "scenario": "everything",
+        "check": "hover frame interval p95 ≤ 33 ms",
+        "value": 300,
+        "pass": false
+      },
+      {
+        "scenario": "everything",
+        "check": "no page errors",
+        "value": 0,
+        "pass": true
+      }
+    ],
+    "pass": false
+  }
+}

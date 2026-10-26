@@ -1,0 +1,29 @@
+{
+  "mutations": [
+    {
+      "id": "replay-overlap.eager-server-does-not-seed",
+      "file": "apps/runtime/src/server/dxfeed-eager-market-data-server.js",
+      "find": "        barAggregator.seedFinalizedThrough(view.symbol, view.assetClass, latestPersistedTsOpen);",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/providers/dxfeed/dxfeed-bar-aggregator.test.js", "test/server/dxfeed-eager-market-data-server.test.js", "test/server/dxfeed-market-data-server.test.js"]
+    },
+    {
+      "id": "replay-overlap.lazy-server-does-not-seed",
+      "file": "apps/runtime/src/server/dxfeed-market-data-server.js",
+      "find": "        barAggregator.seedFinalizedThrough(activeView.symbol, activeView.assetClass, latestPersistedTsOpen);",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/providers/dxfeed/dxfeed-bar-aggregator.test.js", "test/server/dxfeed-eager-market-data-server.test.js", "test/server/dxfeed-market-data-server.test.js"],
+      "mustFail": ["persisted warm-up history seeds the finality watermark, so replayed prints for a stored minute are discarded silently"]
+    },
+    {
+      "id": "replay-overlap.seed-keeps-a-stale-bucket",
+      "file": "apps/runtime/src/providers/dxfeed/dxfeed-bar-aggregator.js",
+      "find": "    if (bucket && bucket.tsOpen <= tsOpen) buckets.delete(key);",
+      "replace": "",
+      "cwd": "apps/runtime",
+      "command": ["npx", "jest", "test/providers/dxfeed/dxfeed-bar-aggregator.test.js", "test/server/dxfeed-eager-market-data-server.test.js", "test/server/dxfeed-market-data-server.test.js"]
+    }
+  ]
+}

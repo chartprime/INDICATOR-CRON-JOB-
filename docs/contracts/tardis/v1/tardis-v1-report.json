@@ -1,0 +1,88 @@
+{
+  "contract": "tardis-v1",
+  "generatedAt": "2026-09-06T18:16:34.000Z",
+  "producedBy": [
+    "apps/runtime/scripts/verify/tardis/verify-tardis-content.js",
+    "apps/runtime/scripts/verify/tardis/build-tardis-review-samples.js",
+    "apps/runtime/scripts/verify/tardis/verify-tardis-subscription.js"
+  ],
+  "rawEvidence": [
+    "apps/runtime/data/historical/tardis/samples/summary.json",
+    "apps/runtime/data/historical/tardis/samples/review-samples-summary.json"
+  ],
+  "account": {
+    "email": "aghaalifazail101@gmail.com",
+    "accountId": "org_01M1VSMWW0CHGS7ZE28EDVTTDE",
+    "status": "active",
+    "subscription": "academic / all-exchanges (Tardis's own internal label: unlimited) / quarterly",
+    "subscriptionConfirmedAt": "2026-09-07",
+    "subscriptionConfirmedVia": "verify-tardis-subscription.js -- real key shows accessType=academic, 64 exchanges, historical coverage from 2025-09-06",
+    "trial": {
+      "dataPlan": "perpetuals",
+      "from": "2026-08-28T17:18:16.030Z",
+      "to": "2026-09-06T17:18:16.030Z",
+      "expiresAt": "2026-10-06T17:18:16.030Z",
+      "note": "spot trial request was rejected (code 640, one trial per account) but a real spot CSV download succeeded anyway during the trial window -- entitlement enforcement on CSV downloads did not match the account's advertised trial scope. Superseded by the real paid subscription."
+    }
+  },
+  "decision": {
+    "subscriptionType": "academic",
+    "dataPlan": "all-exchanges",
+    "billingInterval": "quarterly",
+    "priceUsd": 1950,
+    "backHistoryMonths": 12,
+    "dataTransferLimitBytes": 60000000000000,
+    "purchased": true,
+    "purchasedAt": "2026-09-07",
+    "eligibilityNote": "requires genuine student/academic-researcher status, confirmed applicable by the account holder"
+  },
+  "subscriptionTypes": {
+    "academic": { "downloadableCsvFiles": true, "dataFeedApi": false, "tardisMachineReplay": false, "instrumentMetadataApi": false, "dataApiKeyLimit": 1, "supportResponseHours": 120, "billingIntervals": ["quarterly", "yearly"] },
+    "solo": { "downloadableCsvFiles": true, "dataFeedApi": false, "tardisMachineReplay": false, "instrumentMetadataApi": false, "dataApiKeyLimit": 1, "supportResponseHours": 72, "billingIntervals": ["monthly", "quarterly", "yearly"] },
+    "professional": { "downloadableCsvFiles": true, "dataFeedApi": true, "tardisMachineReplay": true, "instrumentMetadataApi": true, "dataApiKeyLimit": 1, "dataFeedRequestRateLimit": { "limit": 3000, "windowSeconds": 60 }, "supportResponseHours": 24, "billingIntervals": ["monthly", "quarterly", "yearly"] },
+    "business": { "downloadableCsvFiles": true, "dataFeedApi": true, "tardisMachineReplay": true, "instrumentMetadataApi": true, "dataApiKeyLimit": 10, "dataFeedRequestRateLimit": { "limit": 9000, "windowSeconds": 60 }, "supportResponseHours": 12, "billingIntervals": ["monthly", "quarterly", "yearly"] }
+  },
+  "dataPlanExchangeCounts": {
+    "perpetuals": 28,
+    "spot": 31,
+    "options": 6,
+    "derivatives": 37,
+    "all-exchanges": 64
+  },
+  "dataPlanMembershipTestedOnly": {
+    "perpetuals": { "includesBinanceSpot": false, "includesBinanceFutures": true },
+    "spot": { "includesBinanceSpot": true, "includesBinanceFutures": false },
+    "derivatives": { "includesBinanceSpot": false, "includesBinanceFutures": true },
+    "all-exchanges": { "includesBinanceSpot": true, "includesBinanceFutures": true }
+  },
+  "pricingUsd": {
+    "academic": { "perpetuals": { "quarterly": 1050, "yearly": 4200 }, "spot": { "quarterly": 1350, "yearly": 5400 }, "options": { "quarterly": 1050, "yearly": 4200 }, "derivatives": { "quarterly": 1350, "yearly": 5400 }, "all-exchanges": { "quarterly": 1950, "yearly": 7800 } },
+    "solo": { "perpetuals": { "monthly": 700, "quarterly": 2100, "yearly": 8400 }, "spot": { "monthly": 900, "quarterly": 2700, "yearly": 10800 }, "derivatives": { "monthly": 900, "quarterly": 2700, "yearly": 10800 }, "all-exchanges": { "monthly": 1200, "quarterly": 3600, "yearly": 14400 } },
+    "professional": { "perpetuals": { "monthly": 1000, "quarterly": 3000, "yearly": 12000 }, "spot": { "monthly": 1350, "quarterly": 4050, "yearly": 16200 }, "derivatives": { "monthly": 1350, "quarterly": 4050, "yearly": 16200 }, "all-exchanges": { "monthly": 2200, "quarterly": 6600, "yearly": 26400 } },
+    "business": { "perpetuals": { "monthly": 3000, "quarterly": 9000, "yearly": 36000 }, "spot": { "monthly": 3500, "quarterly": 10500, "yearly": 42000 }, "derivatives": { "monthly": 3500, "quarterly": 10500, "yearly": 42000 }, "all-exchanges": { "monthly": 6000, "quarterly": 18000, "yearly": 72000 } }
+  },
+  "downloadableDataTypes": {
+    "valid": ["trades", "incremental_book_L2", "quotes", "derivative_ticker", "options_chain", "book_snapshot_5", "book_snapshot_25", "liquidations", "book_ticker"],
+    "ohlcv": "not a native downloadable type -- confirmed by a real rejected request; must be derived from trades and cross-checked against the exchange's own klines/candle endpoint"
+  },
+  "schemas": {
+    "trades": { "columns": ["exchange", "symbol", "timestamp", "local_timestamp", "id", "side", "price", "amount"], "appliesTo": ["spot", "perp"] },
+    "incremental_book_L2": { "columns": ["exchange", "symbol", "timestamp", "local_timestamp", "is_snapshot", "side", "price", "amount"], "appliesTo": ["spot", "perp"], "note": "one row per book level change or snapshot row; by far the highest row volume" },
+    "quotes": { "columns": ["exchange", "symbol", "timestamp", "local_timestamp", "ask_amount", "ask_price", "bid_price", "bid_amount"], "appliesTo": ["spot", "perp"], "note": "Tardis-derived best bid/ask, recomputed from the reconstructed L2 book -- changes only when the top level actually changes" },
+    "book_ticker": { "columns": ["exchange", "symbol", "timestamp", "local_timestamp", "ask_amount", "ask_price", "bid_price", "bid_amount"], "appliesTo": ["spot", "perp"], "note": "exchange-native best bid/ask push stream (Binance's own bookTicker channel) -- same columns as quotes but far higher row count; this is the authoritative L1 feed, quotes is a derived cross-check" },
+    "book_snapshot_5": { "columns": ["exchange", "symbol", "timestamp", "local_timestamp", "asks[0..4].price/.amount", "bids[0..4].price/.amount"], "appliesTo": ["spot", "perp"] },
+    "book_snapshot_25": { "columns": ["exchange", "symbol", "timestamp", "local_timestamp", "asks[0..24].price/.amount", "bids[0..24].price/.amount"], "appliesTo": ["spot", "perp"] },
+    "derivative_ticker": { "columns": ["exchange", "symbol", "timestamp", "local_timestamp", "funding_timestamp", "funding_rate", "predicted_funding_rate", "open_interest", "last_price", "index_price", "mark_price"], "appliesTo": ["perp"] },
+    "liquidations": { "columns": ["exchange", "symbol", "timestamp", "local_timestamp", "id", "side", "price", "amount"], "appliesTo": ["perp"] }
+  },
+  "testedCoverage": {
+    "note": "Binance only (binance, binance-futures) tested with real pulls. All-Exchanges' other 62 exchanges are covered by the plan but have zero real verification -- doc claims only.",
+    "window": { "from": "2026-09-01", "to": "2026-09-02" },
+    "rowsByJob": {
+      "BTC-spot": { "trades": 3662805, "incremental_book_L2": 26285680, "quotes": 600685, "book_snapshot_5": 621362, "book_snapshot_25": 695519, "book_ticker": 9847706 },
+      "ETH-spot": { "trades": 2474290, "incremental_book_L2": 17682069, "quotes": 459375, "book_snapshot_5": 507023, "book_snapshot_25": 628160, "book_ticker": 6243460 },
+      "BTC-perp": { "trades": 3602361, "incremental_book_L2": 134350368, "quotes": 1893504, "derivative_ticker": 112367, "book_snapshot_5": 2028349, "book_snapshot_25": 2417772, "liquidations": 1069, "book_ticker": 36920623 },
+      "ETH-perp": { "trades": 4848445, "incremental_book_L2": 108242864, "quotes": 2091873, "derivative_ticker": 113598, "book_snapshot_5": 2229666, "book_snapshot_25": 2649431, "liquidations": 995, "book_ticker": 31541940 }
+    }
+  }
+}

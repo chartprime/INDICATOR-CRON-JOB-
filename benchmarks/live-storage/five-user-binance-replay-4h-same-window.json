@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "name": "o5-binance-replay-4h-five-user-same-window-2026-09-19",
+  "serverDelta": true,
+  "users": 5,
+  "rounds": 1,
+  "requests": [
+    {
+      "route": "replay-page",
+      "body": {
+        "symbol": "BTCUSDT",
+        "marketKind": "SPOT",
+        "options": {
+          "fromTs": 1789675200000,
+          "toTs": 1789689600000,
+          "tickSize": 0.01,
+          "clusterTicks": 50,
+          "rowClusters": 8,
+          "windowRows": 1023,
+          "cursor": null
+        }
+      },
+      "paginate": { "maxPages": 20 }
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "kind": "browser",
+  "name": "o0-browser-steady-tape-2000-trades-per-second",
+  "scenario": "steady-tape",
+  "durationSeconds": 30,
+  "upstream": { "tradesPerPulse": 40, "pulseMs": 20 }
+}

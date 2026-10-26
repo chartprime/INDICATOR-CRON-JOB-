@@ -1,0 +1,100 @@
+{
+  "mutations": [
+    {
+      "id": "audit-data.l2-history-left-pending-at-unmount",
+      "file": "apps/web/src/hooks/useMarketData.ts",
+      "find": "      for (const resolve of pendingL2History.values()) resolve(null);\n      pendingL2History.clear();\n      history.setIdentity(null);",
+      "replace": "      history.setIdentity(null);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/hooks/useMarketData.l2.test.tsx"
+      ],
+      "mustFail": [
+        "answers null to a request still out at unmount"
+      ]
+    },
+    {
+      "id": "audit-data.l2-history-asked-after-unmount",
+      "file": "apps/web/src/hooks/useMarketData.ts",
+      "find": "      if (disposed || !socketOpen) {\n        resolve(null);\n        return;\n      }\n      const requestId = nextL2HistoryId;",
+      "replace": "      if (!socketOpen) {\n        resolve(null);\n        return;\n      }\n      const requestId = nextL2HistoryId;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/hooks/useMarketData.l2.test.tsx"
+      ],
+      "mustFail": [
+        "answers null to a request still out at unmount"
+      ]
+    },
+    {
+      "id": "audit-data.l2-history-another-pairs-answer-kept",
+      "file": "apps/web/src/hooks/useMarketData.ts",
+      "find": "resolve(frameMatchesLivePair(frame.symbol, frame) ? frame : null);",
+      "replace": "resolve(frame);",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/hooks/useMarketData.l2.test.tsx"
+      ],
+      "mustFail": [
+        "routes the live pair's answer back"
+      ]
+    },
+    {
+      "id": "audit-data.l2-history-answer-not-routed",
+      "file": "apps/web/src/hooks/useMarketData.ts",
+      "find": "        const resolve = pendingL2History.get(frame.request_id);",
+      "replace": "        const resolve = pendingL2History.values().next().value;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/hooks/useMarketData.l2.test.tsx"
+      ],
+      "mustFail": [
+        "routes the live pair's answer back"
+      ]
+    },
+    {
+      "id": "audit-data.l2-history-sent-over-a-closed-socket",
+      "file": "apps/web/src/hooks/useMarketData.ts",
+      "find": "      if (disposed || !socketOpen) {\n        resolve(null);\n        return;\n      }\n      const requestId = nextL2HistoryId;",
+      "replace": "      if (disposed) {\n        resolve(null);\n        return;\n      }\n      const requestId = nextL2HistoryId;",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/hooks/useMarketData.l2.test.tsx"
+      ],
+      "mustFail": [
+        "answers null at once to a request made while the socket is not open"
+      ]
+    },
+    {
+      "id": "audit-data.l2-history-socket-never-seen-open",
+      "file": "apps/web/src/hooks/useMarketData.ts",
+      "find": "        socketOpen = msg.status === \"open\";\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "src/hooks/useMarketData.l2.test.tsx"
+      ],
+      "mustFail": [
+        "routes the live pair's answer back"
+      ]
+    }
+  ]
+}

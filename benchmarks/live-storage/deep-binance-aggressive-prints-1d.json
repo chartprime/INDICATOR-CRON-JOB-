@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "name": "o0-deep-binance-aggressive-prints-1d-20k-2026-09-18",
+  "users": 1,
+  "rounds": 1,
+  "requests": [
+    {
+      "route": "aggressive-prints",
+      "body": { "symbol": "BTCUSDT", "marketKind": "SPOT", "options": { "fromMs": 1789603200000, "toMs": 1789689600000, "minSize": 0, "limit": 20000 } }
+    }
+  ]
+}

@@ -1,0 +1,134 @@
+{
+  "mutations": [
+    {
+      "id": "code-closure-bespoke-delta-settings-not-persisted",
+      "file": "apps/web/src/lib/indicators/volume-delta-profile-tick/volumeDeltaProfileTick.ts",
+      "find": "persistenceSchema: VOLUME_DELTA_PROFILE_TICK_PERSISTENCE_SCHEMA,",
+      "replace": "persistenceSchema: undefined,",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/chart/historicalIndicatorPreferences.test.ts", "-t", "which have a bespoke modal and no generated form"],
+      "mustFail": ["keeps Volume Profile (Ticks) settings, which have a bespoke modal and no generated form"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "code-closure-band-history-escapes-bulk-backpressure",
+      "file": "apps/runtime/src/server/frames.js",
+      "find": "band_history: FRAME_KIND_BULK_HISTORY,",
+      "replace": "band_history: FRAME_KIND_INCREMENTAL,",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "test/server/frames.test.js", "--runInBand", "--silent", "-t", "sends band history as bulk history"],
+      "mustFail": ["sends band history as bulk history"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "code-closure-capped-profile-stays-final-after-window-change",
+      "file": "apps/web/src/lib/indicators/live-delta-profile/deltaProfileStore.ts",
+      "find": "if (this._issue !== null && FINAL_REASONS.has(this._issue)) {",
+      "replace": "if (false) {",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/indicators/live-delta-profile/tests/deltaProfileStore.test.ts", "-t", "after a failed piece the remainder"],
+      "mustFail": ["after a failed piece the remainder is asked again"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "code-closure-empty-book-reset-retains-old-cursor",
+      "file": "apps/web/src/lib/indicators/live-order-book-profile/restingOrders.ts",
+      "find": "      this._seenTs = -Infinity;",
+      "replace": "      void this._seenTs;",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/indicators/live-order-book-profile/tests/restingOrders.test.ts", "-t", "starts a new resting timeline"],
+      "mustFail": ["starts a new resting timeline when a reset arrives before its first column"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "code-closure-same-millisecond-gap-loses-to-wall-priority",
+      "file": "apps/web/src/lib/l2/l2Store.ts",
+      "find": "      if (incomingStart === currentStart && !orderedEvent && (",
+      "replace": "      if (incomingStart === currentStart && (",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/l2/l2Store.test.ts", "-t", "an ordered GAP event at the same millisecond"],
+      "mustFail": ["an ordered GAP event at the same millisecond"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "code-closure-session-levels-grades-through-book-gap",
+      "file": "apps/web/src/lib/indicators/session-levels/levelWindow.ts",
+      "find": "if (coveredThrough !== -Infinity && column.ts > coveredThrough) bookGap = true;",
+      "replace": "if (false) bookGap = true;",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/indicators/session-levels/tests/levelWindow.test.ts", "-t", "does not grade a five-minute level"],
+      "mustFail": ["does not grade a five-minute level"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "code-closure-session-range-caches-partial-total",
+      "file": "apps/web/src/lib/indicators/session-levels/rangeStats.ts",
+      "find": "covered && !gap && coveredThrough >= toMs",
+      "replace": "covered",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/indicators/session-levels/tests/rangeStats.test.ts", "-t", "does not cache incomplete range totals"],
+      "mustFail": ["does not cache incomplete range totals"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "code-closure-paced-replay-times-out-without-closing-client",
+      "file": "apps/runtime/src/server/market-data-server-shared.js",
+      "find": "try { client.close?.(1013, \"Snapshot replay could not keep up\"); } catch { void 0; }",
+      "replace": "void client;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "test/server/market-data-server-shared.test.js", "--runInBand", "--silent", "-t", "closes a client whose paced snapshot"],
+      "mustFail": ["closes a client whose paced snapshot"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "code-closure-live-grid-freezes-before-async-pyramid-pin",
+      "file": "apps/runtime/src/indicators/passive_liquidity/liquidity-publisher.js",
+      "find": "      if (typeof pyramidSource.pinReady === \"function\" && !pyramidSource.pinReady(marketKind, symbol)) return null;",
+      "replace": "      void pyramidSource.pinReady;",
+      "cwd": "apps/runtime",
+      "command": ["node", "../../node_modules/jest/bin/jest.js", "test/indicators/passive_liquidity/liquidity-publisher-pyramid.test.js", "--runInBand", "--silent", "-t", "does not freeze live geometry"],
+      "mustFail": ["does not freeze live geometry before the first asynchronous pin lookup settles"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "code-closure-cvd-misses-short-equity-open-gap",
+      "file": "apps/web/src/lib/indicators/cvd-divergence/cvdDivergence.ts",
+      "find": "const SESSION_PROBE_MS = 60_000;",
+      "replace": "const SESSION_PROBE_MS = HOUR_MS;",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/indicators/cvd-divergence/tests/cvdDivergence.test.ts", "-t", "detects a short equity hole"],
+      "mustFail": ["detects a short equity hole that crosses the half-hour market open"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "code-closure-cvd-misses-futures-open-session-gap",
+      "file": "apps/web/src/lib/indicators/cvd-divergence/cvdDivergence.ts",
+      "find": "(current.assetClass === \"EQUITY\" || current.assetClass === \"FUTURE\")",
+      "replace": "(current.assetClass === \"EQUITY\")",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/indicators/cvd-divergence/tests/cvdDivergence.test.ts", "-t", "restarts at an intraday hole covering open regular-session time"],
+      "mustFail": ["restarts at an intraday hole covering open regular-session time"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "code-closure-stationary-heatmap-never-retries",
+      "file": "apps/web/src/lib/indicators/passive-liquidity/heatmapHistory.ts",
+      "find": "      this._scheduleRetryWake(at, slot.retryAt);",
+      "replace": "      void slot.retryAt;",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/indicators/passive-liquidity/tests/heatmapHistory.test.ts", "-t", "retries an unavailable stationary view"],
+      "mustFail": ["retries an unavailable stationary view when its delay expires without another chart event"],
+      "timeoutMs": 60000
+    },
+    {
+      "id": "code-closure-equity-unknown-side-falsely-missing",
+      "file": "apps/web/src/lib/indicators/live-delta-profile/deltaProfileLayout.ts",
+      "find": "        candles += bar.buy_volume + bar.sell_volume;",
+      "replace": "        candles += bar.volume;",
+      "cwd": "apps/web",
+      "command": ["node", "../../node_modules/vitest/vitest.mjs", "run", "src/lib/indicators/live-delta-profile/tests/deltaProfileLayout.test.ts", "-t", "does not call unclassified dxFeed equity volume"],
+      "mustFail": ["does not call unclassified dxFeed equity volume a missing recording"],
+      "timeoutMs": 60000
+    }
+  ]
+}

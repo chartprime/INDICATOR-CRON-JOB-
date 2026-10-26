@@ -1,0 +1,1481 @@
+{
+  "days": [
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 0,
+        "candle_bars": 25998,
+        "candle_minutes": 953,
+        "dataset_version": "w606-ohlcv-v1-xnas-itch-ohlcv-1s-tsla-2025-09",
+        "explained_by_receive_time": 0,
+        "explained_sample": [],
+        "family": "candle",
+        "first_mismatches": [],
+        "minutes_compared": 953,
+        "mismatches": 0,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2025-09-02",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "5def3916c85403da2c257ef13b431b020bde93a96ed8185c9d76f6117904dff9",
+          "recomputed_sha256": "5def3916c85403da2c257ef13b431b020bde93a96ed8185c9d76f6117904dff9",
+          "rows": 22627
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "773d9403ee430de7da9e15721d2f063e7f11d330aa629ffac4c81c1c290eec2b",
+          "recomputed_sha256": "773d9403ee430de7da9e15721d2f063e7f11d330aa629ffac4c81c1c290eec2b",
+          "rows": 953
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "53fc0a4274e2473debc07b4356494069a649c0ce3338216afba13bd40d188541",
+          "recomputed_sha256": "53fc0a4274e2473debc07b4356494069a649c0ce3338216afba13bd40d188541",
+          "rows": 6614
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "7898c3576e6e784cfc00d8ba320f0ba8b45f86e2bcef76c37dc8b3c9835685d8",
+          "recomputed_sha256": "7898c3576e6e784cfc00d8ba320f0ba8b45f86e2bcef76c37dc8b3c9835685d8",
+          "rows": 14957
+        }
+      },
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"TSLA\",\"USD\",\"SHARE\"]",
+      "source_manifest_sha256": "51926f99bca9edb14ed08d935b1622670b84b6db3d7be6a5583b7440802f3069"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 1,
+        "candle_bars": 25876,
+        "candle_minutes": 949,
+        "dataset_version": "w606-ohlcv-v1-xnas-itch-ohlcv-1s-tsla-2025-09",
+        "explained_by_receive_time": 2,
+        "explained_sample": [
+          {
+            "arriving": "0",
+            "arriving_prints": 0,
+            "candle_volume": "33186",
+            "delta": "7",
+            "leaving": "7",
+            "leaving_prints": 1,
+            "net": "7",
+            "open_ns": "1756924980000000000",
+            "trade_volume": "33193"
+          },
+          {
+            "arriving": "7",
+            "arriving_prints": 1,
+            "candle_volume": "34440",
+            "delta": "-7",
+            "leaving": "0",
+            "leaving_prints": 0,
+            "net": "-7",
+            "open_ns": "1756925040000000000",
+            "trade_volume": "34433"
+          }
+        ],
+        "family": "candle",
+        "first_mismatches": [
+          {
+            "candle_volume": "33186",
+            "open_ns": "1756924980000000000",
+            "trade_volume": "33193"
+          },
+          {
+            "candle_volume": "34440",
+            "open_ns": "1756925040000000000",
+            "trade_volume": "34433"
+          }
+        ],
+        "minutes_compared": 949,
+        "mismatches": 2,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2025-09-03",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "c4958e584de578803156715a457ac1311681eba30a3a9512f00b3d71a67e968e",
+          "recomputed_sha256": "c4958e584de578803156715a457ac1311681eba30a3a9512f00b3d71a67e968e",
+          "rows": 23221
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "b9a6335355ecd9356196d1398b44f10a917495988ee28036ca958e9d61cc8b7a",
+          "recomputed_sha256": "b9a6335355ecd9356196d1398b44f10a917495988ee28036ca958e9d61cc8b7a",
+          "rows": 949
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "4139ebe1a14e6bb526215cffcda458bf8aec04117f18f8c3c0523381ba957cc4",
+          "recomputed_sha256": "4139ebe1a14e6bb526215cffcda458bf8aec04117f18f8c3c0523381ba957cc4",
+          "rows": 6302
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "5e5a32de98c7c4bbe713372fd49a14cc1e4768dd3ea8a4862d0727e286b6c1a4",
+          "recomputed_sha256": "5e5a32de98c7c4bbe713372fd49a14cc1e4768dd3ea8a4862d0727e286b6c1a4",
+          "rows": 14349
+        }
+      },
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"TSLA\",\"USD\",\"SHARE\"]",
+      "source_manifest_sha256": "2fa64b31c027bfc73d2afd192e33e43c03c7a8ab83154a065ba45c4789ff0bac"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 0,
+        "candle_bars": 22207,
+        "candle_minutes": 954,
+        "dataset_version": "w606-ohlcv-v1-xnas-itch-ohlcv-1s-tsla-2025-09",
+        "explained_by_receive_time": 0,
+        "explained_sample": [],
+        "family": "candle",
+        "first_mismatches": [],
+        "minutes_compared": 954,
+        "mismatches": 0,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2025-09-04",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "75333564d45247f7f35d94129d64ae7698ac15e79cafedf437d866193f0fa90c",
+          "recomputed_sha256": "75333564d45247f7f35d94129d64ae7698ac15e79cafedf437d866193f0fa90c",
+          "rows": 19378
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "904e8732b5b7fc98eda94078ab45393e5851aeea08ddc380931caa28f8d3f9a0",
+          "recomputed_sha256": "904e8732b5b7fc98eda94078ab45393e5851aeea08ddc380931caa28f8d3f9a0",
+          "rows": 954
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "8b2f0bc38ec6186400274b3fa4320ec956c511f313f2080becb1579a80612362",
+          "recomputed_sha256": "8b2f0bc38ec6186400274b3fa4320ec956c511f313f2080becb1579a80612362",
+          "rows": 6268
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "c2f25e625a8c0ddea5a1092341c420187be70d51da32a3e7b91318abf13cc77e",
+          "recomputed_sha256": "c2f25e625a8c0ddea5a1092341c420187be70d51da32a3e7b91318abf13cc77e",
+          "rows": 13155
+        }
+      },
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"TSLA\",\"USD\",\"SHARE\"]",
+      "source_manifest_sha256": "e4df3f32a1d60b72870a599bb5c3916d3dac627baed48584aee6cdf62bb088a0"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 0,
+        "candle_bars": 28604,
+        "candle_minutes": 951,
+        "dataset_version": "w606-ohlcv-v1-xnas-itch-ohlcv-1s-tsla-2025-09",
+        "explained_by_receive_time": 0,
+        "explained_sample": [],
+        "family": "candle",
+        "first_mismatches": [],
+        "minutes_compared": 951,
+        "mismatches": 0,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2025-09-05",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "640c83003779abe8a9a2d10cf0a5f16bb8a5c59c66d60b061acb140269abc7d6",
+          "recomputed_sha256": "640c83003779abe8a9a2d10cf0a5f16bb8a5c59c66d60b061acb140269abc7d6",
+          "rows": 32005
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "2782309e5cbe4ad86989d96c4f611da3ea2f1e4cd48c42e14a3831486ef64ee3",
+          "recomputed_sha256": "2782309e5cbe4ad86989d96c4f611da3ea2f1e4cd48c42e14a3831486ef64ee3",
+          "rows": 951
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "e5c4b33e0f0f897fbc0491fa932e96a2812b040c04f0ae726a9e74c8b74d3051",
+          "recomputed_sha256": "e5c4b33e0f0f897fbc0491fa932e96a2812b040c04f0ae726a9e74c8b74d3051",
+          "rows": 6755
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "44529ebeac7680d1becba6ffafc5d9728c8a1d9ab738023d39d989bab4ea3a26",
+          "recomputed_sha256": "44529ebeac7680d1becba6ffafc5d9728c8a1d9ab738023d39d989bab4ea3a26",
+          "rows": 16164
+        }
+      },
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"TSLA\",\"USD\",\"SHARE\"]",
+      "source_manifest_sha256": "27fdb10e1fd0521213acf312ccfd5f8ca586f3c2333bc0736e477fef84d29344"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 0,
+        "candle_bars": 25469,
+        "candle_minutes": 954,
+        "dataset_version": "w606-ohlcv-v1-xnas-itch-ohlcv-1s-tsla-2025-09",
+        "explained_by_receive_time": 0,
+        "explained_sample": [],
+        "family": "candle",
+        "first_mismatches": [],
+        "minutes_compared": 954,
+        "mismatches": 0,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2025-09-08",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "6bb1ba3c6228ec44a56a0e0f033e4639d9ce4bc82ee884aa7701455e6030de92",
+          "recomputed_sha256": "6bb1ba3c6228ec44a56a0e0f033e4639d9ce4bc82ee884aa7701455e6030de92",
+          "rows": 24268
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "4cdac974bde4944aa26298ce12442da1faf5a5a0c1f0017cc2d0f886210a8944",
+          "recomputed_sha256": "4cdac974bde4944aa26298ce12442da1faf5a5a0c1f0017cc2d0f886210a8944",
+          "rows": 954
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "335e61358bec4188e03fd9f1f90c1b5a38fd36de0ee4025213d7f949882d64e1",
+          "recomputed_sha256": "335e61358bec4188e03fd9f1f90c1b5a38fd36de0ee4025213d7f949882d64e1",
+          "rows": 6581
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "ba36551f10bff61feda504c580a26f9edcb4fb9958cc24f183f84360828bfed7",
+          "recomputed_sha256": "ba36551f10bff61feda504c580a26f9edcb4fb9958cc24f183f84360828bfed7",
+          "rows": 14698
+        }
+      },
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"TSLA\",\"USD\",\"SHARE\"]",
+      "source_manifest_sha256": "12bbd70e402247de7c40900b9841f53a9a77efbcd66dc6c735e760ff3a8aa7e9"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 0,
+        "candle_bars": 21528,
+        "candle_minutes": 951,
+        "dataset_version": "w606-ohlcv-v1-xnas-itch-ohlcv-1s-tsla-2025-09",
+        "explained_by_receive_time": 0,
+        "explained_sample": [],
+        "family": "candle",
+        "first_mismatches": [],
+        "minutes_compared": 951,
+        "mismatches": 0,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2025-09-09",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "2aa19b92a80a9221a4f89dc2ff3ccc6f0fb421db53115255fa55033b9e8bddce",
+          "recomputed_sha256": "2aa19b92a80a9221a4f89dc2ff3ccc6f0fb421db53115255fa55033b9e8bddce",
+          "rows": 18618
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "f352784cfb9b792a5b4dbe20be93c247c49b662d95d410abd1ff331424aacd5d",
+          "recomputed_sha256": "f352784cfb9b792a5b4dbe20be93c247c49b662d95d410abd1ff331424aacd5d",
+          "rows": 951
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "f4b51902ffe70b2a6d6df034b29378adadff3793c0953d79f1e0d03d6c74f72e",
+          "recomputed_sha256": "f4b51902ffe70b2a6d6df034b29378adadff3793c0953d79f1e0d03d6c74f72e",
+          "rows": 6117
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "2ed32c53aafca88ebb78bbdc6e090e9858a0ac278884602127ba386a2154b76f",
+          "recomputed_sha256": "2ed32c53aafca88ebb78bbdc6e090e9858a0ac278884602127ba386a2154b76f",
+          "rows": 12863
+        }
+      },
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"TSLA\",\"USD\",\"SHARE\"]",
+      "source_manifest_sha256": "f4b9385d13721692caadd8c4060a4a36b1d9f527540d4d54e1267a8b93828288"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 0,
+        "candle_bars": 24389,
+        "candle_minutes": 954,
+        "dataset_version": "w606-ohlcv-v1-xnas-itch-ohlcv-1s-tsla-2025-09",
+        "explained_by_receive_time": 0,
+        "explained_sample": [],
+        "family": "candle",
+        "first_mismatches": [],
+        "minutes_compared": 954,
+        "mismatches": 0,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2025-09-10",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "e1461280acca2134c08eb8c955c1eea87c510e75643b3d4048ff09ecee199ce2",
+          "recomputed_sha256": "e1461280acca2134c08eb8c955c1eea87c510e75643b3d4048ff09ecee199ce2",
+          "rows": 22974
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "1cba8a76be14dff93bb331b9539064f388a95ef783751a90377f281330cbee0c",
+          "recomputed_sha256": "1cba8a76be14dff93bb331b9539064f388a95ef783751a90377f281330cbee0c",
+          "rows": 954
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "06c5185f8a8434e48e950064a2d81640ad895bbc8d2a95b14042cdb405680098",
+          "recomputed_sha256": "06c5185f8a8434e48e950064a2d81640ad895bbc8d2a95b14042cdb405680098",
+          "rows": 6269
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "6fff73bb4cf0906162f9886c55e460d7a5c33dd8d44fd90b05ef82be61fad1f7",
+          "recomputed_sha256": "6fff73bb4cf0906162f9886c55e460d7a5c33dd8d44fd90b05ef82be61fad1f7",
+          "rows": 13857
+        }
+      },
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"TSLA\",\"USD\",\"SHARE\"]",
+      "source_manifest_sha256": "b09e6659d7e51eb484a2b6c28ebdacdfe652b9b5cd92aa031ef24173b800be12"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 2,
+        "candle_bars": 27455,
+        "candle_minutes": 956,
+        "dataset_version": "w606-ohlcv-v1-xnas-itch-ohlcv-1s-tsla-2025-09",
+        "explained_by_receive_time": 2,
+        "explained_sample": [
+          {
+            "arriving": "0",
+            "arriving_prints": 0,
+            "candle_volume": "54517",
+            "delta": "20",
+            "leaving": "20",
+            "leaving_prints": 2,
+            "net": "20",
+            "open_ns": "1757608680000000000",
+            "trade_volume": "54537"
+          },
+          {
+            "arriving": "20",
+            "arriving_prints": 2,
+            "candle_volume": "17556",
+            "delta": "-20",
+            "leaving": "0",
+            "leaving_prints": 0,
+            "net": "-20",
+            "open_ns": "1757608740000000000",
+            "trade_volume": "17536"
+          }
+        ],
+        "family": "candle",
+        "first_mismatches": [
+          {
+            "candle_volume": "54517",
+            "open_ns": "1757608680000000000",
+            "trade_volume": "54537"
+          },
+          {
+            "candle_volume": "17556",
+            "open_ns": "1757608740000000000",
+            "trade_volume": "17536"
+          }
+        ],
+        "minutes_compared": 956,
+        "mismatches": 2,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2025-09-11",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "e5d2b693a4cd50ef4c222657c8e10b90d3170ee5fa6d5e4315c0ff2f66532d60",
+          "recomputed_sha256": "e5d2b693a4cd50ef4c222657c8e10b90d3170ee5fa6d5e4315c0ff2f66532d60",
+          "rows": 26882
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "08b2456f2d51301279bbd857c93c54ebb6ee80107688289646976f652c2b9102",
+          "recomputed_sha256": "08b2456f2d51301279bbd857c93c54ebb6ee80107688289646976f652c2b9102",
+          "rows": 956
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "ea36c668c4871b83c87292843b2a72e12c2a502bd9096acc0f8bf711d6fe681a",
+          "recomputed_sha256": "ea36c668c4871b83c87292843b2a72e12c2a502bd9096acc0f8bf711d6fe681a",
+          "rows": 6668
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "e2fbc18c4b4dfd9d1d2352da466b4f6af9420bddeb2fe4a664d9786cf76f438d",
+          "recomputed_sha256": "e2fbc18c4b4dfd9d1d2352da466b4f6af9420bddeb2fe4a664d9786cf76f438d",
+          "rows": 15494
+        }
+      },
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"TSLA\",\"USD\",\"SHARE\"]",
+      "source_manifest_sha256": "e26b5646a6a5a97834aa7e069dfb63aa574133c770fbf120fcc0c41fa165c363"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 0,
+        "candle_bars": 30438,
+        "candle_minutes": 959,
+        "dataset_version": "w606-ohlcv-v1-xnas-itch-ohlcv-1s-tsla-2025-09",
+        "explained_by_receive_time": 0,
+        "explained_sample": [],
+        "family": "candle",
+        "first_mismatches": [],
+        "minutes_compared": 959,
+        "mismatches": 0,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2025-09-12",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "09aeb5ec073a74fbb71e01b617b1e5d29e9c4d9f1b0d74482b4303af6c8139a3",
+          "recomputed_sha256": "09aeb5ec073a74fbb71e01b617b1e5d29e9c4d9f1b0d74482b4303af6c8139a3",
+          "rows": 37328
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "f790c51668eb15bfa73fa3238390104ac22ac81e8a096f88dde66a0db0b4f43d",
+          "recomputed_sha256": "f790c51668eb15bfa73fa3238390104ac22ac81e8a096f88dde66a0db0b4f43d",
+          "rows": 959
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "fb91b54bb9d1588de4b6fef8c6d708fd40a22a936acc9f1ada67939137117d5d",
+          "recomputed_sha256": "fb91b54bb9d1588de4b6fef8c6d708fd40a22a936acc9f1ada67939137117d5d",
+          "rows": 7301
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "c83cf9e2d139737d93e0c7700585f0e2b426877017c08496c09d9043a616fd50",
+          "recomputed_sha256": "c83cf9e2d139737d93e0c7700585f0e2b426877017c08496c09d9043a616fd50",
+          "rows": 16719
+        }
+      },
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"TSLA\",\"USD\",\"SHARE\"]",
+      "source_manifest_sha256": "a7b65b2dcddafef3c06ca46cb70bdeaeb3b23f4aa5ca12882aeb28253b6758e8"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 3,
+        "candle_bars": 37753,
+        "candle_minutes": 960,
+        "dataset_version": "w606-ohlcv-v1-xnas-itch-ohlcv-1s-tsla-2025-09",
+        "explained_by_receive_time": 4,
+        "explained_sample": [
+          {
+            "arriving": "0",
+            "arriving_prints": 0,
+            "candle_volume": "75494",
+            "delta": "4",
+            "leaving": "4",
+            "leaving_prints": 1,
+            "net": "4",
+            "open_ns": "1757932440000000000",
+            "trade_volume": "75498"
+          },
+          {
+            "arriving": "4",
+            "arriving_prints": 1,
+            "candle_volume": "65647",
+            "delta": "-4",
+            "leaving": "0",
+            "leaving_prints": 0,
+            "net": "-4",
+            "open_ns": "1757932500000000000",
+            "trade_volume": "65643"
+          },
+          {
+            "arriving": "0",
+            "arriving_prints": 0,
+            "candle_volume": "2332434",
+            "delta": "17",
+            "leaving": "17",
+            "leaving_prints": 2,
+            "net": "17",
+            "open_ns": "1757943000000000000",
+            "trade_volume": "2332451"
+          }
+        ],
+        "family": "candle",
+        "first_mismatches": [
+          {
+            "candle_volume": "75494",
+            "open_ns": "1757932440000000000",
+            "trade_volume": "75498"
+          },
+          {
+            "candle_volume": "65647",
+            "open_ns": "1757932500000000000",
+            "trade_volume": "65643"
+          },
+          {
+            "candle_volume": "2332434",
+            "open_ns": "1757943000000000000",
+            "trade_volume": "2332451"
+          },
+          {
+            "candle_volume": "470442",
+            "open_ns": "1757943060000000000",
+            "trade_volume": "470425"
+          }
+        ],
+        "minutes_compared": 960,
+        "mismatches": 4,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2025-09-15",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "6963e9a3a43f4413516b7953481a851a1ee590b0065f592002a4d9dbd34afe68",
+          "recomputed_sha256": "6963e9a3a43f4413516b7953481a851a1ee590b0065f592002a4d9dbd34afe68",
+          "rows": 56483
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "8ae50aac50cfd3a51a6e292ef0c472a019a2700b56021d051a59b0603e0f55a6",
+          "recomputed_sha256": "8ae50aac50cfd3a51a6e292ef0c472a019a2700b56021d051a59b0603e0f55a6",
+          "rows": 960
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "7838d455317650dcae9bb38b7030b0c15c925f97d42a08dd5a60141a8a955c30",
+          "recomputed_sha256": "7838d455317650dcae9bb38b7030b0c15c925f97d42a08dd5a60141a8a955c30",
+          "rows": 7476
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "864069d3179b1e10d5af07801893c7e9c6a56e32c08ebec386402e8f1416a2e7",
+          "recomputed_sha256": "864069d3179b1e10d5af07801893c7e9c6a56e32c08ebec386402e8f1416a2e7",
+          "rows": 20201
+        }
+      },
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"TSLA\",\"USD\",\"SHARE\"]",
+      "source_manifest_sha256": "34be5db6c9452a1684290793991876e607afcd433335a48373ebd393b03d4e59"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 1,
+        "candle_bars": 29818,
+        "candle_minutes": 959,
+        "dataset_version": "w606-ohlcv-v1-xnas-itch-ohlcv-1s-tsla-2025-09",
+        "explained_by_receive_time": 2,
+        "explained_sample": [
+          {
+            "arriving": "0",
+            "arriving_prints": 0,
+            "candle_volume": "8306",
+            "delta": "4",
+            "leaving": "4",
+            "leaving_prints": 1,
+            "net": "4",
+            "open_ns": "1758029340000000000",
+            "trade_volume": "8310"
+          },
+          {
+            "arriving": "4",
+            "arriving_prints": 1,
+            "candle_volume": "748535",
+            "delta": "-4",
+            "leaving": "0",
+            "leaving_prints": 0,
+            "net": "-4",
+            "open_ns": "1758029400000000000",
+            "trade_volume": "748531"
+          }
+        ],
+        "family": "candle",
+        "first_mismatches": [
+          {
+            "candle_volume": "8306",
+            "open_ns": "1758029340000000000",
+            "trade_volume": "8310"
+          },
+          {
+            "candle_volume": "748535",
+            "open_ns": "1758029400000000000",
+            "trade_volume": "748531"
+          }
+        ],
+        "minutes_compared": 959,
+        "mismatches": 2,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2025-09-16",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "44b9d920da1b797796689ff0e79b5058cd9bcf5000a793338a8e3cc2c5f6df4e",
+          "recomputed_sha256": "44b9d920da1b797796689ff0e79b5058cd9bcf5000a793338a8e3cc2c5f6df4e",
+          "rows": 35186
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "b3c67ee7da6572a6475c1528d9e13506ce913e6beda15ecd1eef006f80887e47",
+          "recomputed_sha256": "b3c67ee7da6572a6475c1528d9e13506ce913e6beda15ecd1eef006f80887e47",
+          "rows": 959
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "95d9cf92d759e429c9fe6048ea0f1098a7d968be482d2994e82d9e534f429087",
+          "recomputed_sha256": "95d9cf92d759e429c9fe6048ea0f1098a7d968be482d2994e82d9e534f429087",
+          "rows": 7254
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "301622d0b56fc776442da1a851268072a757ea523abf0e38d257ab2f97145831",
+          "recomputed_sha256": "301622d0b56fc776442da1a851268072a757ea523abf0e38d257ab2f97145831",
+          "rows": 16817
+        }
+      },
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"TSLA\",\"USD\",\"SHARE\"]",
+      "source_manifest_sha256": "fdb9f5a2bc2369bdb8f9530dca0b5b52867827eeae6f02caa571a890324f69ae"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 0,
+        "candle_bars": 29410,
+        "candle_minutes": 959,
+        "dataset_version": "w606-ohlcv-v1-xnas-itch-ohlcv-1s-tsla-2025-09",
+        "explained_by_receive_time": 0,
+        "explained_sample": [],
+        "family": "candle",
+        "first_mismatches": [],
+        "minutes_compared": 959,
+        "mismatches": 0,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2025-09-17",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "88b26a4b3f54d67431cc11678ea6ebc134640a579f0d8192c96113ee5591aeaf",
+          "recomputed_sha256": "88b26a4b3f54d67431cc11678ea6ebc134640a579f0d8192c96113ee5591aeaf",
+          "rows": 38515
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "738356e363d4328a8267e35490a04964c7bdd547de79e1efcaca77cf0cd804e6",
+          "recomputed_sha256": "738356e363d4328a8267e35490a04964c7bdd547de79e1efcaca77cf0cd804e6",
+          "rows": 959
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "331110076b3dc33d6b5bd6bcf0655c1ebb301e83bbddb03e05994806124edb70",
+          "recomputed_sha256": "331110076b3dc33d6b5bd6bcf0655c1ebb301e83bbddb03e05994806124edb70",
+          "rows": 7213
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "0c065092db2c5af32009c06779065090c62567177fc2460c508b1fafa0a1b126",
+          "recomputed_sha256": "0c065092db2c5af32009c06779065090c62567177fc2460c508b1fafa0a1b126",
+          "rows": 16467
+        }
+      },
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"TSLA\",\"USD\",\"SHARE\"]",
+      "source_manifest_sha256": "ada7daf2ef14009d007e334f348e12c6e754d053d5f28a31c6bdd6fda02145f6"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 3,
+        "candle_bars": 29124,
+        "candle_minutes": 960,
+        "dataset_version": "w606-ohlcv-v1-xnas-itch-ohlcv-1s-tsla-2025-09",
+        "explained_by_receive_time": 2,
+        "explained_sample": [
+          {
+            "arriving": "0",
+            "arriving_prints": 0,
+            "candle_volume": "23185",
+            "delta": "201",
+            "leaving": "201",
+            "leaving_prints": 3,
+            "net": "201",
+            "open_ns": "1758216060000000000",
+            "trade_volume": "23386"
+          },
+          {
+            "arriving": "201",
+            "arriving_prints": 3,
+            "candle_volume": "37935",
+            "delta": "-201",
+            "leaving": "0",
+            "leaving_prints": 0,
+            "net": "-201",
+            "open_ns": "1758216120000000000",
+            "trade_volume": "37734"
+          }
+        ],
+        "family": "candle",
+        "first_mismatches": [
+          {
+            "candle_volume": "23185",
+            "open_ns": "1758216060000000000",
+            "trade_volume": "23386"
+          },
+          {
+            "candle_volume": "37935",
+            "open_ns": "1758216120000000000",
+            "trade_volume": "37734"
+          }
+        ],
+        "minutes_compared": 960,
+        "mismatches": 2,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2025-09-18",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "8f4e2f8639f6d4f3d7fad7bb9c7b8b8630bb1c72d8ba27991139b57685d2777d",
+          "recomputed_sha256": "8f4e2f8639f6d4f3d7fad7bb9c7b8b8630bb1c72d8ba27991139b57685d2777d",
+          "rows": 34805
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "ff73c2a6caf2a5dce3dbbd8622d9728fbb76ceed445f24d4b1dbdfa9659da9e2",
+          "recomputed_sha256": "ff73c2a6caf2a5dce3dbbd8622d9728fbb76ceed445f24d4b1dbdfa9659da9e2",
+          "rows": 960
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "a719932dfc50ad4b28c1993175c23b09d620a763f1f47277f4b938a9a87bbcf2",
+          "recomputed_sha256": "a719932dfc50ad4b28c1993175c23b09d620a763f1f47277f4b938a9a87bbcf2",
+          "rows": 7284
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "d5a7f47c86bd6b380efedf8bc14f0748ce4f2a986a23c0907d96646d10c8d599",
+          "recomputed_sha256": "d5a7f47c86bd6b380efedf8bc14f0748ce4f2a986a23c0907d96646d10c8d599",
+          "rows": 16676
+        }
+      },
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"TSLA\",\"USD\",\"SHARE\"]",
+      "source_manifest_sha256": "df2aa13681059f1427de0dc76254ca0cbdbb543e4a933ee64fed2303e2f99297"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 1,
+        "candle_bars": 24881,
+        "candle_minutes": 956,
+        "dataset_version": "w606-ohlcv-v1-xnas-itch-ohlcv-1s-tsla-2025-09",
+        "explained_by_receive_time": 2,
+        "explained_sample": [
+          {
+            "arriving": "0",
+            "arriving_prints": 0,
+            "candle_volume": "26533",
+            "delta": "37",
+            "leaving": "37",
+            "leaving_prints": 1,
+            "net": "37",
+            "open_ns": "1758297720000000000",
+            "trade_volume": "26570"
+          },
+          {
+            "arriving": "37",
+            "arriving_prints": 1,
+            "candle_volume": "22896",
+            "delta": "-37",
+            "leaving": "0",
+            "leaving_prints": 0,
+            "net": "-37",
+            "open_ns": "1758297780000000000",
+            "trade_volume": "22859"
+          }
+        ],
+        "family": "candle",
+        "first_mismatches": [
+          {
+            "candle_volume": "26533",
+            "open_ns": "1758297720000000000",
+            "trade_volume": "26570"
+          },
+          {
+            "candle_volume": "22896",
+            "open_ns": "1758297780000000000",
+            "trade_volume": "22859"
+          }
+        ],
+        "minutes_compared": 956,
+        "mismatches": 2,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2025-09-19",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "552331a7307d1c7c2414789f4d4af38d7cf783412734f134d89e5703e0419821",
+          "recomputed_sha256": "552331a7307d1c7c2414789f4d4af38d7cf783412734f134d89e5703e0419821",
+          "rows": 27126
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "dd8962ff0d7f94a5bfe58c52ef61fc4d54e5e478567f31494b144a174a078290",
+          "recomputed_sha256": "dd8962ff0d7f94a5bfe58c52ef61fc4d54e5e478567f31494b144a174a078290",
+          "rows": 956
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "3d5fab4b02eec9323fe00db04e26b6afaf4e774c8af73d11b5c60aa278da66e0",
+          "recomputed_sha256": "3d5fab4b02eec9323fe00db04e26b6afaf4e774c8af73d11b5c60aa278da66e0",
+          "rows": 6708
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "6200d46a2c8e1b78dff0b4265613b123a16566a8c9f8efee9b3da33d3eb0cb6d",
+          "recomputed_sha256": "6200d46a2c8e1b78dff0b4265613b123a16566a8c9f8efee9b3da33d3eb0cb6d",
+          "rows": 14318
+        }
+      },
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"TSLA\",\"USD\",\"SHARE\"]",
+      "source_manifest_sha256": "db0d2b7506612000d1520a736eeef188d90b757132abe4e821279dbb3ae2c27b"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 1,
+        "candle_bars": 28492,
+        "candle_minutes": 960,
+        "dataset_version": "w606-ohlcv-v1-xnas-itch-ohlcv-1s-tsla-2025-09",
+        "explained_by_receive_time": 2,
+        "explained_sample": [
+          {
+            "arriving": "0",
+            "arriving_prints": 0,
+            "candle_volume": "26726",
+            "delta": "25",
+            "leaving": "25",
+            "leaving_prints": 1,
+            "net": "25",
+            "open_ns": "1758554280000000000",
+            "trade_volume": "26751"
+          },
+          {
+            "arriving": "25",
+            "arriving_prints": 1,
+            "candle_volume": "27658",
+            "delta": "-25",
+            "leaving": "0",
+            "leaving_prints": 0,
+            "net": "-25",
+            "open_ns": "1758554340000000000",
+            "trade_volume": "27633"
+          }
+        ],
+        "family": "candle",
+        "first_mismatches": [
+          {
+            "candle_volume": "26726",
+            "open_ns": "1758554280000000000",
+            "trade_volume": "26751"
+          },
+          {
+            "candle_volume": "27658",
+            "open_ns": "1758554340000000000",
+            "trade_volume": "27633"
+          }
+        ],
+        "minutes_compared": 960,
+        "mismatches": 2,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2025-09-22",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "b13ccf3d65c52afd31832c9855e70ce3b34e044bf251b577c31b4377918593b5",
+          "recomputed_sha256": "b13ccf3d65c52afd31832c9855e70ce3b34e044bf251b577c31b4377918593b5",
+          "rows": 30878
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "631d85946ffedc88ea14842f70a5440f45d4f092f733fbc8d1eedc90dc66f669",
+          "recomputed_sha256": "631d85946ffedc88ea14842f70a5440f45d4f092f733fbc8d1eedc90dc66f669",
+          "rows": 960
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "f8cc9fc67317113aadf7325f81c3ab068627603eb8ee533341c876fabfbd07a1",
+          "recomputed_sha256": "f8cc9fc67317113aadf7325f81c3ab068627603eb8ee533341c876fabfbd07a1",
+          "rows": 7116
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "cba652f4f5d6d749b6801f8272393050b9ce60c8b68890ae3f72af283f2d89e1",
+          "recomputed_sha256": "cba652f4f5d6d749b6801f8272393050b9ce60c8b68890ae3f72af283f2d89e1",
+          "rows": 15840
+        }
+      },
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"TSLA\",\"USD\",\"SHARE\"]",
+      "source_manifest_sha256": "bccb37fa1bfa67b2cb22db42b1daa0fe96285e838f8c905ec01c6bb1d1ed3f4e"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 1,
+        "candle_bars": 26488,
+        "candle_minutes": 959,
+        "dataset_version": "w606-ohlcv-v1-xnas-itch-ohlcv-1s-tsla-2025-09",
+        "explained_by_receive_time": 2,
+        "explained_sample": [
+          {
+            "arriving": "0",
+            "arriving_prints": 0,
+            "candle_volume": "153602",
+            "delta": "2",
+            "leaving": "2",
+            "leaving_prints": 1,
+            "net": "2",
+            "open_ns": "1758634440000000000",
+            "trade_volume": "153604"
+          },
+          {
+            "arriving": "2",
+            "arriving_prints": 1,
+            "candle_volume": "87014",
+            "delta": "-2",
+            "leaving": "0",
+            "leaving_prints": 0,
+            "net": "-2",
+            "open_ns": "1758634500000000000",
+            "trade_volume": "87012"
+          }
+        ],
+        "family": "candle",
+        "first_mismatches": [
+          {
+            "candle_volume": "153602",
+            "open_ns": "1758634440000000000",
+            "trade_volume": "153604"
+          },
+          {
+            "candle_volume": "87014",
+            "open_ns": "1758634500000000000",
+            "trade_volume": "87012"
+          }
+        ],
+        "minutes_compared": 959,
+        "mismatches": 2,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2025-09-23",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "a21875c2a858aef696f18b2436d355414604899080149bbb2de52a06fec4b619",
+          "recomputed_sha256": "a21875c2a858aef696f18b2436d355414604899080149bbb2de52a06fec4b619",
+          "rows": 31782
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "3459edf53480d30c0b9b801d81d8aeed85897fb7d1ddd16a8fb3913672f60707",
+          "recomputed_sha256": "3459edf53480d30c0b9b801d81d8aeed85897fb7d1ddd16a8fb3913672f60707",
+          "rows": 959
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "30b54fa151f2be2400fb1a3b53bf80604c8ed7370d4efb2cdb6ee49e61f57fd6",
+          "recomputed_sha256": "30b54fa151f2be2400fb1a3b53bf80604c8ed7370d4efb2cdb6ee49e61f57fd6",
+          "rows": 6773
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "dc03bb785eba207d8548f674410c9f95654b88062fe1f808f9e61ef85115104e",
+          "recomputed_sha256": "dc03bb785eba207d8548f674410c9f95654b88062fe1f808f9e61ef85115104e",
+          "rows": 14909
+        }
+      },
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"TSLA\",\"USD\",\"SHARE\"]",
+      "source_manifest_sha256": "e7ab0ecb0d48adde407af76c67dceacd85cc58e94cee57fb6a5e1c9e47bb6726"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 4,
+        "candle_bars": 26572,
+        "candle_minutes": 959,
+        "dataset_version": "w606-ohlcv-v1-xnas-itch-ohlcv-1s-tsla-2025-09",
+        "explained_by_receive_time": 4,
+        "explained_sample": [
+          {
+            "arriving": "0",
+            "arriving_prints": 0,
+            "candle_volume": "32322",
+            "delta": "74",
+            "leaving": "74",
+            "leaving_prints": 3,
+            "net": "74",
+            "open_ns": "1758731100000000000",
+            "trade_volume": "32396"
+          },
+          {
+            "arriving": "74",
+            "arriving_prints": 3,
+            "candle_volume": "25120",
+            "delta": "-74",
+            "leaving": "0",
+            "leaving_prints": 0,
+            "net": "-74",
+            "open_ns": "1758731160000000000",
+            "trade_volume": "25046"
+          },
+          {
+            "arriving": "0",
+            "arriving_prints": 0,
+            "candle_volume": "44491",
+            "delta": "10",
+            "leaving": "10",
+            "leaving_prints": 1,
+            "net": "10",
+            "open_ns": "1758742560000000000",
+            "trade_volume": "44501"
+          }
+        ],
+        "family": "candle",
+        "first_mismatches": [
+          {
+            "candle_volume": "32322",
+            "open_ns": "1758731100000000000",
+            "trade_volume": "32396"
+          },
+          {
+            "candle_volume": "25120",
+            "open_ns": "1758731160000000000",
+            "trade_volume": "25046"
+          },
+          {
+            "candle_volume": "44491",
+            "open_ns": "1758742560000000000",
+            "trade_volume": "44501"
+          },
+          {
+            "candle_volume": "31783",
+            "open_ns": "1758742620000000000",
+            "trade_volume": "31773"
+          }
+        ],
+        "minutes_compared": 959,
+        "mismatches": 4,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2025-09-24",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "36540677db16f587ef1e337e8f66e46b129735caade4ed43b96328a5d686def6",
+          "recomputed_sha256": "36540677db16f587ef1e337e8f66e46b129735caade4ed43b96328a5d686def6",
+          "rows": 29890
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "f7289fe23a88905f84eafbf763f61313fa3acac9358ccb7a26e844fc16f5454f",
+          "recomputed_sha256": "f7289fe23a88905f84eafbf763f61313fa3acac9358ccb7a26e844fc16f5454f",
+          "rows": 959
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "29687589948469e2681d472b860a77266adb995a8736581d4137e2704a2f67cd",
+          "recomputed_sha256": "29687589948469e2681d472b860a77266adb995a8736581d4137e2704a2f67cd",
+          "rows": 6774
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "5e7b5ed3814f56dbf1afb139cc50bd7035c2fa04bc2a9c40a203234a0674d1dd",
+          "recomputed_sha256": "5e7b5ed3814f56dbf1afb139cc50bd7035c2fa04bc2a9c40a203234a0674d1dd",
+          "rows": 15001
+        }
+      },
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"TSLA\",\"USD\",\"SHARE\"]",
+      "source_manifest_sha256": "156d91d4d99680e0bec0dee2f7f10f2b3df9d5701bb9f6bc216284ccc9410706"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 0,
+        "candle_bars": 31396,
+        "candle_minutes": 959,
+        "dataset_version": "w606-ohlcv-v1-xnas-itch-ohlcv-1s-tsla-2025-09",
+        "explained_by_receive_time": 0,
+        "explained_sample": [],
+        "family": "candle",
+        "first_mismatches": [],
+        "minutes_compared": 959,
+        "mismatches": 0,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2025-09-25",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "bc5da2d69a76c919ade7501ad881dc24241e920effd1a7ae0414460270170b3c",
+          "recomputed_sha256": "bc5da2d69a76c919ade7501ad881dc24241e920effd1a7ae0414460270170b3c",
+          "rows": 36710
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "af3f739b5c7f45693d542001f3d7c7d9a64ce9c6d4c21aa75be492c748a25a84",
+          "recomputed_sha256": "af3f739b5c7f45693d542001f3d7c7d9a64ce9c6d4c21aa75be492c748a25a84",
+          "rows": 959
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "0a4b8c5cf06c104962e121b1ea02a790c48c5d045c18d7c447946beab905328a",
+          "recomputed_sha256": "0a4b8c5cf06c104962e121b1ea02a790c48c5d045c18d7c447946beab905328a",
+          "rows": 7253
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "f79d0cc3c0abbc231d8c2d4d39d5e7607bf4f0ec6a2d98f342fec44685a31e53",
+          "recomputed_sha256": "f79d0cc3c0abbc231d8c2d4d39d5e7607bf4f0ec6a2d98f342fec44685a31e53",
+          "rows": 17285
+        }
+      },
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"TSLA\",\"USD\",\"SHARE\"]",
+      "source_manifest_sha256": "68187ade73ee4a4b63894a2e521b2c73cc184fe719db75d69f3914ef8535f0cb"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 0,
+        "candle_bars": 30177,
+        "candle_minutes": 960,
+        "dataset_version": "w606-ohlcv-v1-xnas-itch-ohlcv-1s-tsla-2025-09",
+        "explained_by_receive_time": 0,
+        "explained_sample": [],
+        "family": "candle",
+        "first_mismatches": [],
+        "minutes_compared": 960,
+        "mismatches": 0,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2025-09-26",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "af8e96d002c5e59b5c2b3ab2ef9e924189b6750328d0970b0fc59ad05b2bfb5d",
+          "recomputed_sha256": "af8e96d002c5e59b5c2b3ab2ef9e924189b6750328d0970b0fc59ad05b2bfb5d",
+          "rows": 35354
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "661ca1152ca303081efe352a4b043a8f752510f222dc71395e84fc425404e093",
+          "recomputed_sha256": "661ca1152ca303081efe352a4b043a8f752510f222dc71395e84fc425404e093",
+          "rows": 960
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "96217155c6540584c438b2314d9b69648145537efd64ece2574d95f1bda522fa",
+          "recomputed_sha256": "96217155c6540584c438b2314d9b69648145537efd64ece2574d95f1bda522fa",
+          "rows": 7159
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "63294c93207ac1588a270c8aaf8a7bd01e5e4abbe7d8a07ad1886588f218b0f8",
+          "recomputed_sha256": "63294c93207ac1588a270c8aaf8a7bd01e5e4abbe7d8a07ad1886588f218b0f8",
+          "rows": 16437
+        }
+      },
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"TSLA\",\"USD\",\"SHARE\"]",
+      "source_manifest_sha256": "b00313d8864de51a4aa72b15f55ea36fea09e533b3d47d823eeb447b381e9dda"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 1,
+        "candle_bars": 25905,
+        "candle_minutes": 960,
+        "dataset_version": "w606-ohlcv-v1-xnas-itch-ohlcv-1s-tsla-2025-09",
+        "explained_by_receive_time": 2,
+        "explained_sample": [
+          {
+            "arriving": "0",
+            "arriving_prints": 0,
+            "candle_volume": "228368",
+            "delta": "93",
+            "leaving": "93",
+            "leaving_prints": 1,
+            "net": "93",
+            "open_ns": "1759175940000000000",
+            "trade_volume": "228461"
+          },
+          {
+            "arriving": "93",
+            "arriving_prints": 1,
+            "candle_volume": "2887073",
+            "delta": "-93",
+            "leaving": "0",
+            "leaving_prints": 0,
+            "net": "-93",
+            "open_ns": "1759176000000000000",
+            "trade_volume": "2886980"
+          }
+        ],
+        "family": "candle",
+        "first_mismatches": [
+          {
+            "candle_volume": "228368",
+            "open_ns": "1759175940000000000",
+            "trade_volume": "228461"
+          },
+          {
+            "candle_volume": "2887073",
+            "open_ns": "1759176000000000000",
+            "trade_volume": "2886980"
+          }
+        ],
+        "minutes_compared": 960,
+        "mismatches": 2,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2025-09-29",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "2fbf4b5fa7104f4e1bd29dca884d9cf811c7be4def357b7ffac86b32484b53d2",
+          "recomputed_sha256": "2fbf4b5fa7104f4e1bd29dca884d9cf811c7be4def357b7ffac86b32484b53d2",
+          "rows": 30169
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "49a4ce325588212beb535e2c66e4f35c5ee8eadb77c460c39264af3c6bc61130",
+          "recomputed_sha256": "49a4ce325588212beb535e2c66e4f35c5ee8eadb77c460c39264af3c6bc61130",
+          "rows": 960
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "c564114b36fa14222d878e9606b7c9a877688daf85d3c1779f30bd547af5332e",
+          "recomputed_sha256": "c564114b36fa14222d878e9606b7c9a877688daf85d3c1779f30bd547af5332e",
+          "rows": 6722
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "65c6fdd99eddd022b5173b6ac7c10eb46c0ec7079326aacce32c71c1dff98efe",
+          "recomputed_sha256": "65c6fdd99eddd022b5173b6ac7c10eb46c0ec7079326aacce32c71c1dff98efe",
+          "rows": 14496
+        }
+      },
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"TSLA\",\"USD\",\"SHARE\"]",
+      "source_manifest_sha256": "564e86ab0df53dc1dcc9235fdbe5889e87a79fc3201584618c3074083477909f"
+    },
+    {
+      "candle_volume_check": {
+        "boundary_crossing_prints": 0,
+        "candle_bars": 27161,
+        "candle_minutes": 956,
+        "dataset_version": "w606-ohlcv-v1-xnas-itch-ohlcv-1s-tsla-2025-09",
+        "explained_by_receive_time": 0,
+        "explained_sample": [],
+        "family": "candle",
+        "first_mismatches": [],
+        "minutes_compared": 956,
+        "mismatches": 0,
+        "missing_in_candles": 0,
+        "missing_in_trades": 0,
+        "unexplained": 0,
+        "unexplained_minutes": []
+      },
+      "date": "2025-09-30",
+      "equal": true,
+      "families": {
+        "trade_level": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "2d9a05c4f16aee36cb0819aa6d3fd0d38bf3eb88d8ddf50dd6a8f334786f7dcb",
+          "recomputed_sha256": "2d9a05c4f16aee36cb0819aa6d3fd0d38bf3eb88d8ddf50dd6a8f334786f7dcb",
+          "rows": 28859
+        },
+        "trade_minute": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "49a0f4df61eb0d7250893761acd16bfa9a5d293609d8776a2cff375b5e80ca4a",
+          "recomputed_sha256": "49a0f4df61eb0d7250893761acd16bfa9a5d293609d8776a2cff375b5e80ca4a",
+          "rows": 956
+        },
+        "trade_prints": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "d78a72e25135e1dc8979244f143e44592be4b9e052e5e1f357086a1409df5c42",
+          "recomputed_sha256": "d78a72e25135e1dc8979244f143e44592be4b9e052e5e1f357086a1409df5c42",
+          "rows": 6768
+        },
+        "trade_slice": {
+          "equal": true,
+          "first_difference": null,
+          "published_sha256": "7e9f75e7c703688ed8ce0872d03046f3dd1ab4c5de456bab407d504904191686",
+          "recomputed_sha256": "7e9f75e7c703688ed8ce0872d03046f3dd1ab4c5de456bab407d504904191686",
+          "rows": 14840
+        }
+      },
+      "instrument_id": "[\"XNAS\",\"EQUITY\",\"TSLA\",\"USD\",\"SHARE\"]",
+      "source_manifest_sha256": "2f8641f13685e59a3f49be8369ef540aabf1896931eaac044a4f4fd2bc5c9763"
+    }
+  ],
+  "equal": true,
+  "families_version": "w606-l1agg-v1-xnas-itch-tsla-2025-09",
+  "version": 1
+}

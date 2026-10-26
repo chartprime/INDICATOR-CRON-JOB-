@@ -1,0 +1,19 @@
+# Weekday-only dxFeed collection window (report 49 P1i): start Monday
+# 00:00 UTC, stop Saturday 00:00 UTC (terminal-dxfeed-collector-stop.timer).
+# Clean UTC boundaries, not real CME session hours -- deliberately not
+# guessed. Installing this ops release does not enable or start it; that is
+# a separate, explicit operator step.
+[Unit]
+Description=Terminal-L1-L2 dxFeed collector weekday start schedule
+
+[Timer]
+OnCalendar=Mon *-*-* 00:00:00 UTC
+Unit=terminal-dxfeed-collector.service
+# Do not replay a missed Monday activation during boot. A mid-week reboot
+# requires an explicit operator start; this keeps boot from opening a monitored
+# dxFeed/CME connection merely because the timer was previously enabled.
+Persistent=false
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

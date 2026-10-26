@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "sources": [
+    {
+      "name": "databento",
+      "identities": ["XCME", "XNAS"],
+      "catalogRoot": "C:/ttq/historical-mode/catalogs/databento",
+      "cacheRoot": "C:/ttq/historical-mode/cache/databento"
+    },
+    {
+      "name": "binance",
+      "identities": ["BINANCE"],
+      "catalogRoot": "C:/ttq/historical-mode/catalogs/binance",
+      "cacheRoot": "C:/ttq/historical-mode/cache/binance"
+    }
+  ]
+}

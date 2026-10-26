@@ -1,0 +1,112 @@
+{
+  "mutations": [
+    {
+      "id": "l1-sizing.slice-width-halved",
+      "file": "apps/runtime/conversion/trade_families.py",
+      "find": "SLICE_NS = FAMILY_SLICE_MS * 1_000_000",
+      "replace": "SLICE_NS = 1_000 * 1_000_000",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "tests/test_l1_family_sizing.py"
+      ],
+      "mustFail": [
+        "test_measure_parts_matches_an_independent_computation_on_every_family"
+      ]
+    },
+    {
+      "id": "l1-sizing.prints-cap-off-by-one",
+      "file": "apps/runtime/conversion/l1_family_sizing.py",
+      "find": "            [PRINTS_PER_SIDE_PER_MINUTE],",
+      "replace": "            [PRINTS_PER_SIDE_PER_MINUTE + 1],",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "tests/test_l1_family_sizing.py"
+      ],
+      "mustFail": [
+        "test_measure_parts_matches_an_independent_computation_on_every_family"
+      ]
+    },
+    {
+      "id": "l1-sizing.level-bucket-rounds",
+      "file": "apps/runtime/conversion/l1_family_sizing.py",
+      "find": "            \"SELECT minute_bucket, CAST(floor(price / ? + 1e-9) AS BIGINT) AS price_bucket, \"",
+      "replace": "            \"SELECT minute_bucket, CAST(round(price / ?) AS BIGINT) AS price_bucket, \"",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "tests/test_l1_family_sizing.py"
+      ],
+      "mustFail": [
+        "test_measure_parts_matches_an_independent_computation_on_every_family"
+      ]
+    },
+    {
+      "id": "l1-sizing.prints-count-unknown-side",
+      "file": "apps/runtime/conversion/l1_family_sizing.py",
+      "find": "            \"  FROM trades WHERE side IN ('BUY','SELL')\"",
+      "replace": "            \"  FROM trades WHERE side IS NOT NULL\"",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "tests/test_l1_family_sizing.py"
+      ],
+      "mustFail": [
+        "test_measure_parts_matches_an_independent_computation_on_every_family"
+      ]
+    },
+    {
+      "id": "l1-sizing.cancellations-counted-as-executions",
+      "file": "apps/runtime/conversion/l1_family_sizing.py",
+      "find": "            \"FROM trades_raw WHERE trade_action='NEW' AND size > 0 AND price > 0\"",
+      "replace": "            \"FROM trades_raw WHERE size > 0 AND price > 0\"",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "tests/test_l1_family_sizing.py"
+      ],
+      "mustFail": [
+        "test_measure_parts_matches_an_independent_computation_on_every_family"
+      ]
+    },
+    {
+      "id": "l1-sizing.partial-download-left-behind",
+      "file": "apps/runtime/conversion/curated_partition.py",
+      "find": "            for path in [*paths, os.fspath(destination)]:\n                Path(path).unlink(missing_ok=True)",
+      "replace": "            for path in paths:\n                Path(path).unlink(missing_ok=True)",
+      "cwd": "apps/runtime/conversion",
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "pytest",
+        "-q",
+        "tests/test_l1_family_sizing.py"
+      ],
+      "mustFail": [
+        "test_measure_partition_resolves_verifies_downloads_measures_and_cleans_up"
+      ]
+    }
+  ]
+}

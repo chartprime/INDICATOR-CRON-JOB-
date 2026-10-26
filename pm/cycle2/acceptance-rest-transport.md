@@ -136,3 +136,21 @@ calls spot REST outside the gate (checked: only the connection, the backfill and
 The limit is per IP and this container's egress is shared, so the difference is other traffic on the same IP, or a
 weight table that differs from the documented 2 per klines page; either way the accounted total adopts the header
 and reservations add on top of it, so the budget holds.
+
+## Fix round 2 (Codex re-review: finality at dispatch, backfill grace range, holes), 30 s re-run at 04:58 UTC
+
+Same command. After 25 s `/health`: `ready true`, `SPOT.public CONNECTED`, `delivery.transport rest`, 48 polls / 0
+failures (108 / 0 after the recording), exchange offset +430 ms, `candles READY` (10,080 bars), `gatedRequests 0`,
+both pollers `repairing false`, `missingBars 0`, `confirmedOpenTime` = the previous minute (04:57) while 04:58 formed;
+tick-size `exchangeInfo` failures 0; weight this minute reserved 54 / header 32 / accounted 56 (after the recording
+174 / 154 / 176), deferrals 0. Recording (30 s, every L2 capability declared): snapshot 10,080 bars; 22 bar frames,
+all revisions of the 04:58 forming bar (the window did not span a close); 0 trade frames; health `READY`, reason
+`Polled spot candles · no tape · no order book`; book `UNAVAILABLE:REST_NO_DEPTH`; no depth-derived frames.
+
+Finality now follows the exchange clock at dispatch (a poll sent before a close cannot finalise that candle, whatever
+its receipt time; the next poll does), the backfill applies the same rule and accepts the normal page shape inside
+the grace window, and a page starting past the continuation keeps the cursor on the first missing minute for three
+retries before the interval is reported as `history incomplete (N min missing)`. On the owner's machine the baseline
+procedure above is unchanged; add: compare the closed candles the REST runtime delivered in the 2 s after each
+minute boundary against the stream runtime's, and they must be identical (the dispatch rule removes the
+pre-close row case).

@@ -135,3 +135,25 @@ section 4.
 
 Binance sizes are base asset (documented USD notional is `price * size`);
 futures are contracts; equities are shares. Never add across providers.
+
+## 9. Data paths added in cycle 2 (2026-10-26)
+
+- Spot endpoint overrides `TT_BINANCE_SPOT_WS_BASE_URL` and
+  `TT_BINANCE_SPOT_REST_BASE_URL`: the stream transport can use Binance's
+  unblocked market-data mirrors. Spot only; perpetual endpoints untouched.
+- REST candle transport `TT_BINANCE_TRANSPORT=rest` (`TT_BINANCE_REST_POLL_MS`
+  250..20000, `TT_BINANCE_REST_WEIGHT_BUDGET`): spot candles only, forming and
+  closed, finality judged at dispatch time, catch-up and hole repair with an
+  honest `history incomplete` reason; tape and book unavailable, health reason
+  `Polled spot candles · no tape · no order book`. This is how the cloud
+  container reaches real Binance spot data; evidence in
+  `pm/cycle2/acceptance-rest-transport.md`. Stage B2 (aggregate trades behind a
+  capability contract) and Stage C (depth) remain in the backlog.
+- Browser-direct mode (`VITE_DATA_SOURCE=browser-binance` at build time, or
+  `?source=browser-binance`): the web app reads Binance spot in the browser
+  (REST history, then kline, trade and depth20 streams), no runtime. Candle and
+  tick indicators work; the L2 engine family shows unavailable.
+- Environment facts: the container cannot open WebSockets (proxy) and
+  Binance's primary API geo-blocks it (451); the mirror answers REST with
+  `access-control-allow-origin: *`.
+

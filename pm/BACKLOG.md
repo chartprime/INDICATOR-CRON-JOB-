@@ -44,8 +44,8 @@ replenishment rate after a wall is eaten.
 
 | Step | Owner | State |
 |---|---|---|
-| Browser-direct Binance mode (test link) | Platform/Web | built, published v1, Codex G2 fix round 1 running |
-| Binance spot URL overrides (stage A) and REST transport (stage B) | Platform | building; Codex plan round 2 REVISE being folded in |
+| Browser-direct Binance mode (test link) | Platform/Web | DONE: merged to main; link at version 4 (4 Codex rounds, 9 findings fixed) |
+| Binance spot URL overrides (stage A) and REST candle transport (stage B) | Platform | DONE: merged to main (4 Codex rounds, 10 findings fixed); stage B2 aggregate trades and stage C depth remain behind capability contracts |
 | VPS test host recipe | PM | done (`ops/test-host-recipe.md`) |
 
 ## Harness debt

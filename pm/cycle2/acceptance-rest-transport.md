@@ -154,3 +154,23 @@ retries before the interval is reported as `history incomplete (N min missing)`.
 procedure above is unchanged; add: compare the closed candles the REST runtime delivered in the 2 s after each
 minute boundary against the stream runtime's, and they must be identical (the dispatch rule removes the
 pre-close row case).
+
+## Fix round 3 (PM-authorised: anchor before the first confirmed close, poll cap, candle coverage), 30 s re-run at 05:10 UTC
+
+Same command. After 25 s `/health`: `ready true`, `SPOT.public CONNECTED`, `delivery.transport rest`, 48 polls / 0
+failures (108 / 0 after the recording), exchange offset +378 ms, `candles READY` (10,080 bars), `gatedRequests 0`,
+both pollers `uncovered false`, `repairing false`, `missingBars 0`, `confirmedOpenTime` 05:09 and
+`continuationOpenTime` 05:10 (the forming minute); tick-size `exchangeInfo` failures 0; weight this minute reserved
+40 / header 24 / accounted 40 (after the recording 160 / 358 / 358: the header, which the accounted total adopts,
+again counted traffic this runtime did not send, consistent with a shared egress IP), deferrals 0.
+Recording (30 s, every L2 capability declared): snapshot 10,080 bars; 24 bar frames, all revisions of the 05:10
+forming bar (the window did not span a close); 0 trade frames; health `READY`, reason `Polled spot candles · no
+tape · no order book`; book `UNAVAILABLE:REST_NO_DEPTH`; no depth-derived frames.
+
+What changed for honesty: the cursor's first request anchors the earliest minute it answers for, so a start inside
+the one-second grace followed by a pause is caught up from that minute; `TT_BINANCE_REST_POLL_MS` and the cadence
+planner are capped at 20 s so at least two polls a minute fall outside the grace and every candle is confirmed within
+the minute after its close; and only a response carrying an expected candle (the next one or later, the forming one
+included) counts as an observation, so empty pages or pages holding only confirmed candles leave the cursor in place,
+do not refresh the feed, and show `RECOVERING` then `UNAVAILABLE` with the reason `· awaiting candles` instead of
+`READY`.

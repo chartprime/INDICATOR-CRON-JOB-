@@ -1,0 +1,1 @@
+{"symbol":"ETH-USDT","snapshotBars":10080,"barFrames":1242,"closes":30,"distinctOpens":31,"counts":{"selection":1,"snapshot":8,"book":1,"health":1,"bar":1242},"health":[{"at":1793035023362,"recoveryState":"READY","stale":false,"reason":"Polled spot candles · no tape · no order book"}]}

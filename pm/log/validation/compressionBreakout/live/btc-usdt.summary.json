@@ -1,0 +1,1 @@
+{"symbol":"BTC-USDT","snapshotBars":10080,"barFrames":1819,"closes":30,"distinctOpens":31,"counts":{"selection":1,"snapshot":23,"book":1,"health":1,"bar":1819},"health":[{"at":1793035023276,"recoveryState":"READY","stale":false,"reason":"Polled spot candles · no tape · no order book"}]}

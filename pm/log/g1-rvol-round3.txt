@@ -1,0 +1,1302 @@
+Reading additional input from stdin...
+OpenAI Codex v0.164.0
+--------
+workdir: /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+model: gpt-6.1-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 01a175cd-3ee3-7e62-9da6-c09f47943e97
+--------
+user
+You are the independent plan reviewer for a trading-indicator team. Review this build brief for an indicator in the repository you are running in (a React/TypeScript chart terminal with an indicator SDK; read apps/web/src/lib/chart/indicatorTypes.ts and docs/architecture/indicators/data-for-indicator-authors.md for the contract and rules).
+
+Judge: 1) Does it answer one specific trading question a retail trader has? 2) Is the calculation fully specified, incremental (one bar at a time, forming bar revised in place), and free of future data? 3) Is every data input actually available per the brief's data section, with honest behavior when it is missing? 4) Will a trader understand the default view in seconds with at most three primary controls? 5) Is the success criterion testable and the baseline fair? 6) What is the simplest alternative that would do most of the job?
+
+Be specific and actionable. End with exactly VERDICT: APPROVED or VERDICT: REVISE.
+
+----- BUILD BRIEF -----
+# Build brief: Relative Volume by Time of Day
+
+PM brief for the cycle-1 build. Shared rules: PM/WORKER-BRIEF.md. Capability
+sheet: PM/CAPABILITIES.md. UX standard: PM/cycle1/ux-standard.md (follow it
+where it exists; where it is silent, follow the house conventions in the
+existing indicators). Validation protocol: PM/cycle1/validation-protocol.md.
+
+## The trading question
+
+"Is this bar's volume unusual for this time of day, or is it just the open,
+the close or the London/New York overlap being its normal self?"
+
+## Target user and decision
+
+Intraday traders on ES, NQ, AAPL, TSLA, BTC and ETH who confirm moves with
+volume. Decision: treat participation as genuinely unusual for this minute,
+or discount it because this minute is always loud. High relative volume on
+its own says nothing about direction or follow-through, and the package says
+so. Plain rolling
+RVOL fires every morning at the open and goes quiet every lunch; this tool
+stays flat where the clock explains the volume and lights up only when the bar
+is unusual for its slot.
+
+## Identity
+
+- Folder `apps/web/src/lib/indicators/relative-volume/`, def `relativeVolume.ts`,
+  computation in `relativeVolumeMath.ts` (pure, testable), tests in `tests/`.
+- id `relativeVolume`, label `"Relative Volume (Time of Day)"`, category
+  `"technical"`, placement `{ kind: "ownPane", priceLines: [1, 2, 3] }`.
+- Historical Mode policy `OHLCV_POLICY`. Works on every archived instrument
+  and on equities (unsided volume is irrelevant: only `bar.volume` is read).
+- No `timeframeGate` (it would remove the indicator and its table entirely).
+  For `interval_ms > 3_600_000` every output is `null` and the status row says
+  `Time of day needs an intraday timeframe`.
+
+## Data
+
+`bar.ts_open`, `bar.interval_ms`, `bar.volume`, `bar.closed`, `bar.provider`,
+`bar.assetClass`, `bar.marketKind`. Nothing else. No wall clock. Identity
+fields choose the clock convention only; availability is governed by the
+OHLCV capability policy, never by provider. A bar whose `volume` is not a
+finite number >= 0 contributes no sample and yields `null` for that bar.
+Missing bars (gaps in `ts_open`) contribute nothing, never a zero sample.
+
+Math library note: the `ta.*` factories are top-level imports
+(`import { ta } from "../../chart/ta"`) created once inside `createState`,
+exactly as `docs/architecture/indicator-sdk/TA.02-ta-math-library-evidence.md`
+describes; `ctx.ta` is an intentionally empty namespace and is not used. The
+rolling comparison uses `ta.sma(20)` fed with committed volumes only (see the
+commit rule), so its denominator excludes the current bar, mirroring the slot
+method; `null` until 20 committed bars.
+
+## Calculation (incremental, one bar at a time)
+
+1. **Clock.** Equities and futures (provider DXFEED or DATABENTO): New York
+   local minute of day, computed the way `killzones` does it (reuse
+   `apps/web/src/lib/chart/marketCalendar.ts` or the `nyParts` helper; do not
+   write a new time-zone routine). Crypto (provider BINANCE): UTC minute of
+   day, with two slot families, weekday and weekend, selected by the UTC day of
+   week. Advanced setting `clock`: `auto` (default), `newYork`, `utc`.
+2. **Slot key.** The bar's start minute of day in the resolved clock
+   (0..1439), plus the family. No division by bar length: an hourly equity
+   bar starting 09:30 keys 570, the half-hour 15:30 bar keys 930, and neither
+   collides with another slot. At most 1,440 keys per family.
+3. **Observation = volume rate.** What enters a ring is
+   `rate = volume / (interval_ms / 60_000)`, volume per minute, so a short bar
+   (an early-close day, the final equity hour bar) is compared with full bars
+   fairly. The forming bar's rate uses its declared `interval_ms`.
+4. **Baseline.** Per slot key, a ring of the last `sessions` committed
+   observations `{ts_open, rate}` (default 10, range 2..60) and their median.
+   Median, not mean, so one news day does not inflate tomorrow's baseline. An
+   observation is evicted when it is older than the chart's retention window,
+   `bar.ts_open - 10_080 * bar.interval_ms`, so state never depends on bars
+   the chart no longer holds; a REBUILT replay from retained bars then
+   reproduces live state exactly.
+5. **Baseline read before write.** For the bar being evaluated, the slot
+   median and the rolling SMA are read first (`baselineAtOpen`), stored on the
+   bar's own record, and every later recomputation of that bar (a `replace`
+   revision, a duplicate closed dispatch) divides by that stored value. A bar
+   never sees its own volume in its denominator.
+6. **Commit rule (one observation per `ts_open`, correctable).** State keeps
+   the current bar record `{ts_open, rate, baselineAtOpen, committed}`. The
+   observation is inserted into its slot ring and into the rolling window at
+   the first of: (a) the first dispatch of that `ts_open` with
+   `bar.closed === true`; (b) the arrival of a bar with a greater `ts_open`
+   while the record is uncommitted (a close that never arrived), inserting the
+   last known rate. Rings store `{ts_open, rate}`, so a later closed dispatch
+   of the same `ts_open` with a different volume UPDATES that observation in
+   place (same key, new rate) and recomputes the bar's own ratio from its
+   stored `baselineAtOpen`; it never inserts twice. This keeps live state equal
+   to a replay that only ever saw the corrected bar. A dispatch older than the
+   current record is ignored. The replay tail may be a forming bar (the
+   runtime keeps the supplied `closed` flags); it stays pending like any live
+   forming bar.
+7. **Confirmation.** A bar's outputs and markers are provisional while
+   `bar.closed === false` (drawn lighter) and confirmed on the first closed
+   dispatch, including the last bar of a replay. No bar ever emits a marker
+   for a different bar: a marker is always for the bar of the current call,
+   so the runtime's per-timestamp replace cannot leave stale or duplicate
+   markers.
+8. **Output.** `rvol = rate / slotMedian`, `null` while the slot has fewer
+   than `minSessions` (default 3) observations or the median is 0 or not
+   finite. Median of an even count is the mean of the two middle values. The
+   forming bar is divided by the full-slot expectation, so it grows toward its
+   final value during the bar. `rolling = rate / mean of the previous 20
+   committed rates`, `null` during its warm-up. `minSessions` is clamped to
+   `<= sessions` at read time. Precedence of states: invalid current volume
+   gives `No usable volume` even while the slot is still learning.
+9. **Markers (alert conditions).** `hot`: `rvol >= hotThreshold` (default 2)
+   draws a small circle on that bar; `rvol >= 3` the same circle, larger.
+   `sustained` (advanced, off by default): a committed run counter advances
+   only when a bar commits with `rvol >= sustainedLevel`; the forming bar is
+   evaluated provisionally as `committedRun + (formingQualifies ? 1 : 0)` and
+   never advances the committed counter, so repeated forming updates cannot
+   inflate the run. The marker is drawn on the bar at which the provisional
+   run first reaches `sustainedBars` (default 3), once per run. The run resets
+   on a bar below the level, a `null` or invalid bar, a missing bar in the
+   sequence (next `ts_open` not equal to previous plus `interval_ms`), or a
+   session boundary (a change of calendar day in the resolved clock, or of
+   family). Markers are derived from state on every call, so a replace
+   redraws rather than duplicates.
+10. **Sessions, slots and duration.** A ring holds observations, one per
+   committed bar; because a slot occurs once per calendar session, a session
+   contributes at most one sample per slot. Exception: the repeated New York
+   hour at the autumn DST change can land two futures bars in one slot; both
+   are kept as observations, documented, no special case. Bars shorter than
+   their nominal length (the 15:30 to 16:00 equity hour bar, an early-close
+   day's last bar) are handled by the rate observation and the start-minute
+   key: a shortened bar is compared per minute with other bars that started at
+   the same clock minute. `sessions` is the ring capacity, not
+   a promise of available history: retained history supplies what it has, and
+   the table shows the actual sample count.
+11. **No future data.** Every value at bar t uses only bars with
+    `ts_open <= t.ts_open`. Truncating the series at any index must not change
+    earlier outputs or earlier markers (the validator checks both).
+12. **Fail closed.** Any non-finite intermediate yields `null`.
+
+## Default view (what a trader sees in three seconds)
+
+Own pane. One line `rvol` with `ctx.draw.fill(rvol, 1, ...)`: green
+(`#26a69a`, alpha) above 1, grey below 1. Line color per bar: hot (>= hot
+threshold) `#ff9800`, above 1 `#26a69a`, below 1 `#787b86`. Price lines at
+1, 2 and 3. Hot markers on. The rolling comparison line is OFF by default
+(the orange line already identifies hot bars); its value still shows in the
+table so the contrast is one glance away. Table, top right, three rows:
+`RVOL 2.4x (time of day, n=7)` colored like the line, where n is the slot's
+actual observation count; `1.1x (rolling 20)`; a status row that is exactly
+one of `Forming: versus full-bar expectation` (bar not closed),
+`Learning this time of day: 1 of 3 sessions`, `No usable volume` (invalid
+current volume), `No usable volume baseline` (median 0), `Time of day needs an
+intraday timeframe`, or blank when ready and closed. Before warm-up the
+pane is empty, never zero.
+
+## Controls
+
+Primary (at most three, in the dialog's main tab): `sessions` ("Lookback
+sessions", 10, 2..60, step 1), `hotThreshold` ("Unusual above", 2, 1..10,
+step 0.5), `showRolling` ("Show rolling comparison", false).
+
+Advanced (use the mechanism the UX specialist chose; if none landed, use the
+`visibility` tab): `minSessions` (3, 1..20, step 1), `clock` select (auto /
+newYork / utc), `weekendSplit` (false by default: seven retained days of one-minute crypto
+give only two weekend observations per slot, below `minSessions`; the label
+says it applies to the UTC clock only and needs longer history, since
+`visibleIf` cannot see the instrument),
+`showMarkers` (true), `showSustained` (false), `sustainedBars` (3, 2..10),
+`sustainedLevel` (1.5, 1..5, step 0.1), colors.
+
+Every key appears in `settingsSchema`; numeric and slider fields have
+`step > 0`; `recompute` for anything that changes values, `cosmetic` for
+colors. Presets then work.
+
+## Baseline to beat, and the evidence required
+
+Baseline: `volume / SMA(20)` of the previous 20 committed bars (the
+comparison line itself). Both methods are evaluated at the same threshold
+(2.0), on the same bars (those where both are ready), and both recall and
+false-positive rate are reported for both without a predetermined winner.
+
+Deterministic equity fixture (in the validation harness): 15 sessions of
+390 one-minute bars, New York 09:30 to 16:00. Expected volume for minute m
+(0..389) with midday level V = 1,000: `E(m) = V * (1 + 3 * max(0, 1 - m/60)^2)`
+for m < 60, `V` for 60 <= m <= 330, `V * (1 + (m - 330) / 59)` for m > 330
+(so 4.0x at the open decaying to 1.0x by minute 60, flat, rising to 2.0x at
+the close). Noise: `volume = E(m) * exp(0.15 * z)` with z standard normal from
+a Box-Muller transform over mulberry32 seeded 20261026. Anomalies: 12 distinct
+(session, minute) pairs drawn with the same generator from sessions 4..15 and
+minutes 90..330, each replaced by `2.5 * E(m)` (the expected, not the noisy,
+value). Evaluation bars: sessions 4..15 where both methods are ready.
+"Predictable slots" are minutes 0..9 and 380..389. A false positive is a
+detection on an eligible non-anomaly bar; report the overall rate and the
+predictable-slot rate.
+
+Deterministic crypto fixture for performance and retention: 10,080 one-minute
+bars (7 UTC days), expected volume `V * (1 + 0.5 * cos(2 * pi * (m - 840) /
+1440))` with the same noise model, seed 20261027. Used for the p99 timing,
+the rollover (feed 12,000 bars, confirm bounded state), and a REBUILT replay
+from the last 10,080 bars that must reproduce the live outputs for every bar
+whose full lookback lies within retention.
+
+Acceptance for this indicator (descriptive, not predictive):
+- Recall on the 12 anomalies >= 11/12.
+- Predictable-slot false-positive rate <= 10 percent of those bars.
+- The rolling method's recall, overall and predictable-slot false-positive
+  rates on the same bars are reported beside these in the doc page, whatever
+  they are. The hypothesis
+  under test is that the time-of-day method has a lower false-positive rate
+  at the open and close with comparable recall; if the fixture disproves it,
+  the brief returns to the PM.
+
+Additional fixtures with expected outcomes:
+- Weekend split ON on the 7-day crypto fixture: weekend slots show
+  `Learning: 2 of 3 sessions`, weekday slots are ready from day 4 on; no NaN.
+- New York DST week for futures (autumn): the repeated 01:00 hour yields two
+  observations in those slot keys that day, both kept; the spring week yields
+  none for the skipped hour; outputs identical live and in replay.
+- Gap: a session missing minutes 120..179 contributes no observations for
+  those keys; the bar after the gap has an unchanged baseline and a reset
+  sustained run.
+- Early close at 13:00: the 12:30 hourly bar (30 minutes) is compared per
+  minute with other 12:30 bars; its ratio is near 1 when its rate is normal.
+- Changed-volume closed replacement: a bar closes at 100, then closes again at
+  150; the ring observation becomes 150, that bar's own ratio uses its stored
+  denominator, and every later bar matches a replay that only saw 150.
+- Duplicate identical closed dispatch: no change in any output.
+- Replay with a forming tail bar: the tail stays pending and provisional.
+
+## Success criteria (all required for acceptance)
+
+1. Hand-computed exact values on a small three-session fixture, including the
+   median baseline, warm-up nulls, and the forming-bar growth.
+2. Validation harness: truncation invariance; live-versus-replay equivalence
+   (committed outputs identical); duplicate closed dispatch and REBUILT
+   sequence; empty input; no NaN anywhere.
+3. Baseline comparison numbers above, reproduced by a test.
+4. Performance, measured with the validator's perf probe on this container
+   (4 cores, Node 24.21.0, vitest): p99 `onBar` under 0.05 ms over the
+   10,080-bar replay of the fixture above; retained state bounded by
+   `2 x 1,440 x sessions` numbers plus one small record per retained bar.
+5. Marker budget: on the 15-session fixture above (the "busy fixture"), the
+   hot condition at the default threshold emits fewer than 2 markers per 100
+   evaluated bars, anomalies included.
+6. UX: default view as specified, three primary controls, screenshots at two
+   zoom levels from the UX specialist's fixture path, legend copy approved by
+   UX.
+7. Docs: `docs/architecture/indicators/relative-volume.md` and one row in the
+   indicators README map; `node scripts/validate-docs.cjs` passes.
+8. Full web suite, type check and lint green; Codex code review APPROVED;
+   validator report PASS.
+
+## Limitations to state in the package
+
+Needs `minSessions` prior sessions per slot: one-minute crypto retains seven
+UTC days, one-minute equities about 25 sessions; a fresh symbol shows
+"learning" for three sessions. Holidays and early closes are ordinary sessions
+in this version. Equity candles are regular session only. The ratio is
+unit-free; volume units are the provider's.
+
+## Seams for later cycles
+
+`readOutput` exposes `rvol` so Squeeze Breakout Context can adopt the clock
+baseline as its volume confirmation. No cross-indicator read exists in the
+SDK today, so that adoption is a shared math module import, not a runtime link.
+
+## Note for the Codex plan reviewer
+
+The `PM/` documents referenced above live outside this checkout, at
+/home/user/Terminal-L1-L2/PM/. Their requirements relevant here are
+summarised in this brief: at most three primary controls, honest nulls,
+house colors green `#26a69a` red `#ef5350` neutral `#d1d4dc`, truncation
+invariance and live-versus-replay equivalence as validation checks.
+
+## Round 3 changes (after Codex plan review round 2)
+
+Observations are volume rates keyed by start minute of day, so short bars and
+early closes compare per minute without slot collisions; rings store
+`{ts_open, rate}` and a corrected closed bar updates its observation in place;
+observations older than the chart's 10,080-bar retention are evicted so a
+REBUILT replay reproduces live state; `timeframeGate` dropped in favour of
+null outputs plus a status row; forming label and sample count added to the
+table; weekend split off by default with the reason; sustained run has
+committed and provisional parts, configurable length and explicit resets;
+invalid-volume precedence stated; fixtures frozen (formula, generator, seed,
+anomaly rule), a 10,080-bar crypto fixture added for timing and retention,
+false positives defined, expected outcomes listed per fixture.
+
+## Round 2 changes (after Codex plan review round 1)
+
+Commit rule now keyed to the first closed dispatch with a fallback on the
+next bar; denominator stored before insertion; markers only for the current
+bar; even-count median, invalid volume, `minSessions <= sessions`, sustained
+re-arm rules, session identity, DST repeat hour and short bars specified;
+`ta.sma` clarified as a top-level factory import fed with committed volumes
+only; rolling line off by default and `minSessions` moved to advanced;
+table rows and status states fixed; benchmark rewritten as a seeded fixture
+with both methods measured at the same threshold on the same bars, with
+recall and false-positive rate reported for both; hardware named for the
+performance target; extra fixtures listed.
+
+## Budget
+
+One build run by the OHLCV specialist, UX joins before the build ends, at most
+two fix rounds after Codex code review and validation. A third failure returns
+the concept to the backlog with the evidence attached.
+warning: Codex could not find bubblewrap on PATH. Install bubblewrap with your OS package manager. See the sandbox prerequisites: https://developers.openai.com/codex/concepts/sandboxing#prerequisites. Codex will use the bundled bubblewrap in the meantime.
+codex
+I’ll check the SDK contract and data rules, then review the brief for calculation, replay, and validation gaps.
+exec
+/bin/bash -lc "pwd && rg --files -g AGENTS.md -g indicatorTypes.ts -g data-for-indicator-authors.md -g marketCalendar.ts -g '*relativeVolume*' -g '*killzones*'" in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+/home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+docs/architecture/indicators/session-killzones-evidence.md
+docs/architecture/indicators/data-for-indicator-authors.md
+apps/web/src/lib/chart/indicatorTypes.ts
+apps/web/src/lib/chart/marketCalendar.ts
+apps/web/src/lib/indicators/killzones/tests/killzonesIndicator.test.ts
+apps/web/src/lib/indicators/killzones/tests/killzonesPrimitive.test.ts
+apps/web/src/lib/indicators/killzones/tests/killzones.test.ts
+apps/web/src/lib/indicators/killzones/killzonesIndicator.ts
+apps/web/src/lib/indicators/killzones/killzonesPresets.ts
+apps/web/src/lib/indicators/killzones/killzonesPrimitive.ts
+apps/web/src/lib/indicators/killzones/killzones.ts
+
+exec
+/bin/bash -lc 'cat apps/web/src/lib/chart/indicatorTypes.ts' in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+import type { ReactNode } from "react";
+import type { BarFrame, FrameIdentity, TradeFrame } from "../../types/frames";
+import type { IndicatorLiquidity } from "./indicatorLiquidity";
+import type { IndicatorL2 } from "./indicatorL2";
+import type { BandHistoryWant, IndicatorBandHistory } from "./bandHistory";
+import type { IndicatorTicks } from "./indicatorTicks";
+import type { FillOptions } from "./draw/fill";
+import type { PlotCharOptions, PlotShapeOptions } from "./draw/markers";
+
+export type IndicatorCategory =
+  | "technical"
+  | "l1"
+  | "l2"
+  | "session"
+  | "community";
+
+export type TaNamespace = Record<string, never>;
+
+export interface DrawNamespace {
+  /**
+   * Fills the region between two values, bar by bar. `key` names the band, so
+   * one indicator can fill more than one region at once -- an inner band and
+   * the ring around it, say -- each keeping its own colour and its own point
+   * per bar. Omit it for a single fill; `DEFAULT_FILL_KEY` is used.
+   */
+  fill(
+    valueA: number | null,
+    valueB: number | null,
+    options?: FillOptions,
+    key?: string,
+  ): void;
+}
+
+export interface MarkersNamespace {
+  plotshape(options: PlotShapeOptions): void;
+  plotchar(options: PlotCharOptions): void;
+}
+
+export interface PaneNamespace {
+  paneIndex: number;
+}
+
+/**
+ * Provenance for the print array supplied to an indicator. An empty complete
+ * live range is materially different from a historical range we do not have
+ * or a bounded live range that overflowed before correlation.
+ */
+export type TradeAvailability =
+  | "LIVE_COMPLETE"
+  | "LIVE_PARTIAL"
+  | "HISTORICAL_UNAVAILABLE";
+
+export interface IndicatorBarCtx<S, T> {
+  bar: BarFrame;
+  /**
+   * The individual trades observed during this displayed chart bar. Only
+   * populated for a live bar going forward from activation -- every bar
+   * touched by a full replay (warm-start, REBUILT, a recompute-tagged
+   * settings change) gets an empty array here, honestly, since no
+   * historical trade-by-range query exists yet. Read tradeAvailability
+   * before interpreting an empty array as a genuine no-print bar.
+   */
+  trades: readonly TradeFrame[];
+  /**
+   * Indicators which derive signals from individual prints must not treat
+   * LIVE_PARTIAL or HISTORICAL_UNAVAILABLE as an observed zero-trade bar.
+   */
+  tradeAvailability?: TradeAvailability;
+  liquidity?: IndicatorLiquidity;
+  l2?: IndicatorL2;
+  bandHistory?: IndicatorBandHistory;
+  /** The terminal's L1 print store, when one exists for the selected pair. */
+  ticks?: IndicatorTicks;
+  state: S;
+  settings: T;
+  replace: boolean;
+  replaying: boolean;
+  drawNow?: boolean;
+  /**
+   * Where this bar sits in the series being fed to the indicator, 0-based, and
+   * how many bars that series holds. During a replay the series is the bars the
+   * replay iterates (all of them, or the `maxReplayBars` slice); for a live bar
+   * it is the chart's own bars, so the last one is `barCount - 1`.
+   *
+   * This is what lets an anchored indicator place itself a fixed number of bars
+   * back from the newest one, and it only describes the series -- it says
+   * nothing about whether the store can price the bar. The runtime always sets
+   * both; they are optional so a hand-written context in a test can leave them
+   * out, and an indicator that reads them should treat their absence as "position
+   * unknown" rather than as bar zero.
+   */
+  barIndex?: number;
+  barCount?: number;
+  ta: TaNamespace;
+  draw: DrawNamespace;
+  markers: MarkersNamespace;
+  pane: PaneNamespace;
+}
+
+export interface LineOutputSpec<S, T = unknown> {
+  key: string;
+  color?: (state: S, settings: T) => string;
+  recolor?: (currentColor: string | undefined, settings: T) => string;
+  lineWidth?: number;
+}
+
+export type PlacementSpec =
+  | { kind: "overlay" }
+  | {
+      kind: "ownPane";
+      priceLines?: readonly number[];
+      autoscaleRange?: { min: number; max: number };
+    }
+  | { kind: "sharedPane"; withIndicatorId: string };
+
+/**
+ * NOT IMPLEMENTED (found during TA.05's audit). Declaring this on a
+ * RuntimeIndicatorDef throws at registration -- createIndicatorRuntime()
+ * rejects it rather than silently ignoring it. `attachToLineKey` was meant
+ * to reference another indicator's `lines[].key`, but the one real case
+ * that motivated this (Delta Divergence attaching to Order Flow's CVD
+ * line) can't be expressed that way: Order Flow's CVD line is hand-built
+ * directly in ChartPanel.tsx (lines: [] on its own def), not produced
+ * through the generic `lines` output this field assumes. Building this for
+ * real needs a redesign validated against a second real use case, not
+ * guessed from one that doesn't even fit the current shape.
+ *
+ * Need to attach a primitive onto another specific indicator's own
+ * (possibly bespoke) series today? There is no self-serve path yet --
+ * hand-wire the attach/detach lifecycle directly in ChartPanel.tsx, the
+ * way deltaDivergenceIndicator.tsx's own real Order Flow attachment does,
+ * or ask whoever owns the chart pipeline. Every other placement need
+ * (own pane, overlay, or sharing a pane with an SDK indicator via
+ * `PlacementSpec`'s `sharedPane`) is fully self-serve already.
+ */
+export interface CrossAttachmentSpec {
+  attachToIndicatorId: string;
+  attachToLineKey: string;
+  createPrimitive: () => unknown;
+}
+
+interface SettingsFieldBase<T> {
+  visibleIf?: (settings: T) => boolean;
+  tab?: "inputs" | "visibility";
+}
+
+export type SettingsFieldSchema<T> =
+  | (SettingsFieldBase<T> & {
+      kind: "boolean";
+      key: keyof T;
+      label: string;
+      affects: "recompute" | "cosmetic" | "liveOnly";
+    })
+  | (SettingsFieldBase<T> & {
+      kind: "checkboxList";
+      key: keyof T;
+      label: string;
+      options: readonly { value: unknown; label: string }[];
+      affects: "recompute" | "cosmetic" | "liveOnly";
+    })
+  | (SettingsFieldBase<T> & {
+      kind: "radioGroup";
+      key: keyof T;
+      label: string;
+      options: readonly { value: unknown; label: string; hint?: string }[];
+      affects: "recompute" | "cosmetic" | "liveOnly";
+    })
+  | (SettingsFieldBase<T> & {
+      kind: "select";
+      key: keyof T;
+      label: string;
+      options: readonly { value: unknown; label: string }[];
+      affects: "recompute" | "cosmetic" | "liveOnly";
+    })
+  | (SettingsFieldBase<T> & {
+      kind: "numeric";
+      key: keyof T;
+      label: string;
+      min: number;
+      max: number;
+      step: number;
+      /**
+       * A saved value outside [min, max] is brought to the nearest bound instead
+       * of falling back to the default -- for fields whose bounds have tightened,
+       * so a trader's setting keeps its side of the range.
+       */
+      clampOnRestore?: boolean;
+      affects: "recompute" | "cosmetic" | "liveOnly";
+    })
+  | (SettingsFieldBase<T> & {
+      kind: "color";
+      key: keyof T;
+      label: string;
+      affects: "recompute" | "cosmetic" | "liveOnly";
+    })
+  | (SettingsFieldBase<T> & {
+      kind: "slider";
+      key: keyof T;
+      label: string;
+      min: number;
+      max: number;
+      step: number;
+      /**
+       * A saved value outside [min, max] is brought to the nearest bound instead
+       * of falling back to the default -- for fields whose bounds have tightened,
+       * so a trader's setting keeps its side of the range.
+       */
+      clampOnRestore?: boolean;
+      affects: "recompute" | "cosmetic" | "liveOnly";
+    })
+  | (SettingsFieldBase<T> & {
+      kind: "staticHint";
+      text: string;
+    })
+  | (SettingsFieldBase<T> & {
+      kind: "custom";
+      /**
+       * Optional: when a custom field only ever writes one settings key,
+       * naming it here lets the runtime scope its recompute-change
+       * detection to that key instead of the whole settings object --
+       * otherwise an unrelated sibling field's change (e.g. a cosmetic
+       * toggle) is indistinguishable from this field's own and forces an
+       * unwanted full replay too. Omit only if the field genuinely writes
+       * more than one key.
+       */
+      key?: keyof T;
+      render: (settings: T, onChange: (next: T) => void) => ReactNode;
+      isValidPersistedValue?: (value: unknown) => boolean;
+      byInstrument?: boolean;
+      affects: "recompute" | "cosmetic" | "liveOnly";
+    });
+
+interface IndicatorMeta {
+  id: string;
+  label: string;
+  category: IndicatorCategory;
+}
+
+export interface RuntimeIndicatorDef<S, T> extends IndicatorMeta {
+  kind: "runtime";
+  createState(settings: T): S;
+  onBar(ctx: IndicatorBarCtx<S, T>): void;
+  readOutput(state: S): Record<string, number | null>;
+  getHoverData?: (state: S, settings: T) => unknown;
+  lines: readonly LineOutputSpec<S, T>[];
+  defaultSettings: T;
+  settingsSchema?: readonly SettingsFieldSchema<T>[];
+  persistenceSchema?: readonly SettingsFieldSchema<T>[];
+  settingsFieldsFor?: (identity: { symbol: string } & FrameIdentity) => Partial<Record<keyof T, SettingsFieldSchema<T>>>;
+  placement: PlacementSpec;
+  /** Limit historical bars processed when this indicator is activated or recomputed. */
+  maxReplayBars?: number;
+  crossAttachments?: readonly CrossAttachmentSpec[];
+  timeframeGate?: (intervalMs: number) => boolean;
+  bandHistoryWanted?: (state: S) => readonly BandHistoryWant[];
+  /**
+   * Set when the indicator reads `ctx.ticks`. The runtime replays only the
+   * indicators that declare it when the print store is handed over, since a
+   * print store arrives once per pair and a replay is what backfills the bars
+   * drawn before it did.
+   */
+  ticksWanted?: boolean;
+}
+
+export interface LegacyIndicatorDef extends IndicatorMeta {
+  kind: "legacy";
+}
+
+export type IndicatorDef = RuntimeIndicatorDef<any, any> | LegacyIndicatorDef;
+
+exec
+/bin/bash -lc 'cat docs/architecture/indicators/data-for-indicator-authors.md' in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+# Data for indicator authors
+
+[Handbook](../../README.md) · [Indicator index](README.md) ·
+[Onboarding](../../operations/00-developer-onboarding.md) ·
+[Indicator SDK](../indicator-sdk/TA.01-indicator-authoring-core-evidence.md)
+
+An indicator never opens SQLite, S3 or a provider connection itself. It reads
+what the runtime and the archive deliver through a small number of supported
+boundaries. This page names those boundaries, says what each one carries for
+each instrument, and lists the rules every indicator has to follow. The code
+named here is the authority; when this page and the code disagree, the code
+wins and this page is the defect.
+
+## Three sources of data
+
+| Source | How it reaches an indicator | You need | When it is missing |
+|---|---|---|---|
+| **Live ticks** | Terminal C holds the provider session and sends canonical frames (`bar`, `trade`, `book`, `health`, profiles, VPIN readings) over the local `/ws` WebSocket | Binance: nothing. dxFeed: layer 2 (Tailscale broker) | dxFeed instruments show *History only*: with layer 1 their recorded host history still loads, without new ticks |
+| **Warm-up** | Before live ticks arrive, the runtime reads recent history through its storage reader: candles, large trades, aggressive prints, volume profile, VPIN calibration | Layer 1 (WireGuard + bearer); otherwise only a local collector's SQLite | The indicator starts from live ticks only and reports itself not ready |
+| **Archive** | Historical Mode reads candles through `/archive/query` and asks the host for four studies through `/archive/study` | Layer 1 | Historical Mode shows *Historical Mode needs host data access* |
+
+The three layers are explained in [onboarding](../../operations/00-developer-onboarding.md);
+`npm run doctor` reports which ones a machine has.
+
+Warm-up and live ticks meet in the runtime; the archive is a separate path used
+only by Historical Mode. A successful warm-up does not prove an archive
+partition exists, and an archive answer says nothing about the live collector
+today.
+
+Live Mode also has a bounded `band_history` request for a historical price band.
+The laptop sends the instrument, price range and time window through Terminal C;
+the host replays its recorded raw depth and returns resting size and traded
+flow per row. Institutional Order Blocks v1 reads a block the visible live
+history did not cover from the host's stored heatmap columns first
+(`/heatmap/columns`, cut to the block's rows in the browser) and uses
+`band_history` only when the host has no stored columns for the pair or that
+read fails. Session Levels reads a touched level's five minutes and a range's
+totals from the same stored columns, with no raw-replay fallback. A missing book interval remains a gap, never a
+zero-liquidity observation. Each host read is capped at two hours, 256 rows and
+100,000 row/column cells; the client pieces longer requests. This is an
+on-demand derivation, **not a stored canonical L2 row dataset**, and it does
+not make order-book indicators available in the separate Historical Mode
+archive. See the [wire contract](../../contracts/ws-frame-contract/v1/ws-frame-contract-v1.md)
+and `apps/runtime/src/server/band-history.js` for the exact boundary.
+
+## What each instrument has
+
+| Instrument | Live ticks | Warm-up from the host | Historical candles | Historical studies |
+|---|---|---|---|---|
+| BTC, ETH spot and perpetual (Binance) | always | yes | 1m, 1h, 1d, each with taker buy volume | none yet |
+| ES, NQ (continuous futures) | with layer 2 | yes, what the weekday collector captured | 1m, 1h, 1d | profile, VPIN, large prints, bar flow |
+| AAPL, TSLA (equities) | with layer 2 | yes, what the weekday collector captured | 1m, 1h, 1d | profile, VPIN, large prints, bar flow |
+| NVDA (equity) | with layer 2 | yes, what the weekday collector captured | not archived | none |
+
+**Equity candles are regular session only**, live and historical alike:
+09:30–16:00 New York time, with the exchange's holidays and early closes from
+[`config/market-calendar.json`](../../../config/market-calendar.json). Hourly
+bars start at 09:30, the last one ends at the bell, and a daily bar is that
+session. Pre-market and after-hours prints are not in equity candles. Futures
+and crypto candles are UTC-aligned and cover every traded minute.
+
+Other timeframes are resampled in the browser from those rungs. The governed
+instrument list, exact provider symbols and tick sizes live in
+[`config/market-instruments.json`](../../../config/market-instruments.json);
+the archive's list lives in `apps/web/src/lib/archive/historicalCatalog.ts`.
+
+The four studies are computed on the host from trade-derived families, so the
+browser never pages minute rows. Their request, limits and refusals are in the
+[archive study contract](../../contracts/archive-study/v1/archive-study-v1.md).
+In short: a profile per requested range, VPIN over whole UTC weeks (at most 26),
+and large prints and bar flow over one bar-aligned range of at most 5,000 bars.
+
+## Which indicators work in Historical Mode
+
+`HISTORICAL_INDICATOR_POLICIES` in `apps/web/src/lib/chart/indicatorRegistry.ts`
+decides this, per indicator, from the capabilities the selected archive
+provides. There are three policies:
+
+| Policy | Needs | Works on |
+|---|---|---|
+| Candles | `ohlcv` | every archived instrument |
+| Candle flow | `ohlcv` + `buy_volume` | Binance (candles carry taker buy volume) and ES/NQ/AAPL/TSLA (the `bar_flow` study supplies both sides) |
+| Trade families | `ohlcv` + `trade_families` | ES/NQ/AAPL/TSLA |
+
+An indicator can also be marked unavailable with a reason, as order-book and
+every-trade indicators are: the archive has no historical depth and keeps only
+the largest prints of each minute.
+
+## Rules every indicator follows
+
+**Read buy and sell through `barSides`.** Never compute sell volume as
+`volume - buy_volume`. `apps/web/src/lib/indicators/barSides.ts` returns
+`{known, buy, sell, unknown, delta, sided}` for a bar. It uses an explicit
+`sell_volume` when the bar has one, and falls back to `volume - buy_volume`
+only for bars that carry just a buy side. That fallback is exact for Binance,
+where every trade has a taker side. It is not exact for equities.
+
+**Unsided volume is real and large for equities.** A Databento equity trade
+often has no aggressor side. Measured on the host (Report 54): ES and NQ are
+effectively fully sided, but AAPL is about 40% unsided on one-minute bars and
+65–75% on hourly and daily bars; TSLA is 35–55%. Historical bars carry that
+volume separately as `unknown`, and `unsidedShare(bars)` gives the share to
+show beside an equity delta. Counting it as selling would make every equity
+delta read bearish by that amount.
+
+Live dxFeed bars built from the tape carry buy and sell only when every trade in
+that minute had a side. A minute with any unsided trade carries neither, so
+`barSides` reports it unknown and it draws no delta, which is common for
+equities. Stored native dxFeed candles carry both sides explicitly (volume at
+the ask and at the bid), with any remainder unknown.
+
+**`missing` is not `empty`.** A study reports ranges it could not read as
+`missing`; draw them as unavailable, never as zero. It reports ranges it read
+and found no trades in (a weekend, an overnight hour for an equity) as `empty`,
+and those legitimately have nothing to draw. A bar with no trades is absent
+from `bar_flow`; draw no delta for it, not a zero delta.
+
+**Gate on capabilities, not on provider names.** Declare what the indicator
+needs through its `HISTORICAL_INDICATOR_POLICIES` entry. Do not branch on
+`provider === "BINANCE"`. The map is typed over every indicator id, so a new
+indicator does not compile until it has a policy.
+
+**Warm-up failure is not an empty signal.** When the storage reader cannot
+reach the host it reports the read as unavailable. Show the indicator as
+warming up or degraded, never as a flat or zero reading.
+
+**Quantities are provider units.** Futures sizes are contracts, equity sizes
+are shares, Binance sizes are the base asset. Do not add them across providers
+or convert them to a notional the provider did not report.
+
+**Need a new trade-derived aggregate?** Do not fetch minute rows into the
+browser. A new study is a change to the archive study contract and the host,
+and goes through the owner.
+
+## Adding an indicator that works in both modes
+
+1. Create `apps/web/src/lib/indicators/<name>/`. The folder owns the whole
+   indicator: computation, geometry, primitive and settings. Follow the
+   [SDK execution model](../indicator-sdk/TA.01-indicator-authoring-core-evidence.md).
+   Its settings dialog gets [setting presets](setting-presets.md): a
+   `settingsSchema` is enough for the generic dialog, and a hand-built one
+   declares a preset schema for every setting it stores.
+2. Register it in `INDICATOR_REGISTRY` and give it a
+   `HISTORICAL_INDICATOR_POLICIES` entry that names what it needs.
+3. Read sides through `barSides`. For example, a cumulative delta that leaves
+   bars without a known side undrawn:
+
+   ```ts
+   import type { BarFrame } from "../../../types/frames";
+   import { barSides } from "../barSides";
+
+   export function cumulativeDelta(bars: readonly BarFrame[]): (number | null)[] {
+     let total = 0;
+     return bars.map((bar) => {
+       const sides = barSides(bar);
+       if (!sides.known) return null;
+       total += sides.delta;
+       return total;
+     });
+   }
+   ```
+
+4. Check it in Live Mode on Binance (every machine can), then in Historical
+   Mode on BTC and on one futures and one equity instrument (layer 1). On AAPL,
+   confirm the unsided share is shown and the delta is not skewed.
+5. Add tests for the computation, lifecycle, capability gating and rendering,
+   as listed under *Adding or changing an indicator* in the
+   [indicator index](README.md).
+
+## Where the code is
+
+| Concern | File |
+|---|---|
+| Indicator registration and Historical Mode policy | `apps/web/src/lib/chart/indicatorRegistry.ts` |
+| Buy/sell sides of a bar | `apps/web/src/lib/indicators/barSides.ts` |
+| Archive instruments and candle rungs | `apps/web/src/lib/archive/historicalCatalog.ts` |
+| Study requests and validation | `apps/web/src/lib/archive/archiveStudyClient.ts` |
+| When studies are asked for, and how results reach the chart | `apps/web/src/lib/archive/useArchiveStudies.ts` |
+| Wire frames the browser accepts | `apps/web/src/types/frames.ts` and the [WebSocket frame contract](../../contracts/ws-frame-contract/v1/ws-frame-contract-v1.md) |
+| Warm-up source selection (local or host) | [Storage architecture](../storage/README.md) |
+
+exec
+/bin/bash -lc "rg -n 'interval_ms|closed|BarFrame|FrameIdentity' apps/web/src/types/frames.ts; rg -n '10080|10_080|interval_ms|closed' apps/web/src/lib/chart/marketCalendar.ts; rg -n 'replace|REBUILT|closed|maxReplayBars' apps/web/src/lib/chart/indicatorRuntime.ts; rg -n 'sma|replace' apps/web/src/lib/chart/ta.ts; rg -n 'interval_ms|sessionClose' apps/web/src/lib -g '*resampl*'" in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+29:export type FrameIdentity =
+43:} & FrameIdentity;
+55:} & FrameIdentity;
+57:export type BarFrame = {
+60:  interval_ms: number;
+71:  closed: boolean;
+73:} & FrameIdentity;
+78:  bars: BarFrame[];
+87:} & FrameIdentity;
+108:} & FrameIdentity;
+126:} & FrameIdentity;
+131:} & FrameIdentity;
+157:} & FrameIdentity;
+251:} & FrameIdentity;
+275:} & FrameIdentity;
+301:} & FrameIdentity;
+309:} & FrameIdentity;
+315:  FrameIdentity;
+322:} & FrameIdentity;
+366:} & FrameIdentity;
+423:} & FrameIdentity;
+447:} & FrameIdentity;
+466:} & FrameIdentity;
+502:} & FrameIdentity;
+522:} & FrameIdentity;
+532:} & FrameIdentity;
+564:} & FrameIdentity;
+637:} & FrameIdentity;
+681:} & FrameIdentity;
+702:} & FrameIdentity;
+722:  | BarFrame
+739:export function isBarFrame(frame: ServerFrame): frame is BarFrame {
+803:export function sizeCeilingFor(identity: FrameIdentity): number {
+817:function isTradeSize(value: unknown, identity: FrameIdentity): value is number {
+1005:  identity: FrameIdentity,
+1049:  "interval_ms",
+1057:  "closed",
+1138:export function parseFrameIdentity(
+1140:): FrameIdentity | null {
+1162:export function identitiesMatch(a: FrameIdentity, b: FrameIdentity): boolean {
+1177:  const identity = parseFrameIdentity(raw);
+1212:  const identity = parseFrameIdentity(raw);
+1291:  const identity = parseFrameIdentity(raw);
+1370:function validHistoryHead(raw: Record<string, unknown>, identity: FrameIdentity, fields: readonly string[]): boolean {
+1472:  const identity = parseFrameIdentity(raw);
+1517:  const identity = parseFrameIdentity(raw);
+1562:  const identity = parseFrameIdentity(raw);
+1703:  const identity = parseFrameIdentity(raw);
+1749:function parseBarFrame(
+1752:): BarFrame | null {
+1753:  const identity = parseFrameIdentity(raw);
+1764:    raw.interval_ms !== BASE_BAR_INTERVAL_MS ||
+1787:    typeof raw.closed !== "boolean" ||
+1796:    interval_ms: raw.interval_ms,
+1806:    closed: raw.closed,
+1817:  const identity = parseFrameIdentity(raw);
+1946:  const bars: BarFrame[] = [];
+1956:    const parsed = parseBarFrame(bar as Record<string, unknown>, context);
+1959:      parsed.closed !== true ||
+2038:  const identity = parseFrameIdentity(raw);
+2132:  const identity = parseFrameIdentity(raw);
+2227:  const identity = parseFrameIdentity(raw);
+2680:  const identity = parseFrameIdentity(raw);
+2769:  const identity = parseFrameIdentity(raw);
+2795:  const identity = parseFrameIdentity(raw);
+2865:  const identity = parseFrameIdentity(raw);
+3006:  const identity = parseFrameIdentity(raw);
+3157:  const identity = parseFrameIdentity(raw);
+3225:  const identity = parseFrameIdentity(raw);
+3243:  const identity = parseFrameIdentity(raw);
+3335:  const identity = parseFrameIdentity(raw);
+3449:  const identity = parseFrameIdentity(raw);
+3524:  const identity = parseFrameIdentity(raw);
+3568:  const identity = parseFrameIdentity(raw);
+3596:    const identity = parseFrameIdentity(record);
+3623:    return parseBarFrame(record, context);
+140:  replace: boolean,
+163:    replace,
+202:  replace: boolean,
+206:    if (replace) overwriteLastFillPoint(points, point);
+214:    const points: (FillPoint | null)[] = new Array(replace ? Math.max(0, record.fillBars - 1) : record.fillBars).fill(null);
+218:  if (!replace) record.fillBars += 1;
+219:  if (replace) {
+403:    record.def.maxReplayBars === undefined
+405:      : bars.slice(-record.def.maxReplayBars);
+406:  const lastClosed = replayBars.findLastIndex((bar) => bar.closed);
+662:    if (mutation === "REBUILT") {
+rg: apps/web/src/lib/chart/ta.ts: IO error for operation on apps/web/src/lib/chart/ta.ts: No such file or directory (os error 2)
+apps/web/src/lib/chart/resampleBars.ts:37:  if (session === null) return { openMs: bucketOpenMs(bar.ts_open + bar.interval_ms, intervalMs), spanMs: intervalMs };
+apps/web/src/lib/chart/resampleBars.ts:46:    expectedOpen += bar.interval_ms;
+apps/web/src/lib/chart/resampleBars.ts:57:    expectedOpen += bar.interval_ms;
+apps/web/src/lib/chart/resampleBars.ts:68:  if (targetIntervalMs < first.interval_ms || targetIntervalMs % first.interval_ms !== 0) {
+apps/web/src/lib/chart/resampleBars.ts:75:      bar.interval_ms !== first.interval_ms ||
+apps/web/src/lib/chart/resampleBars.ts:76:      bar.ts_open % bar.interval_ms !== 0 ||
+apps/web/src/lib/chart/resampleBars.ts:77:      !Number.isSafeInteger(bar.ts_open + bar.interval_ms)
+apps/web/src/lib/chart/resampleBars.ts:85:  if (targetIntervalMs === first.interval_ms) return orderedBars;
+apps/web/src/lib/chart/resampleBars.ts:125:      interval_ms: targetIntervalMs,
+apps/web/src/lib/chart/tests/resampleBarsGolden.test.ts:40:        interval_ms: MINUTE_MS, ts_open: golden.baseMs + (run.atMinute + index) * MINUTE_MS,
+apps/web/src/lib/archive/useArchivePage.resample.test.tsx:138:    expect(latest.series.bars.every((bar) => bar.interval_ms === 7 * DAY_MS)).toBe(true);
+apps/web/src/lib/chart/tests/resampleBars.test.ts:14:    interval_ms: 60_000,
+apps/web/src/lib/chart/tests/resampleBars.test.ts:51:    expect(bucket.interval_ms).toBe(300_000);
+apps/web/src/lib/chart/tests/resampleBars.test.ts:256:        interval_ms: intervalMs,
+apps/web/src/lib/chart/tests/resampleBars.test.ts:322:    type: "bar", symbol: "AAPL", provider: "DXFEED", assetClass: "EQUITY", interval_ms: 60_000, ts_open: tsOpen,
+
+exec
+/bin/bash -lc "sed -n '1,145p' apps/web/src/lib/chart/resampleBars.ts; sed -n '25,75p' apps/web/src/types/frames.ts; sed -n '390,440p' apps/web/src/lib/chart/indicatorRuntime.ts; sed -n '640,700p' apps/web/src/lib/chart/indicatorRuntime.ts; rg -n '10_080|10080|MAX.*BARS' apps/web/src/lib/chart -g '*.ts' | head -35; rg -n 'sma' apps/web/src/lib/chart/ta -g '*.ts' | head" in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+import { identitiesMatch, type BarFrame } from "../../types/frames";
+import { isRegularSessionOnly, regularSessionAt } from "./marketCalendar";
+
+const HOUR_MS = 60 * 60_000;
+const DAY_MS = 24 * HOUR_MS;
+
+export const TIMEFRAMES = [
+  { label: "1m", intervalMs: 60_000, defaultWindowMs: 2 * HOUR_MS },
+  { label: "2m", intervalMs: 2 * 60_000, defaultWindowMs: 3 * HOUR_MS },
+  { label: "3m", intervalMs: 3 * 60_000, defaultWindowMs: 4 * HOUR_MS },
+  { label: "5m", intervalMs: 5 * 60_000, defaultWindowMs: 6 * HOUR_MS },
+  { label: "15m", intervalMs: 15 * 60_000, defaultWindowMs: 12 * HOUR_MS },
+  { label: "30m", intervalMs: 30 * 60_000, defaultWindowMs: 1 * DAY_MS },
+  { label: "1h", intervalMs: 60 * 60_000, defaultWindowMs: 2 * DAY_MS },
+  { label: "4h", intervalMs: 4 * 60 * 60_000, defaultWindowMs: 7 * DAY_MS },
+  { label: "6h", intervalMs: 6 * 60 * 60_000, defaultWindowMs: 7 * DAY_MS },
+  { label: "12h", intervalMs: 12 * 60 * 60_000, defaultWindowMs: 7 * DAY_MS },
+  { label: "1D", intervalMs: 24 * 60 * 60_000, defaultWindowMs: 7 * DAY_MS },
+] as const;
+
+export type TimeframeLabel = (typeof TIMEFRAMES)[number]["label"];
+
+const DEFAULT_WINDOW_MS_BY_INTERVAL = new Map<number, number>(
+  TIMEFRAMES.map((tf) => [tf.intervalMs, tf.defaultWindowMs]),
+);
+
+export function defaultVisibleWindowMs(intervalMs: number): number {
+  return DEFAULT_WINDOW_MS_BY_INTERVAL.get(intervalMs) ?? 7 * DAY_MS;
+}
+
+function bucketOpenMs(tsClose: number, intervalMs: number): number {
+  return Math.floor((tsClose - 1) / intervalMs) * intervalMs;
+}
+
+function bucketFor(bar: BarFrame, intervalMs: number, sessionAnchored: boolean): { openMs: number; spanMs: number } {
+  const session = sessionAnchored ? regularSessionAt(bar.ts_open) : null;
+  if (session === null) return { openMs: bucketOpenMs(bar.ts_open + bar.interval_ms, intervalMs), spanMs: intervalMs };
+  const openMs = session.openMs + Math.floor((bar.ts_open - session.openMs) / intervalMs) * intervalMs;
+  return { openMs, spanMs: Math.min(intervalMs, session.closeMs - openMs) };
+}
+
+function isCompleteBucket(group: readonly BarFrame[], bucketOpen: number, targetIntervalMs: number): boolean {
+  let expectedOpen = bucketOpen;
+  for (const bar of group) {
+    if (bar.ts_open !== expectedOpen || bar.closed !== true) return false;
+    expectedOpen += bar.interval_ms;
+  }
+  return expectedOpen === bucketOpen + targetIntervalMs;
+}
+
+function isRepresentableBucket(group: readonly BarFrame[], bucketOpen: number): boolean {
+  let expectedOpen = bucketOpen;
+  for (let index = 0; index < group.length; index += 1) {
+    const bar = group[index];
+    if (bar.ts_open !== expectedOpen) return false;
+    if (bar.closed !== true && index !== group.length - 1) return false;
+    expectedOpen += bar.interval_ms;
+  }
+  return true;
+}
+
+export function resampleBars(bars: readonly BarFrame[], targetIntervalMs: number): BarFrame[] {
+  if (bars.length === 0) return [];
+  if (!Number.isSafeInteger(targetIntervalMs) || targetIntervalMs <= 0) {
+    throw new Error("resampleBars: targetIntervalMs must be a positive safe integer");
+  }
+  const first = bars[0];
+  if (targetIntervalMs < first.interval_ms || targetIntervalMs % first.interval_ms !== 0) {
+    throw new Error("resampleBars: targetIntervalMs must be a whole multiple of the source interval");
+  }
+  for (const bar of bars) {
+    if (
+      bar.symbol !== first.symbol ||
+      !identitiesMatch(bar, first) ||
+      bar.interval_ms !== first.interval_ms ||
+      bar.ts_open % bar.interval_ms !== 0 ||
+      !Number.isSafeInteger(bar.ts_open + bar.interval_ms)
+    ) {
+      throw new Error("resampleBars: bars must belong to one pair and source interval");
+    }
+  }
+  const barsByOpenTime = new Map<number, BarFrame>();
+  for (const bar of bars) barsByOpenTime.set(bar.ts_open, bar);
+  const orderedBars = [...barsByOpenTime.values()].sort((a, b) => a.ts_open - b.ts_open);
+  if (targetIntervalMs === first.interval_ms) return orderedBars;
+
+  const sessionAnchored = isRegularSessionOnly(first);
+  const groups = new Map<number, BarFrame[]>();
+  const spans = new Map<number, number>();
+  for (const bar of orderedBars) {
+    const bucket = bucketFor(bar, targetIntervalMs, sessionAnchored);
+    const group = groups.get(bucket.openMs);
+    if (group) group.push(bar);
+    else groups.set(bucket.openMs, [bar]);
+    spans.set(bucket.openMs, bucket.spanMs);
+  }
+
+  const bucketOpens = [...groups.keys()].sort((a, b) => a - b);
+  const result: BarFrame[] = [];
+  for (const bucketOpen of bucketOpens) {
+    const group = groups.get(bucketOpen)!;
+    if (!isRepresentableBucket(group, bucketOpen)) continue;
+    const last = group[group.length - 1];
+    const closed = isCompleteBucket(group, bucketOpen, spans.get(bucketOpen)!);
+    const volume = group.reduce((sum, b) => sum + b.volume, 0);
+    const tradeCount = group.every((bar) => bar.trade_count !== null)
+      ? group.reduce((sum, bar) => sum + bar.trade_count!, 0)
+      : null;
+    const buyVolume = group.every((b) => b.buy_volume !== undefined)
+      ? group.reduce((sum, b) => sum + b.buy_volume!, 0)
+      : undefined;
+    const sellVolume = group.every((b) => b.sell_volume !== undefined)
+      ? group.reduce((sum, b) => sum + b.sell_volume!, 0)
+      : undefined;
+    const reconstructed = group.some((b) => b.reconstructed === true) ? true : undefined;
+    if (!Number.isFinite(volume) || (tradeCount !== null && !Number.isSafeInteger(tradeCount)) || (buyVolume !== undefined && !Number.isFinite(buyVolume)) || (sellVolume !== undefined && !Number.isFinite(sellVolume))) {
+      throw new Error("resampleBars: aggregate is outside the supported numeric range");
+    }
+    result.push({
+      ...(last.provider === "BINANCE"
+        ? { provider: "BINANCE" as const, marketKind: last.marketKind }
+        : { provider: last.provider, assetClass: last.assetClass }),
+      type: "bar",
+      symbol: last.symbol,
+      interval_ms: targetIntervalMs,
+      ts_open: bucketOpen,
+      open: group[0].open,
+      high: Math.max(...group.map((b) => b.high)),
+      low: Math.min(...group.map((b) => b.low)),
+      close: last.close,
+      volume,
+      ...(buyVolume !== undefined ? { buy_volume: buyVolume } : {}),
+      ...(sellVolume !== undefined ? { sell_volume: sellVolume } : {}),
+      trade_count: tradeCount,
+      closed,
+      ...(reconstructed !== undefined ? { reconstructed } : {}),
+    });
+  }
+  return result;
+}
+  provider: "DXFEED";
+  assetClass: AssetClass;
+  marketKind?: never;
+};
+export type FrameIdentity =
+  | BinanceIdentity
+  | DatabentoIdentity
+  | DxFeedIdentity;
+
+export type TradeFrame = {
+  type: "trade";
+  symbol: string;
+  ts_exchange: number;
+  price: number;
+  size: number;
+  side: Side;
+  trade_id: string;
+  auction?: true;
+} & FrameIdentity;
+
+export type MarkerFrame = {
+  type: "marker";
+  symbol: string;
+  ts_exchange: number;
+  price: number;
+  size: number;
+  side: Side;
+  trade_id: string;
+  baseline_log_median?: number;
+  baseline_log_mad?: number;
+} & FrameIdentity;
+
+export type BarFrame = {
+  type: "bar";
+  symbol: string;
+  interval_ms: number;
+  calendar_interval?: "month";
+  ts_open: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+  buy_volume?: number;
+  sell_volume?: number;
+  trade_count: number | null;
+  closed: boolean;
+  reconstructed?: boolean;
+} & FrameIdentity;
+
+export type SnapshotFrame = {
+  } catch (error) {
+    fault(record, "threw inside createState", error);
+    return;
+  }
+  record.outputs = emptyOutputs(record.def);
+  record.colors = emptyColors(record.def);
+  record.fillPointsByKey.clear();
+  record.fillOptionsByKey.clear();
+  record.fillBars = 0;
+  record.fills = false;
+  resetMarkerCalls(record.markerCalls);
+  record.lastTailTsOpen = null;
+  const replayBars =
+    record.def.maxReplayBars === undefined
+      ? bars
+      : bars.slice(-record.def.maxReplayBars);
+  const lastClosed = replayBars.findLastIndex((bar) => bar.closed);
+  for (let index = 0; index < replayBars.length; index += 1) {
+    const bar = replayBars[index];
+    if (!runOnBar(record, makeCtx(record, bar, false, true, index >= lastClosed, index, replayBars.length))) return;
+    pushOutput(record);
+    if (record.faulted) return;
+    commitDrawFlush(record, bar, false);
+    record.lastTailTsOpen = bar.ts_open;
+  }
+}
+
+function fieldKeyChanged<T>(
+  field: SettingsFieldSchema<T>,
+  oldSettings: T,
+  newSettings: T,
+): boolean {
+  if (field.kind === "staticHint") return false;
+  if (field.kind === "custom") {
+    if (field.key === undefined) return false;
+    return oldSettings[field.key] !== newSettings[field.key];
+  }
+  return oldSettings[field.key] !== newSettings[field.key];
+}
+
+/**
+ * A custom field with no declared `key` can write anywhere in T, so its
+ * own change can't be scoped to one property -- the only safe signal is
+ * "something, somewhere, changed." A custom field that DOES declare a
+ * `key` is handled by the normal per-field sweep below instead, so an
+ * unrelated sibling field's change no longer forces its unnecessary
+ * whole-object fallback too (found during TA.05's audit: this used to
+ * poison every settings change, including purely cosmetic ones, into a
+ * full replay whenever any custom recompute field existed at all).
+ */
+function hasUnkeyedCustomRecomputeField<T>(
+
+  function onSnapshot(bars: readonly BarFrame[]): void {
+    for (const record of records.values()) fullReplay(record, bars);
+  }
+
+  function setActiveAndReplay(
+    ids: ReadonlySet<string>,
+    settingsById: Readonly<Record<string, unknown>>,
+    bars: readonly BarFrame[],
+  ): void {
+    setActive(ids, settingsById, []);
+    onSnapshot(bars);
+  }
+
+  function onBar(
+    bar: BarFrame,
+    mutation: ChartBarMutation,
+    bars: readonly BarFrame[],
+    tradesForBar: readonly TradeFrame[] = EMPTY_TRADES,
+    tradeAvailability: TradeAvailability = "HISTORICAL_UNAVAILABLE",
+  ): void {
+    if (mutation === "REJECTED_REOPEN") return;
+    if (mutation === "REBUILT") {
+      for (const record of records.values()) fullReplay(record, bars);
+      return;
+    }
+    for (const record of records.values()) {
+      if (record.faulted) continue;
+      if (mutation === "APPENDED") {
+        if (
+          !runOnBar(
+            record,
+            makeCtx(record, bar, false, false, true, bars.length - 1, bars.length, tradesForBar, tradeAvailability),
+          )
+        )
+          continue;
+        pushOutput(record);
+        if (record.faulted) continue;
+        commitDrawFlush(record, bar, false);
+        record.lastTailTsOpen = bar.ts_open;
+        continue;
+      }
+      if (record.lastTailTsOpen !== bar.ts_open) {
+        fullReplay(record, bars);
+        continue;
+      }
+      if (
+        !runOnBar(
+          record,
+          makeCtx(record, bar, true, false, true, bars.length - 1, bars.length, tradesForBar, tradeAvailability),
+        )
+      )
+        continue;
+      overwriteLastOutput(record);
+      if (record.faulted) continue;
+      commitDrawFlush(record, bar, true);
+    }
+  }
+
+  function discardLeading(count: number, firstRetainedTsOpen?: number): void {
+    if (!Number.isSafeInteger(count) || count <= 0) return;
+apps/web/src/lib/chart/candleLifecycle.ts:3:export const MAX_RETAINED_SOURCE_BARS = 10_080;
+apps/web/src/lib/chart/candleLifecycle.ts:31:    .slice(-MAX_RETAINED_SOURCE_BARS);
+apps/web/src/lib/chart/candleLifecycle.ts:43:  if (bars.length > MAX_RETAINED_SOURCE_BARS) {
+apps/web/src/lib/chart/candleLifecycle.ts:44:    bars.splice(0, bars.length - MAX_RETAINED_SOURCE_BARS);
+apps/web/src/lib/chart/candleLifecycle.ts:75:  const retainedClosed = closedBars.length >= MAX_RETAINED_SOURCE_BARS
+apps/web/src/lib/chart/candleLifecycle.ts:76:    ? closedBars.slice(closedBars.length - (MAX_RETAINED_SOURCE_BARS - 1))
+apps/web/src/lib/chart/chartData.ts:11:import { MAX_RETAINED_SOURCE_BARS } from "./candleLifecycle";
+apps/web/src/lib/chart/chartData.ts:13:export const MAX_CANDLE_SERIES_POINTS = MAX_RETAINED_SOURCE_BARS * 2 - 1;
+apps/web/src/lib/chart/chartData.ts:24:  if (bars.length > MAX_RETAINED_SOURCE_BARS) {
+apps/web/src/lib/chart/tests/candleLifecycle.test.ts:4:  MAX_RETAINED_SOURCE_BARS,
+apps/web/src/lib/chart/tests/candleLifecycle.test.ts:23:    const input = Array.from({ length: MAX_RETAINED_SOURCE_BARS + 2 }, (_, index) => bar(index * 60_000, true));
+apps/web/src/lib/chart/tests/candleLifecycle.test.ts:24:    input.push(bar(120_000, true, 999), bar((MAX_RETAINED_SOURCE_BARS + 3) * 60_000, false));
+apps/web/src/lib/chart/tests/candleLifecycle.test.ts:26:    expect(result).toHaveLength(MAX_RETAINED_SOURCE_BARS);
+apps/web/src/lib/chart/tests/candleLifecycle.test.ts:33:    const closed = Array.from({ length: MAX_RETAINED_SOURCE_BARS }, (_, index) => bar(index * 60_000, true));
+apps/web/src/lib/chart/tests/candleLifecycle.test.ts:34:    const developing = bar(MAX_RETAINED_SOURCE_BARS * 60_000, false);
+apps/web/src/lib/chart/tests/candleLifecycle.test.ts:36:    expect(buffer).toHaveLength(MAX_RETAINED_SOURCE_BARS);
+apps/web/src/lib/chart/tests/replayCost.test.ts:14:const BARS = 10_080;
+apps/web/src/lib/chart/ta/tests/index.test.ts:22:  it("sma(3) is the plain moving average, matching the house-standard fixture", () => {
+apps/web/src/lib/chart/ta/tests/index.test.ts:23:    const results = pushAll(ta.sma(3), [1, 2, 3, 4, 5]);
+apps/web/src/lib/chart/ta/tests/index.test.ts:328:          sma1: 1,
+apps/web/src/lib/chart/ta/tests/index.test.ts:329:          sma2: 1,
+apps/web/src/lib/chart/ta/tests/index.test.ts:330:          sma3: 1,
+apps/web/src/lib/chart/ta/tests/index.test.ts:331:          sma4: 1,
+apps/web/src/lib/chart/ta/tests/index.test.ts:438:  it("a replace:true push on sma revises the same slot rather than appending a new one -- matches a straight push of the same final value, not one bar longer", () => {
+apps/web/src/lib/chart/ta/tests/index.test.ts:439:    const withReplace = ta.sma(3);
+apps/web/src/lib/chart/ta/tests/index.test.ts:445:    const straight = ta.sma(3);
+apps/web/src/lib/chart/ta/tests/index.test.ts:459:    sma: [3],
+
+codex
+The trading question is clear and useful, and the default view is appropriately focused. The calculation still has two repository-level mismatches and an incomplete replacement rule that need fixing before build approval.
+
+1. **Specific trading question: passes.** “Is participation unusual for this time of day?” is one concrete question. The direction and follow-through disclaimer is appropriate. Describe the result as unusual *relative to recent comparable bars*; “lights up only when unusual” overstates what a short, noisy baseline can establish.
+
+2. **Calculation: incremental and causal in principle, but not fully specified.**
+
+   - **Short-bar normalization does not match the SDK.** The resampler calculates a shortened equity bucket’s session span, but emits `interval_ms: targetIntervalMs`. A 15:30–16:00 hourly candle therefore still declares 60 minutes. Dividing by `interval_ms` halves its actual volume rate. The early-close acceptance fixture assumes data the indicator will not receive. Derive scheduled duration using the existing market calendar, explicitly include that dependency in the data section, and test actual resampled `BarFrame`s. See [resampleBars.ts](/home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk/apps/web/src/lib/chart/resampleBars.ts:125).
+   - **Retention is a bar count, not elapsed time.** `10_080 * interval_ms` is not the chart’s retention window. On one-minute equities, it discards observations after seven calendar days even though 10,080 regular-session bars cover about 25 sessions. Gaps and higher-timeframe resampling create further differences. Use the actual retained-series boundary through a supported runtime path, or explicitly choose a separate time-based horizon and remove the claim that it matches chart retention. See [candleLifecycle.ts](/home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk/apps/web/src/lib/chart/candleLifecycle.ts:3).
+   - **Replacement handling must cover all derived state.** Updating the ring is insufficient: specify replacement of the rolling SMA’s last committed input and recomputation of the sustained counter from its value *before this bar*. Test a closed correction crossing `sustainedLevel` in both directions, including marker removal. Also specify valid→invalid and invalid→valid corrections.
+   - **Fallback commitment conflicts with confirmation wording.** If an unclosed bar commits when the next bar arrives, its earlier output and marker remain provisional under the stated rendering rule. Define whether that is intentional; the runtime normally replaces only the current timestamp’s output.
+
+   Read-before-write medians and full-bar expectations for forming bars otherwise avoid future data.
+
+3. **Data availability: mostly passes, with the duration exception above.** Total volume requires no sided-volume inference, and `OHLCV_POLICY` is appropriate. Invalid volume and gaps are handled honestly. Resolve the contradiction between calculation step 1’s mandatory crypto weekday/weekend families and the advanced setting’s default `weekendSplit: false`. Write one explicit clock/family resolution rule.
+
+4. **Default usability: passes with small corrections.** One ratio, a 1× reference, orange unusual bars, and three primary controls are understandable quickly. Specify complete status precedence: unsupported timeframe → invalid volume → insufficient samples → unusable baseline → forming → ready. Otherwise a forming, unready bar could misleadingly display only “versus full-bar expectation.” Label the table sample count as prior samples used in the denominator, excluding the current bar.
+
+5. **Validation: testable in outline, but the baseline and replay claims need tightening.**
+
+   - The calculation alternates between rolling **volumes** and rolling **rates**. Choose rates for both methods when durations differ; one-minute fixtures conceal this inconsistency.
+   - Replace “REBUILT reproduces live state exactly” with equivalence on bars whose complete dependencies are retained. Earlier retained outputs can legitimately lose their pre-retention warm-up. Sustained markers also depend on run history, so define their comparison eligibility separately or provide a bounded reset rule.
+   - The weekday readiness expectation is wrong for arbitrary seven-day start dates: three prior weekdays need not exist by calendar day 4. Freeze the start timestamp and assert readiness from actual prior family observations.
+   - Freeze fixture generation order, anomaly sampling/deduplication, and the extra 1,920 rollover bars. A seed alone does not specify these.
+   - The same-bar, same-threshold comparison is fair for the stated descriptive experiment. However, the equity fixture deliberately contains clock seasonality and places every anomaly at midday. Add a flat-seasonality control and anomalies at the open/close before making broader claims about superiority.
+
+6. **Simplest alternative:** ship the same-slot median ratio with one line, the readiness table, lookback and threshold controls. Keep rolling RVOL in the validation report; defer sustained markers and optional weekend splitting. That retains most of the trading value while removing substantial state and UX complexity.
+
+VERDICT: REVISE
+tokens used
+31,413
+The trading question is clear and useful, and the default view is appropriately focused. The calculation still has two repository-level mismatches and an incomplete replacement rule that need fixing before build approval.
+
+1. **Specific trading question: passes.** “Is participation unusual for this time of day?” is one concrete question. The direction and follow-through disclaimer is appropriate. Describe the result as unusual *relative to recent comparable bars*; “lights up only when unusual” overstates what a short, noisy baseline can establish.
+
+2. **Calculation: incremental and causal in principle, but not fully specified.**
+
+   - **Short-bar normalization does not match the SDK.** The resampler calculates a shortened equity bucket’s session span, but emits `interval_ms: targetIntervalMs`. A 15:30–16:00 hourly candle therefore still declares 60 minutes. Dividing by `interval_ms` halves its actual volume rate. The early-close acceptance fixture assumes data the indicator will not receive. Derive scheduled duration using the existing market calendar, explicitly include that dependency in the data section, and test actual resampled `BarFrame`s. See [resampleBars.ts](/home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk/apps/web/src/lib/chart/resampleBars.ts:125).
+   - **Retention is a bar count, not elapsed time.** `10_080 * interval_ms` is not the chart’s retention window. On one-minute equities, it discards observations after seven calendar days even though 10,080 regular-session bars cover about 25 sessions. Gaps and higher-timeframe resampling create further differences. Use the actual retained-series boundary through a supported runtime path, or explicitly choose a separate time-based horizon and remove the claim that it matches chart retention. See [candleLifecycle.ts](/home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk/apps/web/src/lib/chart/candleLifecycle.ts:3).
+   - **Replacement handling must cover all derived state.** Updating the ring is insufficient: specify replacement of the rolling SMA’s last committed input and recomputation of the sustained counter from its value *before this bar*. Test a closed correction crossing `sustainedLevel` in both directions, including marker removal. Also specify valid→invalid and invalid→valid corrections.
+   - **Fallback commitment conflicts with confirmation wording.** If an unclosed bar commits when the next bar arrives, its earlier output and marker remain provisional under the stated rendering rule. Define whether that is intentional; the runtime normally replaces only the current timestamp’s output.
+
+   Read-before-write medians and full-bar expectations for forming bars otherwise avoid future data.
+
+3. **Data availability: mostly passes, with the duration exception above.** Total volume requires no sided-volume inference, and `OHLCV_POLICY` is appropriate. Invalid volume and gaps are handled honestly. Resolve the contradiction between calculation step 1’s mandatory crypto weekday/weekend families and the advanced setting’s default `weekendSplit: false`. Write one explicit clock/family resolution rule.
+
+4. **Default usability: passes with small corrections.** One ratio, a 1× reference, orange unusual bars, and three primary controls are understandable quickly. Specify complete status precedence: unsupported timeframe → invalid volume → insufficient samples → unusable baseline → forming → ready. Otherwise a forming, unready bar could misleadingly display only “versus full-bar expectation.” Label the table sample count as prior samples used in the denominator, excluding the current bar.
+
+5. **Validation: testable in outline, but the baseline and replay claims need tightening.**
+
+   - The calculation alternates between rolling **volumes** and rolling **rates**. Choose rates for both methods when durations differ; one-minute fixtures conceal this inconsistency.
+   - Replace “REBUILT reproduces live state exactly” with equivalence on bars whose complete dependencies are retained. Earlier retained outputs can legitimately lose their pre-retention warm-up. Sustained markers also depend on run history, so define their comparison eligibility separately or provide a bounded reset rule.
+   - The weekday readiness expectation is wrong for arbitrary seven-day start dates: three prior weekdays need not exist by calendar day 4. Freeze the start timestamp and assert readiness from actual prior family observations.
+   - Freeze fixture generation order, anomaly sampling/deduplication, and the extra 1,920 rollover bars. A seed alone does not specify these.
+   - The same-bar, same-threshold comparison is fair for the stated descriptive experiment. However, the equity fixture deliberately contains clock seasonality and places every anomaly at midday. Add a flat-seasonality control and anomalies at the open/close before making broader claims about superiority.
+
+6. **Simplest alternative:** ship the same-slot median ratio with one line, the readiness table, lookback and threshold controls. Keep rolling RVOL in the validation report; defer sustained markers and optional weekend splitting. That retains most of the trading value while removing substantial state and UX complexity.
+
+VERDICT: REVISE
+--- last message saved to /home/user/Terminal-L1-L2/PM/log/codex/20261026T012227Z-plan-brief-rvol-clock.last.md
+VERDICT: REVISE

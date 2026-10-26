@@ -1,0 +1,638 @@
+Reading additional input from stdin...
+OpenAI Codex v0.164.0
+--------
+workdir: /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+model: gpt-6.1-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 01a175d4-e141-7b30-a122-ec27def72e37
+--------
+user
+You are the independent code reviewer for a trading-indicator team. Review branch worktree-agent-aa4a6294e0f5e7448 against 6ec87d3 in this repository. Run: git diff 6ec87d3...worktree-agent-aa4a6294e0f5e7448 -- apps/web/src/App.css apps/web/src/components/GenericIndicatorSettingsBody.tsx apps/web/src/components/tests/GenericIndicatorSettingsBody.test.tsx apps/web/src/lib/chart/indicatorTypes.ts 
+
+Focus, in order: 1) correctness of the math versus the brief; 2) future-data leakage (a bar may use only data timestamped at or before its close) and replay-versus-live consistency; 3) honest handling of missing data: null, never zero or NaN, gates on tradeAvailability, ticks.coverageOf, l2.trusted(); 4) buy/sell read through barSides, never volume minus buy_volume; 5) incremental state, bounded memory, no per-bar copying of large arrays, no stream or draw factories created inside onBar; 6) settings schema covers every default key with step > 0; 7) tests actually pin the behavior (hand-computed values, replace semantics, empty input, gates); 8) readability and house style.
+
+For each finding give file, line range, severity CRITICAL / WARNING / SUGGESTION, the problem, and the fix. End with exactly VERDICT: APPROVED or VERDICT: REVISE.
+warning: Codex could not find bubblewrap on PATH. Install bubblewrap with your OS package manager. See the sandbox prerequisites: https://developers.openai.com/codex/concepts/sandboxing#prerequisites. Codex will use the bundled bubblewrap in the meantime.
+codex
+I’ll run the requested diff, then check the changed settings and types against the surrounding code and tests.
+exec
+/bin/bash -lc 'git diff 6ec87d3...worktree-agent-aa4a6294e0f5e7448 -- apps/web/src/App.css apps/web/src/components/GenericIndicatorSettingsBody.tsx apps/web/src/components/tests/GenericIndicatorSettingsBody.test.tsx apps/web/src/lib/chart/indicatorTypes.ts' in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+diff --git a/apps/web/src/App.css b/apps/web/src/App.css
+index 2041ae6..aae829a 100644
+--- a/apps/web/src/App.css
++++ b/apps/web/src/App.css
+@@ -1225,6 +1225,25 @@
+   color: var(--text-3);
+   line-height: 1.45;
+ }
++/* The collapsed group for `tab: "advanced"` fields: closed by default, opened on purpose. */
++.indicator-settings-advanced {
++  margin-top: 4px;
++  padding-top: 8px;
++  border-top: 1px solid var(--border-soft);
++}
++.indicator-settings-advanced > summary {
++  font-family: var(--sans-display);
++  font-size: 11px;
++  font-weight: 500;
++  color: var(--text-3);
++  cursor: pointer;
++  user-select: none;
++  padding: 2px 0 8px;
++}
++.indicator-settings-advanced > summary:hover,
++.indicator-settings-advanced[open] > summary {
++  color: var(--text-2);
++}
+ .indicator-settings-checkbox,
+ .indicator-settings-radio {
+   display: flex;
+diff --git a/apps/web/src/components/GenericIndicatorSettingsBody.tsx b/apps/web/src/components/GenericIndicatorSettingsBody.tsx
+index 103f5c5..483e6f2 100644
+--- a/apps/web/src/components/GenericIndicatorSettingsBody.tsx
++++ b/apps/web/src/components/GenericIndicatorSettingsBody.tsx
+@@ -60,16 +60,23 @@ function NumericField<T>({ field, value, onCommit }: NumericFieldProps<T>) {
+   );
+ }
+ 
++/** Advanced fields are inputs shown under a collapsed group, so they belong to the Inputs tab. */
+ function fieldTab<T>(field: SettingsFieldSchema<T>): SettingsTab {
+-  return field.tab ?? "inputs";
++  return field.tab === "visibility" ? "visibility" : "inputs";
++}
++
++function isAdvanced<T>(field: SettingsFieldSchema<T>): boolean {
++  return field.tab === "advanced";
+ }
+ 
+ export function GenericIndicatorSettingsBody<T>({ schema, settings, onChange, visibility }: GenericIndicatorSettingsBodyProps<T>) {
+-  const usesTabs = schema.some((field) => field.tab !== undefined);
++  const usesTabs = schema.some((field) => field.tab !== undefined && !isAdvanced(field));
+   const [activeTab, setActiveTab] = useState<SettingsTab>("inputs");
+ 
+   const visibleFields = schema.filter((field) => (field.visibleIf ? field.visibleIf(settings) : true));
+-  const fieldsToRender = usesTabs ? visibleFields.filter((field) => fieldTab(field) === activeTab) : visibleFields;
++  const tabFields = usesTabs ? visibleFields.filter((field) => fieldTab(field) === activeTab) : visibleFields;
++  const fieldsToRender = tabFields.filter((field) => !isAdvanced(field));
++  const advancedFields = tabFields.filter(isAdvanced);
+ 
+   function setKey(key: keyof T, value: unknown) {
+     onChange({ ...settings, [key]: value } as T);
+@@ -228,6 +235,12 @@ export function GenericIndicatorSettingsBody<T>({ schema, settings, onChange, vi
+       )}
+       <div className="indicator-settings-body">
+         {fieldsToRender.map((field, index) => renderField(field, index))}
++        {advancedFields.length > 0 && (
++          <details className="indicator-settings-advanced">
++            <summary>Advanced</summary>
++            {advancedFields.map((field, index) => renderField(field, fieldsToRender.length + index))}
++          </details>
++        )}
+         {(!usesTabs || activeTab === "visibility") && visibility && (
+           <label className="indicator-settings-checkbox">
+             <input
+diff --git a/apps/web/src/components/tests/GenericIndicatorSettingsBody.test.tsx b/apps/web/src/components/tests/GenericIndicatorSettingsBody.test.tsx
+index 3b88dd6..91ea928 100644
+--- a/apps/web/src/components/tests/GenericIndicatorSettingsBody.test.tsx
++++ b/apps/web/src/components/tests/GenericIndicatorSettingsBody.test.tsx
+@@ -215,4 +215,42 @@ describe("GenericIndicatorSettingsBody", () => {
+     expect(container.querySelector("input[type=number]")).toBeNull();
+     expect(container.querySelector("input[type=checkbox]")).not.toBeNull();
+   });
++
++  it("puts advanced fields in a collapsed Advanced group after the primary inputs, without adding tabs", async () => {
++    const schema: SettingsFieldSchema<TestSettings>[] = [
++      { kind: "numeric", key: "length", label: "Length", min: 1, max: 100, step: 1, affects: "recompute" },
++      { kind: "boolean", key: "visible", label: "Deeper toggle", affects: "cosmetic", tab: "advanced" },
++    ];
++    const { container, onChange } = await render(schema);
++    expect(container.querySelector('[role="tablist"]')).toBeNull();
++    const group = container.querySelector<HTMLDetailsElement>("details.indicator-settings-advanced")!;
++    expect(group.open).toBe(false);
++    expect(group.querySelector("summary")?.textContent).toBe("Advanced");
++    expect(group.querySelector("input[type=checkbox]")).not.toBeNull();
++    expect(container.querySelector("input[type=number]")?.closest("details")).toBeNull();
++
++    await act(async () => {
++      group.querySelector<HTMLInputElement>("input[type=checkbox]")!.click();
++    });
++    expect(onChange).toHaveBeenCalledWith({ ...DEFAULT_SETTINGS, visible: false });
++  });
++
++  it("keeps advanced fields on the Inputs tab when the schema also has a Visibility tab", async () => {
++    const schema: SettingsFieldSchema<TestSettings>[] = [
++      { kind: "numeric", key: "length", label: "Length", min: 1, max: 100, step: 1, affects: "recompute", tab: "inputs" },
++      { kind: "radioGroup", key: "mode", label: "Mode", affects: "recompute", tab: "advanced", options: [{ value: "a", label: "A" }, { value: "b", label: "B" }] },
++      { kind: "boolean", key: "visible", label: "Visible", affects: "cosmetic", tab: "visibility" },
++    ];
++    const { container } = await render(schema);
++    expect(container.querySelector("details.indicator-settings-advanced input[type=radio]")).not.toBeNull();
++
++    const visibilityTab = Array.from(container.querySelectorAll<HTMLButtonElement>('[role="tab"]')).find(
++      (tab) => tab.textContent === "Visibility",
++    )!;
++    await act(async () => {
++      visibilityTab.click();
++    });
++    expect(container.querySelector("details.indicator-settings-advanced")).toBeNull();
++    expect(container.querySelector("input[type=checkbox]")).not.toBeNull();
++  });
+ });
+diff --git a/apps/web/src/lib/chart/indicatorTypes.ts b/apps/web/src/lib/chart/indicatorTypes.ts
+index a48476b..59d8a85 100644
+--- a/apps/web/src/lib/chart/indicatorTypes.ts
++++ b/apps/web/src/lib/chart/indicatorTypes.ts
+@@ -141,7 +141,14 @@ export interface CrossAttachmentSpec {
+ 
+ interface SettingsFieldBase<T> {
+   visibleIf?: (settings: T) => boolean;
+-  tab?: "inputs" | "visibility";
++  /**
++   * Where the generic dialog puts the field. `inputs` (the default) and
++   * `visibility` are the two tabs. `advanced` is an input too, but rendered
++   * under a collapsed "Advanced" group at the end of the Inputs tab: the
++   * trader sees at most the few primary controls first and opens the rest
++   * on purpose. Presets, reset and persistence treat it like any input.
++   */
++  tab?: "inputs" | "visibility" | "advanced";
+ }
+ 
+ export type SettingsFieldSchema<T> =
+
+exec
+/bin/bash -lc "rg --files -g AGENTS.md -g '*brief*' -g '*BRIEF*'" in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ exited 1 in 0ms:
+exec
+/bin/bash -lc "git status --short; git branch --show-current; cat apps/web/package.json; sed -n '1,290p' apps/web/src/components/GenericIndicatorSettingsBody.tsx" in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+?? .claude/
+main
+{
+  "name": "web",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "engines": {
+    "node": "24.21.0"
+  },
+  "scripts": {
+    "pretest": "node ../../scripts/verify-node-version.cjs",
+    "prebuild": "node ../../scripts/verify-node-version.cjs",
+    "dev": "node ../../scripts/node-launcher.cjs ../../node_modules/vite/bin/vite.js",
+    "build": "tsc -b && vite build",
+    "lint": "oxlint",
+    "preview": "node ../../scripts/node-launcher.cjs ../../node_modules/vite/bin/vite.js preview",
+    "test": "set \"ELECTRON_RUN_AS_NODE=\"&& vitest run"
+  },
+  "dependencies": {
+    "lightweight-charts": "^5.2.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "trading-signals": "8.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.2",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.3",
+    "@vitest/coverage-v8": "4.1.11",
+    "@vitest/ui": "^4.1.11",
+    "fast-check": "4.10.2",
+    "jsdom": "^29.1.1",
+    "oxlint": "^1.71.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.1.1",
+    "vitest": "^4.1.11"
+  },
+  "optionalDependencies": {
+    "@oxlint/binding-linux-x64-gnu": "1.73.0"
+  }
+}
+import { useState } from "react";
+import type { SettingsFieldSchema } from "../lib/chart/indicatorTypes";
+
+type SettingsTab = "inputs" | "visibility";
+
+interface GenericIndicatorSettingsBodyProps<T> {
+  schema: readonly SettingsFieldSchema<T>[];
+  settings: T;
+  onChange: (next: T) => void;
+  /** Optional indicator-level visibility, kept outside the indicator's
+   * settings object because visibility is chart UI state rather than an
+   * input to the indicator calculation. */
+  visibility?: {
+    value: boolean;
+    onChange: (visible: boolean) => void;
+    label?: string;
+  };
+}
+
+interface NumericFieldProps<T> {
+  field: Extract<SettingsFieldSchema<T>, { kind: "numeric" }>;
+  value: number;
+  onCommit: (value: number) => void;
+}
+
+function isValidNumeric(raw: string, min: number, max: number, step: number): boolean {
+  const value = Number(raw);
+  if (raw.trim() === "" || !Number.isFinite(value) || value < min || value > max || !Number.isFinite(step) || step <= 0) {
+    return false;
+  }
+  const stepsFromMin = (value - min) / step;
+  return Math.abs(stepsFromMin - Math.round(stepsFromMin)) < 1e-9;
+}
+
+/** Whole-number sliders read as integers -- "21", not "21.00". */
+function sliderText(value: number, step: number): string {
+  return Number.isInteger(step) && Number.isInteger(value)
+    ? String(value)
+    : value.toFixed(2);
+}
+
+function NumericField<T>({ field, value, onCommit }: NumericFieldProps<T>) {
+  const [buffer, setBuffer] = useState(String(value));
+  return (
+    <label className="indicator-settings-field">
+      <span>{field.label}</span>
+      <input
+        type="number"
+        min={field.min}
+        max={field.max}
+        step={field.step}
+        value={buffer}
+        onChange={(event) => {
+          const raw = event.target.value;
+          setBuffer(raw);
+          if (isValidNumeric(raw, field.min, field.max, field.step)) onCommit(Number(raw));
+        }}
+      />
+    </label>
+  );
+}
+
+/** Advanced fields are inputs shown under a collapsed group, so they belong to the Inputs tab. */
+function fieldTab<T>(field: SettingsFieldSchema<T>): SettingsTab {
+  return field.tab === "visibility" ? "visibility" : "inputs";
+}
+
+function isAdvanced<T>(field: SettingsFieldSchema<T>): boolean {
+  return field.tab === "advanced";
+}
+
+export function GenericIndicatorSettingsBody<T>({ schema, settings, onChange, visibility }: GenericIndicatorSettingsBodyProps<T>) {
+  const usesTabs = schema.some((field) => field.tab !== undefined && !isAdvanced(field));
+  const [activeTab, setActiveTab] = useState<SettingsTab>("inputs");
+
+  const visibleFields = schema.filter((field) => (field.visibleIf ? field.visibleIf(settings) : true));
+  const tabFields = usesTabs ? visibleFields.filter((field) => fieldTab(field) === activeTab) : visibleFields;
+  const fieldsToRender = tabFields.filter((field) => !isAdvanced(field));
+  const advancedFields = tabFields.filter(isAdvanced);
+
+  function setKey(key: keyof T, value: unknown) {
+    onChange({ ...settings, [key]: value } as T);
+  }
+
+  function renderField(field: SettingsFieldSchema<T>, index: number) {
+    switch (field.kind) {
+      case "boolean":
+        return (
+          <label key={index} className="indicator-settings-checkbox">
+            <input
+              type="checkbox"
+              checked={Boolean(settings[field.key])}
+              onChange={(event) => setKey(field.key, event.target.checked)}
+            />
+            <span>{field.label}</span>
+          </label>
+        );
+      case "checkboxList": {
+        const selected = settings[field.key] as ReadonlySet<unknown>;
+        return (
+          <fieldset key={index} className="indicator-settings-session-list">
+            <legend>{field.label}</legend>
+            {field.options.map((option) => (
+              <label key={String(option.value)} className="indicator-settings-checkbox">
+                <input
+                  type="checkbox"
+                  checked={selected.has(option.value)}
+                  onChange={(event) => {
+                    const next = new Set(selected);
+                    if (event.target.checked) next.add(option.value);
+                    else next.delete(option.value);
+                    setKey(field.key, next);
+                  }}
+                />
+                <span>{option.label}</span>
+              </label>
+            ))}
+          </fieldset>
+        );
+      }
+      case "radioGroup":
+        return (
+          <div key={index} className="indicator-settings-field">
+            <span>{field.label}</span>
+            {field.options.map((option) => (
+              <label key={String(option.value)} className="indicator-settings-radio">
+                <input
+                  type="radio"
+                  name={String(field.key)}
+                  checked={settings[field.key] === option.value}
+                  onChange={() => setKey(field.key, option.value)}
+                />
+                <span>{option.label}</span>
+              </label>
+            ))}
+          </div>
+        );
+      case "select":
+        return (
+          <label key={String(field.key)} className="indicator-settings-field">
+            <span>{field.label}</span>
+            <select
+              value={String(settings[field.key])}
+              onChange={(event) => {
+                const matched = field.options.find(
+                  (option) => String(option.value) === event.target.value,
+                );
+                setKey(field.key, matched ? matched.value : event.target.value);
+              }}
+            >
+              {field.options.map((option) => (
+                <option key={String(option.value)} value={String(option.value)}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        );
+      case "numeric":
+        return (
+          <NumericField
+            key={String(field.key)}
+            field={field}
+            value={settings[field.key] as number}
+            onCommit={(value) => setKey(field.key, value)}
+          />
+        );
+      case "color":
+        return (
+          <label key={String(field.key)} className="indicator-settings-field">
+            <span>{field.label}</span>
+            <input
+              type="color"
+              value={String(settings[field.key] ?? "#000000")}
+              onChange={(event) => setKey(field.key, event.target.value)}
+            />
+          </label>
+        );
+      case "slider": {
+        const raw = settings[field.key];
+        const sliderValue =
+          typeof raw === "number" && Number.isFinite(raw) ? raw : field.min;
+        return (
+          <label key={String(field.key)} className="indicator-settings-field">
+            <span>
+              {field.label} {sliderText(sliderValue, field.step)}
+            </span>
+            <input
+              type="range"
+              min={field.min}
+              max={field.max}
+              step={field.step}
+              value={sliderValue}
+              onChange={(event) => setKey(field.key, Number(event.target.value))}
+            />
+          </label>
+        );
+      }
+      case "staticHint":
+        return (
+          <p key={index} className="indicator-settings-hint">
+            {field.text}
+          </p>
+        );
+      case "custom":
+        return <div key={index}>{field.render(settings, onChange)}</div>;
+      default:
+        return null;
+    }
+  }
+
+  return (
+    <>
+      {usesTabs && (
+        <div className="indicator-settings-tabs" role="tablist">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "inputs"}
+            className="indicator-settings-tab"
+            onClick={() => setActiveTab("inputs")}
+          >
+            Inputs
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "visibility"}
+            className="indicator-settings-tab"
+            onClick={() => setActiveTab("visibility")}
+          >
+            Visibility
+          </button>
+        </div>
+      )}
+      <div className="indicator-settings-body">
+        {fieldsToRender.map((field, index) => renderField(field, index))}
+        {advancedFields.length > 0 && (
+          <details className="indicator-settings-advanced">
+            <summary>Advanced</summary>
+            {advancedFields.map((field, index) => renderField(field, fieldsToRender.length + index))}
+          </details>
+        )}
+        {(!usesTabs || activeTab === "visibility") && visibility && (
+          <label className="indicator-settings-checkbox">
+            <input
+              type="checkbox"
+              checked={visibility.value}
+              onChange={(event) => visibility.onChange(event.target.checked)}
+            />
+            <span>{visibility.label ?? "Show on chart"}</span>
+          </label>
+        )}
+      </div>
+    </>
+  );
+}
+
+exec
+/bin/bash -lc "git diff --stat 6ec87d3...worktree-agent-aa4a6294e0f5e7448; sed -n '1,100p' apps/web/src/components/tests/GenericIndicatorSettingsBody.test.tsx; rg 'field\\.tab|tab === \"inputs\"|tab "'!=='"' apps/web/src -n" in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+ apps/web/src/App.css                               | 19 +++++++++++
+ .../components/GenericIndicatorSettingsBody.tsx    | 19 +++++++++--
+ .../tests/GenericIndicatorSettingsBody.test.tsx    | 38 ++++++++++++++++++++++
+ apps/web/src/lib/chart/indicatorTypes.ts           |  9 ++++-
+ 4 files changed, 81 insertions(+), 4 deletions(-)
+// @vitest-environment jsdom
+import { describe, expect, it, vi } from "vitest";
+import { createRoot, type Root } from "react-dom/client";
+import { act } from "react";
+import { GenericIndicatorSettingsBody } from "../GenericIndicatorSettingsBody";
+import type { SettingsFieldSchema } from "../../lib/chart/indicatorTypes";
+
+declare global {
+  // eslint-disable-next-line no-var
+  var IS_REACT_ACT_ENVIRONMENT: boolean;
+}
+globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+
+function setInputValue(input: HTMLInputElement, value: string) {
+  const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!;
+  return act(async () => {
+    nativeSetter.call(input, value);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+}
+
+interface TestSettings {
+  visible: boolean;
+  sessions: ReadonlySet<string>;
+  mode: "a" | "b";
+  length: number;
+  color: string;
+}
+
+const DEFAULT_SETTINGS: TestSettings = {
+  visible: true,
+  sessions: new Set(["london"]),
+  mode: "a",
+  length: 14,
+  color: "red",
+};
+
+async function render(
+  schema: readonly SettingsFieldSchema<TestSettings>[],
+  settings: TestSettings = DEFAULT_SETTINGS,
+): Promise<{ container: HTMLDivElement; root: Root; onChange: ReturnType<typeof vi.fn<(next: TestSettings) => void>> }> {
+  const container = document.createElement("div");
+  document.body.appendChild(container);
+  const root = createRoot(container);
+  const onChange = vi.fn<(next: TestSettings) => void>();
+  await act(async () => {
+    root.render(<GenericIndicatorSettingsBody schema={schema} settings={settings} onChange={onChange} />);
+  });
+  return { container, root, onChange };
+}
+
+describe("GenericIndicatorSettingsBody", () => {
+  it("boolean field reflects settings and toggling calls onChange with only that key updated", async () => {
+    const schema: SettingsFieldSchema<TestSettings>[] = [
+      { kind: "boolean", key: "visible", label: "Show on chart", affects: "cosmetic" },
+    ];
+    const { container, onChange } = await render(schema);
+    const checkbox = container.querySelector<HTMLInputElement>("input[type=checkbox]")!;
+    expect(checkbox.checked).toBe(true);
+
+    await act(async () => {
+      checkbox.click();
+    });
+
+    expect(onChange).toHaveBeenCalledWith({ ...DEFAULT_SETTINGS, visible: false });
+  });
+
+  it("checkboxList reflects Set membership per option and toggles independently", async () => {
+    const schema: SettingsFieldSchema<TestSettings>[] = [
+      {
+        kind: "checkboxList", key: "sessions", label: "Sessions", affects: "cosmetic",
+        options: [{ value: "london", label: "London" }, { value: "ny", label: "New York" }],
+      },
+    ];
+    const { container, onChange } = await render(schema);
+    const boxes = Array.from(container.querySelectorAll<HTMLInputElement>("input[type=checkbox]"));
+    expect(boxes[0].checked).toBe(true);
+    expect(boxes[1].checked).toBe(false);
+
+    await act(async () => {
+      boxes[1].click();
+    });
+    expect(onChange).toHaveBeenCalledWith({ ...DEFAULT_SETTINGS, sessions: new Set(["london", "ny"]) });
+
+    onChange.mockClear();
+    await act(async () => {
+      boxes[0].click();
+    });
+    expect(onChange).toHaveBeenCalledWith({ ...DEFAULT_SETTINGS, sessions: new Set() });
+  });
+
+  it("radioGroup reflects the current value and selecting a different option calls onChange", async () => {
+    const schema: SettingsFieldSchema<TestSettings>[] = [
+      {
+        kind: "radioGroup", key: "mode", label: "Mode", affects: "recompute",
+        options: [{ value: "a", label: "A" }, { value: "b", label: "B" }],
+      },
+    ];
+    const { container, onChange } = await render(schema);
+    const radios = Array.from(container.querySelectorAll<HTMLInputElement>("input[type=radio]"));
+apps/web/src/lib/indicators/session-levels/tests/sessionLevelsRender.test.ts:77:    expect(fields.map((field) => [field.key, field.tab])).toEqual(Object.keys(DEFAULT_RANGE_COLORS).map((key) => [key, "visibility"]));
+apps/web/src/lib/indicators/delta-divergence/tests/deltaDivergenceIndicator.test.ts:18:    expect(deltaDivergenceIndicator.settingsSchema!.every((field) => field.tab === undefined)).toBe(true);
+apps/web/src/components/GenericIndicatorSettingsBody.tsx:65:  return field.tab === "visibility" ? "visibility" : "inputs";
+apps/web/src/components/GenericIndicatorSettingsBody.tsx:69:  return field.tab === "advanced";
+apps/web/src/components/GenericIndicatorSettingsBody.tsx:73:  const usesTabs = schema.some((field) => field.tab !== undefined && !isAdvanced(field));
+
+exec
+/bin/bash -lc 'node node_modules/vitest/vitest.mjs run apps/web/src/components/tests/GenericIndicatorSettingsBody.test.tsx' in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+exec
+/bin/bash -lc "git log -3 --oneline worktree-agent-aa4a6294e0f5e7448; git diff worktree-agent-aa4a6294e0f5e7448 -- apps/web/src/components/GenericIndicatorSettingsBody.tsx apps/web/src/components/tests/GenericIndicatorSettingsBody.test.tsx apps/web/src/lib/chart/indicatorTypes.ts apps/web/src/App.css; rg 'GenericIndicatorSettingsBody|key=.*settings' apps/web/src/components/IndicatorSettingsDialog.tsx -n" in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ exited 2 in 0ms:
+3f09b78 Settings: render tab "advanced" fields as a collapsed Advanced group
+6ec87d3 Import Terminal-L1-L2 development-indicator-sdk snapshot
+rg: apps/web/src/components/IndicatorSettingsDialog.tsx: IO error for operation on apps/web/src/components/IndicatorSettingsDialog.tsx: No such file or directory (os error 2)
+
+ exited 1 in 1642ms:
+
+ RUN  v4.1.11 /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+
+ ❯ .claude/worktrees/agent-aa4a6294e0f5e7448/apps/web/src/components/tests/GenericIndicatorSettingsBody.test.tsx (0 test)
+ ❯ apps/web/src/components/tests/GenericIndicatorSettingsBody.test.tsx (0 test)
+ ❯ .claude/worktrees/agent-a4b44f3b34041fdf7/apps/web/src/components/tests/GenericIndicatorSettingsBody.test.tsx (0 test)
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  apps/web/src/components/tests/GenericIndicatorSettingsBody.test.tsx [ apps/web/src/components/tests/GenericIndicatorSettingsBody.test.tsx ]
+ FAIL  .claude/worktrees/agent-a4b44f3b34041fdf7/apps/web/src/components/tests/GenericIndicatorSettingsBody.test.tsx [ .claude/worktrees/agent-a4b44f3b34041fdf7/apps/web/src/components/tests/GenericIndicatorSettingsBody.test.tsx ]
+ FAIL  .claude/worktrees/agent-aa4a6294e0f5e7448/apps/web/src/components/tests/GenericIndicatorSettingsBody.test.tsx [ .claude/worktrees/agent-aa4a6294e0f5e7448/apps/web/src/components/tests/GenericIndicatorSettingsBody.test.tsx ]
+Error: ENOENT: no such file or directory, mkdir '/tmp/xAxZMG-qqEH99j8IeeUho/client'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+
+ Test Files  3 failed (3)
+      Tests  no tests
+   Start at  01:30:57
+   Duration  1.20s (transform 0ms, setup 0ms, import 0ms, tests 0ms, environment 2.56s)
+
+
+codex
+No findings in the requested diff. The change consistently groups advanced fields under Inputs and preserves existing visibility-tab behavior.
+
+No indicator math, data access, streaming state, or defaults changed, so the trading-data checks do not apply to this diff.
+
+Tests cover collapsed grouping, field updates, and visibility-tab separation. Execution was blocked before collection by a temporary-directory creation error; no tests ran.
+
+VERDICT: APPROVED
+tokens used
+21,670
+No findings in the requested diff. The change consistently groups advanced fields under Inputs and preserves existing visibility-tab behavior.
+
+No indicator math, data access, streaming state, or defaults changed, so the trading-data checks do not apply to this diff.
+
+Tests cover collapsed grouping, field updates, and visibility-tab separation. Execution was blocked before collection by a temporary-directory creation error; no tests ran.
+
+VERDICT: APPROVED
+--- last message saved to /home/user/Terminal-L1-L2/PM/log/codex/20261026T013047Z-code-worktree-agent-aa4a6294e0f5e7448.last.md
+VERDICT: APPROVED

@@ -1,0 +1,5 @@
+- **WARNING — `apps/web/src/lib/chart/validation/fakeL2.ts`, lines 148–154:** Snapshot-only walls never stop absorbing. When no `wall_trade` events are supplied, `!anyTradeEvent` returns the snapshot unchanged at every later cutoff. Reproduced with an absorbing snapshot at timestamp 1,000: the view at 7,000 still reports `absorbing: true`, although the five-second window must have expired. This can make replay validation accept absorption that live processing would reject. **Fix:** record the last trade timestamp alongside snapshots and recompute absorption at each cutoff. At minimum, expire a snapshot’s flag once its age exceeds `ABSORB_WINDOW_MS`. Add snapshot-only tests at the window boundary and immediately after it.
+
+The pooled liquidity cutoff matches the runtime. Targeted Vitest suites could not execute because the read-only environment prevented temporary-directory creation; the reproduction above ran successfully in memory.
+
+VERDICT: REVISE

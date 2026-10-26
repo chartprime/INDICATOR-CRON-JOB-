@@ -1,0 +1,3517 @@
+Reading additional input from stdin...
+OpenAI Codex v0.164.0
+--------
+workdir: /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+model: gpt-6.1-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 01a175e6-a53e-7ba1-b1f9-ce8b498bc61a
+--------
+user
+You are the independent code reviewer for a trading-indicator team. Review branch worktree-agent-a4b44f3b34041fdf7 against main in this repository. Run: git diff main...worktree-agent-a4b44f3b34041fdf7 -- apps/web/src/lib/chart/validation/fakeL2.ts apps/web/src/lib/chart/validation/fixtures.ts apps/web/src/lib/chart/validation/markerBudget.ts apps/web/src/lib/chart/validation/perfProbe.ts apps/web/src/lib/chart/validation/tests/baselines.test.ts apps/web/src/lib/chart/validation/tests/fakeL2.test.ts apps/web/src/lib/chart/validation/tests/fixtures.test.ts apps/web/src/lib/chart/validation/tests/markerBudget.test.ts apps/web/src/lib/chart/validation/tests/perfProbe.test.ts apps/web/src/lib/chart/validation/tests/relativeVolumeFixtures.test.ts 
+
+Focus, in order: 1) correctness of the math versus the brief; 2) future-data leakage (a bar may use only data timestamped at or before its close) and replay-versus-live consistency; 3) honest handling of missing data: null, never zero or NaN, gates on tradeAvailability, ticks.coverageOf, l2.trusted(); 4) buy/sell read through barSides, never volume minus buy_volume; 5) incremental state, bounded memory, no per-bar copying of large arrays, no stream or draw factories created inside onBar; 6) settings schema covers every default key with step > 0; 7) tests actually pin the behavior (hand-computed values, replace semantics, empty input, gates); 8) readability and house style.
+
+For each finding give file, line range, severity CRITICAL / WARNING / SUGGESTION, the problem, and the fix. End with exactly VERDICT: APPROVED or VERDICT: REVISE.
+warning: Codex could not find bubblewrap on PATH. Install bubblewrap with your OS package manager. See the sandbox prerequisites: https://developers.openai.com/codex/concepts/sandboxing#prerequisites. Codex will use the bundled bubblewrap in the meantime.
+codex
+I’ll run the requested diff, then check the implementation and tests against the brief and surrounding code.
+exec
+/bin/bash -lc 'git diff main...worktree-agent-a4b44f3b34041fdf7 -- apps/web/src/lib/chart/validation/fakeL2.ts apps/web/src/lib/chart/validation/fixtures.ts apps/web/src/lib/chart/validation/markerBudget.ts apps/web/src/lib/chart/validation/perfProbe.ts apps/web/src/lib/chart/validation/tests/baselines.test.ts apps/web/src/lib/chart/validation/tests/fakeL2.test.ts apps/web/src/lib/chart/validation/tests/fixtures.test.ts apps/web/src/lib/chart/validation/tests/markerBudget.test.ts apps/web/src/lib/chart/validation/tests/perfProbe.test.ts apps/web/src/lib/chart/validation/tests/relativeVolumeFixtures.test.ts' in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+diff --git a/apps/web/src/lib/chart/validation/fakeL2.ts b/apps/web/src/lib/chart/validation/fakeL2.ts
+index 2ff69f0..710557f 100644
+--- a/apps/web/src/lib/chart/validation/fakeL2.ts
++++ b/apps/web/src/lib/chart/validation/fakeL2.ts
+@@ -1,31 +1,52 @@
+ import type { L2EventSlice } from "../../l2/eventRing";
+ import type { L2Channel, L2ChannelStatus, L2Event, L2Ladder, L2LaneInfo, L2Segment, L2Wall, L2WallVerdict } from "../../l2/types";
+-import type { IndicatorL2, L2Availability } from "../indicatorL2";
++import { segmentStartTs, type IndicatorL2, type L2Availability } from "../indicatorL2";
+ 
+ /**
+  * A scripted `IndicatorL2` for order-book checks. The real one reads the L2
+  * store NOW, not as of a replayed bar; this fake lets a test say exactly what
+  * the ladder, the walls and the event stream hold, flip trust and sync, and
+  * cut the view at a bar close through `atTime` so a replay-time check can
+- * prove an indicator does not read walls or events from after the bar.
++ * prove an indicator does not read walls, events or a ladder from after the
++ * bar. Trust, segment and event-slice semantics mirror `indicatorL2Of`,
++ * `L2Store.trusted` and `EventRing.since`, so a gate that works against the
++ * fake works against the terminal.
+  */
+ 
++/** A wall's state as it stood at `ts`; `atTime(cut)` serves the newest snapshot at or before the cut. */
++export interface WallSnapshot {
++  ts: number;
++  wall: L2Wall;
++}
++
+ export interface FakeL2Script {
+   availability?: L2Availability;
++  /** `false` forces the store untrusted whatever the segment and sync say; `true` (default) lets them decide. */
+   trusted?: boolean;
+   /** Per-channel sync; every channel synced unless named here. */
+   synced?: Partial<Record<L2Channel, boolean>>;
+   seq?: number;
+   lastTs?: number | null;
+   lastFrameAt?: number | null;
++  /** Explicit `null` means "no segment yet" and is served as such; omitted means a LIVE segment that started at 0. */
+   segment?: L2Segment | null;
+   lanes?: readonly L2LaneInfo[];
++  /** The current ladder; eligible under a cut only when its `ts` is at or before the cut. */
+   ladder?: L2Ladder | null;
+-  /** Ladders over time; `atTime(ts)` serves the newest at or before `ts`, falling back to `ladder`. */
++  /** Ladders over time; `atTime(ts)` serves the newest at or before `ts` among these and `ladder`. */
+   ladders?: readonly L2Ladder[];
++  /** Final wall records, as `walls()` serves them now. */
+   walls?: readonly L2Wall[];
++  /** How each wall looked over time; without one, a cut view reconstructs the wall from its events. */
++  wallSnapshots?: readonly WallSnapshot[];
+   events?: readonly L2Event[];
++  /** The ring's current sequence number; defaults to the event count (the ring holds every event since seq 0). */
++  eventSeq?: number;
++  /** The seq of the last reset frame; a cursor before it is not exact. Defaults to the oldest held event's seq. */
++  eventResetSeq?: number;
+   missedEvents?: number;
++  /** The seq through which events were reported missed; a cursor at or before it is incomplete. Defaults to the current seq when `missedEvents > 0`. */
++  missedThroughSeq?: number | null;
+   version?: number;
+   notionalMultiplier?: number;
+ }
+@@ -37,6 +58,16 @@ export interface FakeL2 extends IndicatorL2 {
+ }
+ 
+ const ALL_CHANNELS: readonly L2Channel[] = ["l2_view", "l2_walls", "l2_events", "l2_ladder"];
++/** The channels `L2Store.trusted()` requires synced. */
++export const TRUST_CHANNELS: readonly L2Channel[] = ["l2_walls", "l2_events"];
++const EMPTY_SLICE: L2EventSlice = Object.freeze({ seq: 0, events: Object.freeze([]), missed: 0, complete: false });
++
++/** A segment id the production parser (`segmentStartTs`) reads back as starting at `startTs`. */
++export function segmentOf(startTs: number, state: L2Segment["state"] = "LIVE"): L2Segment {
++  return { id: `fake:${startTs}:${state}`, state };
++}
++
++const DEFAULT_SEGMENT = segmentOf(0);
+ 
+ function statusOf(script: FakeL2Script, channel: L2Channel): L2ChannelStatus {
+   const synced = script.synced?.[channel] ?? true;
+@@ -48,42 +79,108 @@ function statusOf(script: FakeL2Script, channel: L2Channel): L2ChannelStatus {
+   });
+ }
+ 
+-function sliceOf(events: readonly L2Event[], sinceSeq: number | undefined, missed: number): L2EventSlice {
+-  const seq = events.length;
+-  if (sinceSeq !== undefined && sinceSeq >= seq) return { seq, events: [], missed, complete: true };
+-  return { seq, events: sinceSeq === undefined ? events : events.slice(sinceSeq), missed, complete: true };
++function segmentOfScript(script: FakeL2Script): L2Segment | null {
++  return script.segment === undefined ? DEFAULT_SEGMENT : script.segment;
+ }
+ 
+-function cutWall(wall: L2Wall, ts: number): L2Wall | null {
+-  if (wall.startTs > ts) return null;
+-  if (wall.endTs !== null && wall.endTs <= ts) return wall;
+-  return { ...wall, endTs: null, endedBy: null };
++/** `L2Store.trusted()` then `indicatorL2Of(...).trusted(ts)`: LIVE segment, trust channels synced, and `ts` not before the segment began. */
++function trustedAt(script: FakeL2Script, ts: number | undefined): boolean {
++  if (script.trusted === false) return false;
++  const segment = segmentOfScript(script);
++  if (segment === null || segment.state !== "LIVE") return false;
++  if (!TRUST_CHANNELS.every((channel) => statusOf(script, channel).synced)) return false;
++  if (ts === undefined) return true;
++  const start = segmentStartTs(segment);
++  return start !== null && ts >= start;
+ }
+ 
+ function sortedEvents(events: readonly L2Event[] | undefined): readonly L2Event[] | undefined {
+   return events === undefined ? undefined : [...events].sort((a, b) => a.ts - b.ts);
+ }
+ 
++function sortedSnapshots(snapshots: readonly WallSnapshot[] | undefined): readonly WallSnapshot[] | undefined {
++  return snapshots === undefined ? undefined : [...snapshots].sort((a, b) => a.ts - b.ts);
++}
++
++/**
++ * The wall as it stood at `cut`: the newest snapshot at or before the cut, or
++ * else the wall reconstructed from its events through the cut (born size as
++ * size and peak, `wall_trade` sizes as `eaten`), or else the scripted record
++ * served as freshly born. A wall that ended at or before the cut is history
++ * and is served as its final record.
++ */
++function wallAt(wall: L2Wall, cut: number, snapshots: readonly WallSnapshot[], events: readonly L2Event[]): L2Wall | null {
++  if (wall.startTs > cut) return null;
++  if (wall.endTs !== null && wall.endTs <= cut) return wall;
++  let snapshot: WallSnapshot | null = null;
++  for (const candidate of snapshots) {
++    if (candidate.wall.id === wall.id && candidate.ts <= cut && (snapshot === null || candidate.ts >= snapshot.ts)) snapshot = candidate;
++  }
++  if (snapshot !== null) return { ...snapshot.wall, endTs: null, endedBy: null };
++  let bornSize: number | null = null;
++  let eaten = 0;
++  for (const event of events) {
++    if (event.ts > cut) break;
++    if (event.kind === "wall_born" && event.wall === wall.id) bornSize = event.size;
++    if (event.kind === "wall_trade" && event.wall === wall.id) eaten += event.size;
++  }
++  const peak = bornSize ?? wall.size;
++  return {
++    ...wall,
++    size: Math.max(0, peak - eaten),
++    peak,
++    eaten,
++    fill: peak > 0 ? eaten / peak : 0,
++    absorbing: false,
++    endTs: null,
++    endedBy: null,
++    detail: null,
++  };
++}
++
+ export function fakeL2(initial: FakeL2Script = {}): FakeL2 {
+-  const script: FakeL2Script = { ...initial, events: sortedEvents(initial.events) };
++  const script: FakeL2Script = { ...initial, events: sortedEvents(initial.events), wallSnapshots: sortedSnapshots(initial.wallSnapshots) };
+   let version = initial.version ?? 1;
+-  const ladderAt = (ts: number | null): L2Ladder | null => {
+-    if (ts !== null && script.ladders) {
+-      let best: L2Ladder | null = null;
+-      for (const ladder of script.ladders) if (ladder.ts <= ts && (best === null || ladder.ts > best.ts)) best = ladder;
+-      if (best !== null) return best;
++
++  const ladderAt = (cut: number | null): L2Ladder | null => {
++    let best: L2Ladder | null = null;
++    for (const ladder of [...(script.ladders ?? []), ...(script.ladder ? [script.ladder] : [])]) {
++      if (cut !== null && ladder.ts > cut) continue;
++      if (best === null || ladder.ts > best.ts) best = ladder;
+     }
+-    return script.ladder ?? null;
++    // Uncut, the current ladder is what the store holds now, whatever its stamp.
++    if (cut === null && script.ladder) return script.ladder;
++    return best;
+   };
++
+   const build = (cut: number | null): FakeL2 => {
++    const allEvents = (): readonly L2Event[] => script.events ?? [];
++    const events = (): readonly L2Event[] => {
++      const all = allEvents();
++      return cut === null ? all : all.filter((event) => event.ts <= cut);
++    };
+     const walls = (): readonly L2Wall[] => {
+       const all = script.walls ?? [];
+       if (cut === null) return all;
+-      return all.map((wall) => cutWall(wall, cut)).filter((wall): wall is L2Wall => wall !== null);
++      const snapshots = script.wallSnapshots ?? [];
++      const seen = events();
++      return all.map((wall) => wallAt(wall, cut, snapshots, seen)).filter((wall): wall is L2Wall => wall !== null);
+     };
+-    const events = (): readonly L2Event[] => {
+-      const all = script.events ?? [];
+-      return cut === null ? all : all.filter((event) => event.ts <= cut);
++    const since = (sinceSeq: number | undefined): L2EventSlice => {
++      const synced = script.synced?.l2_events ?? true;
++      const all = allEvents();
++      const visible = events();
++      if (!synced && script.eventSeq === undefined && all.length === 0) return EMPTY_SLICE;
++      const fullSeq = script.eventSeq ?? all.length;
++      const oldestExact = fullSeq - all.length;
++      const seq = oldestExact + visible.length;
++      const resetSeq = script.eventResetSeq ?? oldestExact;
++      const missed = script.missedEvents ?? 0;
++      const missedThrough = script.missedThroughSeq === undefined ? (missed > 0 ? seq : null) : script.missedThroughSeq;
++      const exact = sinceSeq !== undefined && sinceSeq >= resetSeq && sinceSeq >= oldestExact && sinceSeq <= seq;
++      const slice = exact ? visible.slice(visible.length - (seq - sinceSeq!)) : visible.slice();
++      const afterReportedLoss = missedThrough === null || (sinceSeq !== undefined && sinceSeq > missedThrough);
++      return Object.freeze({ seq, events: Object.freeze(slice), missed, complete: exact && synced && afterReportedLoss });
+     };
+     const fake: FakeL2 = {
+       get availability() {
+@@ -96,13 +193,8 @@ export function fakeL2(initial: FakeL2Script = {}): FakeL2 {
+         return script;
+       },
+       status: (channel) => statusOf(script, channel),
+-      segment: () => script.segment ?? { id: `fake:${script.lastTs ?? 0}:1`, state: "LIVE" },
+-      trusted: (ts) => {
+-        if (!(script.trusted ?? true)) return false;
+-        if (ts === undefined) return true;
+-        const segment = script.segment;
+-        return segment === undefined || segment === null || segment.state === "LIVE";
+-      },
++      segment: () => segmentOfScript(script),
++      trusted: (ts) => trustedAt(script, ts),
+       lanes: () => script.lanes ?? [],
+       view: () => null,
+       laneFor: (lo, hi) => {
+@@ -112,7 +204,7 @@ export function fakeL2(initial: FakeL2Script = {}): FakeL2 {
+       },
+       walls: (lane = 0) => walls().filter((wall) => wall.lane === lane),
+       wall: (id) => walls().find((wall) => wall.id === id) ?? null,
+-      events: (sinceSeq) => sliceOf(events(), sinceSeq, script.missedEvents ?? 0),
++      events: since,
+       ladder: () => ladderAt(cut),
+       wallHistory: () => Promise.resolve(null),
+       eventHistory: () => Promise.resolve(null),
+@@ -120,7 +212,12 @@ export function fakeL2(initial: FakeL2Script = {}): FakeL2 {
+       notionalMultiplier: script.notionalMultiplier,
+       atTime: (timeMs) => build(timeMs),
+       patch(next) {
+-        Object.assign(script, next, next.events === undefined ? {} : { events: sortedEvents(next.events) });
++        Object.assign(
++          script,
++          next,
++          next.events === undefined ? {} : { events: sortedEvents(next.events) },
++          next.wallSnapshots === undefined ? {} : { wallSnapshots: sortedSnapshots(next.wallSnapshots) },
++        );
+         version += 1;
+       },
+     };
+@@ -129,9 +226,9 @@ export function fakeL2(initial: FakeL2Script = {}): FakeL2 {
+   return build(null);
+ }
+ 
+-/** Every channel unsynced and nothing trusted: the engine has not sent a frame yet. */
++/** Every channel unsynced and no segment yet: the engine has not sent a frame. */
+ export function fakeL2Unsynced(): FakeL2 {
+-  return fakeL2({ trusted: false, synced: Object.fromEntries(ALL_CHANNELS.map((channel) => [channel, false])), segment: null });
++  return fakeL2({ synced: Object.fromEntries(ALL_CHANNELS.map((channel) => [channel, false])), segment: null });
+ }
+ 
+ /** A ladder of `levels` per side around `mid`, each `step` apart, `size` on every level. */
+@@ -196,19 +293,40 @@ export interface WallLifecycleSpec extends WallSpec {
+   tradePrice?: number;
+ }
+ 
+-/** A wall's whole story as the event stream tells it: born, (shrunk), (traded), (ended). */
+-export function wallLifecycle(spec: WallLifecycleSpec): { wall: L2Wall; events: L2Event[] } {
+-  const wall = wallOf(spec);
++/**
++ * A wall's whole story: the final record, the event stream that tells it
++ * (born, shrunk, traded, ended) and the snapshots a cut view serves, one per
++ * event, with `size`, `eaten` and `fill` as they stood after that event.
++ */
++export function wallLifecycle(spec: WallLifecycleSpec): { wall: L2Wall; events: L2Event[]; snapshots: WallSnapshot[] } {
++  const traded = spec.tradeTs === undefined ? 0 : (spec.tradedSize ?? spec.size / 2);
++  const ended = spec.endTs !== undefined && spec.endTs !== null;
++  const wall: L2Wall = {
++    ...wallOf(spec),
++    peak: spec.peak ?? spec.size,
++    size: spec.size - traded,
++    eaten: traded,
++    fill: spec.size > 0 ? traded / spec.size : 0,
++    absorbing: spec.absorbing ?? traded > 0,
++  };
++  const born: L2Wall = { ...wall, size: spec.size, eaten: 0, fill: 0, absorbing: false, endTs: null, endedBy: null };
+   const events: L2Event[] = [{ kind: "wall_born", ts: spec.startTs, wall: spec.id, side: spec.side, row: spec.row, span: wall.span, size: spec.size }];
+-  if (spec.shrinkTs !== undefined) events.push({ kind: "wall_shrink", ts: spec.shrinkTs, wall: spec.id, exact: true, reached: false });
++  const snapshots: WallSnapshot[] = [{ ts: spec.startTs, wall: born }];
++  if (spec.shrinkTs !== undefined) {
++    events.push({ kind: "wall_shrink", ts: spec.shrinkTs, wall: spec.id, exact: true, reached: false });
++    snapshots.push({ ts: spec.shrinkTs, wall: born });
++  }
+   if (spec.tradeTs !== undefined) {
+-    events.push({ kind: "wall_trade", ts: spec.tradeTs, wall: spec.id, mode: "absorbed", price: spec.tradePrice ?? spec.row, size: spec.tradedSize ?? spec.size / 2 });
++    events.push({ kind: "wall_trade", ts: spec.tradeTs, wall: spec.id, mode: "absorbed", price: spec.tradePrice ?? spec.row, size: traded });
++    snapshots.push({ ts: spec.tradeTs, wall: { ...wall, endTs: null, endedBy: null } });
+   }
+-  if (spec.endTs !== undefined && spec.endTs !== null) {
+-    events.push({ kind: "wall_end", ts: spec.endTs, wall: spec.id, endedBy: wall.endedBy ?? "pulled", distanceRows: 1 });
++  if (ended) {
++    events.push({ kind: "wall_end", ts: spec.endTs!, wall: spec.id, endedBy: wall.endedBy ?? "pulled", distanceRows: 1 });
++    snapshots.push({ ts: spec.endTs!, wall });
+   }
+   events.sort((a, b) => a.ts - b.ts);
+-  return { wall, events };
++  snapshots.sort((a, b) => a.ts - b.ts);
++  return { wall, events, snapshots };
+ }
+ 
+ /** A plain trade event (not against a wall) for the event stream. */
+diff --git a/apps/web/src/lib/chart/validation/fixtures.ts b/apps/web/src/lib/chart/validation/fixtures.ts
+index 3e2ab81..30805a6 100644
+--- a/apps/web/src/lib/chart/validation/fixtures.ts
++++ b/apps/web/src/lib/chart/validation/fixtures.ts
+@@ -1,4 +1,6 @@
+ import type { BarFrame, FrameIdentity, Side, TradeFrame } from "../../../types/frames";
++import { barSides } from "../../indicators/barSides";
++import { regularSessionAt } from "../marketCalendar";
+ import type { IndicatorL2 } from "../indicatorL2";
+ import type { IndicatorTicks } from "../indicatorTicks";
+ import type { TradeAvailability } from "../indicatorTypes";
+@@ -444,7 +446,10 @@ export function formingRevisions(bar: BarFrame, revisions: number): BarFrame[] {
+   const out: BarFrame[] = [];
+   let high = bar.open;
+   let low = bar.open;
+-  const sided = bar.buy_volume !== undefined && bar.buy_volume !== null;
++  // Sides are read through barSides and scaled independently, so a revision
++  // keeps the bar's buy, sell and unknown shares: unsided equity volume stays
++  // unknown instead of being turned into selling by `volume - buy`.
++  const sides = barSides(bar);
+   for (let index = 0; index < revisions; index += 1) {
+     const close = path[index];
+     high = Math.max(high, close);
+@@ -453,10 +458,9 @@ export function formingRevisions(bar: BarFrame, revisions: number): BarFrame[] {
+     const volume = round(bar.volume * share, 4);
+     const partial: Record<string, unknown> = { ...bar, high: round(high), low: round(low), close: round(close), volume, closed: false };
+     if (bar.trade_count !== null) partial.trade_count = Math.max(1, Math.round(bar.trade_count * share));
+-    if (sided) {
+-      const buy = round((bar.buy_volume ?? 0) * share, 4);
+-      partial.buy_volume = buy;
+-      if (bar.sell_volume !== undefined) partial.sell_volume = round(volume - buy, 4);
++    if (sides.known) {
++      partial.buy_volume = round(sides.buy * share, 4);
++      if (bar.sell_volume !== undefined && bar.sell_volume !== null) partial.sell_volume = round(sides.sell * share, 4);
+     }
+     out.push(partial as BarFrame);
+   }
+@@ -538,3 +542,260 @@ export function sampledIndices(count: number, step: number, tail = 20): number[]
+   for (let index = Math.max(0, count - tail); index < count; index += 1) out.add(index);
+   return [...out].sort((a, b) => a - b);
+ }
++
++/*
++ * Frozen fixtures for the cycle-1 Relative Volume (Time of Day) build
++ * (`PM/cycle1/brief-rvol-clock.md`, "Baseline comparison" and "Crypto
++ * fixture"). The builder and the validation loop import the same functions, so
++ * the numbers quoted in the doc page are reproducible from here alone. Every
++ * choice the brief leaves open is fixed in the doc comments below.
++ */
++
++/** mulberry32, the PRNG the brief names; the same implementation the swing alphabet profile uses. */
++export function mulberry32(seed: number): () => number {
++  let a = seed >>> 0;
++  return () => {
++    a = (a + 0x6d2b79f5) | 0;
++    let t = Math.imul(a ^ (a >>> 15), 1 | a);
++    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
++    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
++  };
++}
++
++/**
++ * Standard normals by Box-Muller over `uniform`: two uniforms per pair,
++ * `z0 = r·cos(2πu2)` then `z1 = r·sin(2πu2)` with `r = sqrt(-2·ln(1 - u1))`
++ * (`1 - u1` keeps the logarithm finite when the generator returns 0). Both
++ * outputs are used, in that order, before the next pair is drawn.
++ */
++export function standardNormals(uniform: () => number): () => number {
++  let pending: number | null = null;
++  return () => {
++    if (pending !== null) {
++      const z = pending;
++      pending = null;
++      return z;
++    }
++    const u1 = uniform();
++    const u2 = uniform();
++    const r = Math.sqrt(-2 * Math.log(1 - u1));
++    pending = r * Math.sin(2 * Math.PI * u2);
++    return r * Math.cos(2 * Math.PI * u2);
++  };
++}
++
++export const RVOL_EQUITY_SEED = 20261026;
++export const RVOL_CRYPTO_SEED = 20261027;
++export const RVOL_BASE_VOLUME = 1_000;
++export const RVOL_NOISE_SIGMA = 0.15;
++export const RVOL_EQUITY_SESSIONS = 15;
++export const RVOL_EQUITY_BARS_PER_SESSION = 390;
++export const RVOL_EQUITY_ANOMALIES = 12;
++export const RVOL_ANOMALY_MULTIPLE = 2.5;
++export const RVOL_CRYPTO_BARS = 12_000;
++/** The brief's "first 10,080 bars" timing window and the REBUILT replay start (bars 1,921..12,000). */
++export const RVOL_CRYPTO_TIMING_BARS = 10_080;
++export const RVOL_CRYPTO_REBUILT_FROM_INDEX = 1_920;
++
++/** `E(m)` for the equity U-curve: an opening surge decaying over an hour, flat midday, a linear rise into the close. */
++export function relativeVolumeExpectedEquity(minute: number, baseVolume = RVOL_BASE_VOLUME): number {
++  if (minute < 60) return baseVolume * (1 + 3 * Math.max(0, 1 - minute / 60) ** 2);
++  if (minute <= 330) return baseVolume;
++  return baseVolume * (1 + (minute - 330) / 59);
++}
++
++/** `E(m)` for crypto: one cosine over the UTC day, peaking at 14:00 UTC (minute 840). */
++export function relativeVolumeExpectedCrypto(minuteOfDay: number, baseVolume = RVOL_BASE_VOLUME): number {
++  return baseVolume * (1 + 0.5 * Math.cos((2 * Math.PI * (minuteOfDay - 840)) / 1440));
++}
++
++function noisyVolume(expected: number, z: number): number {
++  return Math.round(expected * Math.exp(RVOL_NOISE_SIGMA * z));
++}
++
++/** A deterministic, random-free price path so the volume generator's stream is the only source of randomness. */
++function rvolBar(ts_open: number, index: number, volume: number, basePrice: number, amplitude: number, identity: FixtureIdentity, sided: boolean): BarFrame {
++  const close = round(basePrice + amplitude * Math.sin(index / 40), 2);
++  const open = round(basePrice + amplitude * Math.sin((index - 1) / 40), 2);
++  const spec: BarSpec = { open, close, high: Math.max(open, close) + amplitude * 0.02, low: Math.min(open, close) - amplitude * 0.02, volume, tradeCount: Math.max(1, Math.round(volume / 5)) };
++  if (sided) spec.buyShare = 0.5;
++  return barFrame(ts_open, spec, identity, MINUTE_MS);
++}
++
++export interface RelativeVolumeAnomaly {
++  /** 1-based session number, as the brief counts them. */
++  session: number;
++  /** Minute of the session, 0..389. */
++  minute: number;
++  /** Position in `bars`. */
++  index: number;
++  expectedVolume: number;
++  /** `round(2.5 · E(m))`, the volume written into the bar. */
++  volume: number;
++}
++
++export interface RelativeVolumeEquityLabels {
++  regime: "relativeVolumeEquity" | "relativeVolumeEquityFlat";
++  seed: number;
++  baseVolume: number;
++  sessions: number;
++  barsPerSession: number;
++  /** `ts_open` of each session's first bar (09:30 New York), in order. */
++  sessionStarts: number[];
++  /** New York calendar date of each session. */
++  sessionDates: string[];
++  /** `E(m)` for every minute of a session. */
++  expectedVolumes: number[];
++  anomalies: RelativeVolumeAnomaly[];
++  anomalyIndices: number[];
++  /** Bars at minutes 0..9 and 380..389, every session: the slots where volume is always loud and a rolling baseline misfires. */
++  predictableSlotIndices: number[];
++  /** Every bar of sessions 4..15; a method's own readiness narrows it further. */
++  evaluationIndices: number[];
++  evaluationSessions: { first: number; last: number };
++  /** Sessions 1..5 trade on EST and 6..15 on EDT: same New York start minute, different UTC offset. */
++  dstChangeAfterSession: number;
++}
++
++export interface RelativeVolumeEquityOptions {
++  /** The control experiment: `E(m) = V` and anomalies drawn from every minute. */
++  flatSeasonality?: boolean;
++  seed?: number;
++  baseVolume?: number;
++}
++
++function sessionDateKey(openMs: number): string {
++  const date = new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(openMs));
++  return date;
++}
++
++/**
++ * Fifteen regular equity sessions of 390 one-minute bars starting Monday
++ * 2026-03-02 09:30 New York (the US spring DST change falls on Sunday
++ * 2026-03-08). Volume: `round(E(m) · exp(0.15 z))`, one z per bar in session
++ * order then minute order, from `standardNormals(mulberry32(20261026))`. Then
++ * twelve anomalies: pairs drawn with the same generator, two uniforms each
++ * (`session = 4 + floor(u · 12)`, `minute = 90 + floor(u · 241)`), duplicates
++ * rejected, each bar replaced by `round(2.5 · E(m))`. Only `volume` carries
++ * information; prices are a smooth deterministic path and the bars carry no
++ * sides, as a dxFeed equity minute with any unsided print would not.
++ */
++export function relativeVolumeEquityFixture(options: RelativeVolumeEquityOptions = {}): LabelledBars<RelativeVolumeEquityLabels> {
++  const flat = options.flatSeasonality ?? false;
++  const seed = options.seed ?? RVOL_EQUITY_SEED;
++  const baseVolume = options.baseVolume ?? RVOL_BASE_VOLUME;
++  const expected = (minute: number) => (flat ? baseVolume : relativeVolumeExpectedEquity(minute, baseVolume));
++  const expectedVolumes = Array.from({ length: RVOL_EQUITY_BARS_PER_SESSION }, (_, minute) => expected(minute));
++
++  const sessionStarts: number[] = [];
++  const sessionDates: string[] = [];
++  for (let day = Date.UTC(2026, 2, 2, 17); sessionStarts.length < RVOL_EQUITY_SESSIONS; day += 24 * 60 * MINUTE_MS) {
++    const session = regularSessionAt(day);
++    if (session === null) continue;
++    sessionStarts.push(session.openMs);
++    sessionDates.push(sessionDateKey(session.openMs));
++  }
++
++  const uniform = mulberry32(seed);
++  const normal = standardNormals(uniform);
++  const bars: BarFrame[] = [];
++  const predictableSlotIndices: number[] = [];
++  const evaluationIndices: number[] = [];
++  sessionStarts.forEach((start, sessionIndex) => {
++    for (let minute = 0; minute < RVOL_EQUITY_BARS_PER_SESSION; minute += 1) {
++      const index = bars.length;
++      bars.push(rvolBar(start + minute * MINUTE_MS, index, noisyVolume(expectedVolumes[minute], normal()), 190, 2, DXFEED_EQUITY, false));
++      if (minute < 10 || minute >= 380) predictableSlotIndices.push(index);
++      if (sessionIndex + 1 >= 4) evaluationIndices.push(index);
++    }
++  });
++
++  const anomalies: RelativeVolumeAnomaly[] = [];
++  const taken = new Set<string>();
++  while (anomalies.length < RVOL_EQUITY_ANOMALIES) {
++    const session = 4 + Math.floor(uniform() * 12);
++    const minute = flat ? Math.floor(uniform() * RVOL_EQUITY_BARS_PER_SESSION) : 90 + Math.floor(uniform() * 241);
++    const key = `${session}:${minute}`;
++    if (taken.has(key)) continue;
++    taken.add(key);
++    const index = (session - 1) * RVOL_EQUITY_BARS_PER_SESSION + minute;
++    const volume = Math.round(RVOL_ANOMALY_MULTIPLE * expectedVolumes[minute]);
++    bars[index] = { ...bars[index], volume, trade_count: Math.max(1, Math.round(volume / 5)) } as BarFrame;
++    anomalies.push({ session, minute, index, expectedVolume: expectedVolumes[minute], volume });
++  }
++  anomalies.sort((a, b) => a.index - b.index);
++
++  return {
++    bars,
++    labels: {
++      regime: flat ? "relativeVolumeEquityFlat" : "relativeVolumeEquity",
++      seed,
++      baseVolume,
++      sessions: RVOL_EQUITY_SESSIONS,
++      barsPerSession: RVOL_EQUITY_BARS_PER_SESSION,
++      sessionStarts,
++      sessionDates,
++      expectedVolumes,
++      anomalies,
++      anomalyIndices: anomalies.map((anomaly) => anomaly.index),
++      predictableSlotIndices,
++      evaluationIndices,
++      evaluationSessions: { first: 4, last: RVOL_EQUITY_SESSIONS },
++      dstChangeAfterSession: 5,
++    },
++  };
++}
++
++export interface RelativeVolumeCryptoLabels {
++  regime: "relativeVolumeCrypto";
++  seed: number;
++  baseVolume: number;
++  count: number;
++  startTs: number;
++  /** `E(m)` for every minute of the UTC day. */
++  expectedVolumes: number[];
++  /** Minute of the UTC day of every bar. */
++  minuteOfDay: number[];
++  /** The brief's timing window, as `[first, last]` indices. */
++  timingIndices: { first: number; last: number };
++  /** The REBUILT replay runs from this index to the end (bars 1,921..12,000). */
++  rebuiltFromIndex: number;
++}
++
++/**
++ * Twelve thousand one-minute Binance perpetual bars from 2026-03-02 00:00 UTC
++ * with `E(m) = V · (1 + 0.5 · cos(2π (m - 840) / 1440))` over the UTC minute
++ * of day, the same noise model and generation order as the equity fixture,
++ * seed 20261027, no anomalies. Sides are split evenly, since the indicator
++ * reads only `volume`.
++ */
++export function relativeVolumeCryptoFixture(options: { seed?: number; baseVolume?: number; count?: number } = {}): LabelledBars<RelativeVolumeCryptoLabels> {
++  const seed = options.seed ?? RVOL_CRYPTO_SEED;
++  const baseVolume = options.baseVolume ?? RVOL_BASE_VOLUME;
++  const count = options.count ?? RVOL_CRYPTO_BARS;
++  const startTs = Date.UTC(2026, 2, 2, 0, 0);
++  const expectedVolumes = Array.from({ length: 1440 }, (_, minute) => relativeVolumeExpectedCrypto(minute, baseVolume));
++  const normal = standardNormals(mulberry32(seed));
++  const bars: BarFrame[] = [];
++  const minuteOfDay: number[] = [];
++  for (let index = 0; index < count; index += 1) {
++    const ts_open = startTs + index * MINUTE_MS;
++    const minute = Math.floor((ts_open / MINUTE_MS) % 1440);
++    minuteOfDay.push(minute);
++    bars.push(rvolBar(ts_open, index, noisyVolume(expectedVolumes[minute], normal()), 60_000, 300, BINANCE_PERP, true));
++  }
++  return {
++    bars,
++    labels: {
++      regime: "relativeVolumeCrypto",
++      seed,
++      baseVolume,
++      count,
++      startTs,
++      expectedVolumes,
++      minuteOfDay,
++      timingIndices: { first: 0, last: Math.min(count, RVOL_CRYPTO_TIMING_BARS) - 1 },
++      rebuiltFromIndex: RVOL_CRYPTO_REBUILT_FROM_INDEX,
++    },
++  };
++}
+diff --git a/apps/web/src/lib/chart/validation/markerBudget.ts b/apps/web/src/lib/chart/validation/markerBudget.ts
+index cc0a928..91a9aaf 100644
+--- a/apps/web/src/lib/chart/validation/markerBudget.ts
++++ b/apps/web/src/lib/chart/validation/markerBudget.ts
+@@ -14,6 +14,8 @@ import { driveLive, replayCapture, type LiveExtras } from "./liveDrive";
+ 
+ export interface MarkerBudget {
+   bars: number;
++  /** The runtime latched the indicator as faulted during the run: the counts below are of a dead indicator and prove nothing. */
++  faulted: boolean;
+   total: number;
+   per1000Bars: number;
+   /** Most markers placed on a single bar time. */
+@@ -24,7 +26,7 @@ export interface MarkerBudget {
+   byColor: Record<string, number>;
+ }
+ 
+-export function markerBudgetOf(markers: readonly MarkerCall[], bars: number): MarkerBudget {
++export function markerBudgetOf(markers: readonly MarkerCall[], bars: number, faulted = false): MarkerBudget {
+   const perTime = new Map<number, number>();
+   const byShape: Partial<Record<MarkerShapeKind, number>> = {};
+   const byPosition: Partial<Record<MarkerPositionKind, number>> = {};
+@@ -39,6 +41,7 @@ export function markerBudgetOf(markers: readonly MarkerCall[], bars: number): Ma
+   for (const count of perTime.values()) maxPerBar = Math.max(maxPerBar, count);
+   return {
+     bars,
++    faulted,
+     total: markers.length,
+     per1000Bars: bars === 0 ? 0 : (markers.length / bars) * 1000,
+     maxPerBar,
+@@ -65,7 +68,7 @@ export function countMarkers<S, T>(
+   const capture = options.live
+     ? driveLive(def, liveArrivals(bars, options.live.revisionsPerBar, options.live.tradesFor), settings, options.extras)
+     : replayCapture(def, bars, settings, options.extras);
+-  return markerBudgetOf(capture.markers, bars.length);
++  return markerBudgetOf(capture.markers, bars.length, capture.faulted);
+ }
+ 
+ /** The budget of an arbitrary arrival script (duplicates, rebuilds, reconnects included). */
+@@ -76,22 +79,31 @@ export function countMarkersOver<S, T>(
+   extras: LiveExtras = {},
+ ): MarkerBudget {
+   const result = driveLive(def, arrivals, settings, extras);
+-  return markerBudgetOf(result.markers, result.bars.length);
++  return markerBudgetOf(result.markers, result.bars.length, result.faulted);
+ }
+ 
+ export interface BudgetVerdict {
+   ok: boolean;
++  /** A faulted run never passes, whatever it counted. */
++  faulted: boolean;
+   ceilingPer1000Bars: number;
+   actualPer1000Bars: number;
+   maxPerBarCeiling: number | null;
+   maxPerBar: number;
+ }
+ 
+-/** Pass when the measured rate (and, if given, the per-bar maximum) is at or under the ceiling. */
++/** Pass when the indicator did not fault and the measured rate (and, if given, the per-bar maximum) is at or under the ceiling. */
+ export function judgeBudget(budget: MarkerBudget, ceilingPer1000Bars: number, maxPerBarCeiling: number | null = null): BudgetVerdict {
+   const rateOk = budget.per1000Bars <= ceilingPer1000Bars;
+   const perBarOk = maxPerBarCeiling === null || budget.maxPerBar <= maxPerBarCeiling;
+-  return { ok: rateOk && perBarOk, ceilingPer1000Bars, actualPer1000Bars: budget.per1000Bars, maxPerBarCeiling, maxPerBar: budget.maxPerBar };
++  return {
++    ok: !budget.faulted && rateOk && perBarOk,
++    faulted: budget.faulted,
++    ceilingPer1000Bars,
++    actualPer1000Bars: budget.per1000Bars,
++    maxPerBarCeiling,
++    maxPerBar: budget.maxPerBar,
++  };
+ }
+ 
+ export interface MarkerCapture {
+@@ -121,6 +133,7 @@ export function captureMarkers(timeOf: () => number): MarkerCapture {
+ }
+ 
+ export function summarizeBudget(label: string, budget: MarkerBudget, verdict?: BudgetVerdict): string {
++  if (budget.faulted) return `${label}: FAULTED during the run (${budget.total} marker(s) over ${budget.bars} bars before the fault); the budget cannot be judged`;
+   const head = `${label}: ${budget.total} marker(s) over ${budget.bars} bars = ${budget.per1000Bars.toFixed(1)} per 1,000 bars; ${budget.barsWithMarkers} bar(s) marked, at most ${budget.maxPerBar} on one bar`;
+   if (!verdict) return head;
+   return `${head}; ceiling ${verdict.ceilingPer1000Bars} per 1,000${verdict.maxPerBarCeiling === null ? "" : ` and ${verdict.maxPerBarCeiling} per bar`}: ${verdict.ok ? "PASS" : "FAIL"}`;
+diff --git a/apps/web/src/lib/chart/validation/perfProbe.ts b/apps/web/src/lib/chart/validation/perfProbe.ts
+index 6be5870..60d0840 100644
+--- a/apps/web/src/lib/chart/validation/perfProbe.ts
++++ b/apps/web/src/lib/chart/validation/perfProbe.ts
+@@ -1,6 +1,9 @@
+ import type { BarFrame, TradeFrame } from "../../../types/frames";
+ import { MAX_RETAINED_SOURCE_BARS } from "../candleLifecycle";
+-import type { RuntimeIndicatorDef } from "../indicatorTypes";
++import { withDrawOwnerScope } from "../draw/creationScope";
++import { clearForIndicator } from "../draw/registry";
++import type { IndicatorBarCtx, RuntimeIndicatorDef } from "../indicatorTypes";
++import { barSides } from "../../indicators/barSides";
+ import { seeded, tradeFrame, type FixtureIdentity } from "./fixtures";
+ import { openLiveSession, type LiveExtras } from "./liveDrive";
+ import { tapeOf, ticksOf } from "./syntheticTape";
+@@ -218,6 +221,44 @@ export interface RolloverProbe {
+   faulted: boolean;
+ }
+ 
++function round2(value: number): number {
++  return Math.round(value * 100) / 100;
++}
++
++/**
++ * The bar after `last` for the rollover probe: a small random step in price
++ * and volume, with sides read through `barSides` and written coherently. A
++ * sided bar gets a fresh buy share and keeps `last`'s unknown share; a bar
++ * that carried only `buy_volume` keeps carrying only that; an unsided bar
++ * stays unsided. Nothing is inherited by spreading `last`.
++ */
++export function rolloverBar(last: BarFrame, random: () => number): BarFrame {
++  const open = last.close;
++  const close = Math.max(1, open + (random() - 0.5) * open * 0.001);
++  const volume = round2(50 + random() * 100);
++  const { buy_volume: _buy, sell_volume: _sell, ...rest } = last;
++  const bar: Record<string, unknown> = {
++    ...rest,
++    ts_open: last.ts_open + last.interval_ms,
++    open,
++    high: Math.max(open, close) + random(),
++    low: Math.min(open, close) - random(),
++    close,
++    volume,
++    trade_count: last.trade_count === null ? null : Math.max(1, Math.round(volume / 3)),
++    closed: true,
++  };
++  const sides = barSides(last);
++  if (sides.known) {
++    const unknownShare = last.volume > 0 ? sides.unknown / last.volume : 0;
++    const sided = round2(volume * (1 - unknownShare));
++    const buy = round2(sided * (0.3 + random() * 0.4));
++    bar.buy_volume = buy;
++    if (last.sell_volume !== undefined && last.sell_volume !== null) bar.sell_volume = round2(sided - buy);
++  }
++  return bar as BarFrame;
++}
++
+ /** `bars` fills the chart to the cap; `extraBars` more then roll the front off, as the live chart does after a week. */
+ export function probeRollover<S, T>(def: RuntimeIndicatorDef<S, T>, bars: readonly BarFrame[], settings: T, options: RolloverOptions = {}): RolloverProbe {
+   const extraBars = options.extraBars ?? 1_000;
+@@ -230,20 +271,7 @@ export function probeRollover<S, T>(def: RuntimeIndicatorDef<S, T>, bars: readon
+   const random = seeded(13);
+   let last = seed[seed.length - 1];
+   for (let index = 0; index < extraBars; index += 1) {
+-    const open = last.close;
+-    const close = Math.max(1, open + (random() - 0.5) * open * 0.001);
+-    const volume = Math.round((50 + random() * 100) * 100) / 100;
+-    const bar = {
+-      ...last,
+-      ts_open: last.ts_open + last.interval_ms,
+-      open,
+-      high: Math.max(open, close) + random(),
+-      low: Math.min(open, close) - random(),
+-      close,
+-      volume,
+-      buy_volume: Math.round(volume * (0.3 + random() * 0.4) * 100) / 100,
+-      closed: true,
+-    } as BarFrame;
++    const bar = rolloverBar(last, random);
+     session.dispatch({ bar });
+     last = bar;
+   }
+@@ -268,6 +296,105 @@ export function probeRollover<S, T>(def: RuntimeIndicatorDef<S, T>, bars: readon
+   return result;
+ }
+ 
++export interface PooledReplayOptions {
++  /** Untimed replays before measuring (default 3). */
++  warmupRuns?: number;
++  /** Timed replays whose per-bar samples are pooled (default 5). */
++  timedRuns?: number;
++  extras?: LiveExtras;
++}
++
++export interface PooledReplayProbe {
++  id: string;
++  bars: number;
++  warmupRuns: number;
++  timedRuns: number;
++  /** Per-bar `onBar` plus `readOutput` over every timed run, pooled; percentiles by nearest rank. */
++  pooled: Percentiles;
++  /** Each timed run on its own, for the spread. */
++  perRun: Percentiles[];
++  /** Wall time of each timed run, ms. */
++  runWallMs: number[];
++  faulted: boolean;
++}
++
++const NOOP_DRAW = Object.freeze({ fill: () => {} });
++const NOOP_MARKERS = Object.freeze({ plotshape: () => {}, plotchar: () => {} });
++const EMPTY_TA = Object.freeze({});
++let nextPooledOwnerId = 1;
++
++/**
++ * The frozen measurement of `PM/cycle1/brief-rvol-clock.md` (amendment 9):
++ * `warmupRuns` untimed replays, then `timedRuns` timed replays over `bars`,
++ * timing `onBar` plus `readOutput` per bar with no-op draw and marker
++ * namespaces (drawing excluded), samples pooled across runs, p99 by nearest
++ * rank. It bypasses the runtime's own bookkeeping so the number is the
++ * indicator's alone; `probeReplay` stays the measurement of a real activation.
++ */
++export function probeReplayPooled<S, T>(def: RuntimeIndicatorDef<S, T>, bars: readonly BarFrame[], settings: T, options: PooledReplayOptions = {}): PooledReplayProbe {
++  const warmupRuns = options.warmupRuns ?? 3;
++  const timedRuns = options.timedRuns ?? 5;
++  const extras = options.extras ?? {};
++  const pooled: number[] = [];
++  const perRun: Percentiles[] = [];
++  const runWallMs: number[] = [];
++  let faulted = false;
++  const lastClosed = bars.findLastIndex((bar) => bar.closed);
++  const run = (timed: boolean): void => {
++    const ownerId = `pooled:${nextPooledOwnerId}:${def.id}`;
++    nextPooledOwnerId += 1;
++    const samples: number[] = [];
++    try {
++      const state = withDrawOwnerScope(ownerId, () => def.createState(settings));
++      const runStarted = performance.now();
++      for (let index = 0; index < bars.length; index += 1) {
++        const bar = bars[index];
++        const ctx: IndicatorBarCtx<S, T> = {
++          bar,
++          trades: [],
++          tradeAvailability: "HISTORICAL_UNAVAILABLE",
++          liquidity: extras.liquidity ?? undefined,
++          l2: extras.l2?.atTime?.(bar.ts_open + bar.interval_ms) ?? extras.l2 ?? undefined,
++          ticks: extras.ticks ?? undefined,
++          state,
++          settings,
++          replace: false,
++          replaying: true,
++          drawNow: index >= lastClosed,
++          barIndex: index,
++          barCount: bars.length,
++          ta: EMPTY_TA,
++          draw: NOOP_DRAW,
++          markers: NOOP_MARKERS,
++          pane: { paneIndex: 0 },
++        };
++        const started = performance.now();
++        def.onBar(ctx);
++        const output = def.readOutput(state);
++        const elapsed = performance.now() - started;
++        if (timed) samples.push(elapsed);
++        for (const value of Object.values(output)) if (value !== null && !Number.isFinite(value)) faulted = true;
++      }
++      if (timed) {
++        runWallMs.push(performance.now() - runStarted);
++        perRun.push(percentilesOf(samples));
++        pooled.push(...samples);
++      }
++    } catch {
++      faulted = true;
++    } finally {
++      clearForIndicator(ownerId);
++    }
++  };
++  for (let index = 0; index < warmupRuns; index += 1) run(false);
++  for (let index = 0; index < timedRuns; index += 1) run(true);
++  return { id: def.id, bars: bars.length, warmupRuns, timedRuns, pooled: percentilesOf(pooled), perRun, runWallMs, faulted };
++}
++
++export function formatPooledReplayProbe(probe: PooledReplayProbe): string {
++  return `${probe.id} pooled replay ${probe.bars} bars x ${probe.timedRuns} after ${probe.warmupRuns} warm-ups: onBar+readOutput p50 ${ms(probe.pooled.p50)} p99 ${ms(probe.pooled.p99)} max ${ms(probe.pooled.max)}; run p99s ${probe.perRun.map((run) => run.p99.toFixed(4)).join("/")} ms; run wall ${probe.runWallMs.map((wall) => wall.toFixed(0)).join("/")} ms${probe.faulted ? "; FAULTED" : ""}`;
++}
++
+ function ms(value: number): string {
+   return `${value.toFixed(3)} ms`;
+ }
+diff --git a/apps/web/src/lib/chart/validation/tests/baselines.test.ts b/apps/web/src/lib/chart/validation/tests/baselines.test.ts
+index c5085b7..716084a 100644
+--- a/apps/web/src/lib/chart/validation/tests/baselines.test.ts
++++ b/apps/web/src/lib/chart/validation/tests/baselines.test.ts
+@@ -9,14 +9,16 @@ import { resetDrawOwnerScopeForTests } from "../../draw/creationScope";
+ import { resetDrawRegistryForTests } from "../../draw/registry";
+ import type { RuntimeIndicatorDef } from "../../indicatorTypes";
+ import { fakeL2, ladderOf, tradeEvent, wallLifecycle } from "../fakeL2";
+-import { trendBars } from "../fixtures";
++import { relativeVolumeCryptoFixture, trendBars } from "../fixtures";
+ import type { LiveExtras } from "../liveDrive";
+ import {
+   formatFormingBarProbe,
++  formatPooledReplayProbe,
+   formatReplayProbe,
+   formatRolloverProbe,
+   probeFormingBar,
+   probeReplay,
++  probeReplayPooled,
+   probeRollover,
+ } from "../perfProbe";
+ 
+@@ -76,4 +78,25 @@ describe.runIf(process.env.VALIDATION_BASELINES === "1")("performance baselines
+       expect(row.rollover.faulted).toBe(false);
+     }
+   }, 600_000);
++
++  // The brief's frozen method (amendment 9) on the brief's own crypto fixture:
++  // the floor a Relative Volume measurement is compared against. Separate from
++  // the rows above so those reference points keep their original method.
++  it("measures the pooled method on the Relative Volume crypto fixture for rsi and bollinger", () => {
++    const { bars, labels } = relativeVolumeCryptoFixture();
++    const window = bars.slice(labels.timingIndices.first, labels.timingIndices.last + 1);
++    const probes = [
++      probeReplayPooled(rsiIndicator as RuntimeIndicatorDef<unknown, unknown>, window, rsiIndicator.defaultSettings),
++      probeReplayPooled(bollingerIndicator as RuntimeIndicatorDef<unknown, unknown>, window, bollingerIndicator.defaultSettings),
++    ];
++    console.log(probes.map(formatPooledReplayProbe).join("\n"));
++    if (process.env.VALIDATION_BASELINES_POOLED_OUT) {
++      writeFileSync(process.env.VALIDATION_BASELINES_POOLED_OUT, `${JSON.stringify({ bars: window.length, node: process.version, probes }, null, 2)}\n`);
++    }
++    for (const probe of probes) {
++      expect(probe.bars).toBe(10_080);
++      expect(probe.pooled.count).toBe(5 * 10_080);
++      expect(probe.faulted).toBe(false);
++    }
++  }, 600_000);
+ });
+diff --git a/apps/web/src/lib/chart/validation/tests/fakeL2.test.ts b/apps/web/src/lib/chart/validation/tests/fakeL2.test.ts
+index 2e55469..cf38750 100644
+--- a/apps/web/src/lib/chart/validation/tests/fakeL2.test.ts
++++ b/apps/web/src/lib/chart/validation/tests/fakeL2.test.ts
+@@ -1,9 +1,11 @@
+ import { afterEach, describe, expect, it } from "vitest";
+ import { l2FeedStatusIndicator, statusRows } from "../../../indicators/l2-feed-status/l2FeedStatus";
++import { EventRing } from "../../../l2/eventRing";
++import type { L2EventsFrame } from "../../../../types/frames";
+ import { resetDrawOwnerScopeForTests } from "../../draw/creationScope";
+ import { handlesForOwners, resetDrawRegistryForTests } from "../../draw/registry";
+ import type { TableData } from "../../draw/table";
+-import { fakeL2, fakeL2Unsynced, ladderOf, ladderWithWall, tradeEvent, wallLifecycle, wallOf } from "../fakeL2";
++import { fakeL2, fakeL2Unsynced, ladderOf, ladderWithWall, segmentOf, tradeEvent, wallLifecycle, wallOf } from "../fakeL2";
+ import { trendBars } from "../fixtures";
+ import { openLiveSession } from "../liveDrive";
+ 
+@@ -15,7 +17,7 @@ afterEach(() => {
+ const T0 = 1_780_000_000_000;
+ 
+ function scriptedBook() {
+-  const base = ladderOf(60_000, 10, 1, 2);
++  const base = ladderOf(60_000, 10, 1, 2, T0 + 90_000);
+   const born = wallLifecycle({ id: 1, side: "bid", row: 59_995, size: 300, startTs: T0 + 10_000, shrinkTs: T0 + 40_000, tradeTs: T0 + 50_000, endTs: T0 + 70_000, endedBy: "filled" });
+   const living = wallOf({ id: 2, side: "ask", row: 60_004, size: 250, startTs: T0 + 20_000 });
+   return fakeL2({
+@@ -35,32 +37,23 @@ describe("fakeL2", () => {
+     expect(l2.ladder()?.bids[4]).toEqual([59_995, 300]);
+     expect(l2.ladder()?.asks[0]).toEqual([60_001, 2]);
+     expect(l2.walls().map((wall) => wall.id)).toEqual([1, 2]);
+-    expect(l2.wall(1)?.endedBy).toBe("filled");
++    expect(l2.wall(1)).toMatchObject({ endedBy: "filled", size: 150, eaten: 150, peak: 300 });
+     expect(l2.events().events.map((event) => event.kind)).toEqual(["wall_born", "wall_born", "trade", "wall_shrink", "wall_trade", "wall_end"]);
+-    expect(l2.events(l2.events().seq).events).toEqual([]);
++    expect(l2.events(l2.events().seq)).toMatchObject({ events: [], complete: true });
+   });
+ 
+   it("atTime cuts walls and events at a bar close, so a replay-time read cannot see the future", () => {
+     const l2 = scriptedBook();
+     const asOf = l2.atTime!(T0 + 45_000);
+     expect(asOf.events().events.map((event) => event.kind)).toEqual(["wall_born", "wall_born", "trade", "wall_shrink"]);
+-    // Wall 1 ended at +70 s; as of +45 s it is still alive.
+-    expect(asOf.wall(1)).toMatchObject({ endTs: null, endedBy: null });
++    // Wall 1 ended at +70 s and was traded at +50 s; as of +45 s it is alive and untouched.
++    expect(asOf.wall(1)).toMatchObject({ endTs: null, endedBy: null, size: 300, peak: 300, eaten: 0, fill: 0, absorbing: false });
+     expect(asOf.atTime!(T0 + 5_000).walls()).toEqual([]);
+     expect(l2.wall(1)?.endTs).toBe(T0 + 70_000);
+   });
+ 
+-  it("a ladder sequence serves the newest ladder at or before the cut", () => {
+-    const first = ladderOf(100, 3, 1, 1, T0);
+-    const second = ladderOf(110, 3, 1, 1, T0 + 60_000);
+-    const l2 = fakeL2({ ladders: [first, second] });
+-    expect(l2.atTime!(T0 + 30_000).ladder()).toBe(first);
+-    expect(l2.atTime!(T0 + 60_000).ladder()).toBe(second);
+-    expect(l2.ladder()).toBeNull();
+-  });
+-
+   it("patch changes the script and advances the version", () => {
+-    const l2 = fakeL2({ trusted: true });
++    const l2 = fakeL2({});
+     expect(l2.version).toBe(1);
+     l2.patch({ trusted: false, synced: { l2_walls: false } });
+     expect(l2.version).toBe(2);
+@@ -69,29 +62,176 @@ describe("fakeL2", () => {
+     expect(l2.status("l2_ladder").synced).toBe(true);
+   });
+ 
+-  it("the unsynced fake reports every channel untrusted", () => {
++  it("the unsynced fake reports every channel untrusted and no segment", () => {
+     const l2 = fakeL2Unsynced();
+     expect(l2.trusted()).toBe(false);
++    expect(l2.segment()).toBeNull();
+     for (const channel of ["l2_view", "l2_walls", "l2_events", "l2_ladder"] as const) expect(l2.status(channel).synced).toBe(false);
+   });
+ });
+ 
++describe("ladder cutoff (Codex finding 2)", () => {
++  const first = ladderOf(100, 3, 1, 1, T0);
++  const second = ladderOf(110, 3, 1, 1, T0 + 60_000);
++
++  it("a ladder sequence serves the newest ladder at or before the cut", () => {
++    const l2 = fakeL2({ ladders: [first, second] });
++    expect(l2.atTime!(T0 + 30_000).ladder()).toBe(first);
++    expect(l2.atTime!(T0 + 60_000).ladder()).toBe(second);
++    expect(l2.ladder()).toBe(second);
++  });
++
++  it("a cut before the first ladder serves null, never a later ladder", () => {
++    const l2 = fakeL2({ ladders: [first, second] });
++    expect(l2.atTime!(T0 - 1).ladder()).toBeNull();
++  });
++
++  it("the current ladder is a candidate under the same cutoff as the sequence", () => {
++    const current = ladderOf(120, 3, 1, 1, 200);
++    const l2 = fakeL2({ ladder: current, ladders: [ladderOf(90, 3, 1, 1, 50)] });
++    expect(l2.atTime!(100).ladder()?.ts).toBe(50);
++    expect(l2.atTime!(49).ladder()).toBeNull();
++    expect(l2.atTime!(200).ladder()).toBe(current);
++    expect(l2.ladder()).toBe(current);
++  });
++});
++
++describe("wall state under a cut (Codex finding 3)", () => {
++  it("snapshots give the wall as it stood, so peak and consumption from after the cut stay hidden", () => {
++    const life = wallLifecycle({ id: 7, side: "ask", row: 101, size: 400, startTs: T0, tradeTs: T0 + 20_000, tradedSize: 250, endTs: T0 + 40_000, endedBy: "partial" });
++    expect(life.wall).toMatchObject({ size: 150, peak: 400, eaten: 250, fill: 0.625, endedBy: "partial" });
++    const l2 = fakeL2({ walls: [life.wall], events: life.events, wallSnapshots: life.snapshots });
++    expect(l2.atTime!(T0 + 10_000).wall(7)).toMatchObject({ size: 400, peak: 400, eaten: 0, fill: 0, absorbing: false, endTs: null, endedBy: null });
++    expect(l2.atTime!(T0 + 20_000).wall(7)).toMatchObject({ size: 150, eaten: 250, endTs: null, endedBy: null });
++    expect(l2.atTime!(T0 + 40_000).wall(7)).toMatchObject({ size: 150, eaten: 250, endTs: T0 + 40_000, endedBy: "partial" });
++    expect(l2.wall(7)).toBe(life.wall);
++  });
++
++  it("without snapshots the wall is rebuilt from its events through the cut", () => {
++    const final = wallOf({ id: 3, side: "bid", row: 99, size: 20, peak: 500, eaten: 480, fill: 0.96, absorbing: true, startTs: T0 });
++    const events = [
++      { kind: "wall_born" as const, ts: T0, wall: 3, side: "bid" as const, row: 99, span: 1, size: 500 },
++      { kind: "wall_trade" as const, ts: T0 + 10_000, wall: 3, mode: "absorbed" as const, price: 99, size: 180 },
++      { kind: "wall_trade" as const, ts: T0 + 30_000, wall: 3, mode: "absorbed" as const, price: 99, size: 300 },
++    ];
++    const l2 = fakeL2({ walls: [final], events });
++    expect(l2.atTime!(T0 + 5_000).wall(3)).toMatchObject({ size: 500, peak: 500, eaten: 0, fill: 0, absorbing: false, detail: null });
++    expect(l2.atTime!(T0 + 10_000).wall(3)).toMatchObject({ size: 320, peak: 500, eaten: 180, fill: 0.36 });
++    expect(l2.atTime!(T0 + 30_000).wall(3)).toMatchObject({ size: 20, eaten: 480 });
++    // A wall with neither snapshots nor events is served as freshly born at its scripted size.
++    const bare = fakeL2({ walls: [final] });
++    expect(bare.atTime!(T0 + 5_000).wall(3)).toMatchObject({ size: 20, peak: 20, eaten: 0, fill: 0, absorbing: false });
++  });
++});
++
++describe("trust (Codex finding 4)", () => {
++  it("mirrors the production checks: LIVE segment, walls and events synced, ts not before the segment began", () => {
++    const l2 = fakeL2({ segment: segmentOf(200) });
++    expect(l2.trusted()).toBe(true);
++    expect(l2.trusted(199)).toBe(false);
++    expect(l2.trusted(200)).toBe(true);
++    expect(l2.trusted(201)).toBe(true);
++    l2.patch({ segment: segmentOf(200, "GAP") });
++    expect(l2.trusted()).toBe(false);
++  });
++
++  it("an unsynced trust channel breaks trust; an unsynced ladder does not", () => {
++    expect(fakeL2({ synced: { l2_walls: false } }).trusted()).toBe(false);
++    expect(fakeL2({ synced: { l2_events: false } }).trusted(10)).toBe(false);
++    expect(fakeL2({ synced: { l2_ladder: false, l2_view: false } }).trusted()).toBe(true);
++  });
++
++  it("an explicit null segment stays null and is untrusted; the default is a LIVE segment from 0", () => {
++    const none = fakeL2({ segment: null });
++    expect(none.segment()).toBeNull();
++    expect(none.trusted()).toBe(false);
++    const dflt = fakeL2({});
++    expect(dflt.segment()).toEqual({ id: "fake:0:LIVE", state: "LIVE" });
++    expect(dflt.trusted(0)).toBe(true);
++  });
++
++  it("trusted: false forces the store untrusted whatever else the script says", () => {
++    expect(fakeL2({ trusted: false, segment: segmentOf(0) }).trusted(5)).toBe(false);
++  });
++});
++
++describe("event slices (Codex finding 5)", () => {
++  const events = [tradeEvent(T0, "buy", 100, 1), tradeEvent(T0 + 1_000, "sell", 99, 1), tradeEvent(T0 + 2_000, "buy", 101, 1)];
++
++  it("a cursor inside the ring is exact and complete; no cursor is never complete", () => {
++    const l2 = fakeL2({ events });
++    expect(l2.events()).toMatchObject({ seq: 3, missed: 0, complete: false });
++    expect(l2.events().events).toHaveLength(3);
++    expect(l2.events(1)).toMatchObject({ seq: 3, complete: true });
++    expect(l2.events(1).events).toEqual(events.slice(1));
++    expect(l2.events(3)).toMatchObject({ events: [], complete: true });
++  });
++
++  it("a cursor beyond the current seq or before the reset is not exact: every held event, incomplete", () => {
++    const l2 = fakeL2({ events, eventSeq: 10, eventResetSeq: 8 });
++    expect(l2.events(11)).toMatchObject({ seq: 10, complete: false });
++    expect(l2.events(11).events).toHaveLength(3);
++    expect(l2.events(7)).toMatchObject({ complete: false });
++    expect(l2.events(7).events).toHaveLength(3);
++    expect(l2.events(8)).toMatchObject({ complete: true });
++    expect(l2.events(8).events).toHaveLength(2);
++  });
++
++  it("missed events make a cursor at or before the loss incomplete", () => {
++    const l2 = fakeL2({ events, eventSeq: 3, missedEvents: 2 });
++    expect(l2.events(1)).toMatchObject({ missed: 2, complete: false });
++    const pinned = fakeL2({ events, eventSeq: 3, missedEvents: 2, missedThroughSeq: 1 });
++    expect(pinned.events(1).complete).toBe(false);
++    expect(pinned.events(2).complete).toBe(true);
++  });
++
++  it("an unsynced events channel is never complete, and an empty never-synced ring is the empty slice", () => {
++    expect(fakeL2({ events, synced: { l2_events: false } }).events(1)).toMatchObject({ complete: false });
++    expect(fakeL2({ synced: { l2_events: false } }).events(0)).toEqual({ seq: 0, events: [], missed: 0, complete: false });
++  });
++
++  it("agrees with the real EventRing on cursor semantics", () => {
++    const ring = new EventRing(100);
++    const wire = (ts: number) => ({ event: "trade" as const, ts, side: "ask" as const, aggressor: "buy" as const, mode: "swept" as const, price: 100, size: 1, late: false });
++    const frame = (seq: number, evs: ReturnType<typeof wire>[], reset = false, missed = 0): L2EventsFrame =>
++      ({ type: "l2_events", seq, ts: evs[evs.length - 1]?.ts ?? 0, reset, missed, events: evs } as unknown as L2EventsFrame);
++    ring.apply(frame(2, [wire(1), wire(2)], true));
++    ring.apply(frame(3, [wire(3)]));
++    const fake = fakeL2({ events: [tradeEvent(1, "buy", 100, 1), tradeEvent(2, "buy", 100, 1), tradeEvent(3, "buy", 100, 1)], eventSeq: 3, eventResetSeq: 2 });
++    for (const cursor of [undefined, 0, 1, 2, 3, 4]) {
++      const real = ring.since(cursor);
++      const ours = fake.events(cursor);
++      expect([cursor, ours.seq, ours.events.length, ours.complete]).toEqual([cursor, real.seq, real.events.length, real.complete]);
++    }
++  });
++
++  it("under a cut the slice holds only events through the cut and the seq moves with it", () => {
++    const l2 = fakeL2({ events });
++    const asOf = l2.atTime!(T0 + 1_000);
++    expect(asOf.events()).toMatchObject({ seq: 2, complete: false });
++    expect(asOf.events(0).events).toHaveLength(2);
++    expect(asOf.events(2)).toMatchObject({ events: [], complete: true });
++  });
++});
++
+ describe("against L2 Feed Status", () => {
+   it("statusRows reads the scripted walls, events and book", () => {
+     const rows = statusRows(scriptedBook(), T0 + 90_500);
+     const byLabel = Object.fromEntries(rows.map((row) => [row.label, row]));
+     expect(byLabel["Walls/events trusted"]).toMatchObject({ value: "yes", tone: "good" });
++    expect(byLabel.Segment).toMatchObject({ value: "LIVE fake:0:LIVE", tone: "good" });
+     expect(byLabel["Walls held"].value).toBe("1 active, 1 ended");
+     expect(byLabel["Events held"].value).toBe("6, 0 missed by the cap");
+     expect(byLabel["Book held"].value).toBe("10x10 of 10, best 59999 / 60001");
+     expect(byLabel.Ladder).toMatchObject({ value: "synced seq 1, 0.5 s ago", tone: "good" });
+   });
+ 
+-  it("flipping trust turns the rows bad", () => {
++  it("an unsynced walls channel turns the trust row bad, as the real store would", () => {
+     const l2 = scriptedBook();
+-    l2.patch({ trusted: false });
++    l2.patch({ synced: { l2_walls: false } });
+     const rows = statusRows(l2, T0 + 90_500);
+     expect(rows[0]).toMatchObject({ label: "Walls/events trusted", value: "no", tone: "bad" });
++    expect(rows.find((row) => row.label === "Walls")).toMatchObject({ tone: "bad" });
+   });
+ 
+   it("through the runtime, a live bar writes the table from the fake book", () => {
+diff --git a/apps/web/src/lib/chart/validation/tests/fixtures.test.ts b/apps/web/src/lib/chart/validation/tests/fixtures.test.ts
+index ea88a55..21278c6 100644
+--- a/apps/web/src/lib/chart/validation/tests/fixtures.test.ts
++++ b/apps/web/src/lib/chart/validation/tests/fixtures.test.ts
+@@ -121,6 +121,32 @@ describe("arrival scripts", () => {
+     expect(frames.map((frame) => frame.volume)).toEqual([...frames.map((frame) => frame.volume)].sort((a, b) => a - b));
+   });
+ 
++  it("forming revisions scale buy, sell and unknown volume independently, never turning unsided volume into selling (Codex finding 1)", () => {
++    const { bars: equity, labels } = equityUnsidedBars({ count: 6 });
++    const partial = equity[labels.partiallySidedIndices[0]];
++    const full = barSides(partial);
++    expect(full.unknown).toBeGreaterThan(0);
++    expect(full.delta).toBeGreaterThan(0);
++    for (const frame of formingRevisions(partial, 4).slice(0, 4)) {
++      const sides = barSides(frame);
++      const share = frame.volume / partial.volume;
++      expect(sides.known).toBe(true);
++      expect(sides.buy).toBeCloseTo(full.buy * share, 3);
++      expect(sides.sell).toBeCloseTo(full.sell * share, 3);
++      expect(sides.unknown).toBeCloseTo(full.unknown * share, 3);
++      expect(sides.unknown / frame.volume).toBeCloseTo(full.unknown / partial.volume, 3);
++      expect(Math.sign(sides.delta)).toBe(Math.sign(full.delta));
++    }
++    const unsided = equity[labels.unsidedIndices[0]];
++    for (const frame of formingRevisions(unsided, 3)) expect(barSides(frame).known).toBe(false);
++    // A Binance bar carrying only buy_volume keeps carrying only buy_volume, and its implied sell scales with it.
++    const buyOnly = { ...bars[0], sell_volume: undefined } as BarFrame;
++    delete (buyOnly as { sell_volume?: number }).sell_volume;
++    const revision = formingRevisions(buyOnly, 2)[0];
++    expect(revision.sell_volume).toBeUndefined();
++    expect(barSides(revision).sell).toBeCloseTo(barSides(buyOnly).sell * (revision.volume / buyOnly.volume), 3);
++  });
++
+   it("the chart classifies live arrivals as APPENDED then REPLACED_EDGE for each bar", () => {
+     const arrivals = liveArrivals(bars.slice(0, 2), 3);
+     const chart: BarFrame[] = [];
+diff --git a/apps/web/src/lib/chart/validation/tests/markerBudget.test.ts b/apps/web/src/lib/chart/validation/tests/markerBudget.test.ts
+index 85d8c4d..8f1a4fb 100644
+--- a/apps/web/src/lib/chart/validation/tests/markerBudget.test.ts
++++ b/apps/web/src/lib/chart/validation/tests/markerBudget.test.ts
+@@ -67,6 +67,30 @@ describe("marker budget", () => {
+     expect(judgeBudget(markerBudgetOf([], 500), 50).ok).toBe(true);
+   });
+ 
++  it("a faulting indicator is reported as faulted and never passes the budget (Codex finding 6)", () => {
++    let calls = 0;
++    const thrower: RuntimeIndicatorDef<Record<string, never>, Record<string, never>> = {
++      ...everyBar,
++      id: "throwsAfterTen",
++      onBar: (ctx) => {
++        calls += 1;
++        if (calls > 10) throw new Error("boom");
++        ctx.markers.plotshape({ shape: "circle" });
++      },
++    };
++    const budget = countMarkers(thrower, bars, {});
++    expect(budget.faulted).toBe(true);
++    expect(budget.total).toBe(0);
++    expect(judgeBudget(budget, 1_000_000).ok).toBe(false);
++    expect(judgeBudget(budget, 1_000_000).faulted).toBe(true);
++    expect(summarizeBudget("thrower", budget, judgeBudget(budget, 50))).toContain("FAULTED");
++    calls = 0;
++    const over = countMarkersOver(thrower, bars.slice(0, 20).map((bar) => ({ bar })), {});
++    expect(over.faulted).toBe(true);
++    expect(judgeBudget(over, 1_000_000).ok).toBe(false);
++    expect(judgeBudget(markerBudgetOf([], 500, false), 50)).toMatchObject({ ok: true, faulted: false });
++  });
++
+   it("a duplicated closed bar does not double the budget", () => {
+     const { arrivals } = duplicateClosedArrivals(bars.slice(0, 20), 10);
+     const budget = countMarkersOver(everyBar, arrivals, {});
+diff --git a/apps/web/src/lib/chart/validation/tests/perfProbe.test.ts b/apps/web/src/lib/chart/validation/tests/perfProbe.test.ts
+index deb21c9..b031a28 100644
+--- a/apps/web/src/lib/chart/validation/tests/perfProbe.test.ts
++++ b/apps/web/src/lib/chart/validation/tests/perfProbe.test.ts
+@@ -5,16 +5,21 @@ import { MAX_RETAINED_SOURCE_BARS } from "../../candleLifecycle";
+ import { resetDrawOwnerScopeForTests } from "../../draw/creationScope";
+ import { resetDrawRegistryForTests } from "../../draw/registry";
+ import type { RuntimeIndicatorDef } from "../../indicatorTypes";
++import { barSides } from "../../../indicators/barSides";
++import type { BarFrame } from "../../../../types/frames";
+ import { fakeL2, ladderOf } from "../fakeL2";
+-import { trendBars } from "../fixtures";
++import { equityUnsidedBars, seeded, trendBars } from "../fixtures";
+ import {
+   formatFormingBarProbe,
++  formatPooledReplayProbe,
+   formatReplayProbe,
+   formatRolloverProbe,
+   percentilesOf,
+   probeFormingBar,
+   probeReplay,
++  probeReplayPooled,
+   probeRollover,
++  rolloverBar,
+ } from "../perfProbe";
+ 
+ afterEach(() => {
+@@ -95,6 +100,79 @@ describe("perf probes", () => {
+     expect(formatRolloverProbe(probe)).toContain("rollover +50 bars: retained 10080");
+   });
+ 
++  it("rollover bars carry coherent sides through barSides (Codex finding 7)", () => {
++    const random = seeded(1);
++    const sidedLast = trendBars({ count: 1 }).bars[0];
++    const { bars: equity, labels } = equityUnsidedBars({ count: 6 });
++    const partial = equity[labels.partiallySidedIndices[0]];
++    const unsided = equity[labels.unsidedIndices[0]];
++    const buyOnly = { ...sidedLast } as BarFrame & { sell_volume?: number };
++    delete buyOnly.sell_volume;
++
++    let last = sidedLast;
++    for (let index = 0; index < 50; index += 1) {
++      const bar = rolloverBar(last, random);
++      const sides = barSides(bar);
++      expect(bar.ts_open).toBe(last.ts_open + last.interval_ms);
++      expect(sides.known).toBe(true);
++      // Two-decimal rounding of buy and sell can leave a float residue of 1e-14; that is arithmetic, not unknown volume.
++      expect(sides.unknown).toBeCloseTo(0, 9);
++      expect(sides.buy + sides.sell).toBeCloseTo(bar.volume, 6);
++      expect(sides.buy).toBeGreaterThan(0);
++      expect(sides.sell).toBeGreaterThan(0);
++      last = bar;
++    }
++    const fromPartial = rolloverBar(partial, random);
++    const partialSides = barSides(fromPartial);
++    expect(partialSides.known).toBe(true);
++    expect(partialSides.unknown / fromPartial.volume).toBeCloseTo(barSides(partial).unknown / partial.volume, 2);
++    expect(partialSides.buy + partialSides.sell + partialSides.unknown).toBeCloseTo(fromPartial.volume, 6);
++    const fromUnsided = rolloverBar(unsided, random);
++    expect(barSides(fromUnsided).known).toBe(false);
++    expect(fromUnsided.buy_volume).toBeUndefined();
++    expect(fromUnsided.sell_volume).toBeUndefined();
++    const fromBuyOnly = rolloverBar(buyOnly, random);
++    expect(fromBuyOnly.sell_volume).toBeUndefined();
++    expect(barSides(fromBuyOnly)).toMatchObject({ known: true, unknown: 0 });
++  });
++
++  it("the brief's pooled method: warm-ups untimed, timed runs pooled, onBar plus readOutput only", () => {
++    const { bars } = trendBars({ count: 500 });
++    let onBarCalls = 0;
++    const counted: RuntimeIndicatorDef<unknown, unknown> = {
++      ...(rsiIndicator as RuntimeIndicatorDef<unknown, unknown>),
++      onBar: (ctx) => {
++        onBarCalls += 1;
++        rsiIndicator.onBar(ctx as never);
++      },
++    };
++    const probe = probeReplayPooled(counted, bars, { length: 14 }, { warmupRuns: 2, timedRuns: 3 });
++    expect(onBarCalls).toBe(5 * 500);
++    expect(probe.pooled.count).toBe(3 * 500);
++    expect(probe.perRun).toHaveLength(3);
++    expect(probe.runWallMs).toHaveLength(3);
++    expect(probe.perRun.every((run) => run.count === 500)).toBe(true);
++    expect(probe.pooled.p99).toBeGreaterThanOrEqual(probe.pooled.p50);
++    expect(probe.faulted).toBe(false);
++    expect(formatPooledReplayProbe(probe)).toContain("pooled replay 500 bars x 3 after 2 warm-ups");
++    const sorted = [...probe.perRun.flatMap(() => [])];
++    expect(sorted).toEqual([]);
++    expect(probeReplayPooled(rsiIndicator, bars, { length: 14 }).warmupRuns).toBe(3);
++  });
++
++  it("the pooled method marks a faulting indicator", () => {
++    const thrower: RuntimeIndicatorDef<Record<string, never>, Record<string, never>> = {
++      ...hoarder,
++      id: "pooledThrower",
++      createState: () => ({}),
++      onBar: () => {
++        throw new Error("boom");
++      },
++      readOutput: () => ({ value: null }),
++    } as unknown as RuntimeIndicatorDef<Record<string, never>, Record<string, never>>;
++    expect(probeReplayPooled(thrower, trendBars({ count: 5 }).bars, {}, { warmupRuns: 0, timedRuns: 1 }).faulted).toBe(true);
++  });
++
+   it("shows a hoarder growing per bar while the runtime's own caches stay bounded", () => {
+     const { bars } = trendBars({ count: MAX_RETAINED_SOURCE_BARS });
+     const probe = probeRollover(hoarder, bars, {}, { extraBars: 200 });
+diff --git a/apps/web/src/lib/chart/validation/tests/relativeVolumeFixtures.test.ts b/apps/web/src/lib/chart/validation/tests/relativeVolumeFixtures.test.ts
+new file mode 100644
+index 0000000..35cad1f
+--- /dev/null
++++ b/apps/web/src/lib/chart/validation/tests/relativeVolumeFixtures.test.ts
+@@ -0,0 +1,181 @@
++import { describe, expect, it } from "vitest";
++import { nyLocalMinuteOfDay } from "../../../indicators/killzones/killzones";
++import { barSides } from "../../../indicators/barSides";
++import {
++  MINUTE_MS,
++  RVOL_CRYPTO_BARS,
++  RVOL_EQUITY_ANOMALIES,
++  RVOL_EQUITY_BARS_PER_SESSION,
++  RVOL_EQUITY_SESSIONS,
++  mulberry32,
++  relativeVolumeCryptoFixture,
++  relativeVolumeEquityFixture,
++  relativeVolumeExpectedCrypto,
++  relativeVolumeExpectedEquity,
++  standardNormals,
++} from "../fixtures";
++
++// The frozen fixtures of PM/cycle1/brief-rvol-clock.md. The builder's baseline
++// comparison and the validation loop both import these, so what is pinned here
++// is what the doc page's numbers rest on.
++
++describe("generators", () => {
++  it("mulberry32 is deterministic and uniform on [0, 1)", () => {
++    const a = mulberry32(20261026);
++    const b = mulberry32(20261026);
++    const draws = Array.from({ length: 1_000 }, () => a());
++    expect(draws).toEqual(Array.from({ length: 1_000 }, () => b()));
++    expect(draws.every((u) => u >= 0 && u < 1)).toBe(true);
++    expect(draws.reduce((sum, u) => sum + u, 0) / 1_000).toBeCloseTo(0.5, 1);
++  });
++
++  it("Box-Muller consumes two uniforms per pair and yields both normals in order", () => {
++    const consumed: number[] = [];
++    const uniform = () => {
++      consumed.push(consumed.length);
++      return [0.25, 0.125, 0.5, 0.75][consumed.length - 1];
++    };
++    const normal = standardNormals(uniform);
++    const r = Math.sqrt(-2 * Math.log(1 - 0.25));
++    expect(normal()).toBeCloseTo(r * Math.cos(2 * Math.PI * 0.125), 12);
++    expect(consumed).toHaveLength(2);
++    expect(normal()).toBeCloseTo(r * Math.sin(2 * Math.PI * 0.125), 12);
++    expect(consumed).toHaveLength(2);
++    normal();
++    expect(consumed).toHaveLength(4);
++    const many = standardNormals(mulberry32(1));
++    const sample = Array.from({ length: 20_000 }, () => many());
++    const mean = sample.reduce((sum, z) => sum + z, 0) / sample.length;
++    const variance = sample.reduce((sum, z) => sum + (z - mean) ** 2, 0) / sample.length;
++    expect(mean).toBeCloseTo(0, 1);
++    expect(variance).toBeCloseTo(1, 1);
++  });
++});
++
++describe("relativeVolumeEquityFixture", () => {
++  const { bars, labels } = relativeVolumeEquityFixture();
++
++  it("is 15 sessions of 390 one-minute bars starting Monday 2026-03-02 09:30 New York, every session keyed identically across the DST change", () => {
++    expect(bars).toHaveLength(RVOL_EQUITY_SESSIONS * RVOL_EQUITY_BARS_PER_SESSION);
++    expect(labels.sessionDates[0]).toBe("2026-03-02");
++    expect(labels.sessionDates).toHaveLength(15);
++    expect(labels.sessionDates[4]).toBe("2026-03-06");
++    expect(labels.sessionDates[5]).toBe("2026-03-09");
++    expect(labels.sessionDates[14]).toBe("2026-03-20");
++    for (const [session, start] of labels.sessionStarts.entries()) {
++      expect(nyLocalMinuteOfDay(start)).toBe(9 * 60 + 30);
++      expect(bars[session * 390].ts_open).toBe(start);
++      expect(nyLocalMinuteOfDay(bars[session * 390 + 389].ts_open)).toBe(15 * 60 + 59);
++    }
++    // EST before the change, EDT after: the UTC offsets differ by one hour.
++    expect((labels.sessionStarts[5] - labels.sessionStarts[4]) % (24 * 60 * MINUTE_MS)).toBe(23 * 60 * MINUTE_MS);
++    expect(labels.sessionStarts[0] % (24 * 60 * MINUTE_MS)).toBe((9 * 60 + 30 + 5 * 60) * MINUTE_MS);
++    expect(labels.sessionStarts[14] % (24 * 60 * MINUTE_MS)).toBe((9 * 60 + 30 + 4 * 60) * MINUTE_MS);
++    expect(bars.every((bar, index) => index === 0 || bar.ts_open > bars[index - 1].ts_open)).toBe(true);
++    expect(bars[0].provider).toBe("DXFEED");
++    expect(barSides(bars[0]).known).toBe(false);
++  });
++
++  it("follows the U-curve: E(0) = 4V, E(60..330) = V, E(389) = 2V", () => {
++    expect(relativeVolumeExpectedEquity(0)).toBe(4_000);
++    expect(relativeVolumeExpectedEquity(30)).toBe(1_750);
++    expect(relativeVolumeExpectedEquity(60)).toBe(1_000);
++    expect(relativeVolumeExpectedEquity(330)).toBe(1_000);
++    expect(relativeVolumeExpectedEquity(389)).toBe(2_000);
++    expect(labels.expectedVolumes).toHaveLength(390);
++    const meanAt = (minute: number) => labels.sessionStarts.reduce((sum, _, session) => sum + bars[session * 390 + minute].volume, 0) / 15;
++    // Across 15 sessions the log-normal noise averages out to within a few percent of E(m) (anomalies are kept out of these minutes).
++    expect(meanAt(0) / relativeVolumeExpectedEquity(0)).toBeGreaterThan(0.9);
++    expect(meanAt(0) / relativeVolumeExpectedEquity(0)).toBeLessThan(1.15);
++    expect(meanAt(385) / relativeVolumeExpectedEquity(385)).toBeGreaterThan(0.9);
++    expect(meanAt(385) / relativeVolumeExpectedEquity(385)).toBeLessThan(1.15);
++  });
++
++  it("is deterministic and reproduces its own noise model bar for bar", () => {
++    const again = relativeVolumeEquityFixture();
++    expect(again.bars).toEqual(bars);
++    expect(again.labels).toEqual(labels);
++    const normal = standardNormals(mulberry32(labels.seed));
++    for (let index = 0; index < 3 * 390; index += 1) {
++      const minute = index % 390;
++      expect(bars[index].volume).toBe(Math.round(relativeVolumeExpectedEquity(minute) * Math.exp(0.15 * normal())));
++    }
++  });
++
++  it("holds exactly twelve distinct anomalies in sessions 4..15, minutes 90..330, each at 2.5 E(m)", () => {
++    expect(labels.anomalies).toHaveLength(RVOL_EQUITY_ANOMALIES);
++    expect(new Set(labels.anomalyIndices).size).toBe(12);
++    for (const anomaly of labels.anomalies) {
++      expect(anomaly.session).toBeGreaterThanOrEqual(4);
++      expect(anomaly.session).toBeLessThanOrEqual(15);
++      expect(anomaly.minute).toBeGreaterThanOrEqual(90);
++      expect(anomaly.minute).toBeLessThanOrEqual(330);
++      expect(anomaly.index).toBe((anomaly.session - 1) * 390 + anomaly.minute);
++      expect(bars[anomaly.index].volume).toBe(Math.round(2.5 * relativeVolumeExpectedEquity(anomaly.minute)));
++      expect(bars[anomaly.index].volume).toBe(2_500);
++    }
++    expect(labels.anomalyIndices).toEqual([...labels.anomalyIndices].sort((a, b) => a - b));
++  });
++
++  it("labels the predictable slots and the evaluation bars", () => {
++    expect(labels.predictableSlotIndices).toHaveLength(15 * 20);
++    for (const index of labels.predictableSlotIndices) {
++      const minute = index % 390;
++      expect(minute < 10 || minute >= 380).toBe(true);
++    }
++    expect(labels.evaluationIndices).toHaveLength(12 * 390);
++    expect(labels.evaluationIndices[0]).toBe(3 * 390);
++    expect(labels.evaluationSessions).toEqual({ first: 4, last: 15 });
++    expect(labels.anomalyIndices.every((index) => labels.evaluationIndices.includes(index))).toBe(true);
++  });
++
++  it("the flat control keeps the same noise stream but no seasonality and anomalies anywhere in the session", () => {
++    const flat = relativeVolumeEquityFixture({ flatSeasonality: true });
++    expect(flat.labels.regime).toBe("relativeVolumeEquityFlat");
++    expect(flat.labels.expectedVolumes.every((volume) => volume === 1_000)).toBe(true);
++    const normal = standardNormals(mulberry32(flat.labels.seed));
++    expect(flat.bars[0].volume).toBe(Math.round(1_000 * Math.exp(0.15 * normal())));
++    expect(flat.labels.anomalies).toHaveLength(12);
++    expect(flat.labels.anomalies.every((anomaly) => flat.bars[anomaly.index].volume === 2_500)).toBe(true);
++    expect(flat.labels.anomalies.some((anomaly) => anomaly.minute < 90 || anomaly.minute > 330)).toBe(true);
++  });
++});
++
++describe("relativeVolumeCryptoFixture", () => {
++  const { bars, labels } = relativeVolumeCryptoFixture();
++
++  it("is 12,000 contiguous one-minute Binance bars from 2026-03-02 00:00 UTC with a cosine day", () => {
++    expect(bars).toHaveLength(RVOL_CRYPTO_BARS);
++    expect(bars[0].ts_open).toBe(Date.UTC(2026, 2, 2));
++    expect(bars.every((bar, index) => bar.ts_open === labels.startTs + index * MINUTE_MS)).toBe(true);
++    expect(bars[0].provider).toBe("BINANCE");
++    expect(barSides(bars[0])).toMatchObject({ known: true, unknown: 0 });
++    expect(labels.minuteOfDay[0]).toBe(0);
++    expect(labels.minuteOfDay[840]).toBe(840);
++    expect(labels.minuteOfDay[1440]).toBe(0);
++    expect(relativeVolumeExpectedCrypto(840)).toBe(1_500);
++    expect(relativeVolumeExpectedCrypto(120)).toBeCloseTo(500, 9);
++    expect(labels.expectedVolumes).toHaveLength(1440);
++    expect(labels.timingIndices).toEqual({ first: 0, last: 10_079 });
++    expect(labels.rebuiltFromIndex).toBe(1_920);
++  });
++
++  it("is deterministic and reproduces its noise model from seed 20261027", () => {
++    expect(relativeVolumeCryptoFixture().bars).toEqual(bars);
++    expect(labels.seed).toBe(20261027);
++    const normal = standardNormals(mulberry32(labels.seed));
++    for (let index = 0; index < 2_000; index += 1) {
++      expect(bars[index].volume).toBe(Math.round(relativeVolumeExpectedCrypto(labels.minuteOfDay[index]) * Math.exp(0.15 * normal())));
++    }
++    const dayMean = (minute: number) => {
++      let sum = 0;
++      let count = 0;
++      for (let index = minute; index < bars.length; index += 1440) {
++        sum += bars[index].volume;
++        count += 1;
++      }
++      return sum / count;
++    };
++    expect(dayMean(840)).toBeGreaterThan(dayMean(120) * 2.5);
++  });
++});
+
+exec
+/bin/bash -lc "pwd; rg --files -g AGENTS.md -g '*brief*' -g 'package.json' -g '*relativeVolume*' -g '*validation*'" in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+/home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+package.json
+apps/runtime/archive/databento/watch_l1_validation.py
+apps/runtime/package.json
+apps/web/package.json
+
+exec
+/bin/bash -lc "git status --short; git branch --show-current; rg --files -g AGENTS.md -g '*rvol*' -g '*brief*'; cat apps/web/package.json; git diff main...worktree-agent-a4b44f3b34041fdf7 -- apps/web/src/lib/chart/validation/markerBudget.ts apps/web/src/lib/chart/validation/perfProbe.ts" in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+?? .claude/
+main
+{
+  "name": "web",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "engines": {
+    "node": "24.21.0"
+  },
+  "scripts": {
+    "pretest": "node ../../scripts/verify-node-version.cjs",
+    "prebuild": "node ../../scripts/verify-node-version.cjs",
+    "dev": "node ../../scripts/node-launcher.cjs ../../node_modules/vite/bin/vite.js",
+    "build": "tsc -b && vite build",
+    "lint": "oxlint",
+    "preview": "node ../../scripts/node-launcher.cjs ../../node_modules/vite/bin/vite.js preview",
+    "test": "set \"ELECTRON_RUN_AS_NODE=\"&& vitest run"
+  },
+  "dependencies": {
+    "lightweight-charts": "^5.2.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "trading-signals": "8.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.2",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.3",
+    "@vitest/coverage-v8": "4.1.11",
+    "@vitest/ui": "^4.1.11",
+    "fast-check": "4.10.2",
+    "jsdom": "^29.1.1",
+    "oxlint": "^1.71.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.1.1",
+    "vitest": "^4.1.11"
+  },
+  "optionalDependencies": {
+    "@oxlint/binding-linux-x64-gnu": "1.73.0"
+  }
+}
+diff --git a/apps/web/src/lib/chart/validation/markerBudget.ts b/apps/web/src/lib/chart/validation/markerBudget.ts
+index cc0a928..91a9aaf 100644
+--- a/apps/web/src/lib/chart/validation/markerBudget.ts
++++ b/apps/web/src/lib/chart/validation/markerBudget.ts
+@@ -14,6 +14,8 @@ import { driveLive, replayCapture, type LiveExtras } from "./liveDrive";
+ 
+ export interface MarkerBudget {
+   bars: number;
++  /** The runtime latched the indicator as faulted during the run: the counts below are of a dead indicator and prove nothing. */
++  faulted: boolean;
+   total: number;
+   per1000Bars: number;
+   /** Most markers placed on a single bar time. */
+@@ -24,7 +26,7 @@ export interface MarkerBudget {
+   byColor: Record<string, number>;
+ }
+ 
+-export function markerBudgetOf(markers: readonly MarkerCall[], bars: number): MarkerBudget {
++export function markerBudgetOf(markers: readonly MarkerCall[], bars: number, faulted = false): MarkerBudget {
+   const perTime = new Map<number, number>();
+   const byShape: Partial<Record<MarkerShapeKind, number>> = {};
+   const byPosition: Partial<Record<MarkerPositionKind, number>> = {};
+@@ -39,6 +41,7 @@ export function markerBudgetOf(markers: readonly MarkerCall[], bars: number): Ma
+   for (const count of perTime.values()) maxPerBar = Math.max(maxPerBar, count);
+   return {
+     bars,
++    faulted,
+     total: markers.length,
+     per1000Bars: bars === 0 ? 0 : (markers.length / bars) * 1000,
+     maxPerBar,
+@@ -65,7 +68,7 @@ export function countMarkers<S, T>(
+   const capture = options.live
+     ? driveLive(def, liveArrivals(bars, options.live.revisionsPerBar, options.live.tradesFor), settings, options.extras)
+     : replayCapture(def, bars, settings, options.extras);
+-  return markerBudgetOf(capture.markers, bars.length);
++  return markerBudgetOf(capture.markers, bars.length, capture.faulted);
+ }
+ 
+ /** The budget of an arbitrary arrival script (duplicates, rebuilds, reconnects included). */
+@@ -76,22 +79,31 @@ export function countMarkersOver<S, T>(
+   extras: LiveExtras = {},
+ ): MarkerBudget {
+   const result = driveLive(def, arrivals, settings, extras);
+-  return markerBudgetOf(result.markers, result.bars.length);
++  return markerBudgetOf(result.markers, result.bars.length, result.faulted);
+ }
+ 
+ export interface BudgetVerdict {
+   ok: boolean;
++  /** A faulted run never passes, whatever it counted. */
++  faulted: boolean;
+   ceilingPer1000Bars: number;
+   actualPer1000Bars: number;
+   maxPerBarCeiling: number | null;
+   maxPerBar: number;
+ }
+ 
+-/** Pass when the measured rate (and, if given, the per-bar maximum) is at or under the ceiling. */
++/** Pass when the indicator did not fault and the measured rate (and, if given, the per-bar maximum) is at or under the ceiling. */
+ export function judgeBudget(budget: MarkerBudget, ceilingPer1000Bars: number, maxPerBarCeiling: number | null = null): BudgetVerdict {
+   const rateOk = budget.per1000Bars <= ceilingPer1000Bars;
+   const perBarOk = maxPerBarCeiling === null || budget.maxPerBar <= maxPerBarCeiling;
+-  return { ok: rateOk && perBarOk, ceilingPer1000Bars, actualPer1000Bars: budget.per1000Bars, maxPerBarCeiling, maxPerBar: budget.maxPerBar };
++  return {
++    ok: !budget.faulted && rateOk && perBarOk,
++    faulted: budget.faulted,
++    ceilingPer1000Bars,
++    actualPer1000Bars: budget.per1000Bars,
++    maxPerBarCeiling,
++    maxPerBar: budget.maxPerBar,
++  };
+ }
+ 
+ export interface MarkerCapture {
+@@ -121,6 +133,7 @@ export function captureMarkers(timeOf: () => number): MarkerCapture {
+ }
+ 
+ export function summarizeBudget(label: string, budget: MarkerBudget, verdict?: BudgetVerdict): string {
++  if (budget.faulted) return `${label}: FAULTED during the run (${budget.total} marker(s) over ${budget.bars} bars before the fault); the budget cannot be judged`;
+   const head = `${label}: ${budget.total} marker(s) over ${budget.bars} bars = ${budget.per1000Bars.toFixed(1)} per 1,000 bars; ${budget.barsWithMarkers} bar(s) marked, at most ${budget.maxPerBar} on one bar`;
+   if (!verdict) return head;
+   return `${head}; ceiling ${verdict.ceilingPer1000Bars} per 1,000${verdict.maxPerBarCeiling === null ? "" : ` and ${verdict.maxPerBarCeiling} per bar`}: ${verdict.ok ? "PASS" : "FAIL"}`;
+diff --git a/apps/web/src/lib/chart/validation/perfProbe.ts b/apps/web/src/lib/chart/validation/perfProbe.ts
+index 6be5870..60d0840 100644
+--- a/apps/web/src/lib/chart/validation/perfProbe.ts
++++ b/apps/web/src/lib/chart/validation/perfProbe.ts
+@@ -1,6 +1,9 @@
+ import type { BarFrame, TradeFrame } from "../../../types/frames";
+ import { MAX_RETAINED_SOURCE_BARS } from "../candleLifecycle";
+-import type { RuntimeIndicatorDef } from "../indicatorTypes";
++import { withDrawOwnerScope } from "../draw/creationScope";
++import { clearForIndicator } from "../draw/registry";
++import type { IndicatorBarCtx, RuntimeIndicatorDef } from "../indicatorTypes";
++import { barSides } from "../../indicators/barSides";
+ import { seeded, tradeFrame, type FixtureIdentity } from "./fixtures";
+ import { openLiveSession, type LiveExtras } from "./liveDrive";
+ import { tapeOf, ticksOf } from "./syntheticTape";
+@@ -218,6 +221,44 @@ export interface RolloverProbe {
+   faulted: boolean;
+ }
+ 
++function round2(value: number): number {
++  return Math.round(value * 100) / 100;
++}
++
++/**
++ * The bar after `last` for the rollover probe: a small random step in price
++ * and volume, with sides read through `barSides` and written coherently. A
++ * sided bar gets a fresh buy share and keeps `last`'s unknown share; a bar
++ * that carried only `buy_volume` keeps carrying only that; an unsided bar
++ * stays unsided. Nothing is inherited by spreading `last`.
++ */
++export function rolloverBar(last: BarFrame, random: () => number): BarFrame {
++  const open = last.close;
++  const close = Math.max(1, open + (random() - 0.5) * open * 0.001);
++  const volume = round2(50 + random() * 100);
++  const { buy_volume: _buy, sell_volume: _sell, ...rest } = last;
++  const bar: Record<string, unknown> = {
++    ...rest,
++    ts_open: last.ts_open + last.interval_ms,
++    open,
++    high: Math.max(open, close) + random(),
++    low: Math.min(open, close) - random(),
++    close,
++    volume,
++    trade_count: last.trade_count === null ? null : Math.max(1, Math.round(volume / 3)),
++    closed: true,
++  };
++  const sides = barSides(last);
++  if (sides.known) {
++    const unknownShare = last.volume > 0 ? sides.unknown / last.volume : 0;
++    const sided = round2(volume * (1 - unknownShare));
++    const buy = round2(sided * (0.3 + random() * 0.4));
++    bar.buy_volume = buy;
++    if (last.sell_volume !== undefined && last.sell_volume !== null) bar.sell_volume = round2(sided - buy);
++  }
++  return bar as BarFrame;
++}
++
+ /** `bars` fills the chart to the cap; `extraBars` more then roll the front off, as the live chart does after a week. */
+ export function probeRollover<S, T>(def: RuntimeIndicatorDef<S, T>, bars: readonly BarFrame[], settings: T, options: RolloverOptions = {}): RolloverProbe {
+   const extraBars = options.extraBars ?? 1_000;
+@@ -230,20 +271,7 @@ export function probeRollover<S, T>(def: RuntimeIndicatorDef<S, T>, bars: readon
+   const random = seeded(13);
+   let last = seed[seed.length - 1];
+   for (let index = 0; index < extraBars; index += 1) {
+-    const open = last.close;
+-    const close = Math.max(1, open + (random() - 0.5) * open * 0.001);
+-    const volume = Math.round((50 + random() * 100) * 100) / 100;
+-    const bar = {
+-      ...last,
+-      ts_open: last.ts_open + last.interval_ms,
+-      open,
+-      high: Math.max(open, close) + random(),
+-      low: Math.min(open, close) - random(),
+-      close,
+-      volume,
+-      buy_volume: Math.round(volume * (0.3 + random() * 0.4) * 100) / 100,
+-      closed: true,
+-    } as BarFrame;
++    const bar = rolloverBar(last, random);
+     session.dispatch({ bar });
+     last = bar;
+   }
+@@ -268,6 +296,105 @@ export function probeRollover<S, T>(def: RuntimeIndicatorDef<S, T>, bars: readon
+   return result;
+ }
+ 
++export interface PooledReplayOptions {
++  /** Untimed replays before measuring (default 3). */
++  warmupRuns?: number;
++  /** Timed replays whose per-bar samples are pooled (default 5). */
++  timedRuns?: number;
++  extras?: LiveExtras;
++}
++
++export interface PooledReplayProbe {
++  id: string;
++  bars: number;
++  warmupRuns: number;
++  timedRuns: number;
++  /** Per-bar `onBar` plus `readOutput` over every timed run, pooled; percentiles by nearest rank. */
++  pooled: Percentiles;
++  /** Each timed run on its own, for the spread. */
++  perRun: Percentiles[];
++  /** Wall time of each timed run, ms. */
++  runWallMs: number[];
++  faulted: boolean;
++}
++
++const NOOP_DRAW = Object.freeze({ fill: () => {} });
++const NOOP_MARKERS = Object.freeze({ plotshape: () => {}, plotchar: () => {} });
++const EMPTY_TA = Object.freeze({});
++let nextPooledOwnerId = 1;
++
++/**
++ * The frozen measurement of `PM/cycle1/brief-rvol-clock.md` (amendment 9):
++ * `warmupRuns` untimed replays, then `timedRuns` timed replays over `bars`,
++ * timing `onBar` plus `readOutput` per bar with no-op draw and marker
++ * namespaces (drawing excluded), samples pooled across runs, p99 by nearest
++ * rank. It bypasses the runtime's own bookkeeping so the number is the
++ * indicator's alone; `probeReplay` stays the measurement of a real activation.
++ */
++export function probeReplayPooled<S, T>(def: RuntimeIndicatorDef<S, T>, bars: readonly BarFrame[], settings: T, options: PooledReplayOptions = {}): PooledReplayProbe {
++  const warmupRuns = options.warmupRuns ?? 3;
++  const timedRuns = options.timedRuns ?? 5;
++  const extras = options.extras ?? {};
++  const pooled: number[] = [];
++  const perRun: Percentiles[] = [];
++  const runWallMs: number[] = [];
++  let faulted = false;
++  const lastClosed = bars.findLastIndex((bar) => bar.closed);
++  const run = (timed: boolean): void => {
++    const ownerId = `pooled:${nextPooledOwnerId}:${def.id}`;
++    nextPooledOwnerId += 1;
++    const samples: number[] = [];
++    try {
++      const state = withDrawOwnerScope(ownerId, () => def.createState(settings));
++      const runStarted = performance.now();
++      for (let index = 0; index < bars.length; index += 1) {
++        const bar = bars[index];
++        const ctx: IndicatorBarCtx<S, T> = {
++          bar,
++          trades: [],
++          tradeAvailability: "HISTORICAL_UNAVAILABLE",
++          liquidity: extras.liquidity ?? undefined,
++          l2: extras.l2?.atTime?.(bar.ts_open + bar.interval_ms) ?? extras.l2 ?? undefined,
++          ticks: extras.ticks ?? undefined,
++          state,
++          settings,
++          replace: false,
++          replaying: true,
++          drawNow: index >= lastClosed,
++          barIndex: index,
++          barCount: bars.length,
++          ta: EMPTY_TA,
++          draw: NOOP_DRAW,
++          markers: NOOP_MARKERS,
++          pane: { paneIndex: 0 },
++        };
++        const started = performance.now();
++        def.onBar(ctx);
++        const output = def.readOutput(state);
++        const elapsed = performance.now() - started;
++        if (timed) samples.push(elapsed);
++        for (const value of Object.values(output)) if (value !== null && !Number.isFinite(value)) faulted = true;
++      }
++      if (timed) {
++        runWallMs.push(performance.now() - runStarted);
++        perRun.push(percentilesOf(samples));
++        pooled.push(...samples);
++      }
++    } catch {
++      faulted = true;
++    } finally {
++      clearForIndicator(ownerId);
++    }
++  };
++  for (let index = 0; index < warmupRuns; index += 1) run(false);
++  for (let index = 0; index < timedRuns; index += 1) run(true);
++  return { id: def.id, bars: bars.length, warmupRuns, timedRuns, pooled: percentilesOf(pooled), perRun, runWallMs, faulted };
++}
++
++export function formatPooledReplayProbe(probe: PooledReplayProbe): string {
++  return `${probe.id} pooled replay ${probe.bars} bars x ${probe.timedRuns} after ${probe.warmupRuns} warm-ups: onBar+readOutput p50 ${ms(probe.pooled.p50)} p99 ${ms(probe.pooled.p99)} max ${ms(probe.pooled.max)}; run p99s ${probe.perRun.map((run) => run.p99.toFixed(4)).join("/")} ms; run wall ${probe.runWallMs.map((wall) => wall.toFixed(0)).join("/")} ms${probe.faulted ? "; FAULTED" : ""}`;
++}
++
+ function ms(value: number): string {
+   return `${value.toFixed(3)} ms`;
+ }
+
+exec
+/bin/bash -lc 'git show worktree-agent-a4b44f3b34041fdf7:apps/web/src/lib/chart/validation/fixtures.ts | nl -ba | tail -265; git show worktree-agent-a4b44f3b34041fdf7:apps/web/src/lib/chart/validation/tests/fakeL2.test.ts | nl -ba' in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+   537	
+   538	/** `[0, step, 2·step, …]` plus the last `tail` indices: a cheaper truncation sweep for long series. */
+   539	export function sampledIndices(count: number, step: number, tail = 20): number[] {
+   540	  const out = new Set<number>();
+   541	  for (let index = 0; index < count; index += Math.max(1, step)) out.add(index);
+   542	  for (let index = Math.max(0, count - tail); index < count; index += 1) out.add(index);
+   543	  return [...out].sort((a, b) => a - b);
+   544	}
+   545	
+   546	/*
+   547	 * Frozen fixtures for the cycle-1 Relative Volume (Time of Day) build
+   548	 * (`PM/cycle1/brief-rvol-clock.md`, "Baseline comparison" and "Crypto
+   549	 * fixture"). The builder and the validation loop import the same functions, so
+   550	 * the numbers quoted in the doc page are reproducible from here alone. Every
+   551	 * choice the brief leaves open is fixed in the doc comments below.
+   552	 */
+   553	
+   554	/** mulberry32, the PRNG the brief names; the same implementation the swing alphabet profile uses. */
+   555	export function mulberry32(seed: number): () => number {
+   556	  let a = seed >>> 0;
+   557	  return () => {
+   558	    a = (a + 0x6d2b79f5) | 0;
+   559	    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+   560	    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+   561	    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+   562	  };
+   563	}
+   564	
+   565	/**
+   566	 * Standard normals by Box-Muller over `uniform`: two uniforms per pair,
+   567	 * `z0 = r·cos(2πu2)` then `z1 = r·sin(2πu2)` with `r = sqrt(-2·ln(1 - u1))`
+   568	 * (`1 - u1` keeps the logarithm finite when the generator returns 0). Both
+   569	 * outputs are used, in that order, before the next pair is drawn.
+   570	 */
+   571	export function standardNormals(uniform: () => number): () => number {
+   572	  let pending: number | null = null;
+   573	  return () => {
+   574	    if (pending !== null) {
+   575	      const z = pending;
+   576	      pending = null;
+   577	      return z;
+   578	    }
+   579	    const u1 = uniform();
+   580	    const u2 = uniform();
+   581	    const r = Math.sqrt(-2 * Math.log(1 - u1));
+   582	    pending = r * Math.sin(2 * Math.PI * u2);
+   583	    return r * Math.cos(2 * Math.PI * u2);
+   584	  };
+   585	}
+   586	
+   587	export const RVOL_EQUITY_SEED = 20261026;
+   588	export const RVOL_CRYPTO_SEED = 20261027;
+   589	export const RVOL_BASE_VOLUME = 1_000;
+   590	export const RVOL_NOISE_SIGMA = 0.15;
+   591	export const RVOL_EQUITY_SESSIONS = 15;
+   592	export const RVOL_EQUITY_BARS_PER_SESSION = 390;
+   593	export const RVOL_EQUITY_ANOMALIES = 12;
+   594	export const RVOL_ANOMALY_MULTIPLE = 2.5;
+   595	export const RVOL_CRYPTO_BARS = 12_000;
+   596	/** The brief's "first 10,080 bars" timing window and the REBUILT replay start (bars 1,921..12,000). */
+   597	export const RVOL_CRYPTO_TIMING_BARS = 10_080;
+   598	export const RVOL_CRYPTO_REBUILT_FROM_INDEX = 1_920;
+   599	
+   600	/** `E(m)` for the equity U-curve: an opening surge decaying over an hour, flat midday, a linear rise into the close. */
+   601	export function relativeVolumeExpectedEquity(minute: number, baseVolume = RVOL_BASE_VOLUME): number {
+   602	  if (minute < 60) return baseVolume * (1 + 3 * Math.max(0, 1 - minute / 60) ** 2);
+   603	  if (minute <= 330) return baseVolume;
+   604	  return baseVolume * (1 + (minute - 330) / 59);
+   605	}
+   606	
+   607	/** `E(m)` for crypto: one cosine over the UTC day, peaking at 14:00 UTC (minute 840). */
+   608	export function relativeVolumeExpectedCrypto(minuteOfDay: number, baseVolume = RVOL_BASE_VOLUME): number {
+   609	  return baseVolume * (1 + 0.5 * Math.cos((2 * Math.PI * (minuteOfDay - 840)) / 1440));
+   610	}
+   611	
+   612	function noisyVolume(expected: number, z: number): number {
+   613	  return Math.round(expected * Math.exp(RVOL_NOISE_SIGMA * z));
+   614	}
+   615	
+   616	/** A deterministic, random-free price path so the volume generator's stream is the only source of randomness. */
+   617	function rvolBar(ts_open: number, index: number, volume: number, basePrice: number, amplitude: number, identity: FixtureIdentity, sided: boolean): BarFrame {
+   618	  const close = round(basePrice + amplitude * Math.sin(index / 40), 2);
+   619	  const open = round(basePrice + amplitude * Math.sin((index - 1) / 40), 2);
+   620	  const spec: BarSpec = { open, close, high: Math.max(open, close) + amplitude * 0.02, low: Math.min(open, close) - amplitude * 0.02, volume, tradeCount: Math.max(1, Math.round(volume / 5)) };
+   621	  if (sided) spec.buyShare = 0.5;
+   622	  return barFrame(ts_open, spec, identity, MINUTE_MS);
+   623	}
+   624	
+   625	export interface RelativeVolumeAnomaly {
+   626	  /** 1-based session number, as the brief counts them. */
+   627	  session: number;
+   628	  /** Minute of the session, 0..389. */
+   629	  minute: number;
+   630	  /** Position in `bars`. */
+   631	  index: number;
+   632	  expectedVolume: number;
+   633	  /** `round(2.5 · E(m))`, the volume written into the bar. */
+   634	  volume: number;
+   635	}
+   636	
+   637	export interface RelativeVolumeEquityLabels {
+   638	  regime: "relativeVolumeEquity" | "relativeVolumeEquityFlat";
+   639	  seed: number;
+   640	  baseVolume: number;
+   641	  sessions: number;
+   642	  barsPerSession: number;
+   643	  /** `ts_open` of each session's first bar (09:30 New York), in order. */
+   644	  sessionStarts: number[];
+   645	  /** New York calendar date of each session. */
+   646	  sessionDates: string[];
+   647	  /** `E(m)` for every minute of a session. */
+   648	  expectedVolumes: number[];
+   649	  anomalies: RelativeVolumeAnomaly[];
+   650	  anomalyIndices: number[];
+   651	  /** Bars at minutes 0..9 and 380..389, every session: the slots where volume is always loud and a rolling baseline misfires. */
+   652	  predictableSlotIndices: number[];
+   653	  /** Every bar of sessions 4..15; a method's own readiness narrows it further. */
+   654	  evaluationIndices: number[];
+   655	  evaluationSessions: { first: number; last: number };
+   656	  /** Sessions 1..5 trade on EST and 6..15 on EDT: same New York start minute, different UTC offset. */
+   657	  dstChangeAfterSession: number;
+   658	}
+   659	
+   660	export interface RelativeVolumeEquityOptions {
+   661	  /** The control experiment: `E(m) = V` and anomalies drawn from every minute. */
+   662	  flatSeasonality?: boolean;
+   663	  seed?: number;
+   664	  baseVolume?: number;
+   665	}
+   666	
+   667	function sessionDateKey(openMs: number): string {
+   668	  const date = new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(openMs));
+   669	  return date;
+   670	}
+   671	
+   672	/**
+   673	 * Fifteen regular equity sessions of 390 one-minute bars starting Monday
+   674	 * 2026-03-02 09:30 New York (the US spring DST change falls on Sunday
+   675	 * 2026-03-08). Volume: `round(E(m) · exp(0.15 z))`, one z per bar in session
+   676	 * order then minute order, from `standardNormals(mulberry32(20261026))`. Then
+   677	 * twelve anomalies: pairs drawn with the same generator, two uniforms each
+   678	 * (`session = 4 + floor(u · 12)`, `minute = 90 + floor(u · 241)`), duplicates
+   679	 * rejected, each bar replaced by `round(2.5 · E(m))`. Only `volume` carries
+   680	 * information; prices are a smooth deterministic path and the bars carry no
+   681	 * sides, as a dxFeed equity minute with any unsided print would not.
+   682	 */
+   683	export function relativeVolumeEquityFixture(options: RelativeVolumeEquityOptions = {}): LabelledBars<RelativeVolumeEquityLabels> {
+   684	  const flat = options.flatSeasonality ?? false;
+   685	  const seed = options.seed ?? RVOL_EQUITY_SEED;
+   686	  const baseVolume = options.baseVolume ?? RVOL_BASE_VOLUME;
+   687	  const expected = (minute: number) => (flat ? baseVolume : relativeVolumeExpectedEquity(minute, baseVolume));
+   688	  const expectedVolumes = Array.from({ length: RVOL_EQUITY_BARS_PER_SESSION }, (_, minute) => expected(minute));
+   689	
+   690	  const sessionStarts: number[] = [];
+   691	  const sessionDates: string[] = [];
+   692	  for (let day = Date.UTC(2026, 2, 2, 17); sessionStarts.length < RVOL_EQUITY_SESSIONS; day += 24 * 60 * MINUTE_MS) {
+   693	    const session = regularSessionAt(day);
+   694	    if (session === null) continue;
+   695	    sessionStarts.push(session.openMs);
+   696	    sessionDates.push(sessionDateKey(session.openMs));
+   697	  }
+   698	
+   699	  const uniform = mulberry32(seed);
+   700	  const normal = standardNormals(uniform);
+   701	  const bars: BarFrame[] = [];
+   702	  const predictableSlotIndices: number[] = [];
+   703	  const evaluationIndices: number[] = [];
+   704	  sessionStarts.forEach((start, sessionIndex) => {
+   705	    for (let minute = 0; minute < RVOL_EQUITY_BARS_PER_SESSION; minute += 1) {
+   706	      const index = bars.length;
+   707	      bars.push(rvolBar(start + minute * MINUTE_MS, index, noisyVolume(expectedVolumes[minute], normal()), 190, 2, DXFEED_EQUITY, false));
+   708	      if (minute < 10 || minute >= 380) predictableSlotIndices.push(index);
+   709	      if (sessionIndex + 1 >= 4) evaluationIndices.push(index);
+   710	    }
+   711	  });
+   712	
+   713	  const anomalies: RelativeVolumeAnomaly[] = [];
+   714	  const taken = new Set<string>();
+   715	  while (anomalies.length < RVOL_EQUITY_ANOMALIES) {
+   716	    const session = 4 + Math.floor(uniform() * 12);
+   717	    const minute = flat ? Math.floor(uniform() * RVOL_EQUITY_BARS_PER_SESSION) : 90 + Math.floor(uniform() * 241);
+   718	    const key = `${session}:${minute}`;
+   719	    if (taken.has(key)) continue;
+   720	    taken.add(key);
+   721	    const index = (session - 1) * RVOL_EQUITY_BARS_PER_SESSION + minute;
+   722	    const volume = Math.round(RVOL_ANOMALY_MULTIPLE * expectedVolumes[minute]);
+   723	    bars[index] = { ...bars[index], volume, trade_count: Math.max(1, Math.round(volume / 5)) } as BarFrame;
+   724	    anomalies.push({ session, minute, index, expectedVolume: expectedVolumes[minute], volume });
+   725	  }
+   726	  anomalies.sort((a, b) => a.index - b.index);
+   727	
+   728	  return {
+   729	    bars,
+   730	    labels: {
+   731	      regime: flat ? "relativeVolumeEquityFlat" : "relativeVolumeEquity",
+   732	      seed,
+   733	      baseVolume,
+   734	      sessions: RVOL_EQUITY_SESSIONS,
+   735	      barsPerSession: RVOL_EQUITY_BARS_PER_SESSION,
+   736	      sessionStarts,
+   737	      sessionDates,
+   738	      expectedVolumes,
+   739	      anomalies,
+   740	      anomalyIndices: anomalies.map((anomaly) => anomaly.index),
+   741	      predictableSlotIndices,
+   742	      evaluationIndices,
+   743	      evaluationSessions: { first: 4, last: RVOL_EQUITY_SESSIONS },
+   744	      dstChangeAfterSession: 5,
+   745	    },
+   746	  };
+   747	}
+   748	
+   749	export interface RelativeVolumeCryptoLabels {
+   750	  regime: "relativeVolumeCrypto";
+   751	  seed: number;
+   752	  baseVolume: number;
+   753	  count: number;
+   754	  startTs: number;
+   755	  /** `E(m)` for every minute of the UTC day. */
+   756	  expectedVolumes: number[];
+   757	  /** Minute of the UTC day of every bar. */
+   758	  minuteOfDay: number[];
+   759	  /** The brief's timing window, as `[first, last]` indices. */
+   760	  timingIndices: { first: number; last: number };
+   761	  /** The REBUILT replay runs from this index to the end (bars 1,921..12,000). */
+   762	  rebuiltFromIndex: number;
+   763	}
+   764	
+   765	/**
+   766	 * Twelve thousand one-minute Binance perpetual bars from 2026-03-02 00:00 UTC
+   767	 * with `E(m) = V · (1 + 0.5 · cos(2π (m - 840) / 1440))` over the UTC minute
+   768	 * of day, the same noise model and generation order as the equity fixture,
+   769	 * seed 20261027, no anomalies. Sides are split evenly, since the indicator
+   770	 * reads only `volume`.
+   771	 */
+   772	export function relativeVolumeCryptoFixture(options: { seed?: number; baseVolume?: number; count?: number } = {}): LabelledBars<RelativeVolumeCryptoLabels> {
+   773	  const seed = options.seed ?? RVOL_CRYPTO_SEED;
+   774	  const baseVolume = options.baseVolume ?? RVOL_BASE_VOLUME;
+   775	  const count = options.count ?? RVOL_CRYPTO_BARS;
+   776	  const startTs = Date.UTC(2026, 2, 2, 0, 0);
+   777	  const expectedVolumes = Array.from({ length: 1440 }, (_, minute) => relativeVolumeExpectedCrypto(minute, baseVolume));
+   778	  const normal = standardNormals(mulberry32(seed));
+   779	  const bars: BarFrame[] = [];
+   780	  const minuteOfDay: number[] = [];
+   781	  for (let index = 0; index < count; index += 1) {
+   782	    const ts_open = startTs + index * MINUTE_MS;
+   783	    const minute = Math.floor((ts_open / MINUTE_MS) % 1440);
+   784	    minuteOfDay.push(minute);
+   785	    bars.push(rvolBar(ts_open, index, noisyVolume(expectedVolumes[minute], normal()), 60_000, 300, BINANCE_PERP, true));
+   786	  }
+   787	  return {
+   788	    bars,
+   789	    labels: {
+   790	      regime: "relativeVolumeCrypto",
+   791	      seed,
+   792	      baseVolume,
+   793	      count,
+   794	      startTs,
+   795	      expectedVolumes,
+   796	      minuteOfDay,
+   797	      timingIndices: { first: 0, last: Math.min(count, RVOL_CRYPTO_TIMING_BARS) - 1 },
+   798	      rebuiltFromIndex: RVOL_CRYPTO_REBUILT_FROM_INDEX,
+   799	    },
+   800	  };
+   801	}
+     1	import { afterEach, describe, expect, it } from "vitest";
+     2	import { l2FeedStatusIndicator, statusRows } from "../../../indicators/l2-feed-status/l2FeedStatus";
+     3	import { EventRing } from "../../../l2/eventRing";
+     4	import type { L2EventsFrame } from "../../../../types/frames";
+     5	import { resetDrawOwnerScopeForTests } from "../../draw/creationScope";
+     6	import { handlesForOwners, resetDrawRegistryForTests } from "../../draw/registry";
+     7	import type { TableData } from "../../draw/table";
+     8	import { fakeL2, fakeL2Unsynced, ladderOf, ladderWithWall, segmentOf, tradeEvent, wallLifecycle, wallOf } from "../fakeL2";
+     9	import { trendBars } from "../fixtures";
+    10	import { openLiveSession } from "../liveDrive";
+    11	
+    12	afterEach(() => {
+    13	  resetDrawRegistryForTests();
+    14	  resetDrawOwnerScopeForTests();
+    15	});
+    16	
+    17	const T0 = 1_780_000_000_000;
+    18	
+    19	function scriptedBook() {
+    20	  const base = ladderOf(60_000, 10, 1, 2, T0 + 90_000);
+    21	  const born = wallLifecycle({ id: 1, side: "bid", row: 59_995, size: 300, startTs: T0 + 10_000, shrinkTs: T0 + 40_000, tradeTs: T0 + 50_000, endTs: T0 + 70_000, endedBy: "filled" });
+    22	  const living = wallOf({ id: 2, side: "ask", row: 60_004, size: 250, startTs: T0 + 20_000 });
+    23	  return fakeL2({
+    24	    lastTs: T0 + 90_000,
+    25	    ladder: ladderWithWall(base, "bid", 59_995, 300),
+    26	    walls: [born.wall, living],
+    27	    events: [...born.events, tradeEvent(T0 + 30_000, "buy", 60_001, 1.5), { kind: "wall_born", ts: living.startTs, wall: 2, side: "ask", row: 60_004, span: 1, size: 250 }],
+    28	  });
+    29	}
+    30	
+    31	describe("fakeL2", () => {
+    32	  it("serves the scripted ladder, walls and events as a live, trusted, synced book", () => {
+    33	    const l2 = scriptedBook();
+    34	    expect(l2.availability).toBe("LIVE");
+    35	    expect(l2.trusted()).toBe(true);
+    36	    expect(l2.status("l2_ladder").synced).toBe(true);
+    37	    expect(l2.ladder()?.bids[4]).toEqual([59_995, 300]);
+    38	    expect(l2.ladder()?.asks[0]).toEqual([60_001, 2]);
+    39	    expect(l2.walls().map((wall) => wall.id)).toEqual([1, 2]);
+    40	    expect(l2.wall(1)).toMatchObject({ endedBy: "filled", size: 150, eaten: 150, peak: 300 });
+    41	    expect(l2.events().events.map((event) => event.kind)).toEqual(["wall_born", "wall_born", "trade", "wall_shrink", "wall_trade", "wall_end"]);
+    42	    expect(l2.events(l2.events().seq)).toMatchObject({ events: [], complete: true });
+    43	  });
+    44	
+    45	  it("atTime cuts walls and events at a bar close, so a replay-time read cannot see the future", () => {
+    46	    const l2 = scriptedBook();
+    47	    const asOf = l2.atTime!(T0 + 45_000);
+    48	    expect(asOf.events().events.map((event) => event.kind)).toEqual(["wall_born", "wall_born", "trade", "wall_shrink"]);
+    49	    // Wall 1 ended at +70 s and was traded at +50 s; as of +45 s it is alive and untouched.
+    50	    expect(asOf.wall(1)).toMatchObject({ endTs: null, endedBy: null, size: 300, peak: 300, eaten: 0, fill: 0, absorbing: false });
+    51	    expect(asOf.atTime!(T0 + 5_000).walls()).toEqual([]);
+    52	    expect(l2.wall(1)?.endTs).toBe(T0 + 70_000);
+    53	  });
+    54	
+    55	  it("patch changes the script and advances the version", () => {
+    56	    const l2 = fakeL2({});
+    57	    expect(l2.version).toBe(1);
+    58	    l2.patch({ trusted: false, synced: { l2_walls: false } });
+    59	    expect(l2.version).toBe(2);
+    60	    expect(l2.trusted()).toBe(false);
+    61	    expect(l2.status("l2_walls").synced).toBe(false);
+    62	    expect(l2.status("l2_ladder").synced).toBe(true);
+    63	  });
+    64	
+    65	  it("the unsynced fake reports every channel untrusted and no segment", () => {
+    66	    const l2 = fakeL2Unsynced();
+    67	    expect(l2.trusted()).toBe(false);
+    68	    expect(l2.segment()).toBeNull();
+    69	    for (const channel of ["l2_view", "l2_walls", "l2_events", "l2_ladder"] as const) expect(l2.status(channel).synced).toBe(false);
+    70	  });
+    71	});
+    72	
+    73	describe("ladder cutoff (Codex finding 2)", () => {
+    74	  const first = ladderOf(100, 3, 1, 1, T0);
+    75	  const second = ladderOf(110, 3, 1, 1, T0 + 60_000);
+    76	
+    77	  it("a ladder sequence serves the newest ladder at or before the cut", () => {
+    78	    const l2 = fakeL2({ ladders: [first, second] });
+    79	    expect(l2.atTime!(T0 + 30_000).ladder()).toBe(first);
+    80	    expect(l2.atTime!(T0 + 60_000).ladder()).toBe(second);
+    81	    expect(l2.ladder()).toBe(second);
+    82	  });
+    83	
+    84	  it("a cut before the first ladder serves null, never a later ladder", () => {
+    85	    const l2 = fakeL2({ ladders: [first, second] });
+    86	    expect(l2.atTime!(T0 - 1).ladder()).toBeNull();
+    87	  });
+    88	
+    89	  it("the current ladder is a candidate under the same cutoff as the sequence", () => {
+    90	    const current = ladderOf(120, 3, 1, 1, 200);
+    91	    const l2 = fakeL2({ ladder: current, ladders: [ladderOf(90, 3, 1, 1, 50)] });
+    92	    expect(l2.atTime!(100).ladder()?.ts).toBe(50);
+    93	    expect(l2.atTime!(49).ladder()).toBeNull();
+    94	    expect(l2.atTime!(200).ladder()).toBe(current);
+    95	    expect(l2.ladder()).toBe(current);
+    96	  });
+    97	});
+    98	
+    99	describe("wall state under a cut (Codex finding 3)", () => {
+   100	  it("snapshots give the wall as it stood, so peak and consumption from after the cut stay hidden", () => {
+   101	    const life = wallLifecycle({ id: 7, side: "ask", row: 101, size: 400, startTs: T0, tradeTs: T0 + 20_000, tradedSize: 250, endTs: T0 + 40_000, endedBy: "partial" });
+   102	    expect(life.wall).toMatchObject({ size: 150, peak: 400, eaten: 250, fill: 0.625, endedBy: "partial" });
+   103	    const l2 = fakeL2({ walls: [life.wall], events: life.events, wallSnapshots: life.snapshots });
+   104	    expect(l2.atTime!(T0 + 10_000).wall(7)).toMatchObject({ size: 400, peak: 400, eaten: 0, fill: 0, absorbing: false, endTs: null, endedBy: null });
+   105	    expect(l2.atTime!(T0 + 20_000).wall(7)).toMatchObject({ size: 150, eaten: 250, endTs: null, endedBy: null });
+   106	    expect(l2.atTime!(T0 + 40_000).wall(7)).toMatchObject({ size: 150, eaten: 250, endTs: T0 + 40_000, endedBy: "partial" });
+   107	    expect(l2.wall(7)).toBe(life.wall);
+   108	  });
+   109	
+   110	  it("without snapshots the wall is rebuilt from its events through the cut", () => {
+   111	    const final = wallOf({ id: 3, side: "bid", row: 99, size: 20, peak: 500, eaten: 480, fill: 0.96, absorbing: true, startTs: T0 });
+   112	    const events = [
+   113	      { kind: "wall_born" as const, ts: T0, wall: 3, side: "bid" as const, row: 99, span: 1, size: 500 },
+   114	      { kind: "wall_trade" as const, ts: T0 + 10_000, wall: 3, mode: "absorbed" as const, price: 99, size: 180 },
+   115	      { kind: "wall_trade" as const, ts: T0 + 30_000, wall: 3, mode: "absorbed" as const, price: 99, size: 300 },
+   116	    ];
+   117	    const l2 = fakeL2({ walls: [final], events });
+   118	    expect(l2.atTime!(T0 + 5_000).wall(3)).toMatchObject({ size: 500, peak: 500, eaten: 0, fill: 0, absorbing: false, detail: null });
+   119	    expect(l2.atTime!(T0 + 10_000).wall(3)).toMatchObject({ size: 320, peak: 500, eaten: 180, fill: 0.36 });
+   120	    expect(l2.atTime!(T0 + 30_000).wall(3)).toMatchObject({ size: 20, eaten: 480 });
+   121	    // A wall with neither snapshots nor events is served as freshly born at its scripted size.
+   122	    const bare = fakeL2({ walls: [final] });
+   123	    expect(bare.atTime!(T0 + 5_000).wall(3)).toMatchObject({ size: 20, peak: 20, eaten: 0, fill: 0, absorbing: false });
+   124	  });
+   125	});
+   126	
+   127	describe("trust (Codex finding 4)", () => {
+   128	  it("mirrors the production checks: LIVE segment, walls and events synced, ts not before the segment began", () => {
+   129	    const l2 = fakeL2({ segment: segmentOf(200) });
+   130	    expect(l2.trusted()).toBe(true);
+   131	    expect(l2.trusted(199)).toBe(false);
+   132	    expect(l2.trusted(200)).toBe(true);
+   133	    expect(l2.trusted(201)).toBe(true);
+   134	    l2.patch({ segment: segmentOf(200, "GAP") });
+   135	    expect(l2.trusted()).toBe(false);
+   136	  });
+   137	
+   138	  it("an unsynced trust channel breaks trust; an unsynced ladder does not", () => {
+   139	    expect(fakeL2({ synced: { l2_walls: false } }).trusted()).toBe(false);
+   140	    expect(fakeL2({ synced: { l2_events: false } }).trusted(10)).toBe(false);
+   141	    expect(fakeL2({ synced: { l2_ladder: false, l2_view: false } }).trusted()).toBe(true);
+   142	  });
+   143	
+   144	  it("an explicit null segment stays null and is untrusted; the default is a LIVE segment from 0", () => {
+   145	    const none = fakeL2({ segment: null });
+   146	    expect(none.segment()).toBeNull();
+   147	    expect(none.trusted()).toBe(false);
+   148	    const dflt = fakeL2({});
+   149	    expect(dflt.segment()).toEqual({ id: "fake:0:LIVE", state: "LIVE" });
+   150	    expect(dflt.trusted(0)).toBe(true);
+   151	  });
+   152	
+   153	  it("trusted: false forces the store untrusted whatever else the script says", () => {
+   154	    expect(fakeL2({ trusted: false, segment: segmentOf(0) }).trusted(5)).toBe(false);
+   155	  });
+   156	});
+   157	
+   158	describe("event slices (Codex finding 5)", () => {
+   159	  const events = [tradeEvent(T0, "buy", 100, 1), tradeEvent(T0 + 1_000, "sell", 99, 1), tradeEvent(T0 + 2_000, "buy", 101, 1)];
+   160	
+   161	  it("a cursor inside the ring is exact and complete; no cursor is never complete", () => {
+   162	    const l2 = fakeL2({ events });
+   163	    expect(l2.events()).toMatchObject({ seq: 3, missed: 0, complete: false });
+   164	    expect(l2.events().events).toHaveLength(3);
+   165	    expect(l2.events(1)).toMatchObject({ seq: 3, complete: true });
+   166	    expect(l2.events(1).events).toEqual(events.slice(1));
+   167	    expect(l2.events(3)).toMatchObject({ events: [], complete: true });
+   168	  });
+   169	
+   170	  it("a cursor beyond the current seq or before the reset is not exact: every held event, incomplete", () => {
+   171	    const l2 = fakeL2({ events, eventSeq: 10, eventResetSeq: 8 });
+   172	    expect(l2.events(11)).toMatchObject({ seq: 10, complete: false });
+   173	    expect(l2.events(11).events).toHaveLength(3);
+   174	    expect(l2.events(7)).toMatchObject({ complete: false });
+   175	    expect(l2.events(7).events).toHaveLength(3);
+   176	    expect(l2.events(8)).toMatchObject({ complete: true });
+   177	    expect(l2.events(8).events).toHaveLength(2);
+   178	  });
+   179	
+   180	  it("missed events make a cursor at or before the loss incomplete", () => {
+   181	    const l2 = fakeL2({ events, eventSeq: 3, missedEvents: 2 });
+   182	    expect(l2.events(1)).toMatchObject({ missed: 2, complete: false });
+   183	    const pinned = fakeL2({ events, eventSeq: 3, missedEvents: 2, missedThroughSeq: 1 });
+   184	    expect(pinned.events(1).complete).toBe(false);
+   185	    expect(pinned.events(2).complete).toBe(true);
+   186	  });
+   187	
+   188	  it("an unsynced events channel is never complete, and an empty never-synced ring is the empty slice", () => {
+   189	    expect(fakeL2({ events, synced: { l2_events: false } }).events(1)).toMatchObject({ complete: false });
+   190	    expect(fakeL2({ synced: { l2_events: false } }).events(0)).toEqual({ seq: 0, events: [], missed: 0, complete: false });
+   191	  });
+   192	
+   193	  it("agrees with the real EventRing on cursor semantics", () => {
+   194	    const ring = new EventRing(100);
+   195	    const wire = (ts: number) => ({ event: "trade" as const, ts, side: "ask" as const, aggressor: "buy" as const, mode: "swept" as const, price: 100, size: 1, late: false });
+   196	    const frame = (seq: number, evs: ReturnType<typeof wire>[], reset = false, missed = 0): L2EventsFrame =>
+   197	      ({ type: "l2_events", seq, ts: evs[evs.length - 1]?.ts ?? 0, reset, missed, events: evs } as unknown as L2EventsFrame);
+   198	    ring.apply(frame(2, [wire(1), wire(2)], true));
+   199	    ring.apply(frame(3, [wire(3)]));
+   200	    const fake = fakeL2({ events: [tradeEvent(1, "buy", 100, 1), tradeEvent(2, "buy", 100, 1), tradeEvent(3, "buy", 100, 1)], eventSeq: 3, eventResetSeq: 2 });
+   201	    for (const cursor of [undefined, 0, 1, 2, 3, 4]) {
+   202	      const real = ring.since(cursor);
+   203	      const ours = fake.events(cursor);
+   204	      expect([cursor, ours.seq, ours.events.length, ours.complete]).toEqual([cursor, real.seq, real.events.length, real.complete]);
+   205	    }
+   206	  });
+   207	
+   208	  it("under a cut the slice holds only events through the cut and the seq moves with it", () => {
+   209	    const l2 = fakeL2({ events });
+   210	    const asOf = l2.atTime!(T0 + 1_000);
+   211	    expect(asOf.events()).toMatchObject({ seq: 2, complete: false });
+   212	    expect(asOf.events(0).events).toHaveLength(2);
+   213	    expect(asOf.events(2)).toMatchObject({ events: [], complete: true });
+   214	  });
+   215	});
+   216	
+   217	describe("against L2 Feed Status", () => {
+   218	  it("statusRows reads the scripted walls, events and book", () => {
+   219	    const rows = statusRows(scriptedBook(), T0 + 90_500);
+   220	    const byLabel = Object.fromEntries(rows.map((row) => [row.label, row]));
+   221	    expect(byLabel["Walls/events trusted"]).toMatchObject({ value: "yes", tone: "good" });
+   222	    expect(byLabel.Segment).toMatchObject({ value: "LIVE fake:0:LIVE", tone: "good" });
+   223	    expect(byLabel["Walls held"].value).toBe("1 active, 1 ended");
+   224	    expect(byLabel["Events held"].value).toBe("6, 0 missed by the cap");
+   225	    expect(byLabel["Book held"].value).toBe("10x10 of 10, best 59999 / 60001");
+   226	    expect(byLabel.Ladder).toMatchObject({ value: "synced seq 1, 0.5 s ago", tone: "good" });
+   227	  });
+   228	
+   229	  it("an unsynced walls channel turns the trust row bad, as the real store would", () => {
+   230	    const l2 = scriptedBook();
+   231	    l2.patch({ synced: { l2_walls: false } });
+   232	    const rows = statusRows(l2, T0 + 90_500);
+   233	    expect(rows[0]).toMatchObject({ label: "Walls/events trusted", value: "no", tone: "bad" });
+   234	    expect(rows.find((row) => row.label === "Walls")).toMatchObject({ tone: "bad" });
+   235	  });
+   236	
+   237	  it("through the runtime, a live bar writes the table from the fake book", () => {
+   238	    const { bars } = trendBars({ count: 3 });
+   239	    const session = openLiveSession(l2FeedStatusIndicator, {}, { l2: scriptedBook() }, []);
+   240	    try {
+   241	      for (const bar of bars) session.dispatch({ bar });
+   242	      const owner = session.runtime.getDrawOwnerId(l2FeedStatusIndicator.id)!;
+   243	      const table = handlesForOwners([owner]).find((record) => record.kind === "table");
+   244	      expect(table).toBeDefined();
+   245	      const grid = (table!.data as TableData).committedGrid;
+   246	      const cells = Object.values(grid).map((cell) => cell.text);
+   247	      expect(cells).toContain("1 active, 1 ended");
+   248	      expect(cells).toContain("6, 0 missed by the cap");
+   249	      expect(session.capture().faulted).toBe(false);
+   250	    } finally {
+   251	      session.close();
+   252	    }
+   253	  });
+   254	});
+
+exec
+/bin/bash -lc "rg --files --hidden | rg 'AGENTS.md|brief-rvol|cycle1|node_modules/.bin/vitest'; cat apps/web/src/lib/l2/eventRing.ts; cat apps/web/src/lib/chart/indicatorL2.ts" in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+import type { L2EventsFrame } from "../../types/frames";
+import { eventOf, type ApplyOutcome, type L2Event } from "./types";
+
+export const DEFAULT_L2_EVENT_CAPACITY = 5_000;
+
+export interface L2EventSlice {
+  readonly seq: number;
+  readonly events: readonly L2Event[];
+  readonly missed: number;
+  readonly complete: boolean;
+}
+
+const EMPTY_SLICE: L2EventSlice = Object.freeze({ seq: 0, events: Object.freeze([]), missed: 0, complete: false });
+
+export class EventRing {
+  private _events: L2Event[] = [];
+  private _seq: number | null = null;
+  private _resetSeq: number | null = null;
+  private _synced = false;
+  private _missed = 0;
+  private _missedThroughSeq: number | null = null;
+  private _lastTs: number | null = null;
+  private readonly _capacity: number;
+
+  constructor(capacity: number = DEFAULT_L2_EVENT_CAPACITY) {
+    if (!Number.isSafeInteger(capacity) || capacity <= 0) throw new Error("EventRing: capacity must be a positive integer");
+    this._capacity = capacity;
+  }
+
+  get seq(): number | null {
+    return this._seq;
+  }
+
+  get synced(): boolean {
+    return this._synced;
+  }
+
+  get lastTs(): number | null {
+    return this._lastTs;
+  }
+
+  get missed(): number {
+    return this._missed;
+  }
+
+  apply(frame: L2EventsFrame): ApplyOutcome {
+    if (frame.reset) {
+      this._events = frame.events.map(eventOf);
+      this._seq = frame.seq;
+      this._resetSeq = frame.seq;
+      this._synced = true;
+      this._missed = 0;
+      this._missedThroughSeq = null;
+      this._lastTs = frame.ts;
+      this._trim();
+      return "applied";
+    }
+    if (this._synced && this._seq !== null && (frame.events.length === 0 ? frame.seq < this._seq : frame.seq <= this._seq)) return "duplicate";
+    if (!this._synced || this._seq === null || frame.seq - frame.events.length !== this._seq) {
+      this._synced = false;
+      return "gap";
+    }
+    for (const wire of frame.events) this._events.push(eventOf(wire));
+    this._seq = frame.seq;
+    this._missed += frame.missed;
+    if (frame.missed > 0) this._missedThroughSeq = frame.seq;
+    this._lastTs = frame.ts;
+    this._trim();
+    return "applied";
+  }
+
+  since(sinceSeq?: number): L2EventSlice {
+    if (this._seq === null || this._resetSeq === null) return EMPTY_SLICE;
+    const oldestExact = this._seq - this._events.length;
+    const exact = sinceSeq !== undefined && sinceSeq >= this._resetSeq && sinceSeq >= oldestExact && sinceSeq <= this._seq;
+    const events = exact ? this._events.slice(this._events.length - (this._seq - sinceSeq)) : this._events.slice();
+    const afterReportedLoss = this._missedThroughSeq === null || (sinceSeq !== undefined && sinceSeq > this._missedThroughSeq);
+    return Object.freeze({ seq: this._seq, events: Object.freeze(events), missed: this._missed, complete: exact && this._synced && afterReportedLoss });
+  }
+
+  markUntrusted(): void {
+    this._synced = false;
+  }
+
+  clear(): void {
+    this._events = [];
+    this._seq = null;
+    this._resetSeq = null;
+    this._synced = false;
+    this._missed = 0;
+    this._missedThroughSeq = null;
+    this._lastTs = null;
+  }
+
+  private _trim(): void {
+    if (this._events.length > this._capacity) this._events.splice(0, this._events.length - this._capacity);
+  }
+}
+import type { ColumnFeed } from "../indicators/absorption-detector/absorptionColumns";
+import type { LiquidityGrid } from "../indicators/passive-liquidity/liquidityGrid";
+import type { L2EventSlice } from "../l2/eventRing";
+import type { L2Store } from "../l2/l2Store";
+import type { L2Channel, L2ChannelStatus, L2Ladder, L2LaneInfo, L2Segment, L2Wall } from "../l2/types";
+import { eventHistoryOf, historyRequestOf, wallHistoryOf, type L2EventHistory, type L2HistoryRange, type L2HistoryRequester, type L2WallHistory } from "../l2/history";
+import type { WallHistoryStream } from "../l2/wallHistoryStream";
+
+export type L2Availability = "LIVE" | "HISTORICAL" | "HISTORICAL_UNAVAILABLE";
+
+export interface L2ColumnView {
+  readonly ts: number;
+  readonly lo: number;
+  readonly hi: number;
+  readonly bid: ArrayLike<number>;
+  readonly ask: ArrayLike<number>;
+}
+
+export interface L2TierView {
+  readonly columns: readonly L2ColumnView[];
+  readonly columnMs: number;
+}
+
+export interface L2LaneView {
+  readonly epoch: number;
+  readonly deep: L2TierView | null;
+  readonly fine: L2TierView;
+}
+
+export interface IndicatorL2 {
+  readonly availability: L2Availability;
+  readonly version: number;
+  status(channel: L2Channel): L2ChannelStatus;
+  segment(): L2Segment | null;
+  trusted(ts?: number): boolean;
+  lanes(): readonly L2LaneInfo[];
+  view(lane: number): L2LaneView | null;
+  laneFor(priceLo: number, priceHi: number): number;
+  walls(lane?: number): readonly L2Wall[];
+  wall(id: number): L2Wall | null;
+  events(sinceSeq?: number): L2EventSlice;
+  ladder(): L2Ladder | null;
+  wallHistory(range: L2HistoryRange, cursor?: unknown): Promise<L2WallHistory | null>;
+  eventHistory(range: L2HistoryRange, cursor?: unknown): Promise<L2EventHistory | null>;
+  readonly hostWalls: WallHistoryStream | null;
+  readonly wallProfile?: Readonly<{ id: string; minimumSize: number; sampleMs: number }>;
+  historicalWalls?(): readonly L2Wall[];
+  readonly notionalMultiplier?: number;
+  /** Historical inputs are cut at this bar's close before entering onBar. */
+  atTime?(timeMs: number): IndicatorL2;
+}
+
+const UNSYNCED: L2ChannelStatus = Object.freeze({ synced: false, seq: null, lastTs: null, lastFrameAt: null });
+const NO_EVENTS: L2EventSlice = Object.freeze({ seq: 0, events: Object.freeze([]), missed: 0, complete: false });
+const NO_LANES: readonly L2LaneInfo[] = Object.freeze([]);
+const NO_WALLS: readonly L2Wall[] = Object.freeze([]);
+
+export function segmentStartTs(segment: L2Segment): number | null {
+  const parts = segment.id.split(":");
+  const start = Number(parts[parts.length - 2]);
+  return Number.isSafeInteger(start) ? start : null;
+}
+
+function lane0Info(grid: LiquidityGrid | null): L2LaneInfo | null {
+  if (grid === null) return null;
+  const last = grid.columns[grid.columns.length - 1];
+  if (last === undefined) return null;
+  return Object.freeze({
+    lane: 0,
+    rowWidth: grid.rowWidth,
+    columnMs: grid.columnMs,
+    deepColumnMs: grid.deepColumnMs,
+    priceLo: last.lo * grid.rowWidth,
+    priceHi: (last.hi + 1) * grid.rowWidth,
+  });
+}
+
+function lane0Feed(grid: LiquidityGrid | null): ColumnFeed | null {
+  if (grid === null || grid.columns.length === 0) return null;
+  return {
+    epoch: grid.epoch,
+    deep: grid.deepColumns.length > 0 ? { columns: grid.deepColumns, columnMs: grid.deepColumnMs } : null,
+    fine: { columns: grid.columns, columnMs: grid.columnMs },
+  };
+}
+
+export function historicalL2(): IndicatorL2 {
+  return Object.freeze({
+    availability: "HISTORICAL_UNAVAILABLE" as const,
+    version: 0,
+    status: () => UNSYNCED,
+    segment: () => null,
+    trusted: () => false,
+    lanes: () => NO_LANES,
+    view: () => null,
+    laneFor: () => 0,
+    walls: () => NO_WALLS,
+    wall: () => null,
+    events: () => NO_EVENTS,
+    ladder: () => null,
+    wallHistory: () => Promise.resolve(null),
+    eventHistory: () => Promise.resolve(null),
+    hostWalls: null,
+  });
+}
+
+export function indicatorL2Of(store: L2Store | null, lane0: () => LiquidityGrid | null, history: L2HistoryRequester | null = null, hostWalls: WallHistoryStream | null = null): IndicatorL2 | null {
+  if (store === null) return null;
+  const lanes = (): readonly L2LaneInfo[] => {
+    const zero = lane0Info(lane0());
+    const rest = store.lanes.lanes();
+    return zero === null ? rest : Object.freeze([zero, ...rest]);
+  };
+  return {
+    availability: "LIVE",
+    get version(): number {
+      return store.version;
+    },
+    status: (channel) => store.status(channel),
+    segment: () => store.segment,
+    trusted: (ts) => {
+      if (!store.trusted()) return false;
+      if (ts === undefined) return true;
+      const segment = store.segment;
+      const start = segment === null ? null : segmentStartTs(segment);
+      return start !== null && ts >= start;
+    },
+    lanes,
+    view: (lane) => (lane === 0 ? lane0Feed(lane0()) : store.lanes.view(lane)),
+    laneFor: (priceLo, priceHi) => {
+      const lo = Math.min(priceLo, priceHi);
+      const hi = Math.max(priceLo, priceHi);
+      const known = lanes();
+      for (const info of known) if (info.priceLo <= lo && info.priceHi >= hi) return info.lane;
+      return known.length === 0 ? 0 : known[known.length - 1].lane;
+    },
+    walls: (lane = 0) => store.walls.list().filter((wall) => wall.lane === lane),
+    wall: (id) => store.walls.get(id),
+    events: (sinceSeq) => store.events.since(sinceSeq),
+    ladder: () => store.ladder.ladder,
+    wallHistory: async (range, cursor) => {
+      if (history === null) return null;
+      const frame = await history("wall_history", historyRequestOf(range, cursor));
+      return frame === null || frame.type !== "wall_history" ? null : wallHistoryOf(frame);
+    },
+    eventHistory: async (range, cursor) => {
+      if (history === null) return null;
+      const frame = await history("l2_event_history", historyRequestOf(range, cursor));
+      return frame === null || frame.type !== "l2_event_history" ? null : eventHistoryOf(frame);
+    },
+    hostWalls,
+  };
+}
+
+exec
+/bin/bash -lc "git ls-tree -r --name-only worktree-agent-a4b44f3b34041fdf7 | rg 'AGENTS.md|brief-rvol|cycle1'; git diff main...worktree-agent-a4b44f3b34041fdf7 -- apps/web/src/lib/chart/validation/tests/baselines.test.ts; sed -n '1,100p' apps/web/src/lib/indicators/barSides.ts; rg -n 'ta:|drawNow:|withDrawOwnerScope|onBar\\(' apps/web/src/lib/chart/indicatorRuntime.ts; ls node_modules/.bin/vitest" in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+diff --git a/apps/web/src/lib/chart/validation/tests/baselines.test.ts b/apps/web/src/lib/chart/validation/tests/baselines.test.ts
+index c5085b7..716084a 100644
+--- a/apps/web/src/lib/chart/validation/tests/baselines.test.ts
++++ b/apps/web/src/lib/chart/validation/tests/baselines.test.ts
+@@ -9,14 +9,16 @@ import { resetDrawOwnerScopeForTests } from "../../draw/creationScope";
+ import { resetDrawRegistryForTests } from "../../draw/registry";
+ import type { RuntimeIndicatorDef } from "../../indicatorTypes";
+ import { fakeL2, ladderOf, tradeEvent, wallLifecycle } from "../fakeL2";
+-import { trendBars } from "../fixtures";
++import { relativeVolumeCryptoFixture, trendBars } from "../fixtures";
+ import type { LiveExtras } from "../liveDrive";
+ import {
+   formatFormingBarProbe,
++  formatPooledReplayProbe,
+   formatReplayProbe,
+   formatRolloverProbe,
+   probeFormingBar,
+   probeReplay,
++  probeReplayPooled,
+   probeRollover,
+ } from "../perfProbe";
+ 
+@@ -76,4 +78,25 @@ describe.runIf(process.env.VALIDATION_BASELINES === "1")("performance baselines
+       expect(row.rollover.faulted).toBe(false);
+     }
+   }, 600_000);
++
++  // The brief's frozen method (amendment 9) on the brief's own crypto fixture:
++  // the floor a Relative Volume measurement is compared against. Separate from
++  // the rows above so those reference points keep their original method.
++  it("measures the pooled method on the Relative Volume crypto fixture for rsi and bollinger", () => {
++    const { bars, labels } = relativeVolumeCryptoFixture();
++    const window = bars.slice(labels.timingIndices.first, labels.timingIndices.last + 1);
++    const probes = [
++      probeReplayPooled(rsiIndicator as RuntimeIndicatorDef<unknown, unknown>, window, rsiIndicator.defaultSettings),
++      probeReplayPooled(bollingerIndicator as RuntimeIndicatorDef<unknown, unknown>, window, bollingerIndicator.defaultSettings),
++    ];
++    console.log(probes.map(formatPooledReplayProbe).join("\n"));
++    if (process.env.VALIDATION_BASELINES_POOLED_OUT) {
++      writeFileSync(process.env.VALIDATION_BASELINES_POOLED_OUT, `${JSON.stringify({ bars: window.length, node: process.version, probes }, null, 2)}\n`);
++    }
++    for (const probe of probes) {
++      expect(probe.bars).toBe(10_080);
++      expect(probe.pooled.count).toBe(5 * 10_080);
++      expect(probe.faulted).toBe(false);
++    }
++  }, 600_000);
+ });
+import type { BarFrame } from "../../types/frames";
+
+export type BarSideFlow = Readonly<{ ts_open: number; buy_volume: number; sell_volume: number }>;
+
+export type BarSides = Readonly<{
+  known: boolean;
+  buy: number;
+  sell: number;
+  unknown: number;
+  delta: number;
+  sided: number;
+}>;
+
+const UNKNOWN_SIDES: BarSides = Object.freeze({ known: false, buy: 0, sell: 0, unknown: 0, delta: 0, sided: 0 });
+
+export function barSides(bar: BarFrame): BarSides {
+  if (bar.buy_volume === undefined || bar.buy_volume === null) return UNKNOWN_SIDES;
+  const buy = bar.buy_volume;
+  const sell = bar.sell_volume === undefined || bar.sell_volume === null
+    ? Math.max(0, bar.volume - buy)
+    : bar.sell_volume;
+  const sided = buy + sell;
+  return Object.freeze({
+    known: true,
+    buy,
+    sell,
+    unknown: Math.max(0, bar.volume - sided),
+    delta: buy - sell,
+    sided,
+  });
+}
+
+export function barDelta(bar: BarFrame): number | null {
+  const sides = barSides(bar);
+  return sides.known ? sides.delta : null;
+}
+
+export function unsidedShare(bars: readonly BarFrame[]): number | null {
+  let volume = 0;
+  let unknown = 0;
+  for (const bar of bars) {
+    const sides = barSides(bar);
+    if (!sides.known) continue;
+    volume += bar.volume;
+    unknown += sides.unknown;
+  }
+  return volume > 0 ? unknown / volume : null;
+}
+3:import { withDrawOwnerScope } from "./draw/creationScope";
+72:  onBar(
+142:  drawNow: boolean,
+168:    ta: EMPTY_NAMESPACE,
+244:    record.def.onBar(ctx);
+387:    record.state = withDrawOwnerScope(record.drawOwnerId, () =>
+654:  function onBar(
+node_modules/.bin/vitest
+
+codex
+The main concerns are in the validation helpers: the wall cutoff can still expose later state, and the pooled probe bypasses some runtime behavior. I’m checking those paths against the production code. The referenced brief isn’t present in either branch, so I can’t fully verify the fixture math against it.
+exec
+/bin/bash -lc "sed -n '130,180p' apps/web/src/lib/chart/indicatorRuntime.ts; sed -n '215,270p' apps/web/src/lib/chart/indicatorRuntime.ts; cat apps/web/src/lib/l2/walls.ts; sed -n '1,90p' apps/web/src/lib/chart/validation/perfProbe.ts; sed -n '1,180p' apps/web/src/lib/chart/draw/creationScope.ts; git show worktree-agent-a4b44f3b34041fdf7:apps/web/src/lib/chart/validation/fakeL2.ts | nl -ba | sed -n '100,190p'; git worktree list" in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+  def: RuntimeIndicatorDef<unknown, unknown>,
+): Record<string, (string | undefined)[]> {
+  const colors: Record<string, (string | undefined)[]> = {};
+  for (const line of def.lines) if (line.color) colors[line.key] = [];
+  return colors;
+}
+
+function makeCtx(
+  record: ActivationRecord,
+  bar: BarFrame,
+  replace: boolean,
+  replaying: boolean,
+  drawNow: boolean,
+  barIndex: number,
+  barCount: number,
+  trades: readonly TradeFrame[] = EMPTY_TRADES,
+  tradeAvailability: TradeAvailability = "HISTORICAL_UNAVAILABLE",
+): IndicatorBarCtx<unknown, unknown> {
+  record.pendingFillPoints.clear();
+  record.pendingMarkerCalls = [];
+
+  return {
+    bar,
+    trades,
+    tradeAvailability,
+    liquidity: (record.liquidity?.atTime
+      ? record.liquidity.atTime(bar.ts_open + bar.interval_ms)
+      : record.liquidity) ?? undefined,
+    l2: record.l2?.atTime?.(bar.ts_open + bar.interval_ms) ?? record.l2 ?? undefined,
+    bandHistory: record.bandHistory ?? undefined,
+    ticks: record.ticks ?? undefined,
+    state: record.state,
+    settings: record.settings,
+    replace,
+    replaying,
+    drawNow,
+    barIndex,
+    barCount,
+    ta: EMPTY_NAMESPACE,
+    draw: {
+      fill(valueA, valueB, options, key = DEFAULT_FILL_KEY) {
+        record.fills = true;
+        record.pendingFillPoints.set(
+          key,
+          valueA !== null && valueB !== null
+            ? { time: bar.ts_open, valueA, valueB }
+            : null,
+        );
+        if (options) record.fillOptionsByKey.set(key, options);
+      },
+    },
+    points.push(record.pendingFillPoints.get(key) ?? null);
+    record.fillPointsByKey.set(key, points);
+  }
+  if (!replace) record.fillBars += 1;
+  if (replace) {
+    overwriteBarMarkerCalls(
+      record.markerCalls,
+      bar.ts_open,
+      record.pendingMarkerCalls,
+    );
+  } else {
+    pushMarkerCalls(record.markerCalls, record.pendingMarkerCalls);
+  }
+  flushTableCells(record.drawOwnerId);
+}
+
+function fault(record: ActivationRecord, reason: string, error: unknown): void {
+  record.faulted = true;
+  console.error(
+    `indicator "${record.def.id}" ${reason} and has been disabled until it is re-activated`,
+    error,
+  );
+}
+
+function runOnBar(
+  record: ActivationRecord,
+  ctx: IndicatorBarCtx<unknown, unknown>,
+): boolean {
+  try {
+    record.def.onBar(ctx);
+    return true;
+  } catch (error) {
+    fault(record, "threw inside onBar", error);
+    return false;
+  }
+}
+
+function readOutputSafely(
+  record: ActivationRecord,
+): Record<string, number | null> | null {
+  try {
+    const output = record.def.readOutput(record.state);
+    if (
+      output === null ||
+      typeof output !== "object" ||
+      Array.isArray(output)
+    ) {
+      fault(record, "returned an invalid output record", output);
+      return null;
+    }
+    return output;
+  } catch (error) {
+    fault(record, "threw inside readOutput", error);
+    return null;
+  }
+}
+cat: apps/web/src/lib/l2/walls.ts: No such file or directory
+import type { BarFrame, TradeFrame } from "../../../types/frames";
+import { MAX_RETAINED_SOURCE_BARS } from "../candleLifecycle";
+import type { RuntimeIndicatorDef } from "../indicatorTypes";
+import { seeded, tradeFrame, type FixtureIdentity } from "./fixtures";
+import { openLiveSession, type LiveExtras } from "./liveDrive";
+import { tapeOf, ticksOf } from "./syntheticTape";
+
+/**
+ * Protocol check 6, performance. Three probes, each timing the indicator's own
+ * `onBar` (the wrapper adds one `performance.now()` pair per call) through the
+ * real runtime:
+ *
+ * - `probeReplay`: activation over a long series (the protocol uses 10,080
+ *   bars, the chart's retention cap).
+ * - `probeFormingBar`: one bar revised `revisionsPerSecond` times a second for
+ *   `seconds`, with `printsPerMinute` prints landing in the tick store and in
+ *   `ctx.trades`; the live-update cost.
+ * - `probeRollover`: the series at the retention cap, then more bars so the
+ *   chart trims the front and `discardLeading` runs; reports what the
+ *   indicator retains afterwards.
+ *
+ * Heap numbers are `process.memoryUsage().heapUsed` after a forced collection
+ * when `--expose-gc` is on (`NODE_OPTIONS=--expose-gc npx vitest run ...`);
+ * without it they are indicative only and `gcExposed` says so.
+ */
+
+export interface Percentiles {
+  count: number;
+  p50: number;
+  p90: number;
+  p99: number;
+  max: number;
+  mean: number;
+  totalMs: number;
+}
+
+export function percentilesOf(samples: readonly number[]): Percentiles {
+  if (samples.length === 0) return { count: 0, p50: 0, p90: 0, p99: 0, max: 0, mean: 0, totalMs: 0 };
+  const sorted = [...samples].sort((a, b) => a - b);
+  const at = (quantile: number) => sorted[Math.min(sorted.length - 1, Math.max(0, Math.ceil(quantile * sorted.length) - 1))];
+  const totalMs = sorted.reduce((sum, value) => sum + value, 0);
+  return { count: sorted.length, p50: at(0.5), p90: at(0.9), p99: at(0.99), max: sorted[sorted.length - 1], mean: totalMs / sorted.length, totalMs };
+}
+
+export interface HeapReading {
+  gcExposed: boolean;
+  beforeBytes: number;
+  afterBytes: number;
+  deltaBytes: number;
+}
+
+type GcGlobal = typeof globalThis & { gc?: () => void };
+
+export function heapUsed(): { bytes: number; gcExposed: boolean } {
+  const gc = (globalThis as GcGlobal).gc;
+  if (typeof gc === "function") gc();
+  return { bytes: process.memoryUsage().heapUsed, gcExposed: typeof gc === "function" };
+}
+
+function heapReading(before: { bytes: number; gcExposed: boolean }): HeapReading {
+  const after = heapUsed();
+  return { gcExposed: before.gcExposed && after.gcExposed, beforeBytes: before.bytes, afterBytes: after.bytes, deltaBytes: after.bytes - before.bytes };
+}
+
+/** `def` with its `onBar` timed; `samples` fills as the runtime calls it. */
+export function timedDef<S, T>(def: RuntimeIndicatorDef<S, T>): { def: RuntimeIndicatorDef<S, T>; samples: number[] } {
+  const samples: number[] = [];
+  const timed: RuntimeIndicatorDef<S, T> = {
+    ...def,
+    onBar(ctx) {
+      const started = performance.now();
+      try {
+        def.onBar(ctx);
+      } finally {
+        samples.push(performance.now() - started);
+      }
+    },
+  };
+  return { def: timed, samples };
+}
+
+export interface ReplayProbe {
+  id: string;
+  bars: number;
+  onBar: Percentiles;
+  /** The whole `onSnapshot`, including the runtime's own bookkeeping. */
+  wallMs: number;
+  heap: HeapReading;
+  faulted: boolean;
+}
+import { beginStreamCreationWindow, endStreamCreationWindow } from "../ta/creationGuard";
+import { clearForIndicator } from "./registry";
+
+let ownerStack: string[] = [];
+
+// Every real call site that needs owner-scoping also needs a stream creation
+// window open (a legitimate createState() call can freely mix ta.* and
+// draw.* factories) -- so this opens both rather than requiring every caller
+// to remember to nest withStreamCreationWindow separately. ta.*'s own guard
+// only ever checks the window depth, not how it was opened, so this is
+// transparent to ta/creationGuard.ts's own callers.
+export function withDrawOwnerScope<T>(ownerId: string, fn: () => T): T {
+  clearForIndicator(ownerId);
+  ownerStack.push(ownerId);
+  beginStreamCreationWindow();
+  try {
+    return fn();
+  } finally {
+    endStreamCreationWindow();
+    ownerStack.pop();
+  }
+}
+
+export function currentDrawOwnerId(): string | null {
+  return ownerStack.length > 0 ? ownerStack[ownerStack.length - 1] : null;
+}
+
+export function resetDrawOwnerScopeForTests(): void {
+  ownerStack = [];
+}
+   100	
+   101	function sortedSnapshots(snapshots: readonly WallSnapshot[] | undefined): readonly WallSnapshot[] | undefined {
+   102	  return snapshots === undefined ? undefined : [...snapshots].sort((a, b) => a.ts - b.ts);
+   103	}
+   104	
+   105	/**
+   106	 * The wall as it stood at `cut`: the newest snapshot at or before the cut, or
+   107	 * else the wall reconstructed from its events through the cut (born size as
+   108	 * size and peak, `wall_trade` sizes as `eaten`), or else the scripted record
+   109	 * served as freshly born. A wall that ended at or before the cut is history
+   110	 * and is served as its final record.
+   111	 */
+   112	function wallAt(wall: L2Wall, cut: number, snapshots: readonly WallSnapshot[], events: readonly L2Event[]): L2Wall | null {
+   113	  if (wall.startTs > cut) return null;
+   114	  if (wall.endTs !== null && wall.endTs <= cut) return wall;
+   115	  let snapshot: WallSnapshot | null = null;
+   116	  for (const candidate of snapshots) {
+   117	    if (candidate.wall.id === wall.id && candidate.ts <= cut && (snapshot === null || candidate.ts >= snapshot.ts)) snapshot = candidate;
+   118	  }
+   119	  if (snapshot !== null) return { ...snapshot.wall, endTs: null, endedBy: null };
+   120	  let bornSize: number | null = null;
+   121	  let eaten = 0;
+   122	  for (const event of events) {
+   123	    if (event.ts > cut) break;
+   124	    if (event.kind === "wall_born" && event.wall === wall.id) bornSize = event.size;
+   125	    if (event.kind === "wall_trade" && event.wall === wall.id) eaten += event.size;
+   126	  }
+   127	  const peak = bornSize ?? wall.size;
+   128	  return {
+   129	    ...wall,
+   130	    size: Math.max(0, peak - eaten),
+   131	    peak,
+   132	    eaten,
+   133	    fill: peak > 0 ? eaten / peak : 0,
+   134	    absorbing: false,
+   135	    endTs: null,
+   136	    endedBy: null,
+   137	    detail: null,
+   138	  };
+   139	}
+   140	
+   141	export function fakeL2(initial: FakeL2Script = {}): FakeL2 {
+   142	  const script: FakeL2Script = { ...initial, events: sortedEvents(initial.events), wallSnapshots: sortedSnapshots(initial.wallSnapshots) };
+   143	  let version = initial.version ?? 1;
+   144	
+   145	  const ladderAt = (cut: number | null): L2Ladder | null => {
+   146	    let best: L2Ladder | null = null;
+   147	    for (const ladder of [...(script.ladders ?? []), ...(script.ladder ? [script.ladder] : [])]) {
+   148	      if (cut !== null && ladder.ts > cut) continue;
+   149	      if (best === null || ladder.ts > best.ts) best = ladder;
+   150	    }
+   151	    // Uncut, the current ladder is what the store holds now, whatever its stamp.
+   152	    if (cut === null && script.ladder) return script.ladder;
+   153	    return best;
+   154	  };
+   155	
+   156	  const build = (cut: number | null): FakeL2 => {
+   157	    const allEvents = (): readonly L2Event[] => script.events ?? [];
+   158	    const events = (): readonly L2Event[] => {
+   159	      const all = allEvents();
+   160	      return cut === null ? all : all.filter((event) => event.ts <= cut);
+   161	    };
+   162	    const walls = (): readonly L2Wall[] => {
+   163	      const all = script.walls ?? [];
+   164	      if (cut === null) return all;
+   165	      const snapshots = script.wallSnapshots ?? [];
+   166	      const seen = events();
+   167	      return all.map((wall) => wallAt(wall, cut, snapshots, seen)).filter((wall): wall is L2Wall => wall !== null);
+   168	    };
+   169	    const since = (sinceSeq: number | undefined): L2EventSlice => {
+   170	      const synced = script.synced?.l2_events ?? true;
+   171	      const all = allEvents();
+   172	      const visible = events();
+   173	      if (!synced && script.eventSeq === undefined && all.length === 0) return EMPTY_SLICE;
+   174	      const fullSeq = script.eventSeq ?? all.length;
+   175	      const oldestExact = fullSeq - all.length;
+   176	      const seq = oldestExact + visible.length;
+   177	      const resetSeq = script.eventResetSeq ?? oldestExact;
+   178	      const missed = script.missedEvents ?? 0;
+   179	      const missedThrough = script.missedThroughSeq === undefined ? (missed > 0 ? seq : null) : script.missedThroughSeq;
+   180	      const exact = sinceSeq !== undefined && sinceSeq >= resetSeq && sinceSeq >= oldestExact && sinceSeq <= seq;
+   181	      const slice = exact ? visible.slice(visible.length - (seq - sinceSeq!)) : visible.slice();
+   182	      const afterReportedLoss = missedThrough === null || (sinceSeq !== undefined && sinceSeq > missedThrough);
+   183	      return Object.freeze({ seq, events: Object.freeze(slice), missed, complete: exact && synced && afterReportedLoss });
+   184	    };
+   185	    const fake: FakeL2 = {
+   186	      get availability() {
+   187	        return script.availability ?? "LIVE";
+   188	      },
+   189	      get version() {
+   190	        return version;
+/home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk                                            80e2694 [main]
+/home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk/.claude/worktrees/agent-a4b44f3b34041fdf7  a5aa68f [worktree-agent-a4b44f3b34041fdf7]
+/home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk/.claude/worktrees/agent-aa4a6294e0f5e7448  3f09b78 [worktree-agent-aa4a6294e0f5e7448]
+/home/user/Terminal-L1-L2/worktrees/relative-volume                                                           80e2694 [build/relative-volume]
+
+exec
+/bin/bash -lc 'node /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk/node_modules/vitest/vitest.mjs run apps/web/src/lib/chart/validation/tests/fakeL2.test.ts apps/web/src/lib/chart/validation/tests/fixtures.test.ts apps/web/src/lib/chart/validation/tests/markerBudget.test.ts apps/web/src/lib/chart/validation/tests/perfProbe.test.ts apps/web/src/lib/chart/validation/tests/relativeVolumeFixtures.test.ts apps/web/src/lib/chart/validation/tests/baselines.test.ts' in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk/.claude/worktrees/agent-a4b44f3b34041fdf7
+ exited 1 in 831ms:
+
+ RUN  v4.1.11 /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk/.claude/worktrees/agent-a4b44f3b34041fdf7
+
+ ❯ apps/web/src/lib/chart/validation/tests/fixtures.test.ts (0 test)
+ ❯ apps/web/src/lib/chart/validation/tests/relativeVolumeFixtures.test.ts (0 test)
+ ❯ apps/web/src/lib/chart/validation/tests/fakeL2.test.ts (0 test)
+ ❯ apps/web/src/lib/chart/validation/tests/baselines.test.ts (0 test)
+ ❯ apps/web/src/lib/chart/validation/tests/perfProbe.test.ts (0 test)
+ ❯ apps/web/src/lib/chart/validation/tests/markerBudget.test.ts (0 test)
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 6 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  apps/web/src/lib/chart/validation/tests/baselines.test.ts [ apps/web/src/lib/chart/validation/tests/baselines.test.ts ]
+ FAIL  apps/web/src/lib/chart/validation/tests/fakeL2.test.ts [ apps/web/src/lib/chart/validation/tests/fakeL2.test.ts ]
+ FAIL  apps/web/src/lib/chart/validation/tests/fixtures.test.ts [ apps/web/src/lib/chart/validation/tests/fixtures.test.ts ]
+ FAIL  apps/web/src/lib/chart/validation/tests/markerBudget.test.ts [ apps/web/src/lib/chart/validation/tests/markerBudget.test.ts ]
+ FAIL  apps/web/src/lib/chart/validation/tests/perfProbe.test.ts [ apps/web/src/lib/chart/validation/tests/perfProbe.test.ts ]
+ FAIL  apps/web/src/lib/chart/validation/tests/relativeVolumeFixtures.test.ts [ apps/web/src/lib/chart/validation/tests/relativeVolumeFixtures.test.ts ]
+Error: ENOENT: no such file or directory, mkdir '/tmp/LbsBU-9ory6h8JTJnrs8-/ssr'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+
+ Test Files  6 failed (6)
+      Tests  no tests
+   Start at  01:50:35
+   Duration  466ms (transform 0ms, setup 0ms, import 0ms, tests 0ms, environment 1ms)
+
+
+exec
+/bin/bash -lc "rg -n 'atTime|interface LiveExtras' apps/web/src/lib/chart/validation/liveDrive.ts apps/web/src/lib/chart/indicatorLiquidity.ts; rg -n 'interface L2Wall|type L2Wall|detail' apps/web/src/lib/l2/types.ts; rg --files /home/user/Terminal-L1-L2 | rg 'brief-rvol-clock|AGENTS.md'" in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+apps/web/src/lib/chart/indicatorLiquidity.ts:13:  readonly atTime?: (timeMs: number) => IndicatorLiquidity | null;
+apps/web/src/lib/chart/validation/liveDrive.ts:22:export interface LiveExtras {
+10:export interface L2WallDetail {
+32:export interface L2Wall {
+48:  readonly detail: L2WallDetail | null;
+86:function detailOf(wire: L2WallDetailWire | null): L2WallDetail | null {
+128:    detail: detailOf(wire.detail),
+/home/user/Terminal-L1-L2/PM/cycle1/brief-rvol-clock.md
+/home/user/Terminal-L1-L2/PM/log/brief-rvol-clock.round3.md
+/home/user/Terminal-L1-L2/PM/log/codex/20261026T011952Z-plan-brief-rvol-clock.transcript.txt
+/home/user/Terminal-L1-L2/PM/log/codex/20261026T011704Z-plan-brief-rvol-clock.transcript.txt
+/home/user/Terminal-L1-L2/PM/log/codex/20261026T012709Z-plan-brief-rvol-clock.last.md
+/home/user/Terminal-L1-L2/PM/log/codex/20261026T012227Z-plan-brief-rvol-clock.last.md
+/home/user/Terminal-L1-L2/PM/log/codex/20261026T011952Z-plan-brief-rvol-clock.last.md
+/home/user/Terminal-L1-L2/PM/log/codex/20261026T011704Z-plan-brief-rvol-clock.last.md
+/home/user/Terminal-L1-L2/PM/log/codex/20261026T012448Z-plan-brief-rvol-clock.last.md
+/home/user/Terminal-L1-L2/PM/log/codex/20261026T012709Z-plan-brief-rvol-clock.transcript.txt
+/home/user/Terminal-L1-L2/PM/log/codex/20261026T012448Z-plan-brief-rvol-clock.transcript.txt
+/home/user/Terminal-L1-L2/PM/log/codex/20261026T012227Z-plan-brief-rvol-clock.transcript.txt
+
+exec
+/bin/bash -lc 'cat /home/user/Terminal-L1-L2/PM/cycle1/brief-rvol-clock.md' in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+# Build brief: Relative Volume by Time of Day (final, after four Codex plan rounds)
+
+PM brief for the cycle-1 build. Shared rules: PM/WORKER-BRIEF.md. Capability
+sheet: PM/CAPABILITIES.md. UX standard: PM/cycle1/ux-standard.md. Validation
+protocol: PM/cycle1/validation-protocol.md. Those live outside the repository
+checkout at /home/user/Terminal-L1-L2/PM/; their requirements that matter here
+are restated in this brief.
+
+## The trading question
+
+"Is this bar's volume unusual compared with the same minute of the day on
+recent sessions, or is it just the open, the close or the London/New York
+overlap being its normal self?"
+
+## Target user and decision
+
+Intraday traders on ES, NQ, AAPL, TSLA, BTC and ETH who confirm moves with
+volume. Decision: treat participation as unusual relative to recent comparable
+bars, or discount it because this minute is always loud. A rolling-average
+RVOL cannot tell those apart; this tool normalises recurring intraday volume
+patterns before comparing. High relative volume says nothing about direction
+or follow-through, and the package says so. The baseline is short and noisy,
+so the claim is "unusual relative to the last N sessions at this minute", not
+"unusual" in any absolute sense.
+
+## Identity
+
+- Folder `apps/web/src/lib/indicators/relative-volume/`; def
+  `relativeVolume.ts`; pure computation in `relativeVolumeMath.ts`; tests in
+  `tests/`.
+- id `relativeVolume`, label `"Relative Volume (Time of Day)"`, category
+  `"technical"`, placement `{ kind: "ownPane", priceLines: [1, 2, 3] }`.
+- Historical Mode policy `OHLCV_POLICY`. Works on every archived instrument
+  and on equities (only `bar.volume` is read; sided volume is irrelevant).
+- No `timeframeGate` (it would remove the indicator and its table). For
+  `interval_ms > 3_600_000` every output is `null` and the status row says
+  `Time of day needs an intraday timeframe`.
+
+## Data
+
+`bar.ts_open`, `bar.interval_ms`, `bar.volume`, `bar.closed`, `bar.provider`
+(and `assetClass`/`marketKind` only to resolve the clock). Nothing else. No
+wall clock. Identity fields choose the clock convention only; availability is
+governed by the OHLCV capability policy, never by provider. A bar whose
+`volume` is not a finite number >= 0 contributes no observation and yields
+`null`. Missing bars (gaps in `ts_open`) contribute nothing, never a zero.
+
+Known limitation accepted by the PM: the resampler reports the nominal
+`interval_ms` even for a shortened bucket (`resampleBars.ts`), so the
+indicator cannot know a bar's real duration. It therefore does no duration
+normalisation. The start-minute key already compares the 15:30 equity
+half-hour bar only with other 15:30 bars. The one unhandled case is an
+early-close session, whose last bar is shorter than its slot's usual bars; it
+enters as one observation among `sessions` and the median absorbs it. State
+this in the doc page.
+
+The `ta.*` factories are top-level imports created in `createState`
+(`ctx.ta` is intentionally empty); this indicator does not use them, because
+its rolling window must replace an arbitrary earlier input on a correction,
+which a library stream cannot do.
+
+## Calculation (incremental, one bar at a time)
+
+1. **Clock, one rule.** Setting `clock`: `auto` resolves to `newYork` for
+   provider DXFEED or DATABENTO and to `utc` for BINANCE; `newYork` and `utc`
+   force it. New York minute of day is computed the way `killzones` does it
+   (reuse its `nyParts` helper or `apps/web/src/lib/chart/marketCalendar.ts`;
+   no new time-zone code). There is exactly one slot family in this version.
+2. **Slot key.** The bar's start minute of day in the resolved clock
+   (0..1439). No division by bar length: an hourly equity bar starting 09:30
+   keys 570 and the 15:30 half-hour bar keys 930; neither collides. At most
+   1,440 keys.
+3. **Observation.** The bar's `volume`.
+4. **Baseline.** Per slot key, a ring of the last `sessions` committed
+   observations `{ts_open, volume}` (default 10, range 2..60) and their
+   median (even count: mean of the two middle values). Median, not mean, so one
+   news day does not inflate tomorrow's baseline. The ring capacity is the only
+   bound. Live state may therefore hold observations from bars the chart has
+   already discarded; that is accepted and documented, and live-versus-replay
+   equivalence is required only for bars whose full `sessions` lookback lies
+   within the retained series.
+5. **Rolling comparison.** An own ring of the last 20 committed
+   `{ts_open, volume}`; `rollingMean` is their mean. Both baselines exclude the
+   current bar.
+6. **Read before write.** For the bar being evaluated, `slotMedian`,
+   `priorCount` and `rollingMean` are read first and stored on the bar record
+   as `baselineAtOpen`. Every later recomputation of that bar (replace, closed
+   correction) divides by those stored values. A bar never sees its own volume
+   in its denominator.
+7. **Commit rule (one observation per `ts_open`, correctable).** The bar
+   record is `{ts_open, volume, baselineAtOpen, committed}`. The observation is
+   inserted into the slot ring and the rolling ring at the first of: (a) the
+   first dispatch of that `ts_open` with `bar.closed === true`; (b) the
+   arrival of a bar with a greater `ts_open` while the record is uncommitted (a
+   close that never arrived), inserting the last known volume. All derived
+   state is keyed by `ts_open`, so a later closed dispatch of the same
+   `ts_open` with a different volume UPDATES the observation in both rings in
+   place and recomputes that bar's own ratio from `baselineAtOpen`; it never
+   inserts twice. A valid-to-invalid correction REMOVES the observation from
+   both rings and yields `null`; invalid-to-valid inserts it. A dispatch older
+   than the current record is ignored. The replay tail may be a forming bar
+   (the runtime keeps supplied `closed` flags); it stays pending.
+8. **Confirmation.** Outputs and the marker are provisional while
+   `bar.closed === false` (lighter styling, status row `Forming`) and
+   confirmed on the first closed dispatch. The marker is always for the bar of
+   the current call. A bar committed by rule (b) never received a close, so its
+   drawing stays provisional; that is intentional and documented, and such
+   bars are excluded from the live-versus-replay marker comparison (their
+   numeric outputs are still compared).
+9. **Output.** `rvol = volume / slotMedian`, `null` while `priorCount <
+   minSessions` (default 3) or the median is 0 or not finite. `rolling =
+   volume / rollingMean`, `null` until 20 committed bars. `minSessions` is
+   clamped to `<= sessions` at read time. The forming bar is divided by the
+   full-bar expectation, so it grows toward its final value during the bar.
+10. **Marker (the one alert condition).** `hot`: `rvol >= hotThreshold`
+    (default 2) draws a small circle on the bar; `rvol >= 3` the same circle,
+    larger. The marker is a pure function of the bar's current `rvol`, so a
+    correction crossing the threshold in either direction adds or removes it
+    on the next dispatch, and a replace redraws rather than duplicates.
+11. **Status precedence, first match wins.** Unsupported timeframe; invalid
+    current volume (`No usable volume`); insufficient prior samples
+    (`Learning this time of day: 1 of 3 sessions`); unusable baseline
+    (`No usable volume baseline`, median 0); forming (`Forming: versus
+    full-bar expectation`); ready (blank).
+12. **No future data.** Every value at bar t uses only bars with
+    `ts_open <= t.ts_open`. Truncating the series at any index must not
+    change earlier numeric outputs or earlier confirmed markers.
+13. **Fail closed.** Any non-finite intermediate yields `null`.
+
+## Default view (what a trader sees in three seconds)
+
+Own pane. One line `rvol` with `ctx.draw.fill(rvol, 1, ...)`: green
+(`#26a69a`, alpha) above 1, grey below 1. Line color per bar: hot (>=
+`hotThreshold`) `#ff9800`, above 1 `#26a69a`, below 1 `#787b86`. Price lines
+at 1, 2 and 3. Hot markers on. The rolling comparison line is OFF by default;
+its value still shows in the table. Table, top right, three rows:
+`RVOL 2.4x (time of day, 7 prior)` colored like the line, the count being the
+prior observations in the denominator excluding this bar; `1.1x (rolling 20)`;
+the status row from rule 11. Any unavailable value shows `—`. Before warm-up
+the pane is empty, never zero.
+
+## Controls
+
+Primary (three, main tab): `sessions` ("Lookback sessions", 10, 2..60,
+step 1, recompute), `hotThreshold` ("Unusual above", 2, 1..10, step 0.5,
+cosmetic: it changes colors and markers only, computed from the stored
+`rvol`), `showRolling` ("Show rolling comparison", false, cosmetic).
+
+Advanced (the UX specialist's mechanism; if none landed, the `visibility`
+tab): `minSessions` (3, 1..20, step 1, recompute), `clock` select (auto /
+newYork / utc, recompute), `showMarkers` (true, cosmetic), colors (cosmetic).
+
+Every key appears in `settingsSchema`; numeric and slider fields have
+`step > 0`. Presets then work automatically.
+
+Deferred to the backlog with reasons: weekend slot family for crypto (seven
+retained days of one-minute history give two weekend observations per slot);
+a "sustained" run marker (needs run state that survives corrections).
+
+## Baseline comparison: what must be shown
+
+Two comparison methods, both at the same threshold (2.0), on the same
+eligible bars (both ready), both using volumes:
+- Rolling: `volume / mean of previous 20 committed volumes`.
+- Same-slot mean: `volume / mean of the slot ring` (same observations as the
+  median), to separate the benefit of clock normalisation from the benefit of
+  the median.
+
+Equity fixture (deterministic, in the validation harness): 15 sessions of
+390 one-minute bars starting Monday 2026-03-02 09:30 New York (this week
+contains the US spring DST change on Sunday 2026-03-08, so sessions 1..5 and
+6..15 have different UTC offsets while their New York start-minute keys are
+identical; that is the clock test). Expected volume for minute m (0..389)
+with V = 1,000: `E(m) = V * (1 + 3 * max(0, 1 - m/60)^2)` for m < 60, `V`
+for 60 <= m <= 330, `V * (1 + (m - 330) / 59)` for m > 330. Noise:
+`volume = round(E(m) * exp(0.15 * z))`, z standard normal from Box-Muller
+(two uniforms per pair, both outputs used in order) over mulberry32 seeded
+20261026. Generation order: for each session in order, for each minute in
+order, one z. Then anomalies: draw (session in 4..15, minute in 90..330) pairs
+one at a time with the same generator, rejecting duplicates, until 12 are
+held; each replaces its bar with `round(2.5 * E(m))`. Evaluation bars:
+sessions 4..15 where all methods are ready. Predictable slots: minutes 0..9
+and 380..389. A false positive is a detection on an eligible non-anomaly bar.
+
+Acceptance (descriptive, not predictive):
+- Time-of-day recall on the 12 anomalies >= 11/12, and >= rolling recall
+  minus one anomaly.
+- Time-of-day predictable-slot false-positive rate <= 10 percent of those
+  bars, and <= half of rolling's predictable-slot rate.
+- Overall false-positive rates and the same-slot-mean method's numbers are
+  reported beside these in the doc page, whatever they are. If the fixture
+  disproves the hypothesis, the brief returns to the PM.
+
+Control experiment (reported, not a gate): the same fixture with flat
+seasonality (`E(m) = V`) and 12 anomalies drawn from all minutes, so the doc
+page states how the methods compare when the clock explains nothing.
+
+Crypto fixture (performance, retention): 12,000 one-minute bars starting
+2026-03-02 00:00 UTC, expected volume `V * (1 + 0.5 * cos(2 * pi * (m -
+840) / 1440))`, same noise model and generation order, seed 20261027. Timing
+over bars 1..10,080; rollover over all 12,000 (the per-bar record count stays
+at or under 10,080 and every ring at or under capacity); a REBUILT replay from
+bars 1,921..12,000 must reproduce live outputs for every bar whose full
+`sessions` lookback lies within those bars. Readiness is asserted from actual
+prior observations per key, not from a calendar day number.
+
+Further fixtures with expected outcomes:
+- Gap: a session missing minutes 120..179 contributes no observations for
+  those keys; the bar after the gap has an unchanged baseline.
+- Early close at 13:00: the session's last bar enters its key as one
+  observation; the next session's bar at that key still divides by the median
+  of `sessions` observations, which one short bar does not move.
+- Short-bar key check through the real resampler: feed one session of 1m
+  fixture bars through `resampleBars` to the hourly timeframe and confirm the
+  final bar keys 930 (15:30) and that the indicator treats it as its own slot.
+- Changed-volume closed replacement: close at 100, then close again at 150;
+  both ring observations become 150, that bar's ratio uses its stored
+  denominator, its hot marker appears or disappears accordingly, and every
+  later bar matches a replay that only saw 150. Also valid to invalid
+  (observation removed, output null) and invalid to valid (inserted).
+- Duplicate identical closed dispatch: no change in any output.
+- Replay with a forming tail bar: the tail stays pending and provisional.
+
+## Success criteria (all required for acceptance)
+
+1. Hand-computed exact values on a small three-session fixture: median
+   baseline, warm-up nulls, the forming-bar growth, the stored denominator.
+2. Validation harness: truncation invariance (numbers and confirmed markers);
+   live-versus-replay equivalence as scoped above; the correction, duplicate,
+   gap, early-close, resampler and forming-tail fixtures; empty input; no NaN.
+3. The baseline comparison numbers above, reproduced by a test and quoted in
+   the doc page.
+4. Performance, measured with the validator's perf probe on this container
+   (4 cores, Node 24.21.0, vitest): p99 `onBar` under 0.05 ms over the first
+   10,080 bars of the crypto fixture; bounded state as above.
+5. Marker budget: on the equity fixture, the hot condition at the default
+   threshold emits fewer than 2 markers per 100 evaluated bars, anomalies
+   included.
+6. UX: default view as specified, three primary controls, screenshots at two
+   zoom levels from the UX specialist's fixture path, table copy approved by
+   UX.
+7. Docs: `docs/architecture/indicators/relative-volume.md` and one row in the
+   indicators README map; `node scripts/validate-docs.cjs` passes.
+8. Full web suite, type check and lint green; Codex code review APPROVED;
+   validator report PASS.
+
+## Limitations to state in the package
+
+Needs `minSessions` prior sessions per slot: one-minute crypto retains seven
+UTC days, one-minute equities about 25 sessions; a fresh symbol shows
+"learning" for three sessions. Holidays and early closes are ordinary
+sessions. No duration normalisation (see Data). Equity candles are regular
+session only. Weekend behaviour on crypto is not separated. The ratio is
+unit-free; volume units are the provider's. Descriptive only.
+
+## Seams for later cycles
+
+`relativeVolumeMath.ts` exports the slot-median machinery so Squeeze Breakout
+Context can import it as its volume confirmation. There is no cross-indicator
+read in the SDK, so this is a shared module, not a runtime link.
+
+## Budget
+
+One build run by the OHLCV specialist, UX joins before the build ends, at most
+two fix rounds after Codex code review and validation. A third failure returns
+the concept to the backlog with the evidence attached.
+
+## Plan-gate history
+
+Round 1 REVISE: commit timing, stored denominator, marker ownership, edge
+cases, busier default, benchmark math. Round 2 REVISE: corrections after
+commit, retention, short-bar slot collision, sustained state, replay tail,
+weekend readiness, status precedence, gate hides table. Round 3 REVISE: rate
+normalisation impossible with nominal `interval_ms`, retention claim wrong,
+corrections in all derived state, fallback commit styling, clock rule, fixture
+freezing, control experiment. Round 4 reviewed an unchanged brief by PM error
+and repeated round 3 plus: synthetic clock test, relative acceptance bounds,
+same-slot-mean comparison, `—` for unavailable values. All accepted here; the
+PM rejected only round 1's claim that `ta.sma` is unavailable (it is, but is
+no longer used).
+
+## Amendments from plan round 5 (accepted by the PM; the brief is APPROVED by PM authority after five rounds)
+
+1. **Corrections are tail-only.** In-place update, removal or insertion of an
+   observation applies only to the current tail record. A correction to any
+   older bar reaches the indicator as a `REBUILT` replay (the runtime's own
+   behaviour), which recreates state from scratch. Test: correct a bar after
+   several successors by replaying, and compare every successor against a fresh
+   replay.
+2. **Eviction rollback.** When the tail's observation is inserted into a full
+   ring, the evicted observation is kept as `evictedByTail` on that ring until
+   the tail is superseded by a newer bar. A valid-to-invalid correction of the
+   tail removes its observation and restores `evictedByTail`; invalid-to-valid
+   re-inserts and re-evicts. Test valid, invalid, valid with both rings full
+   and compare with a replay that saw only the final state.
+3. **Lookback counts matching bars, not sessions.** A missing slot stretches
+   the lookback across more calendar sessions, and the autumn New York DST
+   repeat can supply two observations for one local minute on crypto under the
+   `newYork` clock. Accept "last N matching bars" and label accordingly:
+   control label "Lookback (matching bars)", table "7 prior"; the settings key
+   stays `sessions` for brevity but the doc page explains it.
+4. **Median wording.** The median limits a single short or odd bar's influence;
+   it does not make it zero. Test the exact median on a fixture containing one
+   shortened bar instead of asserting no change.
+5. **Settings that change colours or markers replay.** `recolor` receives only
+   the old colour and settings, so it cannot reclassify history under a new
+   threshold, and markers and fills need refreshing too. Therefore
+   `hotThreshold`, `showMarkers` and `showRolling` are `affects: "recompute"`
+   (a replay at this indicator's cost is well under a second for 10,080 bars);
+   only the colour pickers are `cosmetic` with `recolor`.
+6. **Marker size rule.** Draw a marker only when hot; enlarge a drawn marker
+   when `rvol >= 3`. With `hotThreshold > 3` every drawn marker is large.
+7. **Crypto equivalence test at a feasible lookback.** Twelve thousand minutes
+   hold about eight days, so no slot has ten prior observations in a seven-day
+   replay. Run the REBUILT equivalence check with `sessions = 3`, assert a
+   non-zero count of compared bars, and exercise full rings at the default
+   capacity on the 15-session equity fixture (14 prior per slot).
+8. **Report counts, not only rates**, for every comparison: eligible bars,
+   detections, anomalies hit.
+9. **Performance measurement, frozen.** Three untimed warm-up replays, then
+   five timed replays of the first 10,080 bars; per-bar timings pooled; p99 by
+   nearest rank; the timed region is `onBar` plus `readOutput` with no-op draw
+   and marker namespaces (drawing is excluded and said to be).
+10. **Warm-up screenshot.** The UX package includes a screenshot of the
+    learning state (table row visible, pane empty) beside the ready view.
+
+codex
+I found the brief in the adjacent PM directory; the fixture formulas and generation order match it. I’ve confirmed issues in the wall cutoff and pooled replay context. The tests could not run: Vitest failed while creating its temporary SSR directory, before collecting any tests.
+codex
+1. **WARNING — `apps/web/src/lib/chart/validation/fakeL2.ts:127–134`**  
+   When neither a snapshot nor a birth event is available, `wallAt` uses the final `wall.size` as its historical size and peak. A wall that later shrank from 500 to 20 therefore appears as size 20 before that shrink. This leaks future state and invents historical certainty. The new test at `fakeL2.test.ts:121–123` explicitly pins this incorrect behavior.  
+   **Fix:** Require an eligible snapshot or birth record to reconstruct historical state; otherwise omit the wall. Test that changing a future final record cannot change an earlier cut.
+
+2. **WARNING — `apps/web/src/lib/chart/validation/fakeL2.ts:124–134`**  
+   Event reconstruction always returns `absorbing: false`, including after an absorbed `wall_trade`. The same lifecycle returns `absorbing: true` through its snapshots or uncut final record. Consequently, replay and live inputs disagree depending on whether snapshots were supplied, potentially hiding absorption signals in validation.  
+   **Fix:** Reconstruct absorption state using the event’s mode and production semantics, or require snapshots when the events cannot determine it. Add a comparison of snapshot-backed and event-backed views after an absorbed trade.
+
+3. **WARNING — `apps/web/src/lib/chart/validation/perfProbe.ts:361–363`**  
+   The pooled probe passes `extras.liquidity` directly into every historical bar. The real runtime calls `liquidity.atTime(barClose)` first. A supplied historical liquidity provider can therefore expose future columns during this probe and exercise different computation paths from a real replay.  
+   **Fix:** Apply the same liquidity cutoff as `indicatorRuntime.makeCtx`, preserving a `null` cutoff result as unavailable. Add a provider that records cutoff requests and contains a future-only column.
+
+The fixture math matches the adjacent PM brief. Tests were attempted, but Vitest failed creating its temporary SSR directory before test collection; no tests executed.
+
+VERDICT: REVISE
+tokens used
+57,872
+1. **WARNING — `apps/web/src/lib/chart/validation/fakeL2.ts:127–134`**  
+   When neither a snapshot nor a birth event is available, `wallAt` uses the final `wall.size` as its historical size and peak. A wall that later shrank from 500 to 20 therefore appears as size 20 before that shrink. This leaks future state and invents historical certainty. The new test at `fakeL2.test.ts:121–123` explicitly pins this incorrect behavior.  
+   **Fix:** Require an eligible snapshot or birth record to reconstruct historical state; otherwise omit the wall. Test that changing a future final record cannot change an earlier cut.
+
+2. **WARNING — `apps/web/src/lib/chart/validation/fakeL2.ts:124–134`**  
+   Event reconstruction always returns `absorbing: false`, including after an absorbed `wall_trade`. The same lifecycle returns `absorbing: true` through its snapshots or uncut final record. Consequently, replay and live inputs disagree depending on whether snapshots were supplied, potentially hiding absorption signals in validation.  
+   **Fix:** Reconstruct absorption state using the event’s mode and production semantics, or require snapshots when the events cannot determine it. Add a comparison of snapshot-backed and event-backed views after an absorbed trade.
+
+3. **WARNING — `apps/web/src/lib/chart/validation/perfProbe.ts:361–363`**  
+   The pooled probe passes `extras.liquidity` directly into every historical bar. The real runtime calls `liquidity.atTime(barClose)` first. A supplied historical liquidity provider can therefore expose future columns during this probe and exercise different computation paths from a real replay.  
+   **Fix:** Apply the same liquidity cutoff as `indicatorRuntime.makeCtx`, preserving a `null` cutoff result as unavailable. Add a provider that records cutoff requests and contains a future-only column.
+
+The fixture math matches the adjacent PM brief. Tests were attempted, but Vitest failed creating its temporary SSR directory before test collection; no tests executed.
+
+VERDICT: REVISE
+--- last message saved to /home/user/Terminal-L1-L2/PM/log/codex/20261026T015012Z-code-worktree-agent-a4b44f3b34041fdf7.last.md
+VERDICT: REVISE

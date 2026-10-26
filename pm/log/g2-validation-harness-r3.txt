@@ -1,0 +1,1500 @@
+Reading additional input from stdin...
+OpenAI Codex v0.164.0
+--------
+workdir: /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+model: gpt-6.1-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 01a175ef-9dda-7393-9fb5-2ea456c262f2
+--------
+user
+You are the independent code reviewer for a trading-indicator team. Review branch worktree-agent-a4b44f3b34041fdf7 against main in this repository. Run: git diff main...worktree-agent-a4b44f3b34041fdf7 -- apps/web/src/lib/chart/validation/fakeL2.ts apps/web/src/lib/chart/validation/perfProbe.ts apps/web/src/lib/chart/validation/tests/fakeL2.test.ts apps/web/src/lib/chart/validation/tests/perfProbe.test.ts 
+
+Focus, in order: 1) correctness of the math versus the brief; 2) future-data leakage (a bar may use only data timestamped at or before its close) and replay-versus-live consistency; 3) honest handling of missing data: null, never zero or NaN, gates on tradeAvailability, ticks.coverageOf, l2.trusted(); 4) buy/sell read through barSides, never volume minus buy_volume; 5) incremental state, bounded memory, no per-bar copying of large arrays, no stream or draw factories created inside onBar; 6) settings schema covers every default key with step > 0; 7) tests actually pin the behavior (hand-computed values, replace semantics, empty input, gates); 8) readability and house style.
+
+For each finding give file, line range, severity CRITICAL / WARNING / SUGGESTION, the problem, and the fix. End with exactly VERDICT: APPROVED or VERDICT: REVISE.
+warning: Codex could not find bubblewrap on PATH. Install bubblewrap with your OS package manager. See the sandbox prerequisites: https://developers.openai.com/codex/concepts/sandboxing#prerequisites. Codex will use the bundled bubblewrap in the meantime.
+codex
+I’ll run the requested diff, then check the implementation and tests against the brief and surrounding data contracts.
+exec
+/bin/bash -lc 'git diff main...worktree-agent-a4b44f3b34041fdf7 -- apps/web/src/lib/chart/validation/fakeL2.ts apps/web/src/lib/chart/validation/perfProbe.ts apps/web/src/lib/chart/validation/tests/fakeL2.test.ts apps/web/src/lib/chart/validation/tests/perfProbe.test.ts' in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+diff --git a/apps/web/src/lib/chart/validation/fakeL2.ts b/apps/web/src/lib/chart/validation/fakeL2.ts
+index 710557f..220a664 100644
+--- a/apps/web/src/lib/chart/validation/fakeL2.ts
++++ b/apps/web/src/lib/chart/validation/fakeL2.ts
+@@ -102,12 +102,28 @@ function sortedSnapshots(snapshots: readonly WallSnapshot[] | undefined): readon
+   return snapshots === undefined ? undefined : [...snapshots].sort((a, b) => a.ts - b.ts);
+ }
+ 
++/** The runtime's absorption rule (`large-level-tracker.js`): traded into within this window and still holding this share of its peak. */
++export const ABSORB_WINDOW_MS = 5_000;
++export const ABSORB_HOLD_SHARE = 0.5;
++
++/**
++ * `absorbing` as the runtime decides it: the wall is resting (not ended), its
++ * last trade landed within `ABSORB_WINDOW_MS` of `nowTs`, and it still holds at
++ * least `ABSORB_HOLD_SHARE` of its peak. The trade's mode does not enter the
++ * runtime's rule; a swept trade that leaves the wall standing counts the same.
++ */
++export function absorbingAt(wall: Pick<L2Wall, "size" | "peak" | "endTs">, lastTradeTs: number | null, nowTs: number): boolean {
++  return wall.endTs === null && lastTradeTs !== null && nowTs - lastTradeTs <= ABSORB_WINDOW_MS && wall.size >= wall.peak * ABSORB_HOLD_SHARE;
++}
++
+ /**
+- * The wall as it stood at `cut`: the newest snapshot at or before the cut, or
+- * else the wall reconstructed from its events through the cut (born size as
+- * size and peak, `wall_trade` sizes as `eaten`), or else the scripted record
+- * served as freshly born. A wall that ended at or before the cut is history
+- * and is served as its final record.
++ * The wall as it stood at `cut`. A wall that ended at or before the cut is
++ * history and is served as its final record. A live wall is the newest
++ * snapshot at or before the cut, or else is rebuilt from its events through
++ * the cut (born size as size and peak, `wall_trade` sizes as `eaten`,
++ * `absorbing` by the runtime's rule at the cut). With neither a snapshot nor a
++ * birth record there is nothing honest to serve, so the wall is omitted: the
++ * final record's `size` and `peak` are future knowledge under a cut.
+  */
+ function wallAt(wall: L2Wall, cut: number, snapshots: readonly WallSnapshot[], events: readonly L2Event[]): L2Wall | null {
+   if (wall.startTs > cut) return null;
+@@ -116,26 +132,39 @@ function wallAt(wall: L2Wall, cut: number, snapshots: readonly WallSnapshot[], e
+   for (const candidate of snapshots) {
+     if (candidate.wall.id === wall.id && candidate.ts <= cut && (snapshot === null || candidate.ts >= snapshot.ts)) snapshot = candidate;
+   }
+-  if (snapshot !== null) return { ...snapshot.wall, endTs: null, endedBy: null };
+   let bornSize: number | null = null;
+   let eaten = 0;
++  let lastTradeTs: number | null = null;
++  let anyTradeEvent = false;
+   for (const event of events) {
+     if (event.ts > cut) break;
+     if (event.kind === "wall_born" && event.wall === wall.id) bornSize = event.size;
+-    if (event.kind === "wall_trade" && event.wall === wall.id) eaten += event.size;
++    if (event.kind === "wall_trade" && event.wall === wall.id) {
++      eaten += event.size;
++      lastTradeTs = event.ts;
++      anyTradeEvent = true;
++    }
+   }
+-  const peak = bornSize ?? wall.size;
+-  return {
++  if (snapshot !== null) {
++    const stood: L2Wall = { ...snapshot.wall, endTs: null, endedBy: null };
++    // `absorbing` decays with time, so a snapshot's flag holds only at its own
++    // instant; later, when the events say when the wall was last traded into,
++    // the runtime's rule is re-evaluated at the cut on the snapshot's size and peak.
++    if (cut === snapshot.ts || !anyTradeEvent) return stood;
++    return { ...stood, absorbing: absorbingAt(stood, lastTradeTs, cut) };
++  }
++  if (bornSize === null) return null;
++  const rebuilt = {
+     ...wall,
+-    size: Math.max(0, peak - eaten),
+-    peak,
++    size: Math.max(0, bornSize - eaten),
++    peak: bornSize,
+     eaten,
+-    fill: peak > 0 ? eaten / peak : 0,
+-    absorbing: false,
++    fill: bornSize > 0 ? eaten / bornSize : 0,
+     endTs: null,
+     endedBy: null,
+     detail: null,
+   };
++  return { ...rebuilt, absorbing: absorbingAt(rebuilt, lastTradeTs, cut) };
+ }
+ 
+ export function fakeL2(initial: FakeL2Script = {}): FakeL2 {
+@@ -296,20 +325,24 @@ export interface WallLifecycleSpec extends WallSpec {
+ /**
+  * A wall's whole story: the final record, the event stream that tells it
+  * (born, shrunk, traded, ended) and the snapshots a cut view serves, one per
+- * event, with `size`, `eaten` and `fill` as they stood after that event.
++ * event, with `size`, `eaten`, `fill` and `absorbing` as they stood right
++ * after that event. `absorbing` follows the runtime's rule (`absorbingAt`), so
++ * a snapshot-backed view and an event-backed view of the same lifecycle agree;
++ * the final record is taken as of the last event (`spec.absorbing` overrides it).
+  */
+ export function wallLifecycle(spec: WallLifecycleSpec): { wall: L2Wall; events: L2Event[]; snapshots: WallSnapshot[] } {
+   const traded = spec.tradeTs === undefined ? 0 : (spec.tradedSize ?? spec.size / 2);
+   const ended = spec.endTs !== undefined && spec.endTs !== null;
++  const lastTs = Math.max(spec.startTs, spec.shrinkTs ?? -Infinity, spec.tradeTs ?? -Infinity, ended ? spec.endTs! : -Infinity);
++  const base: L2Wall = { ...wallOf(spec), peak: spec.peak ?? spec.size };
++  const afterTrade: L2Wall = { ...base, size: spec.size - traded, eaten: traded, fill: spec.size > 0 ? traded / spec.size : 0, endTs: null, endedBy: null };
+   const wall: L2Wall = {
+-    ...wallOf(spec),
+-    peak: spec.peak ?? spec.size,
+-    size: spec.size - traded,
+-    eaten: traded,
+-    fill: spec.size > 0 ? traded / spec.size : 0,
+-    absorbing: spec.absorbing ?? traded > 0,
++    ...afterTrade,
++    endTs: base.endTs,
++    endedBy: base.endedBy,
++    absorbing: spec.absorbing ?? absorbingAt({ ...afterTrade, endTs: base.endTs }, spec.tradeTs ?? null, lastTs),
+   };
+-  const born: L2Wall = { ...wall, size: spec.size, eaten: 0, fill: 0, absorbing: false, endTs: null, endedBy: null };
++  const born: L2Wall = { ...base, size: spec.size, eaten: 0, fill: 0, absorbing: false, endTs: null, endedBy: null };
+   const events: L2Event[] = [{ kind: "wall_born", ts: spec.startTs, wall: spec.id, side: spec.side, row: spec.row, span: wall.span, size: spec.size }];
+   const snapshots: WallSnapshot[] = [{ ts: spec.startTs, wall: born }];
+   if (spec.shrinkTs !== undefined) {
+@@ -318,7 +351,7 @@ export function wallLifecycle(spec: WallLifecycleSpec): { wall: L2Wall; events:
+   }
+   if (spec.tradeTs !== undefined) {
+     events.push({ kind: "wall_trade", ts: spec.tradeTs, wall: spec.id, mode: "absorbed", price: spec.tradePrice ?? spec.row, size: traded });
+-    snapshots.push({ ts: spec.tradeTs, wall: { ...wall, endTs: null, endedBy: null } });
++    snapshots.push({ ts: spec.tradeTs, wall: { ...afterTrade, absorbing: absorbingAt(afterTrade, spec.tradeTs, spec.tradeTs) } });
+   }
+   if (ended) {
+     events.push({ kind: "wall_end", ts: spec.endTs!, wall: spec.id, endedBy: wall.endedBy ?? "pulled", distanceRows: 1 });
+diff --git a/apps/web/src/lib/chart/validation/perfProbe.ts b/apps/web/src/lib/chart/validation/perfProbe.ts
+index 60d0840..a492459 100644
+--- a/apps/web/src/lib/chart/validation/perfProbe.ts
++++ b/apps/web/src/lib/chart/validation/perfProbe.ts
+@@ -353,7 +353,10 @@ export function probeReplayPooled<S, T>(def: RuntimeIndicatorDef<S, T>, bars: re
+           bar,
+           trades: [],
+           tradeAvailability: "HISTORICAL_UNAVAILABLE",
+-          liquidity: extras.liquidity ?? undefined,
++          // The same knowledge-time cutoffs indicatorRuntime.makeCtx applies: a
++          // liquidity provider with atTime is asked for the bar's close and a
++          // null answer is unavailable; an L2 view without a cut falls back.
++          liquidity: (extras.liquidity?.atTime ? extras.liquidity.atTime(bar.ts_open + bar.interval_ms) : extras.liquidity) ?? undefined,
+           l2: extras.l2?.atTime?.(bar.ts_open + bar.interval_ms) ?? extras.l2 ?? undefined,
+           ticks: extras.ticks ?? undefined,
+           state,
+diff --git a/apps/web/src/lib/chart/validation/tests/fakeL2.test.ts b/apps/web/src/lib/chart/validation/tests/fakeL2.test.ts
+index cf38750..3aefb5c 100644
+--- a/apps/web/src/lib/chart/validation/tests/fakeL2.test.ts
++++ b/apps/web/src/lib/chart/validation/tests/fakeL2.test.ts
+@@ -5,7 +5,7 @@ import type { L2EventsFrame } from "../../../../types/frames";
+ import { resetDrawOwnerScopeForTests } from "../../draw/creationScope";
+ import { handlesForOwners, resetDrawRegistryForTests } from "../../draw/registry";
+ import type { TableData } from "../../draw/table";
+-import { fakeL2, fakeL2Unsynced, ladderOf, ladderWithWall, segmentOf, tradeEvent, wallLifecycle, wallOf } from "../fakeL2";
++import { ABSORB_WINDOW_MS, absorbingAt, fakeL2, fakeL2Unsynced, ladderOf, ladderWithWall, segmentOf, tradeEvent, wallLifecycle, wallOf } from "../fakeL2";
+ import { trendBars } from "../fixtures";
+ import { openLiveSession } from "../liveDrive";
+ 
+@@ -116,11 +116,54 @@ describe("wall state under a cut (Codex finding 3)", () => {
+     ];
+     const l2 = fakeL2({ walls: [final], events });
+     expect(l2.atTime!(T0 + 5_000).wall(3)).toMatchObject({ size: 500, peak: 500, eaten: 0, fill: 0, absorbing: false, detail: null });
+-    expect(l2.atTime!(T0 + 10_000).wall(3)).toMatchObject({ size: 320, peak: 500, eaten: 180, fill: 0.36 });
+-    expect(l2.atTime!(T0 + 30_000).wall(3)).toMatchObject({ size: 20, eaten: 480 });
+-    // A wall with neither snapshots nor events is served as freshly born at its scripted size.
++    // Right after the first trade the wall holds 64 percent of its peak: absorbing by the runtime's rule, until the 5 s window lapses.
++    expect(l2.atTime!(T0 + 10_000).wall(3)).toMatchObject({ size: 320, peak: 500, eaten: 180, fill: 0.36, absorbing: true });
++    expect(l2.atTime!(T0 + 16_000).wall(3)).toMatchObject({ size: 320, absorbing: false });
++    // After the second trade it holds 4 percent: traded into, but not holding, so not absorbing.
++    expect(l2.atTime!(T0 + 30_000).wall(3)).toMatchObject({ size: 20, eaten: 480, absorbing: false });
++  });
++
++  it("a wall with neither snapshots nor a birth record is omitted under a cut, never served at its final size (Codex round-2 finding 1)", () => {
++    const final = wallOf({ id: 3, side: "bid", row: 99, size: 20, peak: 500, eaten: 480, startTs: T0 });
+     const bare = fakeL2({ walls: [final] });
+-    expect(bare.atTime!(T0 + 5_000).wall(3)).toMatchObject({ size: 20, peak: 20, eaten: 0, fill: 0, absorbing: false });
++    expect(bare.atTime!(T0 + 5_000).wall(3)).toBeNull();
++    expect(bare.atTime!(T0 + 5_000).walls()).toEqual([]);
++    expect(bare.wall(3)).toBe(final);
++  });
++
++  it("changing a wall's future final record cannot change an earlier cut's view", () => {
++    const life = wallLifecycle({ id: 9, side: "bid", row: 50, size: 500, startTs: T0, tradeTs: T0 + 20_000, tradedSize: 100 });
++    const cut = T0 + 10_000;
++    const before = fakeL2({ walls: [life.wall], events: life.events, wallSnapshots: life.snapshots }).atTime!(cut).wall(9);
++    const shrunk = { ...life.wall, size: 20, peak: 500, eaten: 480, fill: 0.96, absorbing: false, endTs: T0 + 60_000, endedBy: "filled" as const };
++    const after = fakeL2({ walls: [shrunk], events: life.events, wallSnapshots: life.snapshots }).atTime!(cut).wall(9);
++    expect(before).toEqual(after);
++    expect(before).toMatchObject({ size: 500, peak: 500, eaten: 0 });
++    // The same holds for an event-backed view.
++    const eventsOnlyBefore = fakeL2({ walls: [life.wall], events: life.events }).atTime!(cut).wall(9);
++    const eventsOnlyAfter = fakeL2({ walls: [shrunk], events: life.events }).atTime!(cut).wall(9);
++    expect(eventsOnlyBefore).toEqual(eventsOnlyAfter);
++  });
++
++  it("snapshot-backed and event-backed views agree on absorbing after an absorbed trade (Codex round-2 finding 2)", () => {
++    const life = wallLifecycle({ id: 11, side: "ask", row: 120, size: 400, startTs: T0, tradeTs: T0 + 20_000, tradedSize: 100 });
++    const withSnapshots = fakeL2({ walls: [life.wall], events: life.events, wallSnapshots: life.snapshots });
++    const eventsOnly = fakeL2({ walls: [life.wall], events: life.events });
++    for (const cut of [T0, T0 + 19_999, T0 + 20_000, T0 + 24_000, T0 + 30_000]) {
++      const a = withSnapshots.atTime!(cut).wall(11);
++      const b = eventsOnly.atTime!(cut).wall(11);
++      expect(b).not.toBeNull();
++      expect({ size: a!.size, peak: a!.peak, eaten: a!.eaten, fill: a!.fill, absorbing: a!.absorbing }).toEqual({ size: b!.size, peak: b!.peak, eaten: b!.eaten, fill: b!.fill, absorbing: b!.absorbing });
++    }
++    expect(withSnapshots.atTime!(T0 + 20_000).wall(11)!.absorbing).toBe(true);
++    expect(eventsOnly.atTime!(T0 + 20_000).wall(11)!.absorbing).toBe(true);
++    expect(eventsOnly.atTime!(T0 + 30_000).wall(11)!.absorbing).toBe(false);
++    // The uncut final record follows the same rule as of the last event: traded into and holding 75 percent of its peak.
++    expect(life.wall.absorbing).toBe(true);
++    expect(absorbingAt({ size: 300, peak: 400, endTs: null }, T0 + 20_000, T0 + 20_000 + ABSORB_WINDOW_MS)).toBe(true);
++    expect(absorbingAt({ size: 300, peak: 400, endTs: null }, T0 + 20_000, T0 + 20_000 + ABSORB_WINDOW_MS + 1)).toBe(false);
++    expect(absorbingAt({ size: 199, peak: 400, endTs: null }, T0, T0)).toBe(false);
++    expect(absorbingAt({ size: 300, peak: 400, endTs: T0 }, T0, T0)).toBe(false);
+   });
+ });
+ 
+diff --git a/apps/web/src/lib/chart/validation/tests/perfProbe.test.ts b/apps/web/src/lib/chart/validation/tests/perfProbe.test.ts
+index b031a28..61436a7 100644
+--- a/apps/web/src/lib/chart/validation/tests/perfProbe.test.ts
++++ b/apps/web/src/lib/chart/validation/tests/perfProbe.test.ts
+@@ -8,7 +8,8 @@ import type { RuntimeIndicatorDef } from "../../indicatorTypes";
+ import { barSides } from "../../../indicators/barSides";
+ import type { BarFrame } from "../../../../types/frames";
+ import { fakeL2, ladderOf } from "../fakeL2";
+-import { equityUnsidedBars, seeded, trendBars } from "../fixtures";
++import type { IndicatorLiquidity } from "../../indicatorLiquidity";
++import { MINUTE_MS, equityUnsidedBars, seeded, trendBars } from "../fixtures";
+ import {
+   formatFormingBarProbe,
+   formatPooledReplayProbe,
+@@ -160,6 +161,52 @@ describe("perf probes", () => {
+     expect(probeReplayPooled(rsiIndicator, bars, { length: 14 }).warmupRuns).toBe(3);
+   });
+ 
++  it("the pooled method applies the runtime's liquidity cutoff, so a historical provider never leaks future columns (Codex round-2 finding 3)", () => {
++    const { bars } = trendBars({ count: 20 });
++    const requested: number[] = [];
++    const futureColumn = { ts: bars[bars.length - 1].ts_open + 10 * MINUTE_MS, lo: 0, hi: 1, bid: new Float64Array([1, 1]), ask: new Float64Array([1, 1]) };
++    const seen: number[] = [];
++    const provider: IndicatorLiquidity = {
++      feed: { epoch: 1, deep: null, fine: { columns: [futureColumn], columnMs: 1_000 } },
++      rowWidth: 1,
++      baseAsset: "BTC",
++      version: 1,
++      atTime: (timeMs) => {
++        requested.push(timeMs);
++        // Nothing is known before the 10th bar's close; afterwards, an empty feed cut at the time asked.
++        if (timeMs < bars[10].ts_open + MINUTE_MS) return null;
++        return { feed: { epoch: 1, deep: null, fine: { columns: [], columnMs: 1_000 } }, rowWidth: 1, baseAsset: "BTC", version: 1 };
++      },
++    };
++    const reader: RuntimeIndicatorDef<{ value: number | null }, Record<string, never>> = {
++      kind: "runtime",
++      id: "liquidityReader",
++      label: "Liquidity Reader",
++      category: "l2",
++      defaultSettings: {},
++      lines: [{ key: "value" }],
++      placement: { kind: "overlay" },
++      createState: () => ({ value: null }),
++      onBar: (ctx) => {
++        if (ctx.liquidity === undefined) {
++          ctx.state.value = null;
++          return;
++        }
++        for (const column of ctx.liquidity.feed.fine.columns) seen.push(column.ts);
++        ctx.state.value = ctx.liquidity.feed.fine.columns.length;
++      },
++      readOutput: (state) => ({ value: state.value }),
++    };
++    const probe = probeReplayPooled(reader, bars, {}, { warmupRuns: 1, timedRuns: 1, extras: { liquidity: provider } });
++    expect(probe.faulted).toBe(false);
++    expect(seen).toEqual([]);
++    expect(requested).toEqual([...bars, ...bars].map((bar) => bar.ts_open + MINUTE_MS));
++    // A provider without atTime is handed over as is, exactly as makeCtx does.
++    const plain: IndicatorLiquidity = { feed: provider.feed, rowWidth: 1, baseAsset: "BTC", version: 1 };
++    probeReplayPooled(reader, bars.slice(0, 2), {}, { warmupRuns: 0, timedRuns: 1, extras: { liquidity: plain } });
++    expect(seen).toEqual([futureColumn.ts, futureColumn.ts]);
++  });
++
+   it("the pooled method marks a faulting indicator", () => {
+     const thrower: RuntimeIndicatorDef<Record<string, never>, Record<string, never>> = {
+       ...hoarder,
+
+exec
+/bin/bash -lc "rg --files -g AGENTS.md -g '*brief*' -g '*fakeL2*' -g '*perfProbe*'" in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+apps/web/src/lib/chart/validation/tests/fakeL2.test.ts
+apps/web/src/lib/chart/validation/tests/perfProbe.test.ts
+apps/web/src/lib/chart/validation/fakeL2.ts
+apps/web/src/lib/chart/validation/perfProbe.ts
+
+exec
+/bin/bash -lc 'git status --short; git branch --show-current; cat apps/web/package.json; cat apps/web/src/lib/chart/validation/fakeL2.ts' in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+?? .claude/
+main
+{
+  "name": "web",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "engines": {
+    "node": "24.21.0"
+  },
+  "scripts": {
+    "pretest": "node ../../scripts/verify-node-version.cjs",
+    "prebuild": "node ../../scripts/verify-node-version.cjs",
+    "dev": "node ../../scripts/node-launcher.cjs ../../node_modules/vite/bin/vite.js",
+    "build": "tsc -b && vite build",
+    "lint": "oxlint",
+    "preview": "node ../../scripts/node-launcher.cjs ../../node_modules/vite/bin/vite.js preview",
+    "test": "set \"ELECTRON_RUN_AS_NODE=\"&& vitest run"
+  },
+  "dependencies": {
+    "lightweight-charts": "^5.2.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "trading-signals": "8.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.2",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.3",
+    "@vitest/coverage-v8": "4.1.11",
+    "@vitest/ui": "^4.1.11",
+    "fast-check": "4.10.2",
+    "jsdom": "^29.1.1",
+    "oxlint": "^1.71.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.1.1",
+    "vitest": "^4.1.11"
+  },
+  "optionalDependencies": {
+    "@oxlint/binding-linux-x64-gnu": "1.73.0"
+  }
+}
+import type { L2EventSlice } from "../../l2/eventRing";
+import type { L2Channel, L2ChannelStatus, L2Event, L2Ladder, L2LaneInfo, L2Segment, L2Wall, L2WallVerdict } from "../../l2/types";
+import { segmentStartTs, type IndicatorL2, type L2Availability } from "../indicatorL2";
+
+/**
+ * A scripted `IndicatorL2` for order-book checks. The real one reads the L2
+ * store NOW, not as of a replayed bar; this fake lets a test say exactly what
+ * the ladder, the walls and the event stream hold, flip trust and sync, and
+ * cut the view at a bar close through `atTime` so a replay-time check can
+ * prove an indicator does not read walls, events or a ladder from after the
+ * bar. Trust, segment and event-slice semantics mirror `indicatorL2Of`,
+ * `L2Store.trusted` and `EventRing.since`, so a gate that works against the
+ * fake works against the terminal.
+ */
+
+/** A wall's state as it stood at `ts`; `atTime(cut)` serves the newest snapshot at or before the cut. */
+export interface WallSnapshot {
+  ts: number;
+  wall: L2Wall;
+}
+
+export interface FakeL2Script {
+  availability?: L2Availability;
+  /** `false` forces the store untrusted whatever the segment and sync say; `true` (default) lets them decide. */
+  trusted?: boolean;
+  /** Per-channel sync; every channel synced unless named here. */
+  synced?: Partial<Record<L2Channel, boolean>>;
+  seq?: number;
+  lastTs?: number | null;
+  lastFrameAt?: number | null;
+  /** Explicit `null` means "no segment yet" and is served as such; omitted means a LIVE segment that started at 0. */
+  segment?: L2Segment | null;
+  lanes?: readonly L2LaneInfo[];
+  /** The current ladder; eligible under a cut only when its `ts` is at or before the cut. */
+  ladder?: L2Ladder | null;
+  /** Ladders over time; `atTime(ts)` serves the newest at or before `ts` among these and `ladder`. */
+  ladders?: readonly L2Ladder[];
+  /** Final wall records, as `walls()` serves them now. */
+  walls?: readonly L2Wall[];
+  /** How each wall looked over time; without one, a cut view reconstructs the wall from its events. */
+  wallSnapshots?: readonly WallSnapshot[];
+  events?: readonly L2Event[];
+  /** The ring's current sequence number; defaults to the event count (the ring holds every event since seq 0). */
+  eventSeq?: number;
+  /** The seq of the last reset frame; a cursor before it is not exact. Defaults to the oldest held event's seq. */
+  eventResetSeq?: number;
+  missedEvents?: number;
+  /** The seq through which events were reported missed; a cursor at or before it is incomplete. Defaults to the current seq when `missedEvents > 0`. */
+  missedThroughSeq?: number | null;
+  version?: number;
+  notionalMultiplier?: number;
+}
+
+export interface FakeL2 extends IndicatorL2 {
+  /** Replace parts of the script; `version` advances by one. */
+  patch(next: Partial<FakeL2Script>): void;
+  readonly script: FakeL2Script;
+}
+
+const ALL_CHANNELS: readonly L2Channel[] = ["l2_view", "l2_walls", "l2_events", "l2_ladder"];
+/** The channels `L2Store.trusted()` requires synced. */
+export const TRUST_CHANNELS: readonly L2Channel[] = ["l2_walls", "l2_events"];
+const EMPTY_SLICE: L2EventSlice = Object.freeze({ seq: 0, events: Object.freeze([]), missed: 0, complete: false });
+
+/** A segment id the production parser (`segmentStartTs`) reads back as starting at `startTs`. */
+export function segmentOf(startTs: number, state: L2Segment["state"] = "LIVE"): L2Segment {
+  return { id: `fake:${startTs}:${state}`, state };
+}
+
+const DEFAULT_SEGMENT = segmentOf(0);
+
+function statusOf(script: FakeL2Script, channel: L2Channel): L2ChannelStatus {
+  const synced = script.synced?.[channel] ?? true;
+  return Object.freeze({
+    synced,
+    seq: synced ? (script.seq ?? 1) : null,
+    lastTs: script.lastTs ?? null,
+    lastFrameAt: script.lastFrameAt ?? script.lastTs ?? null,
+  });
+}
+
+function segmentOfScript(script: FakeL2Script): L2Segment | null {
+  return script.segment === undefined ? DEFAULT_SEGMENT : script.segment;
+}
+
+/** `L2Store.trusted()` then `indicatorL2Of(...).trusted(ts)`: LIVE segment, trust channels synced, and `ts` not before the segment began. */
+function trustedAt(script: FakeL2Script, ts: number | undefined): boolean {
+  if (script.trusted === false) return false;
+  const segment = segmentOfScript(script);
+  if (segment === null || segment.state !== "LIVE") return false;
+  if (!TRUST_CHANNELS.every((channel) => statusOf(script, channel).synced)) return false;
+  if (ts === undefined) return true;
+  const start = segmentStartTs(segment);
+  return start !== null && ts >= start;
+}
+
+function sortedEvents(events: readonly L2Event[] | undefined): readonly L2Event[] | undefined {
+  return events === undefined ? undefined : [...events].sort((a, b) => a.ts - b.ts);
+}
+
+function sortedSnapshots(snapshots: readonly WallSnapshot[] | undefined): readonly WallSnapshot[] | undefined {
+  return snapshots === undefined ? undefined : [...snapshots].sort((a, b) => a.ts - b.ts);
+}
+
+/**
+ * The wall as it stood at `cut`: the newest snapshot at or before the cut, or
+ * else the wall reconstructed from its events through the cut (born size as
+ * size and peak, `wall_trade` sizes as `eaten`), or else the scripted record
+ * served as freshly born. A wall that ended at or before the cut is history
+ * and is served as its final record.
+ */
+function wallAt(wall: L2Wall, cut: number, snapshots: readonly WallSnapshot[], events: readonly L2Event[]): L2Wall | null {
+  if (wall.startTs > cut) return null;
+  if (wall.endTs !== null && wall.endTs <= cut) return wall;
+  let snapshot: WallSnapshot | null = null;
+  for (const candidate of snapshots) {
+    if (candidate.wall.id === wall.id && candidate.ts <= cut && (snapshot === null || candidate.ts >= snapshot.ts)) snapshot = candidate;
+  }
+  if (snapshot !== null) return { ...snapshot.wall, endTs: null, endedBy: null };
+  let bornSize: number | null = null;
+  let eaten = 0;
+  for (const event of events) {
+    if (event.ts > cut) break;
+    if (event.kind === "wall_born" && event.wall === wall.id) bornSize = event.size;
+    if (event.kind === "wall_trade" && event.wall === wall.id) eaten += event.size;
+  }
+  const peak = bornSize ?? wall.size;
+  return {
+    ...wall,
+    size: Math.max(0, peak - eaten),
+    peak,
+    eaten,
+    fill: peak > 0 ? eaten / peak : 0,
+    absorbing: false,
+    endTs: null,
+    endedBy: null,
+    detail: null,
+  };
+}
+
+export function fakeL2(initial: FakeL2Script = {}): FakeL2 {
+  const script: FakeL2Script = { ...initial, events: sortedEvents(initial.events), wallSnapshots: sortedSnapshots(initial.wallSnapshots) };
+  let version = initial.version ?? 1;
+
+  const ladderAt = (cut: number | null): L2Ladder | null => {
+    let best: L2Ladder | null = null;
+    for (const ladder of [...(script.ladders ?? []), ...(script.ladder ? [script.ladder] : [])]) {
+      if (cut !== null && ladder.ts > cut) continue;
+      if (best === null || ladder.ts > best.ts) best = ladder;
+    }
+    // Uncut, the current ladder is what the store holds now, whatever its stamp.
+    if (cut === null && script.ladder) return script.ladder;
+    return best;
+  };
+
+  const build = (cut: number | null): FakeL2 => {
+    const allEvents = (): readonly L2Event[] => script.events ?? [];
+    const events = (): readonly L2Event[] => {
+      const all = allEvents();
+      return cut === null ? all : all.filter((event) => event.ts <= cut);
+    };
+    const walls = (): readonly L2Wall[] => {
+      const all = script.walls ?? [];
+      if (cut === null) return all;
+      const snapshots = script.wallSnapshots ?? [];
+      const seen = events();
+      return all.map((wall) => wallAt(wall, cut, snapshots, seen)).filter((wall): wall is L2Wall => wall !== null);
+    };
+    const since = (sinceSeq: number | undefined): L2EventSlice => {
+      const synced = script.synced?.l2_events ?? true;
+      const all = allEvents();
+      const visible = events();
+      if (!synced && script.eventSeq === undefined && all.length === 0) return EMPTY_SLICE;
+      const fullSeq = script.eventSeq ?? all.length;
+      const oldestExact = fullSeq - all.length;
+      const seq = oldestExact + visible.length;
+      const resetSeq = script.eventResetSeq ?? oldestExact;
+      const missed = script.missedEvents ?? 0;
+      const missedThrough = script.missedThroughSeq === undefined ? (missed > 0 ? seq : null) : script.missedThroughSeq;
+      const exact = sinceSeq !== undefined && sinceSeq >= resetSeq && sinceSeq >= oldestExact && sinceSeq <= seq;
+      const slice = exact ? visible.slice(visible.length - (seq - sinceSeq!)) : visible.slice();
+      const afterReportedLoss = missedThrough === null || (sinceSeq !== undefined && sinceSeq > missedThrough);
+      return Object.freeze({ seq, events: Object.freeze(slice), missed, complete: exact && synced && afterReportedLoss });
+    };
+    const fake: FakeL2 = {
+      get availability() {
+        return script.availability ?? "LIVE";
+      },
+      get version() {
+        return version;
+      },
+      get script() {
+        return script;
+      },
+      status: (channel) => statusOf(script, channel),
+      segment: () => segmentOfScript(script),
+      trusted: (ts) => trustedAt(script, ts),
+      lanes: () => script.lanes ?? [],
+      view: () => null,
+      laneFor: (lo, hi) => {
+        const known = script.lanes ?? [];
+        for (const lane of known) if (lane.priceLo <= Math.min(lo, hi) && lane.priceHi >= Math.max(lo, hi)) return lane.lane;
+        return 0;
+      },
+      walls: (lane = 0) => walls().filter((wall) => wall.lane === lane),
+      wall: (id) => walls().find((wall) => wall.id === id) ?? null,
+      events: since,
+      ladder: () => ladderAt(cut),
+      wallHistory: () => Promise.resolve(null),
+      eventHistory: () => Promise.resolve(null),
+      hostWalls: null,
+      notionalMultiplier: script.notionalMultiplier,
+      atTime: (timeMs) => build(timeMs),
+      patch(next) {
+        Object.assign(
+          script,
+          next,
+          next.events === undefined ? {} : { events: sortedEvents(next.events) },
+          next.wallSnapshots === undefined ? {} : { wallSnapshots: sortedSnapshots(next.wallSnapshots) },
+        );
+        version += 1;
+      },
+    };
+    return fake;
+  };
+  return build(null);
+}
+
+/** Every channel unsynced and no segment yet: the engine has not sent a frame. */
+export function fakeL2Unsynced(): FakeL2 {
+  return fakeL2({ synced: Object.fromEntries(ALL_CHANNELS.map((channel) => [channel, false])), segment: null });
+}
+
+/** A ladder of `levels` per side around `mid`, each `step` apart, `size` on every level. */
+export function ladderOf(mid: number, levels: number, step: number, size: number, ts = 0): L2Ladder {
+  const bids: [number, number][] = [];
+  const asks: [number, number][] = [];
+  for (let level = 1; level <= levels; level += 1) {
+    bids.push([Math.round((mid - level * step) * 100) / 100, size]);
+    asks.push([Math.round((mid + level * step) * 100) / 100, size]);
+  }
+  return { ts, depth: levels, bids, asks };
+}
+
+/** A ladder with one level inflated to `wallSize`: a resting wall at `wallPrice`. */
+export function ladderWithWall(base: L2Ladder, side: "bid" | "ask", wallPrice: number, wallSize: number): L2Ladder {
+  const bump = (levels: ReadonlyArray<readonly [number, number]>) => levels.map(([price, size]) => (price === wallPrice ? ([price, wallSize] as const) : ([price, size] as const)));
+  return { ...base, bids: side === "bid" ? bump(base.bids) : base.bids, asks: side === "ask" ? bump(base.asks) : base.asks };
+}
+
+export interface WallSpec {
+  id: number;
+  side: "bid" | "ask";
+  row: number;
+  size: number;
+  startTs: number;
+  endTs?: number | null;
+  endedBy?: L2WallVerdict | null;
+  lane?: number;
+  span?: number;
+  peak?: number;
+  ratio?: number;
+  fill?: number;
+  eaten?: number;
+  absorbing?: boolean;
+}
+
+export function wallOf(spec: WallSpec): L2Wall {
+  return {
+    id: spec.id,
+    lane: spec.lane ?? 0,
+    side: spec.side,
+    row: spec.row,
+    span: spec.span ?? 1,
+    startTs: spec.startTs,
+    endTs: spec.endTs ?? null,
+    size: spec.size,
+    peak: spec.peak ?? spec.size,
+    endedBy: spec.endTs === undefined || spec.endTs === null ? null : (spec.endedBy ?? "pulled"),
+    ratio: spec.ratio ?? 5,
+    chain: 0,
+    fill: spec.fill ?? 0,
+    eaten: spec.eaten ?? 0,
+    absorbing: spec.absorbing ?? false,
+    detail: null,
+  };
+}
+
+export interface WallLifecycleSpec extends WallSpec {
+  shrinkTs?: number;
+  tradeTs?: number;
+  tradedSize?: number;
+  tradePrice?: number;
+}
+
+/**
+ * A wall's whole story: the final record, the event stream that tells it
+ * (born, shrunk, traded, ended) and the snapshots a cut view serves, one per
+ * event, with `size`, `eaten` and `fill` as they stood after that event.
+ */
+export function wallLifecycle(spec: WallLifecycleSpec): { wall: L2Wall; events: L2Event[]; snapshots: WallSnapshot[] } {
+  const traded = spec.tradeTs === undefined ? 0 : (spec.tradedSize ?? spec.size / 2);
+  const ended = spec.endTs !== undefined && spec.endTs !== null;
+  const wall: L2Wall = {
+    ...wallOf(spec),
+    peak: spec.peak ?? spec.size,
+    size: spec.size - traded,
+    eaten: traded,
+    fill: spec.size > 0 ? traded / spec.size : 0,
+    absorbing: spec.absorbing ?? traded > 0,
+  };
+  const born: L2Wall = { ...wall, size: spec.size, eaten: 0, fill: 0, absorbing: false, endTs: null, endedBy: null };
+  const events: L2Event[] = [{ kind: "wall_born", ts: spec.startTs, wall: spec.id, side: spec.side, row: spec.row, span: wall.span, size: spec.size }];
+  const snapshots: WallSnapshot[] = [{ ts: spec.startTs, wall: born }];
+  if (spec.shrinkTs !== undefined) {
+    events.push({ kind: "wall_shrink", ts: spec.shrinkTs, wall: spec.id, exact: true, reached: false });
+    snapshots.push({ ts: spec.shrinkTs, wall: born });
+  }
+  if (spec.tradeTs !== undefined) {
+    events.push({ kind: "wall_trade", ts: spec.tradeTs, wall: spec.id, mode: "absorbed", price: spec.tradePrice ?? spec.row, size: traded });
+    snapshots.push({ ts: spec.tradeTs, wall: { ...wall, endTs: null, endedBy: null } });
+  }
+  if (ended) {
+    events.push({ kind: "wall_end", ts: spec.endTs!, wall: spec.id, endedBy: wall.endedBy ?? "pulled", distanceRows: 1 });
+    snapshots.push({ ts: spec.endTs!, wall });
+  }
+  events.sort((a, b) => a.ts - b.ts);
+  snapshots.sort((a, b) => a.ts - b.ts);
+  return { wall, events, snapshots };
+}
+
+/** A plain trade event (not against a wall) for the event stream. */
+export function tradeEvent(ts: number, aggressor: "buy" | "sell", price: number, size: number, late = false): L2Event {
+  return { kind: "trade", ts, side: aggressor === "buy" ? "ask" : "bid", aggressor, mode: "swept", price, size, late };
+}
+
+exec
+/bin/bash -lc "rg -n 'absorbing|ABSORB|lastTrade' apps/web/src/lib -g '*tracker*'; rg -n 'liquidity:|atTime|makeCtx' apps/web/src/lib/chart/indicatorRuntime.ts; rg --files | rg 'AGENTS|large-level-tracker|validation/.*(md|json)"'$|package.json$'"'" in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+54:  liquidity: IndicatorLiquidity | null;
+80:    liquidity: IndicatorLiquidity | null,
+137:function makeCtx(
+155:    liquidity: (record.liquidity?.atTime
+156:      ? record.liquidity.atTime(bar.ts_open + bar.interval_ms)
+158:    l2: record.l2?.atTime?.(bar.ts_open + bar.interval_ms) ?? record.l2 ?? undefined,
+409:    if (!runOnBar(record, makeCtx(record, bar, false, true, index >= lastClosed, index, replayBars.length))) return;
+510:  let liquidity: IndicatorLiquidity | null = null;
+531:      if (!runOnBar(record, makeCtx(record, bar, true, false, true, bars.length - 1, bars.length))) continue;
+672:            makeCtx(record, bar, false, false, true, bars.length - 1, bars.length, tradesForBar, tradeAvailability),
+689:          makeCtx(record, bar, true, false, true, bars.length - 1, bars.length, tradesForBar, tradeAvailability),
+package.json
+apps/runtime/package.json
+apps/web/package.json
+apps/runtime/src/indicators/passive_liquidity/large-level-tracker.js
+apps/runtime/test/indicators/passive_liquidity/large-level-tracker.test.js
+
+exec
+/bin/bash -lc "git show worktree-agent-a4b44f3b34041fdf7:apps/web/src/lib/chart/validation/fakeL2.ts | nl -ba | sed -n '100,185p;320,375p'; rg -n 'absorbing|lastTrade|5000|5_000|0.5' apps/runtime/src/indicators/passive_liquidity/large-level-tracker.js; cat apps/web/src/lib/l2/types.ts | sed -n '1,230p'; git worktree list" in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+   100	
+   101	function sortedSnapshots(snapshots: readonly WallSnapshot[] | undefined): readonly WallSnapshot[] | undefined {
+   102	  return snapshots === undefined ? undefined : [...snapshots].sort((a, b) => a.ts - b.ts);
+   103	}
+   104	
+   105	/** The runtime's absorption rule (`large-level-tracker.js`): traded into within this window and still holding this share of its peak. */
+   106	export const ABSORB_WINDOW_MS = 5_000;
+   107	export const ABSORB_HOLD_SHARE = 0.5;
+   108	
+   109	/**
+   110	 * `absorbing` as the runtime decides it: the wall is resting (not ended), its
+   111	 * last trade landed within `ABSORB_WINDOW_MS` of `nowTs`, and it still holds at
+   112	 * least `ABSORB_HOLD_SHARE` of its peak. The trade's mode does not enter the
+   113	 * runtime's rule; a swept trade that leaves the wall standing counts the same.
+   114	 */
+   115	export function absorbingAt(wall: Pick<L2Wall, "size" | "peak" | "endTs">, lastTradeTs: number | null, nowTs: number): boolean {
+   116	  return wall.endTs === null && lastTradeTs !== null && nowTs - lastTradeTs <= ABSORB_WINDOW_MS && wall.size >= wall.peak * ABSORB_HOLD_SHARE;
+   117	}
+   118	
+   119	/**
+   120	 * The wall as it stood at `cut`. A wall that ended at or before the cut is
+   121	 * history and is served as its final record. A live wall is the newest
+   122	 * snapshot at or before the cut, or else is rebuilt from its events through
+   123	 * the cut (born size as size and peak, `wall_trade` sizes as `eaten`,
+   124	 * `absorbing` by the runtime's rule at the cut). With neither a snapshot nor a
+   125	 * birth record there is nothing honest to serve, so the wall is omitted: the
+   126	 * final record's `size` and `peak` are future knowledge under a cut.
+   127	 */
+   128	function wallAt(wall: L2Wall, cut: number, snapshots: readonly WallSnapshot[], events: readonly L2Event[]): L2Wall | null {
+   129	  if (wall.startTs > cut) return null;
+   130	  if (wall.endTs !== null && wall.endTs <= cut) return wall;
+   131	  let snapshot: WallSnapshot | null = null;
+   132	  for (const candidate of snapshots) {
+   133	    if (candidate.wall.id === wall.id && candidate.ts <= cut && (snapshot === null || candidate.ts >= snapshot.ts)) snapshot = candidate;
+   134	  }
+   135	  let bornSize: number | null = null;
+   136	  let eaten = 0;
+   137	  let lastTradeTs: number | null = null;
+   138	  let anyTradeEvent = false;
+   139	  for (const event of events) {
+   140	    if (event.ts > cut) break;
+   141	    if (event.kind === "wall_born" && event.wall === wall.id) bornSize = event.size;
+   142	    if (event.kind === "wall_trade" && event.wall === wall.id) {
+   143	      eaten += event.size;
+   144	      lastTradeTs = event.ts;
+   145	      anyTradeEvent = true;
+   146	    }
+   147	  }
+   148	  if (snapshot !== null) {
+   149	    const stood: L2Wall = { ...snapshot.wall, endTs: null, endedBy: null };
+   150	    // `absorbing` decays with time, so a snapshot's flag holds only at its own
+   151	    // instant; later, when the events say when the wall was last traded into,
+   152	    // the runtime's rule is re-evaluated at the cut on the snapshot's size and peak.
+   153	    if (cut === snapshot.ts || !anyTradeEvent) return stood;
+   154	    return { ...stood, absorbing: absorbingAt(stood, lastTradeTs, cut) };
+   155	  }
+   156	  if (bornSize === null) return null;
+   157	  const rebuilt = {
+   158	    ...wall,
+   159	    size: Math.max(0, bornSize - eaten),
+   160	    peak: bornSize,
+   161	    eaten,
+   162	    fill: bornSize > 0 ? eaten / bornSize : 0,
+   163	    endTs: null,
+   164	    endedBy: null,
+   165	    detail: null,
+   166	  };
+   167	  return { ...rebuilt, absorbing: absorbingAt(rebuilt, lastTradeTs, cut) };
+   168	}
+   169	
+   170	export function fakeL2(initial: FakeL2Script = {}): FakeL2 {
+   171	  const script: FakeL2Script = { ...initial, events: sortedEvents(initial.events), wallSnapshots: sortedSnapshots(initial.wallSnapshots) };
+   172	  let version = initial.version ?? 1;
+   173	
+   174	  const ladderAt = (cut: number | null): L2Ladder | null => {
+   175	    let best: L2Ladder | null = null;
+   176	    for (const ladder of [...(script.ladders ?? []), ...(script.ladder ? [script.ladder] : [])]) {
+   177	      if (cut !== null && ladder.ts > cut) continue;
+   178	      if (best === null || ladder.ts > best.ts) best = ladder;
+   179	    }
+   180	    // Uncut, the current ladder is what the store holds now, whatever its stamp.
+   181	    if (cut === null && script.ladder) return script.ladder;
+   182	    return best;
+   183	  };
+   184	
+   185	  const build = (cut: number | null): FakeL2 => {
+   320	  tradeTs?: number;
+   321	  tradedSize?: number;
+   322	  tradePrice?: number;
+   323	}
+   324	
+   325	/**
+   326	 * A wall's whole story: the final record, the event stream that tells it
+   327	 * (born, shrunk, traded, ended) and the snapshots a cut view serves, one per
+   328	 * event, with `size`, `eaten`, `fill` and `absorbing` as they stood right
+   329	 * after that event. `absorbing` follows the runtime's rule (`absorbingAt`), so
+   330	 * a snapshot-backed view and an event-backed view of the same lifecycle agree;
+   331	 * the final record is taken as of the last event (`spec.absorbing` overrides it).
+   332	 */
+   333	export function wallLifecycle(spec: WallLifecycleSpec): { wall: L2Wall; events: L2Event[]; snapshots: WallSnapshot[] } {
+   334	  const traded = spec.tradeTs === undefined ? 0 : (spec.tradedSize ?? spec.size / 2);
+   335	  const ended = spec.endTs !== undefined && spec.endTs !== null;
+   336	  const lastTs = Math.max(spec.startTs, spec.shrinkTs ?? -Infinity, spec.tradeTs ?? -Infinity, ended ? spec.endTs! : -Infinity);
+   337	  const base: L2Wall = { ...wallOf(spec), peak: spec.peak ?? spec.size };
+   338	  const afterTrade: L2Wall = { ...base, size: spec.size - traded, eaten: traded, fill: spec.size > 0 ? traded / spec.size : 0, endTs: null, endedBy: null };
+   339	  const wall: L2Wall = {
+   340	    ...afterTrade,
+   341	    endTs: base.endTs,
+   342	    endedBy: base.endedBy,
+   343	    absorbing: spec.absorbing ?? absorbingAt({ ...afterTrade, endTs: base.endTs }, spec.tradeTs ?? null, lastTs),
+   344	  };
+   345	  const born: L2Wall = { ...base, size: spec.size, eaten: 0, fill: 0, absorbing: false, endTs: null, endedBy: null };
+   346	  const events: L2Event[] = [{ kind: "wall_born", ts: spec.startTs, wall: spec.id, side: spec.side, row: spec.row, span: wall.span, size: spec.size }];
+   347	  const snapshots: WallSnapshot[] = [{ ts: spec.startTs, wall: born }];
+   348	  if (spec.shrinkTs !== undefined) {
+   349	    events.push({ kind: "wall_shrink", ts: spec.shrinkTs, wall: spec.id, exact: true, reached: false });
+   350	    snapshots.push({ ts: spec.shrinkTs, wall: born });
+   351	  }
+   352	  if (spec.tradeTs !== undefined) {
+   353	    events.push({ kind: "wall_trade", ts: spec.tradeTs, wall: spec.id, mode: "absorbed", price: spec.tradePrice ?? spec.row, size: traded });
+   354	    snapshots.push({ ts: spec.tradeTs, wall: { ...afterTrade, absorbing: absorbingAt(afterTrade, spec.tradeTs, spec.tradeTs) } });
+   355	  }
+   356	  if (ended) {
+   357	    events.push({ kind: "wall_end", ts: spec.endTs!, wall: spec.id, endedBy: wall.endedBy ?? "pulled", distanceRows: 1 });
+   358	    snapshots.push({ ts: spec.endTs!, wall });
+   359	  }
+   360	  events.sort((a, b) => a.ts - b.ts);
+   361	  snapshots.sort((a, b) => a.ts - b.ts);
+   362	  return { wall, events, snapshots };
+   363	}
+   364	
+   365	/** A plain trade event (not against a wall) for the event stream. */
+   366	export function tradeEvent(ts: number, aggressor: "buy" | "sell", price: number, size: number, late = false): L2Event {
+   367	  return { kind: "trade", ts, side: aggressor === "buy" ? "ask" : "bid", aggressor, mode: "swept", price, size, late };
+   368	}
+48:const END_RATIO = 0.5;
+57:const FILLED_SHARE = 0.5;
+64:const FILLED_OF_PEAK = 0.5;
+70:const DEFAULT_SETTLE_MS = 5_000;
+71:// A resting wall is "absorbing" while trades keep landing on its rows and it
+73:const ABSORB_WINDOW_MS = 5_000;
+74:const ABSORB_HOLD_SHARE = 0.5;
+90:const RELINK_MS = 15_000;
+285:    level.absorbing = false;
+346:      if (drop.lastTradeTs !== null && (keep.lastTradeTs === null || drop.lastTradeTs > keep.lastTradeTs)) keep.lastTradeTs = drop.lastTradeTs;
+452:          leftTs: null, tradedSeen: 0, lastTradeTs: null, fill: 0, absorbing: false,
+468:          level.lastTradeTs = ts;
+478:        const absorbing = level.leftTs === null && level.lastTradeTs !== null && ts - level.lastTradeTs <= ABSORB_WINDOW_MS && level.size >= level.peak * ABSORB_HOLD_SHARE;
+479:        if (absorbing !== level.absorbing) {
+480:          level.absorbing = absorbing;
+525:        absorbing: level.absorbing,
+574:        lastTradeTs: null,
+576:        absorbing: false,
+import type { L2Channel, L2EventWire, L2SegmentState, L2WallDetailWire, L2WallVerdict, L2WallWire } from "../../types/frames";
+
+export type { L2Channel, L2SegmentState, L2WallVerdict };
+
+export interface L2Segment {
+  readonly id: string;
+  readonly state: L2SegmentState;
+}
+
+export interface L2WallDetail {
+  readonly lifeMs: number | null;
+  readonly firstShrinkTs: number | null;
+  readonly firstShrinkExact: boolean;
+  readonly reachedAtFirstShrink: boolean | null;
+  readonly traded: number;
+  readonly absorbed: number;
+  readonly swept: number;
+  readonly hidden: number;
+  readonly cleared: number;
+  readonly fillRatio: number;
+  readonly crossSide: number;
+  readonly crossSideShare: number;
+  readonly endDistanceRows: number | null;
+  readonly endDistancePct: number | null;
+  readonly clearedByTrades: boolean;
+  readonly continuityGapMs: number | null;
+  readonly repeats: number;
+  readonly repeatsComplete: boolean;
+  readonly evidenceGap: boolean;
+}
+
+export interface L2Wall {
+  readonly id: number;
+  readonly lane: number;
+  readonly side: "bid" | "ask";
+  readonly row: number;
+  readonly span: number;
+  readonly startTs: number;
+  readonly endTs: number | null;
+  readonly size: number;
+  readonly peak: number;
+  readonly endedBy: L2WallVerdict | null;
+  readonly ratio: number;
+  readonly chain: number;
+  readonly fill: number;
+  readonly eaten: number;
+  readonly absorbing: boolean;
+  readonly detail: L2WallDetail | null;
+}
+
+export type L2Event =
+  | { readonly kind: "wall_born"; readonly ts: number; readonly wall: number; readonly side: "bid" | "ask"; readonly row: number; readonly span: number; readonly size: number }
+  | { readonly kind: "wall_shrink"; readonly ts: number; readonly wall: number; readonly exact: boolean; readonly reached: boolean | null }
+  | { readonly kind: "wall_trade"; readonly ts: number; readonly wall: number; readonly mode: "absorbed" | "swept"; readonly price: number; readonly size: number }
+  | { readonly kind: "wall_hidden"; readonly ts: number; readonly wall: number; readonly volume: number }
+  | { readonly kind: "wall_end"; readonly ts: number; readonly wall: number; readonly endedBy: L2WallVerdict; readonly distanceRows: number | null }
+  | { readonly kind: "trade"; readonly ts: number; readonly side: "bid" | "ask"; readonly aggressor: "buy" | "sell"; readonly mode: "absorbed" | "swept"; readonly price: number; readonly size: number; readonly late: boolean }
+  | { readonly kind: "hidden"; readonly ts: number; readonly side: "bid" | "ask"; readonly price: number; readonly volume: number }
+  | { readonly kind: "segment"; readonly ts: number; readonly segment: string; readonly state: L2SegmentState; readonly cause: string | null };
+
+export interface L2Ladder {
+  readonly ts: number;
+  readonly depth: number;
+  readonly bids: ReadonlyArray<readonly [price: number, size: number]>;
+  readonly asks: ReadonlyArray<readonly [price: number, size: number]>;
+}
+
+export interface L2LaneInfo {
+  readonly lane: number;
+  readonly rowWidth: number;
+  readonly columnMs: number;
+  readonly deepColumnMs: number;
+  readonly priceLo: number;
+  readonly priceHi: number;
+}
+
+export interface L2ChannelStatus {
+  readonly synced: boolean;
+  readonly seq: number | null;
+  readonly lastTs: number | null;
+  readonly lastFrameAt: number | null;
+}
+
+export type ApplyOutcome = "applied" | "duplicate" | "gap";
+
+function detailOf(wire: L2WallDetailWire | null): L2WallDetail | null {
+  if (wire === null) return null;
+  return Object.freeze({
+    lifeMs: wire.life_ms,
+    firstShrinkTs: wire.first_shrink_ts,
+    firstShrinkExact: wire.first_shrink_exact,
+    reachedAtFirstShrink: wire.reached_at_first_shrink,
+    traded: wire.traded,
+    absorbed: wire.absorbed,
+    swept: wire.swept,
+    hidden: wire.hidden,
+    cleared: wire.cleared,
+    fillRatio: wire.fill_ratio,
+    crossSide: wire.cross_side,
+    crossSideShare: wire.cross_side_share,
+    endDistanceRows: wire.end_distance_rows,
+    endDistancePct: wire.end_distance_pct,
+    clearedByTrades: wire.cleared_by_trades,
+    continuityGapMs: wire.continuity === null ? null : wire.continuity.gap_ms,
+    repeats: wire.repeats,
+    repeatsComplete: wire.repeats_complete,
+    evidenceGap: wire.evidence_gap,
+  });
+}
+
+export function wallOf(wire: L2WallWire): L2Wall {
+  return Object.freeze({
+    id: wire.id,
+    lane: wire.lane ?? 0,
+    side: wire.side,
+    row: wire.row,
+    span: wire.span,
+    startTs: wire.start_ts,
+    endTs: wire.end_ts,
+    size: wire.size,
+    peak: wire.peak,
+    endedBy: wire.ended_by,
+    ratio: wire.ratio,
+    chain: wire.chain,
+    fill: wire.fill,
+    eaten: wire.eaten,
+    absorbing: wire.absorbing,
+    detail: detailOf(wire.detail),
+  });
+}
+
+export function eventOf(wire: L2EventWire): L2Event {
+  switch (wire.event) {
+    case "wall_born":
+      return Object.freeze({ kind: "wall_born", ts: wire.ts, wall: wire.wall, side: wire.side, row: wire.row, span: wire.span, size: wire.size });
+    case "wall_shrink":
+      return Object.freeze({ kind: "wall_shrink", ts: wire.ts, wall: wire.wall, exact: wire.exact, reached: wire.reached });
+    case "wall_trade":
+      return Object.freeze({ kind: "wall_trade", ts: wire.ts, wall: wire.wall, mode: wire.mode, price: wire.price, size: wire.size });
+    case "wall_hidden":
+      return Object.freeze({ kind: "wall_hidden", ts: wire.ts, wall: wire.wall, volume: wire.volume });
+    case "wall_end":
+      return Object.freeze({ kind: "wall_end", ts: wire.ts, wall: wire.wall, endedBy: wire.ended_by, distanceRows: wire.distance_rows });
+    case "trade":
+      return Object.freeze({ kind: "trade", ts: wire.ts, side: wire.side, aggressor: wire.aggressor, mode: wire.mode, price: wire.price, size: wire.size, late: wire.late });
+    case "hidden":
+      return Object.freeze({ kind: "hidden", ts: wire.ts, side: wire.side, price: wire.price, volume: wire.volume });
+    default:
+      return Object.freeze({ kind: "segment", ts: wire.ts, segment: wire.segment, state: wire.state, cause: wire.cause });
+  }
+}
+/home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk                                            ab13676 [main]
+/home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk/.claude/worktrees/agent-a4b44f3b34041fdf7  54d39cd [worktree-agent-a4b44f3b34041fdf7]
+/home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk/.claude/worktrees/agent-aa4a6294e0f5e7448  3f09b78 [worktree-agent-aa4a6294e0f5e7448]
+/home/user/Terminal-L1-L2/worktrees/relative-volume                                                           ab13676 [build/relative-volume]
+
+exec
+/bin/bash -lc "rg -n 'brief|wallLifecycle|fakeL2|pooled' apps/web/src/lib/chart/validation -g '*.md'; sed -n '270,420p' apps/web/src/lib/chart/validation/perfProbe.ts; sed -n '1,165p' apps/web/src/lib/chart/validation/tests/fakeL2.test.ts; ls node_modules/.bin/vitest" in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+  const before = heapUsed();
+  const random = seeded(13);
+  let last = seed[seed.length - 1];
+  for (let index = 0; index < extraBars; index += 1) {
+    const bar = rolloverBar(last, random);
+    session.dispatch({ bar });
+    last = bar;
+  }
+  const heap = heapReading(before);
+  const capture = session.capture();
+  const oldest = session.bars[0]?.ts_open ?? -Infinity;
+  const outputLengths: Record<string, number> = {};
+  for (const [key, values] of Object.entries(capture.outputs)) outputLengths[key] = values.length;
+  const result: RolloverProbe = {
+    id: def.id,
+    retainedBars: session.bars.length,
+    discarded: session.discarded,
+    outputLengths,
+    markersRetained: capture.markers.length,
+    markersBeforeRetention: capture.markers.filter((call) => call.time < oldest).length,
+    onBar: percentilesOf(samples),
+    heap,
+    bytesPerExtraBar: extraBars === 0 ? 0 : heap.deltaBytes / extraBars,
+    faulted: capture.faulted,
+  };
+  session.close();
+  return result;
+}
+
+export interface PooledReplayOptions {
+  /** Untimed replays before measuring (default 3). */
+  warmupRuns?: number;
+  /** Timed replays whose per-bar samples are pooled (default 5). */
+  timedRuns?: number;
+  extras?: LiveExtras;
+}
+
+export interface PooledReplayProbe {
+  id: string;
+  bars: number;
+  warmupRuns: number;
+  timedRuns: number;
+  /** Per-bar `onBar` plus `readOutput` over every timed run, pooled; percentiles by nearest rank. */
+  pooled: Percentiles;
+  /** Each timed run on its own, for the spread. */
+  perRun: Percentiles[];
+  /** Wall time of each timed run, ms. */
+  runWallMs: number[];
+  faulted: boolean;
+}
+
+const NOOP_DRAW = Object.freeze({ fill: () => {} });
+const NOOP_MARKERS = Object.freeze({ plotshape: () => {}, plotchar: () => {} });
+const EMPTY_TA = Object.freeze({});
+let nextPooledOwnerId = 1;
+
+/**
+ * The frozen measurement of `PM/cycle1/brief-rvol-clock.md` (amendment 9):
+ * `warmupRuns` untimed replays, then `timedRuns` timed replays over `bars`,
+ * timing `onBar` plus `readOutput` per bar with no-op draw and marker
+ * namespaces (drawing excluded), samples pooled across runs, p99 by nearest
+ * rank. It bypasses the runtime's own bookkeeping so the number is the
+ * indicator's alone; `probeReplay` stays the measurement of a real activation.
+ */
+export function probeReplayPooled<S, T>(def: RuntimeIndicatorDef<S, T>, bars: readonly BarFrame[], settings: T, options: PooledReplayOptions = {}): PooledReplayProbe {
+  const warmupRuns = options.warmupRuns ?? 3;
+  const timedRuns = options.timedRuns ?? 5;
+  const extras = options.extras ?? {};
+  const pooled: number[] = [];
+  const perRun: Percentiles[] = [];
+  const runWallMs: number[] = [];
+  let faulted = false;
+  const lastClosed = bars.findLastIndex((bar) => bar.closed);
+  const run = (timed: boolean): void => {
+    const ownerId = `pooled:${nextPooledOwnerId}:${def.id}`;
+    nextPooledOwnerId += 1;
+    const samples: number[] = [];
+    try {
+      const state = withDrawOwnerScope(ownerId, () => def.createState(settings));
+      const runStarted = performance.now();
+      for (let index = 0; index < bars.length; index += 1) {
+        const bar = bars[index];
+        const ctx: IndicatorBarCtx<S, T> = {
+          bar,
+          trades: [],
+          tradeAvailability: "HISTORICAL_UNAVAILABLE",
+          liquidity: extras.liquidity ?? undefined,
+          l2: extras.l2?.atTime?.(bar.ts_open + bar.interval_ms) ?? extras.l2 ?? undefined,
+          ticks: extras.ticks ?? undefined,
+          state,
+          settings,
+          replace: false,
+          replaying: true,
+          drawNow: index >= lastClosed,
+          barIndex: index,
+          barCount: bars.length,
+          ta: EMPTY_TA,
+          draw: NOOP_DRAW,
+          markers: NOOP_MARKERS,
+          pane: { paneIndex: 0 },
+        };
+        const started = performance.now();
+        def.onBar(ctx);
+        const output = def.readOutput(state);
+        const elapsed = performance.now() - started;
+        if (timed) samples.push(elapsed);
+        for (const value of Object.values(output)) if (value !== null && !Number.isFinite(value)) faulted = true;
+      }
+      if (timed) {
+        runWallMs.push(performance.now() - runStarted);
+        perRun.push(percentilesOf(samples));
+        pooled.push(...samples);
+      }
+    } catch {
+      faulted = true;
+    } finally {
+      clearForIndicator(ownerId);
+    }
+  };
+  for (let index = 0; index < warmupRuns; index += 1) run(false);
+  for (let index = 0; index < timedRuns; index += 1) run(true);
+  return { id: def.id, bars: bars.length, warmupRuns, timedRuns, pooled: percentilesOf(pooled), perRun, runWallMs, faulted };
+}
+
+export function formatPooledReplayProbe(probe: PooledReplayProbe): string {
+  return `${probe.id} pooled replay ${probe.bars} bars x ${probe.timedRuns} after ${probe.warmupRuns} warm-ups: onBar+readOutput p50 ${ms(probe.pooled.p50)} p99 ${ms(probe.pooled.p99)} max ${ms(probe.pooled.max)}; run p99s ${probe.perRun.map((run) => run.p99.toFixed(4)).join("/")} ms; run wall ${probe.runWallMs.map((wall) => wall.toFixed(0)).join("/")} ms${probe.faulted ? "; FAULTED" : ""}`;
+}
+
+function ms(value: number): string {
+  return `${value.toFixed(3)} ms`;
+}
+
+function mb(bytes: number): string {
+  return `${(bytes / 1_048_576).toFixed(2)} MB`;
+}
+
+export function formatReplayProbe(probe: ReplayProbe): string {
+  return `${probe.id} replay ${probe.bars} bars: onBar p50 ${ms(probe.onBar.p50)} p99 ${ms(probe.onBar.p99)} max ${ms(probe.onBar.max)}; wall ${probe.wallMs.toFixed(0)} ms; heap delta ${mb(probe.heap.deltaBytes)}${probe.heap.gcExposed ? "" : " (gc not exposed)"}${probe.faulted ? "; FAULTED" : ""}`;
+}
+
+export function formatFormingBarProbe(probe: FormingBarProbe): string {
+  return `${probe.id} forming bar ${probe.revisions} revisions, ${probe.prints} prints: onBar p50 ${ms(probe.onBar.p50)} p99 ${ms(probe.onBar.p99)} max ${ms(probe.onBar.max)}; wall ${probe.wallMs.toFixed(0)} ms; heap delta ${mb(probe.heap.deltaBytes)}${probe.heap.gcExposed ? "" : " (gc not exposed)"}${probe.faulted ? "; FAULTED" : ""}`;
+}
+
+export function formatRolloverProbe(probe: RolloverProbe): string {
+  return `${probe.id} rollover +${probe.discarded} bars: retained ${probe.retainedBars}, outputs ${JSON.stringify(probe.outputLengths)}, markers ${probe.markersRetained} (${probe.markersBeforeRetention} stale); onBar p50 ${ms(probe.onBar.p50)} p99 ${ms(probe.onBar.p99)}; heap delta ${mb(probe.heap.deltaBytes)} = ${probe.bytesPerExtraBar.toFixed(0)} B/bar${probe.heap.gcExposed ? "" : " (gc not exposed)"}${probe.faulted ? "; FAULTED" : ""}`;
+}
+import { afterEach, describe, expect, it } from "vitest";
+import { l2FeedStatusIndicator, statusRows } from "../../../indicators/l2-feed-status/l2FeedStatus";
+import { EventRing } from "../../../l2/eventRing";
+import type { L2EventsFrame } from "../../../../types/frames";
+import { resetDrawOwnerScopeForTests } from "../../draw/creationScope";
+import { handlesForOwners, resetDrawRegistryForTests } from "../../draw/registry";
+import type { TableData } from "../../draw/table";
+import { fakeL2, fakeL2Unsynced, ladderOf, ladderWithWall, segmentOf, tradeEvent, wallLifecycle, wallOf } from "../fakeL2";
+import { trendBars } from "../fixtures";
+import { openLiveSession } from "../liveDrive";
+
+afterEach(() => {
+  resetDrawRegistryForTests();
+  resetDrawOwnerScopeForTests();
+});
+
+const T0 = 1_780_000_000_000;
+
+function scriptedBook() {
+  const base = ladderOf(60_000, 10, 1, 2, T0 + 90_000);
+  const born = wallLifecycle({ id: 1, side: "bid", row: 59_995, size: 300, startTs: T0 + 10_000, shrinkTs: T0 + 40_000, tradeTs: T0 + 50_000, endTs: T0 + 70_000, endedBy: "filled" });
+  const living = wallOf({ id: 2, side: "ask", row: 60_004, size: 250, startTs: T0 + 20_000 });
+  return fakeL2({
+    lastTs: T0 + 90_000,
+    ladder: ladderWithWall(base, "bid", 59_995, 300),
+    walls: [born.wall, living],
+    events: [...born.events, tradeEvent(T0 + 30_000, "buy", 60_001, 1.5), { kind: "wall_born", ts: living.startTs, wall: 2, side: "ask", row: 60_004, span: 1, size: 250 }],
+  });
+}
+
+describe("fakeL2", () => {
+  it("serves the scripted ladder, walls and events as a live, trusted, synced book", () => {
+    const l2 = scriptedBook();
+    expect(l2.availability).toBe("LIVE");
+    expect(l2.trusted()).toBe(true);
+    expect(l2.status("l2_ladder").synced).toBe(true);
+    expect(l2.ladder()?.bids[4]).toEqual([59_995, 300]);
+    expect(l2.ladder()?.asks[0]).toEqual([60_001, 2]);
+    expect(l2.walls().map((wall) => wall.id)).toEqual([1, 2]);
+    expect(l2.wall(1)).toMatchObject({ endedBy: "filled", size: 150, eaten: 150, peak: 300 });
+    expect(l2.events().events.map((event) => event.kind)).toEqual(["wall_born", "wall_born", "trade", "wall_shrink", "wall_trade", "wall_end"]);
+    expect(l2.events(l2.events().seq)).toMatchObject({ events: [], complete: true });
+  });
+
+  it("atTime cuts walls and events at a bar close, so a replay-time read cannot see the future", () => {
+    const l2 = scriptedBook();
+    const asOf = l2.atTime!(T0 + 45_000);
+    expect(asOf.events().events.map((event) => event.kind)).toEqual(["wall_born", "wall_born", "trade", "wall_shrink"]);
+    // Wall 1 ended at +70 s and was traded at +50 s; as of +45 s it is alive and untouched.
+    expect(asOf.wall(1)).toMatchObject({ endTs: null, endedBy: null, size: 300, peak: 300, eaten: 0, fill: 0, absorbing: false });
+    expect(asOf.atTime!(T0 + 5_000).walls()).toEqual([]);
+    expect(l2.wall(1)?.endTs).toBe(T0 + 70_000);
+  });
+
+  it("patch changes the script and advances the version", () => {
+    const l2 = fakeL2({});
+    expect(l2.version).toBe(1);
+    l2.patch({ trusted: false, synced: { l2_walls: false } });
+    expect(l2.version).toBe(2);
+    expect(l2.trusted()).toBe(false);
+    expect(l2.status("l2_walls").synced).toBe(false);
+    expect(l2.status("l2_ladder").synced).toBe(true);
+  });
+
+  it("the unsynced fake reports every channel untrusted and no segment", () => {
+    const l2 = fakeL2Unsynced();
+    expect(l2.trusted()).toBe(false);
+    expect(l2.segment()).toBeNull();
+    for (const channel of ["l2_view", "l2_walls", "l2_events", "l2_ladder"] as const) expect(l2.status(channel).synced).toBe(false);
+  });
+});
+
+describe("ladder cutoff (Codex finding 2)", () => {
+  const first = ladderOf(100, 3, 1, 1, T0);
+  const second = ladderOf(110, 3, 1, 1, T0 + 60_000);
+
+  it("a ladder sequence serves the newest ladder at or before the cut", () => {
+    const l2 = fakeL2({ ladders: [first, second] });
+    expect(l2.atTime!(T0 + 30_000).ladder()).toBe(first);
+    expect(l2.atTime!(T0 + 60_000).ladder()).toBe(second);
+    expect(l2.ladder()).toBe(second);
+  });
+
+  it("a cut before the first ladder serves null, never a later ladder", () => {
+    const l2 = fakeL2({ ladders: [first, second] });
+    expect(l2.atTime!(T0 - 1).ladder()).toBeNull();
+  });
+
+  it("the current ladder is a candidate under the same cutoff as the sequence", () => {
+    const current = ladderOf(120, 3, 1, 1, 200);
+    const l2 = fakeL2({ ladder: current, ladders: [ladderOf(90, 3, 1, 1, 50)] });
+    expect(l2.atTime!(100).ladder()?.ts).toBe(50);
+    expect(l2.atTime!(49).ladder()).toBeNull();
+    expect(l2.atTime!(200).ladder()).toBe(current);
+    expect(l2.ladder()).toBe(current);
+  });
+});
+
+describe("wall state under a cut (Codex finding 3)", () => {
+  it("snapshots give the wall as it stood, so peak and consumption from after the cut stay hidden", () => {
+    const life = wallLifecycle({ id: 7, side: "ask", row: 101, size: 400, startTs: T0, tradeTs: T0 + 20_000, tradedSize: 250, endTs: T0 + 40_000, endedBy: "partial" });
+    expect(life.wall).toMatchObject({ size: 150, peak: 400, eaten: 250, fill: 0.625, endedBy: "partial" });
+    const l2 = fakeL2({ walls: [life.wall], events: life.events, wallSnapshots: life.snapshots });
+    expect(l2.atTime!(T0 + 10_000).wall(7)).toMatchObject({ size: 400, peak: 400, eaten: 0, fill: 0, absorbing: false, endTs: null, endedBy: null });
+    expect(l2.atTime!(T0 + 20_000).wall(7)).toMatchObject({ size: 150, eaten: 250, endTs: null, endedBy: null });
+    expect(l2.atTime!(T0 + 40_000).wall(7)).toMatchObject({ size: 150, eaten: 250, endTs: T0 + 40_000, endedBy: "partial" });
+    expect(l2.wall(7)).toBe(life.wall);
+  });
+
+  it("without snapshots the wall is rebuilt from its events through the cut", () => {
+    const final = wallOf({ id: 3, side: "bid", row: 99, size: 20, peak: 500, eaten: 480, fill: 0.96, absorbing: true, startTs: T0 });
+    const events = [
+      { kind: "wall_born" as const, ts: T0, wall: 3, side: "bid" as const, row: 99, span: 1, size: 500 },
+      { kind: "wall_trade" as const, ts: T0 + 10_000, wall: 3, mode: "absorbed" as const, price: 99, size: 180 },
+      { kind: "wall_trade" as const, ts: T0 + 30_000, wall: 3, mode: "absorbed" as const, price: 99, size: 300 },
+    ];
+    const l2 = fakeL2({ walls: [final], events });
+    expect(l2.atTime!(T0 + 5_000).wall(3)).toMatchObject({ size: 500, peak: 500, eaten: 0, fill: 0, absorbing: false, detail: null });
+    expect(l2.atTime!(T0 + 10_000).wall(3)).toMatchObject({ size: 320, peak: 500, eaten: 180, fill: 0.36 });
+    expect(l2.atTime!(T0 + 30_000).wall(3)).toMatchObject({ size: 20, eaten: 480 });
+    // A wall with neither snapshots nor events is served as freshly born at its scripted size.
+    const bare = fakeL2({ walls: [final] });
+    expect(bare.atTime!(T0 + 5_000).wall(3)).toMatchObject({ size: 20, peak: 20, eaten: 0, fill: 0, absorbing: false });
+  });
+});
+
+describe("trust (Codex finding 4)", () => {
+  it("mirrors the production checks: LIVE segment, walls and events synced, ts not before the segment began", () => {
+    const l2 = fakeL2({ segment: segmentOf(200) });
+    expect(l2.trusted()).toBe(true);
+    expect(l2.trusted(199)).toBe(false);
+    expect(l2.trusted(200)).toBe(true);
+    expect(l2.trusted(201)).toBe(true);
+    l2.patch({ segment: segmentOf(200, "GAP") });
+    expect(l2.trusted()).toBe(false);
+  });
+
+  it("an unsynced trust channel breaks trust; an unsynced ladder does not", () => {
+    expect(fakeL2({ synced: { l2_walls: false } }).trusted()).toBe(false);
+    expect(fakeL2({ synced: { l2_events: false } }).trusted(10)).toBe(false);
+    expect(fakeL2({ synced: { l2_ladder: false, l2_view: false } }).trusted()).toBe(true);
+  });
+
+  it("an explicit null segment stays null and is untrusted; the default is a LIVE segment from 0", () => {
+    const none = fakeL2({ segment: null });
+    expect(none.segment()).toBeNull();
+    expect(none.trusted()).toBe(false);
+    const dflt = fakeL2({});
+    expect(dflt.segment()).toEqual({ id: "fake:0:LIVE", state: "LIVE" });
+    expect(dflt.trusted(0)).toBe(true);
+  });
+
+  it("trusted: false forces the store untrusted whatever else the script says", () => {
+    expect(fakeL2({ trusted: false, segment: segmentOf(0) }).trusted(5)).toBe(false);
+  });
+});
+
+describe("event slices (Codex finding 5)", () => {
+  const events = [tradeEvent(T0, "buy", 100, 1), tradeEvent(T0 + 1_000, "sell", 99, 1), tradeEvent(T0 + 2_000, "buy", 101, 1)];
+
+  it("a cursor inside the ring is exact and complete; no cursor is never complete", () => {
+    const l2 = fakeL2({ events });
+    expect(l2.events()).toMatchObject({ seq: 3, missed: 0, complete: false });
+    expect(l2.events().events).toHaveLength(3);
+    expect(l2.events(1)).toMatchObject({ seq: 3, complete: true });
+node_modules/.bin/vitest
+
+codex
+The pooled replay cutoff matches `indicatorRuntime.makeCtx`. I found a gap in the absorption handling: a snapshot with `absorbing: true` and no trade events stays absorbing indefinitely. I’m checking the targeted tests and a small reproduction.
+exec
+/bin/bash -lc 'node node_modules/vitest/vitest.mjs run apps/web/src/lib/chart/validation/tests/fakeL2.test.ts apps/web/src/lib/chart/validation/tests/perfProbe.test.ts --root .claude/worktrees/agent-a4b44f3b34041fdf7/apps/web' in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ exited 1 in 252ms:
+failed to load config from /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk/.claude/worktrees/agent-a4b44f3b34041fdf7/apps/web/vite.config.ts
+
+⎯⎯⎯⎯⎯⎯⎯ Startup Error ⎯⎯⎯⎯⎯⎯⎯⎯
+Error: EROFS: read-only file system, open '/home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk/.claude/worktrees/agent-a4b44f3b34041fdf7/apps/web/node_modules/.vite-temp/vite.config.ts.timestamp-1792980019497-ac48285c1f861.mjs'
+    at async open (node:internal/fs/promises:636:25)
+    at async Object.writeFile (node:internal/fs/promises:1205:14)
+    at async loadConfigFromBundledFile (file:///home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk/node_modules/vite/dist/node/chunks/node.js:37163:3)
+    at async bundleAndLoadConfigFile (file:///home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk/node_modules/vite/dist/node/chunks/node.js:37015:21)
+    at async loadConfigFromFile (file:///home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk/node_modules/vite/dist/node/chunks/node.js:36975:42)
+    at async resolveConfig (file:///home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk/node_modules/vite/dist/node/chunks/node.js:36581:22)
+    at async _createServer (file:///home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk/node_modules/vite/dist/node/chunks/node.js:26388:65)
+    at async createViteServer (file:///home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk/node_modules/vitest/dist/chunks/cli-api.CnMVyzaz.js:8902:17)
+    at async createVitest (file:///home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk/node_modules/vitest/dist/chunks/cli-api.CnMVyzaz.js:14288:18)
+    at async prepareVitest (file:///home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk/node_modules/vitest/dist/chunks/cli-api.CnMVyzaz.js:14655:14) {
+  errno: -30,
+  code: 'EROFS',
+  syscall: 'open',
+  path: '/home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk/.claude/worktrees/agent-a4b44f3b34041fdf7/apps/web/node_modules/.vite-temp/vite.config.ts.timestamp-1792980019497-ac48285c1f861.mjs'
+}
+
+
+
+
+exec
+/bin/bash -lc "rg --files -uuu | rg 'brief-rvol-clock.md"'$|AGENTS.md$|vitest.config|vite.config'"'" in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 0ms:
+.claude/worktrees/agent-a4b44f3b34041fdf7/apps/web/vite.config.ts
+.claude/worktrees/agent-aa4a6294e0f5e7448/apps/web/vite.config.ts
+.claude/worktrees/agent-aa4a6294e0f5e7448/apps/web/vite.config.test.ts
+.claude/worktrees/agent-a4b44f3b34041fdf7/apps/web/vite.config.test.ts
+apps/web/vite.config.ts
+apps/web/vite.config.test.ts
+node_modules/vitest/config.d.ts
+
+exec
+/bin/bash -lc 'node ../../../../node_modules/vitest/vitest.mjs run src/lib/chart/validation/tests/fakeL2.test.ts src/lib/chart/validation/tests/perfProbe.test.ts --configLoader runner' in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk/.claude/worktrees/agent-a4b44f3b34041fdf7/apps/web
+ exited 1 in 0ms:
+node:internal/modules/cjs/loader:1386
+  throw err;
+  ^
+
+Error: Cannot find module '/home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk/.claude/node_modules/vitest/vitest.mjs'
+    at Function._resolveFilename (node:internal/modules/cjs/loader:1383:15)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1025:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1030:22)
+    at Function._load (node:internal/modules/cjs/loader:1192:37)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+    at node:internal/main/run_main_module:36:49 {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: []
+}
+
+Node.js v22.22.0
+
+exec
+/bin/bash -lc "node --input-type=module <<'JS'
+import fs from 'node:fs';
+import ts from 'typescript';
+const path = '.claude/worktrees/agent-a4b44f3b34041fdf7/apps/web/src/lib/chart/validation/fakeL2.ts';
+let src = ts.transpile(fs.readFileSync(path, 'utf8'), {target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022});
+src = src.replace(/"'^import .*indicatorL2.*;$/m, '"'const segmentStartTs = () => 0;');
+const {fakeL2, wallOf, wallLifecycle} = await import('data:text/javascript;base64,' + Buffer.from(src).toString('base64'));
+const wall = wallOf({id: 1, side:'bid', row:100, size:300, peak:400, startTs:0, absorbing:true});
+const l2 = fakeL2({walls:[wall],wallSnapshots:[{ts:1000,wall}]});
+console.log('Snapshot-only absorption at +6s:', l2.atTime(7000).wall(1).absorbing);
+const life = wallLifecycle({id:2,side:'bid',row:100,size:400,startTs:0,tradeTs:1000,tradedSize:100,shrinkTs:2000});
+for (const snapshots of [life.snapshots,[]]) {
+ const book=fakeL2({walls:[life.wall],events:life.events,wallSnapshots:snapshots});
+ console.log('At later shrink, snapshots=',snapshots.length, book.atTime(2000).wall(2));
+}
+JS" in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ exited 1 in 0ms:
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'typescript' imported from /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk/[eval1]
+Did you mean to import "typescript/lib/typescript.js"?
+    at Object.getPackageJSONURL (node:internal/modules/package_json_reader:314:9)
+    at packageResolve (node:internal/modules/esm/resolve:767:81)
+    at moduleResolve (node:internal/modules/esm/resolve:853:18)
+    at defaultResolve (node:internal/modules/esm/resolve:983:11)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:731:20)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:708:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:310:38)
+    at ModuleJob._link (node:internal/modules/esm/module_job:182:49)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  code: 'ERR_MODULE_NOT_FOUND'
+}
+
+Node.js v22.22.0
+
+exec
+/bin/bash -lc 'node /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk/node_modules/vitest/vitest.mjs run src/lib/chart/validation/tests/fakeL2.test.ts src/lib/chart/validation/tests/perfProbe.test.ts --configLoader runner' in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk/.claude/worktrees/agent-a4b44f3b34041fdf7/apps/web
+ exited 1 in 595ms:
+
+ RUN  v4.1.11 /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk/.claude/worktrees/agent-a4b44f3b34041fdf7/apps/web
+
+ ❯ src/lib/chart/validation/tests/fakeL2.test.ts (0 test)
+ ❯ src/lib/chart/validation/tests/perfProbe.test.ts (0 test)
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/chart/validation/tests/fakeL2.test.ts [ src/lib/chart/validation/tests/fakeL2.test.ts ]
+ FAIL  src/lib/chart/validation/tests/perfProbe.test.ts [ src/lib/chart/validation/tests/perfProbe.test.ts ]
+Error: ENOENT: no such file or directory, mkdir '/tmp/yu4sUqseL4HXHTzs2OAbk/ssr'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  no tests
+   Start at  02:00:37
+   Duration  173ms (transform 0ms, setup 0ms, import 0ms, tests 0ms, environment 0ms)
+
+
+exec
+/bin/bash -lc "node --input-type=module <<'JS'
+import fs from 'node:fs';
+import { stripTypeScriptTypes } from 'node:module';
+let src = stripTypeScriptTypes(fs.readFileSync('.claude/worktrees/agent-a4b44f3b34041fdf7/apps/web/src/lib/chart/validation/fakeL2.ts', 'utf8'));
+src = src.replace(/"'^import .*indicatorL2.*;$/m, '"'const segmentStartTs = () => 0;');
+const {fakeL2, wallOf} = await import('data:text/javascript;base64,' + Buffer.from(src).toString('base64'));
+const wall = wallOf({id:1,side:'bid',row:100,size:300,peak:400,startTs:0,absorbing:true});
+const book = fakeL2({walls:[wall],wallSnapshots:[{ts:1000,wall}]});
+console.log('Snapshot-only absorbing at cut 7000:', book.atTime(7000).wall(1).absorbing);
+JS" in /home/user/Terminal-L1-L2/Terminal-L1-L2-development-indicator-sdk
+ succeeded in 53ms:
+Snapshot-only absorbing at cut 7000: true
+(node:3) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+codex
+- **WARNING — `apps/web/src/lib/chart/validation/fakeL2.ts`, lines 148–154:** Snapshot-only walls never stop absorbing. When no `wall_trade` events are supplied, `!anyTradeEvent` returns the snapshot unchanged at every later cutoff. Reproduced with an absorbing snapshot at timestamp 1,000: the view at 7,000 still reports `absorbing: true`, although the five-second window must have expired. This can make replay validation accept absorption that live processing would reject. **Fix:** record the last trade timestamp alongside snapshots and recompute absorption at each cutoff. At minimum, expire a snapshot’s flag once its age exceeds `ABSORB_WINDOW_MS`. Add snapshot-only tests at the window boundary and immediately after it.
+
+The pooled liquidity cutoff matches the runtime. Targeted Vitest suites could not execute because the read-only environment prevented temporary-directory creation; the reproduction above ran successfully in memory.
+
+VERDICT: REVISE
+tokens used
+40,494
+- **WARNING — `apps/web/src/lib/chart/validation/fakeL2.ts`, lines 148–154:** Snapshot-only walls never stop absorbing. When no `wall_trade` events are supplied, `!anyTradeEvent` returns the snapshot unchanged at every later cutoff. Reproduced with an absorbing snapshot at timestamp 1,000: the view at 7,000 still reports `absorbing: true`, although the five-second window must have expired. This can make replay validation accept absorption that live processing would reject. **Fix:** record the last trade timestamp alongside snapshots and recompute absorption at each cutoff. At minimum, expire a snapshot’s flag once its age exceeds `ABSORB_WINDOW_MS`. Add snapshot-only tests at the window boundary and immediately after it.
+
+The pooled liquidity cutoff matches the runtime. Targeted Vitest suites could not execute because the read-only environment prevented temporary-directory creation; the reproduction above ran successfully in memory.
+
+VERDICT: REVISE
+--- last message saved to /home/user/Terminal-L1-L2/PM/log/codex/20261026T020000Z-code-worktree-agent-a4b44f3b34041fdf7.last.md
+VERDICT: REVISE

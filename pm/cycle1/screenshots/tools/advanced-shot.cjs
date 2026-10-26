@@ -1,0 +1,28 @@
+const path = require("node:path");
+const { chromium } = require("playwright");
+(async () => {
+  const outDir = process.argv[2];
+  const browser = await chromium.launch();
+  const page = await browser.newPage({ viewport: { width: 1600, height: 1000 } });
+  await page.goto("http://127.0.0.1:8000/", { waitUntil: "domcontentloaded" });
+  await page.waitForSelector(".chart-mount canvas", { timeout: 30_000 });
+  await page.waitForFunction(() => document.body.innerText.includes("LIVE"), null, { timeout: 30_000 });
+  await page.getByRole("button", { name: /Indicators/ }).click();
+  await page.getByLabel("Search indicators").fill("Session VWAP");
+  const row = page.locator(".indicators-row").filter({ hasText: "Session VWAP" }).first();
+  await row.waitFor();
+  if ((await row.getAttribute("aria-pressed")) !== "true") await row.click();
+  await page.getByRole("button", { name: "Close indicators" }).click();
+  await page.waitForTimeout(800);
+  const legendRow = page.locator(".indicator-legend-row").filter({ hasText: "Session VWAP" }).first();
+  await legendRow.hover();
+  await legendRow.getByRole("button", { name: "Indicator settings" }).click();
+  await page.waitForSelector(".indicator-settings-modal");
+  await page.waitForTimeout(300);
+  const modal = page.locator(".indicator-settings-modal");
+  await modal.screenshot({ path: path.join(outDir, "06-advanced-group-collapsed.png") });
+  await page.locator(".indicator-settings-advanced > summary").click();
+  await page.waitForTimeout(300);
+  await modal.screenshot({ path: path.join(outDir, "07-advanced-group-open.png") });
+  await browser.close();
+})().catch((e) => { console.error(e); process.exit(1); });

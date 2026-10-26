@@ -1,0 +1,296 @@
+{
+  "bars": 10080,
+  "node": "v24.21.0",
+  "rows": [
+    {
+      "id": "rsi",
+      "replay": {
+        "id": "rsi",
+        "bars": 10080,
+        "onBar": {
+          "count": 10080,
+          "p50": 0.00025800000003073364,
+          "p90": 0.0007610000000113359,
+          "p99": 0.002371000000039203,
+          "max": 0.09708200000000033,
+          "mean": 0.0004945010912679876,
+          "totalMs": 4.984570999981315
+        },
+        "wallMs": 20.00225999999998,
+        "heap": {
+          "gcExposed": true,
+          "beforeBytes": 18183088,
+          "afterBytes": 18962888,
+          "deltaBytes": 779800
+        },
+        "faulted": false
+      },
+      "forming": {
+        "id": "rsi",
+        "revisions": 3000,
+        "prints": 1000,
+        "onBar": {
+          "count": 3200,
+          "p50": 0.00023399999986395414,
+          "p90": 0.00047900000004119647,
+          "p99": 0.002351000000089698,
+          "max": 0.649206999999933,
+          "mean": 0.000666898749999234,
+          "totalMs": 2.134075999997549
+        },
+        "wallMs": 29.09838600000012,
+        "heap": {
+          "gcExposed": true,
+          "beforeBytes": 18599280,
+          "afterBytes": 18909712,
+          "deltaBytes": 310432
+        },
+        "faulted": false
+      },
+      "rollover": {
+        "id": "rsi",
+        "retainedBars": 10080,
+        "discarded": 1000,
+        "outputLengths": {
+          "value": 10080
+        },
+        "markersRetained": 0,
+        "markersBeforeRetention": 0,
+        "onBar": {
+          "count": 1000,
+          "p50": 0.0005020000000968139,
+          "p90": 0.0008170000000973232,
+          "p99": 0.004551999999875989,
+          "max": 0.054442999999992026,
+          "mean": 0.0007071209999978691,
+          "totalMs": 0.7071209999978691
+        },
+        "heap": {
+          "gcExposed": true,
+          "beforeBytes": 19043728,
+          "afterBytes": 19420344,
+          "deltaBytes": 376616
+        },
+        "bytesPerExtraBar": 376.616,
+        "faulted": false
+      }
+    },
+    {
+      "id": "bollinger",
+      "replay": {
+        "id": "bollinger",
+        "bars": 10080,
+        "onBar": {
+          "count": 10080,
+          "p50": 0.0007829999999557913,
+          "p90": 0.0017149999998764542,
+          "p99": 0.004304000000047381,
+          "max": 0.19193399999994654,
+          "mean": 0.00119978323412831,
+          "totalMs": 12.093815000013365
+        },
+        "wallMs": 31.72098599999981,
+        "heap": {
+          "gcExposed": true,
+          "beforeBytes": 18449464,
+          "afterBytes": 20073704,
+          "deltaBytes": 1624240
+        },
+        "faulted": false
+      },
+      "forming": {
+        "id": "bollinger",
+        "revisions": 3000,
+        "prints": 1000,
+        "onBar": {
+          "count": 3200,
+          "p50": 0.0006250000001273293,
+          "p90": 0.0009600000000773434,
+          "p99": 0.0017569999999977881,
+          "max": 0.05767200000013872,
+          "mean": 0.0007655803125016547,
+          "totalMs": 2.449857000005295
+        },
+        "wallMs": 24.087282999999843,
+        "heap": {
+          "gcExposed": true,
+          "beforeBytes": 18717856,
+          "afterBytes": 18827168,
+          "deltaBytes": 109312
+        },
+        "faulted": false
+      },
+      "rollover": {
+        "id": "bollinger",
+        "retainedBars": 10080,
+        "discarded": 1000,
+        "outputLengths": {
+          "basis": 10080,
+          "upper": 10080,
+          "lower": 10080
+        },
+        "markersRetained": 0,
+        "markersBeforeRetention": 0,
+        "onBar": {
+          "count": 1000,
+          "p50": 0.0009019999999964057,
+          "p90": 0.0014409999998861167,
+          "p99": 0.005047000000104163,
+          "max": 0.09680800000001,
+          "mean": 0.0012323309999985668,
+          "totalMs": 1.2323309999985668
+        },
+        "heap": {
+          "gcExposed": true,
+          "beforeBytes": 19884104,
+          "afterBytes": 20269568,
+          "deltaBytes": 385464
+        },
+        "bytesPerExtraBar": 385.464,
+        "faulted": false
+      }
+    },
+    {
+      "id": "cvdDivergence",
+      "replay": {
+        "id": "cvdDivergence",
+        "bars": 10080,
+        "onBar": {
+          "count": 10080,
+          "p50": 0.0001710000001367007,
+          "p90": 0.0002509999999347201,
+          "p99": 0.00044400000001587614,
+          "max": 0.05137600000011844,
+          "mean": 0.00019696269841254719,
+          "totalMs": 1.9853839999984757
+        },
+        "wallMs": 13.68795399999999,
+        "heap": {
+          "gcExposed": true,
+          "beforeBytes": 18515200,
+          "afterBytes": 18659856,
+          "deltaBytes": 144656
+        },
+        "faulted": false
+      },
+      "forming": {
+        "id": "cvdDivergence",
+        "revisions": 3000,
+        "prints": 1000,
+        "onBar": {
+          "count": 3200,
+          "p50": 0.00017700000012155215,
+          "p90": 0.00019800000018221908,
+          "p99": 0.00031399999988934724,
+          "max": 0.027818000000024767,
+          "mean": 0.00019702593749812536,
+          "totalMs": 0.6304829999940011
+        },
+        "wallMs": 18.378318000000036,
+        "heap": {
+          "gcExposed": true,
+          "beforeBytes": 18739472,
+          "afterBytes": 19009296,
+          "deltaBytes": 269824
+        },
+        "faulted": false
+      },
+      "rollover": {
+        "id": "cvdDivergence",
+        "retainedBars": 10080,
+        "discarded": 1000,
+        "outputLengths": {},
+        "markersRetained": 0,
+        "markersBeforeRetention": 0,
+        "onBar": {
+          "count": 1000,
+          "p50": 0.00019200000019736763,
+          "p90": 0.0002630000001317967,
+          "p99": 0.0004980000001069129,
+          "max": 0.019739000000072338,
+          "mean": 0.00023776100000577572,
+          "totalMs": 0.2377610000057757
+        },
+        "heap": {
+          "gcExposed": true,
+          "beforeBytes": 18696096,
+          "afterBytes": 19057360,
+          "deltaBytes": 361264
+        },
+        "bytesPerExtraBar": 361.264,
+        "faulted": false
+      }
+    },
+    {
+      "id": "l2FeedStatus",
+      "replay": {
+        "id": "l2FeedStatus",
+        "bars": 10080,
+        "onBar": {
+          "count": 10080,
+          "p50": 0.00011199999994460086,
+          "p90": 0.00020399999993969686,
+          "p99": 0.00044000000002597517,
+          "max": 0.146349999999984,
+          "mean": 0.00016929831349123394,
+          "totalMs": 1.7065269999916381
+        },
+        "wallMs": 34.969178000000056,
+        "heap": {
+          "gcExposed": true,
+          "beforeBytes": 18537816,
+          "afterBytes": 18722048,
+          "deltaBytes": 184232
+        },
+        "faulted": false
+      },
+      "forming": {
+        "id": "l2FeedStatus",
+        "revisions": 3000,
+        "prints": 1000,
+        "onBar": {
+          "count": 3200,
+          "p50": 0.05431599999997161,
+          "p90": 0.0903089999999338,
+          "p99": 0.17022300000007817,
+          "max": 1.9109880000000885,
+          "mean": 0.0643854756249975,
+          "totalMs": 206.033521999992
+        },
+        "wallMs": 229.0002609999999,
+        "heap": {
+          "gcExposed": true,
+          "beforeBytes": 18817184,
+          "afterBytes": 19207152,
+          "deltaBytes": 389968
+        },
+        "faulted": false
+      },
+      "rollover": {
+        "id": "l2FeedStatus",
+        "retainedBars": 10080,
+        "discarded": 1000,
+        "outputLengths": {},
+        "markersRetained": 0,
+        "markersBeforeRetention": 0,
+        "onBar": {
+          "count": 1000,
+          "p50": 0.08841799999981959,
+          "p90": 0.1157189999998991,
+          "p99": 0.1910370000000512,
+          "max": 1.3119189999997616,
+          "mean": 0.09315300400000524,
+          "totalMs": 93.15300400000524
+        },
+        "heap": {
+          "gcExposed": true,
+          "beforeBytes": 18907688,
+          "afterBytes": 19278008,
+          "deltaBytes": 370320
+        },
+        "bytesPerExtraBar": 370.32,
+        "faulted": false
+      }
+    }
+  ]
+}

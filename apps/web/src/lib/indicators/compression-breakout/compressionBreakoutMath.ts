@@ -124,6 +124,8 @@ export interface CommittedState {
   committedIndex: number;
   /** Committed valid-price bars so far: readiness counts these, the rings being capped. */
   validCount: number;
+  /** An intraday gap seen by an invalid-price bar, kept until the next valid-price commit consumes it (code review finding 1). */
+  pendingGapReset: boolean;
   active: ActiveRange | null;
   held: HeldRange[];
   lastEvent: LastEvent | null;
@@ -218,6 +220,7 @@ export function createCommittedState(): CommittedState {
     lastCommittedTsOpen: null,
     committedIndex: 0,
     validCount: 0,
+    pendingGapReset: false,
     active: null,
     held: [],
     lastEvent: null,
@@ -236,6 +239,7 @@ function cloneState(state: CommittedState): CommittedState {
     lastCommittedTsOpen: state.lastCommittedTsOpen,
     committedIndex: state.committedIndex,
     validCount: state.validCount,
+    pendingGapReset: state.pendingGapReset,
     active: state.active === null ? null : { ...state.active, broken: state.active.broken === null ? null : { ...state.active.broken } },
     held: state.held.map((range) => ({ ...range })),
     lastEvent: state.lastEvent === null ? null : { ...state.lastEvent },
@@ -266,7 +270,8 @@ export function tailMean(values: readonly number[], count: number): number | nul
   if (count <= 0 || values.length < count) return null;
   let sum = 0;
   for (let index = values.length - count; index < values.length; index += 1) sum += values[index];
-  return sum / count;
+  const mean = sum / count;
+  return Number.isFinite(mean) ? mean : null;
 }
 
 /** Mean of `values[from, to)`; null when the slice is not fully present. */
@@ -274,7 +279,8 @@ function sliceMean(values: readonly number[], from: number, to: number): number 
   if (from < 0 || to > values.length || to <= from) return null;
   let sum = 0;
   for (let index = from; index < to; index += 1) sum += values[index];
-  return sum / (to - from);
+  const mean = sum / (to - from);
+  return Number.isFinite(mean) ? mean : null;
 }
 
 function pushCapped(values: number[], value: number, capacity: number): void {
@@ -282,11 +288,15 @@ function pushCapped(values: number[], value: number, capacity: number): void {
   if (values.length > capacity) values.splice(0, values.length - capacity);
 }
 
-/** True range against the previous committed close; `high − low` on the first bar and on the first bar after a gap. */
-export function trueRangeOf(bar: BarFrame, prevClose: number | null, gap: boolean): number {
+/**
+ * True range against the previous committed close; `high − low` on the first
+ * bar and on the first bar after a gap. Null when the subtraction overflows:
+ * such a bar enters no range observation and its range test is not taken.
+ */
+export function trueRangeOf(bar: BarFrame, prevClose: number | null, gap: boolean): number | null {
   const span = bar.high - bar.low;
-  if (prevClose === null || gap) return span;
-  return Math.max(span, Math.abs(bar.high - prevClose), Math.abs(bar.low - prevClose));
+  const value = prevClose === null || gap ? span : Math.max(span, Math.abs(bar.high - prevClose), Math.abs(bar.low - prevClose));
+  return Number.isFinite(value) ? value : null;
 }
 
 /** A positive denominator from the last `DENOMINATOR_LENGTH` valid observations; null otherwise. */
@@ -300,7 +310,8 @@ function tailStdev(values: readonly number[], count: number, mean: number): numb
   if (values.length < count) return null;
   let sum = 0;
   for (let index = values.length - count; index < values.length; index += 1) sum += (values[index] - mean) ** 2;
-  return Math.sqrt(sum / count);
+  const stdev = Math.sqrt(sum / count);
+  return Number.isFinite(stdev) ? stdev : null;
 }
 
 export interface Qualification {
@@ -330,15 +341,18 @@ export function qualificationOf(
   let lo = Infinity;
   for (let index = highs.length - length; index < highs.length; index += 1) hi = Math.max(hi, highs[index]);
   for (let index = lows.length - length; index < lows.length; index += 1) lo = Math.min(lo, lows[index]);
+  const width = hi - lo;
+  if (!Number.isFinite(width)) return { ready: true, qualified: false, widthRatio: null, hi, lo };
   const reference = sliceMean(trs, trs.length - 2 * length, trs.length - length);
-  const widthRatio = reference !== null && reference > 0 ? (hi - lo) / reference : null;
+  const ratio = reference !== null && reference > 0 ? width / reference : null;
+  const widthRatio = ratio !== null && Number.isFinite(ratio) ? ratio : null;
   if (settings.qualifier === "always") return { ready: true, qualified: true, widthRatio, hi, lo };
   if (settings.qualifier === "squeeze") {
     if (closes.length < length) return none;
-    const mean = tailMean(closes, length)!;
-    const stdev = tailStdev(closes, length, mean)!;
-    const atr = tailMean(trs, length)!;
-    const squeezed = mean + 2 * stdev < mean + 1.5 * atr && mean - 2 * stdev > mean - 1.5 * atr;
+    const mean = tailMean(closes, length);
+    const stdev = mean === null ? null : tailStdev(closes, length, mean);
+    const atr = tailMean(trs, length);
+    const squeezed = mean !== null && stdev !== null && atr !== null && mean + 2 * stdev < mean + 1.5 * atr && mean - 2 * stdev > mean - 1.5 * atr;
     return { ready: true, qualified: squeezed, widthRatio, hi, lo };
   }
   return { ready: true, qualified: widthRatio !== null && widthRatio <= settings.widthMultiple, widthRatio, hi, lo };
@@ -357,14 +371,16 @@ export function createCompressionBreakoutEngine(input: CompressionBreakoutMathSe
   function evaluate(P: CommittedState, bar: BarFrame): Reading {
     const priceValid = isPriceValid(bar);
     const volumeValid = isVolumeValid(bar.volume);
-    const gap =
+    const gapNow =
       P.lastCommittedTsOpen !== null &&
       Number.isFinite(bar.interval_ms) &&
       bar.interval_ms > 0 &&
       bar.interval_ms < DAY_MS &&
       bar.ts_open - P.lastCommittedTsOpen > bar.interval_ms;
-    // W: P with the gap rule applied, never written. An invalid-price tail skips every commit step,
-    // so it cannot reset the range either (amendment 5): the reset waits for a valid-price bar.
+    // A gap seen by an invalid-price bar is kept pending: that bar skips every commit step (amendment 5), and the
+    // next valid-price bar performs the reset and takes `high − low` as its true range.
+    const gap = gapNow || P.pendingGapReset;
+    // W: P with the gap rule applied, never written.
     const active = gap && priceValid ? null : P.active;
     const trueRange = priceValid ? trueRangeOf(bar, P.prevClose, gap) : null;
     const avgRange = denominatorOf(P.trs);
@@ -398,9 +414,9 @@ export function createCompressionBreakoutEngine(input: CompressionBreakoutMathSe
     } else if (P.validCount >= settings.trendSlow + 5 && P.closes.length >= settings.trendSlow && P.fastHistory.length >= SLOPE_HISTORY) {
       trendStatus = "ready";
       if (priceValid) {
-        const slowMa = tailMean(P.closes, settings.trendSlow) as number;
+        const slowMa = tailMean(P.closes, settings.trendSlow);
         const slope = P.fastHistory[P.fastHistory.length - 1] - P.fastHistory[0];
-        trend = bar.close > slowMa && slope > 0 ? 1 : bar.close < slowMa && slope < 0 ? -1 : 0;
+        if (slowMa !== null && Number.isFinite(slope)) trend = bar.close > slowMa && slope > 0 ? 1 : bar.close < slowMa && slope < 0 ? -1 : 0;
       }
     }
 
@@ -471,13 +487,17 @@ export function createCompressionBreakoutEngine(input: CompressionBreakoutMathSe
     const index = P.committedIndex;
     // (a) held countdown: free the ones that reached zero at the previous commit, then count the rest down.
     C.held = C.held.filter((range) => range.remaining > 0).map((range) => ({ ...range, remaining: range.remaining - 1 }));
-    if (reading.priceValid) {
+    if (!reading.priceValid) {
+      // The clock advances below; a gap this bar saw waits for the next valid-price commit.
+      C.pendingGapReset = P.pendingGapReset || reading.gap;
+    } else {
       if (reading.gap) C.active = null;
-      // (b) rings
+      C.pendingGapReset = false;
+      // (b) rings: only finite derived observations enter them.
       pushCapped(C.highs, bar.high, settings.rangeLength);
       pushCapped(C.lows, bar.low, settings.rangeLength);
       pushCapped(C.closes, bar.close, closeCapacity);
-      pushCapped(C.trs, reading.trueRange as number, trCapacity);
+      if (reading.trueRange !== null) pushCapped(C.trs, reading.trueRange, trCapacity);
       if (reading.volumeValid) pushCapped(C.volumes, bar.volume, DENOMINATOR_LENGTH);
       const fastMa = tailMean(C.closes, settings.trendFast);
       if (fastMa !== null) pushCapped(C.fastHistory, fastMa, SLOPE_HISTORY);

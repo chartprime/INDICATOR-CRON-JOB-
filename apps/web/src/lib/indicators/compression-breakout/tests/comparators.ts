@@ -12,9 +12,10 @@ import { createCompressionBreakoutEngine, type CompressionBreakoutEngine, type Q
  * - `plainFrozenRangeBaseline`: the product's establishment, grading and
  *   outcome rules with no width qualifier at all (every ready window opens a
  *   range), amendment 8's "does compression selection discriminate" baseline.
- * - `squeezeQualifiedVariant`: the same machine qualified by Bollinger inside
- *   a Keltner-style channel over the committed window (the v2 clause's
- *   qualifier), so the comparison isolates the qualifier.
+ * - `squeezeQualifiedVariant`: the squeeze qualifier (Bollinger inside a
+ *   Keltner-style channel over the committed window) on this machine, not the
+ *   round-2 state machine with its pause and release rules: the comparison
+ *   isolates the qualifier the v2 clause asks about (code review ruling 4).
  * - `ttmReleaseComparator`: the library's TTM Squeeze releasing after at least
  *   six squeezed bars; direction from the momentum sign. Timing and density
  *   only: it has no level and no outcome.

@@ -121,6 +121,7 @@ export function formatTable(title: string, rows: Record<string, Row>, runs: numb
     const outcomes = name.includes("timing") ? ["none", "none"] : [`${r.failures}/${runs}`, `${r.holds}/${runs}`];
     lines.push(`| ${name} | ${r.hits}/${runs} | ${r.wrongDirection} | ${r.earlyAll} (${r.earlyLead}) | ${r.earlyFiltered} | ${level} | ${r.missed} | ${r.unmatched} | ${outcomes[0]} | ${outcomes[1]} | ${r.rangeMarkersPer1000.toFixed(1)} | ${r.trendMarkersPer1000.toFixed(1)} | ${r.maxPerBar} |`);
   }
+  lines.push("", "The squeeze-qualified variant is the squeeze qualifier on this machine, not the round-2 state machine with pause and release; the plain frozen range shares the machine by design, to isolate the width qualifier.");
   return lines.join("\n");
 }
 

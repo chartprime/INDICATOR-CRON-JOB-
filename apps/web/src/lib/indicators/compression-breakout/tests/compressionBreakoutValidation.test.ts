@@ -227,7 +227,8 @@ describe("compressionBreakout -- warm-up, empty input and NaN (protocol check 4)
     }
     expect(capture.outputs.qualified[39]).not.toBeNull();
     const firstEdge = capture.outputs.rangeHigh.findIndex((value) => value !== null);
-    expect(firstEdge).toBeGreaterThanOrEqual(39 + SETTINGS.minCompressionBars + 1);
+    expect(firstEdge).toBeGreaterThanOrEqual(40);
+    expect(firstEdge).toBe(capture.outputs.activeHigh.findIndex((value) => value !== null));
     for (let index = 0; index < 205; index += 1) expect(capture.outputs.trend[index]).toBeNull();
     expect(capture.outputs.trend[205]).not.toBeNull();
     noNaN(capture.outputs);

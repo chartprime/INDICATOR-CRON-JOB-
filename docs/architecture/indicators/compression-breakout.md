@@ -98,11 +98,12 @@ dispatch, which seeds the next `ts_open`.
 
 ### Outputs
 
-Line outputs `rangeHigh` and `rangeLow`: the edges while a range is
-established (the forming range is the faint box alone; a line joining two
-ranges would read as a slope that never existed). Numeric seams for the
-harness and for later layers: `activeHigh`, `activeLow` (the raw snapshot),
-`heldCount`, `widthRatio`, `qualified`, `trend`, `rangeAge`, `pending`, and
+Line outputs `rangeHigh` and `rangeLow`: the snapshot edges whenever a range
+exists, forming included; a range's last point (its outcome or abandonment
+bar) is painted transparent so the line never joins one range to the next
+with a slope that never existed. Numeric seams for the harness and for later
+layers: `activeHigh`, `activeLow` (the same snapshot under the names the
+harness tests use), `heldCount`, `widthRatio`, `qualified`, `trend`, `rangeAge`, `pending`, and
 the event pulses `breakDir`, `breakGrade`, `gradeBasis`, `failed`,
 `heldOutside`, `expired`, non-zero on the event bar only. The L1 tape tally
 grades intensity on the `breakDir` bar; the L2 Break Defense Monitor watches
@@ -115,7 +116,7 @@ while forming, fuller with a 1 px border in the trend colour once established
 (bull/bear pair, purple when flat or unknown); direction is carried only by
 the arrows. A retired range stays drawn for `holdBars` bars with a fainter
 fill, purple border when held outside or expired, amber when failed. The two
-edge lines while established. Markers: `arrowUp` below the break bar or
+edge lines while a range exists. Markers: `arrowUp` below the break bar or
 `arrowDown` above it, solid when both activity tests passed, faded when one
 did, none when neither; an amber circle in the bar on a marked break's
 failure. One decision per bar, so at most one marker per bar. A four-row table
@@ -199,7 +200,7 @@ each; controls 5 × 1,000 bars), reproduced through the runtime in
 |---|---|---|---|---|---|---|---|---|---|
 | Product (width ≤ 2×, min 6) | 20/20 | 0 | 4 (0) | 0 | 20/20 | 20/20 | 20/20 | 0.0 | 0.0 |
 | Plain frozen range (no width qualifier) | 20/20 | 0 | 42 (24) | 16 | 8/20 | 20/20 | 20/20 | 4.6 | 0.0 |
-| Squeeze-qualified variant | 20/20 | 0 | 28 (20) | 6 | 14/20 | 20/20 | 20/20 | 5.0 | 0.0 |
+| Squeeze-qualified variant (the squeeze qualifier on this machine, not the round-2 state machine with pause and release) | 20/20 | 0 | 28 (20) | 6 | 14/20 | 20/20 | 20/20 | 5.0 | 0.0 |
 | TTM release (timing and density only) | 18/20 | 0 | 32 (12) | 0 | n/a | none | none | 12.6 | 0.0 |
 | Bollinger crossing (timing and density only) | 20/20 | 0 | 118 (82) | 38 | n/a | none | none | 47.6 | 0.0 |
 
@@ -233,22 +234,53 @@ Performance (this container, Node 24, `tests/compressionBreakoutPerf.test.ts`):
 - Rollover of 1,000 bars past retention: 10080 bars retained, outputs {"rangeHigh": 10080, "rangeLow": 10080}, 0 stale markers, 462 B per extra bar (within 3× the harness floor of about 370 B).
 
 Live observation on real Binance spot candles through the REST transport
-(`data-api.binance.vision`), density and replay only, no label:
+(`data-api.binance.vision`), density and replay only, no label; every def
+replayed over the same recordings (`pm/log/validation/compressionBreakout/live-run.md`
+holds the full event lists):
 
-**BTC-USDT.** Recorded 2026-10-26T17:17:03.190Z to 2026-10-26T17:47:03.215Z: snapshot 10080 bars, 1819 bar frames (30 closes, 31 distinct open times), mutations {"APPENDED":31,"REPLACED_EDGE":1772,"REBUILT":16}. Live versus replay of the 10080 retained bars (the rollover dropped 30 older bars the live instance had seen): first quiet bar at retained index 228 (2026-10-19T21:36:00.000Z), 9852 bars compared after it with 0 seam disagreements; 3 seam cells differ before the quiet bar (the replay starts cold); confirmed markers after the quiet bar live-only 0, replay-only 0; later snapshot re-sends during the run: 22; faulted: false. Ranges opened over the retained series: 20. Markers: 7 on 1m (0.7 per 1,000, max 1 per bar); 4 on resampled 5m over 2016 bars (2.0 per 1,000). Over the seven retained days the product recorded 10 breaks (6 marked), 5 failures and 5 held outside; the plain frozen-range baseline on the same bars 219 breaks (152 marked), 128 failures and 91 held outside.
+**BTC-USDT.** Recorded 2026-10-26 17:17 to 17:47 UTC: snapshot 10,080 bars,
+1,819 bar frames (30 closes, 31 open times; 1,772 REPLACED_EDGE, 31 APPENDED,
+16 REBUILT late closes; 22 snapshot re-sends, each replayed as the chart
+does). Live versus the replay of the 10,080 retained bars: first quiet bar at
+retained index 228, 9,852 bars compared after it with 0 seam disagreements
+and 0 confirmed-marker differences, 3 cold-start cells before it, no fault.
+Ranges opened over the seven days: 20.
 
-**ETH-USDT.** Recorded 2026-10-26T17:17:03.245Z to 2026-10-26T17:47:03.267Z: snapshot 10080 bars, 1242 bar frames (30 closes, 31 distinct open times), mutations {"APPENDED":31,"REPLACED_EDGE":1210,"REBUILT":1}. Live versus replay of the 10080 retained bars (the rollover dropped 30 older bars the live instance had seen): first quiet bar at retained index 205 (2026-10-19T21:13:00.000Z), 9875 bars compared after it with 0 seam disagreements; 54 seam cells differ before the quiet bar (the replay starts cold); confirmed markers after the quiet bar live-only 0, replay-only 0; later snapshot re-sends during the run: 7; faulted: false. Ranges opened over the retained series: 26. Markers: 7 on 1m (0.7 per 1,000, max 1 per bar); 3 on resampled 5m over 2016 bars (1.5 per 1,000). Over the seven retained days the product recorded 10 breaks (8 marked), 5 failures and 5 held outside; the plain frozen-range baseline on the same bars 227 breaks (156 marked), 140 failures and 87 held outside.
+**ETH-USDT.** Recorded over the same half hour: 1,242 bar frames (30 closes,
+1 REBUILT, 7 snapshot re-sends). First quiet bar at index 205, 9,875 bars
+compared with 0 disagreements, 54 cold-start cells before it, no fault.
+Ranges opened: 26.
 
-The recordings, the recorder and the full event tables are under `pm/log/validation/compressionBreakout/live/` and `live-run.md`. The REST runtime re-sends its snapshot during a run (22 and 7 times here); the chart replays on each, which is the comparison above. The REBUILT mutations are closes that arrived after a newer forming bar on the polled transport; each one replays the retained bars, as in the chart.
+Density of every def on the same retained bars (confirmed markers; the two
+timing comparators mark every event):
+
+| Def | BTC events on 1m | BTC markers on 1m (per 1,000) | BTC markers on 5m (per 1,000) | ETH events on 1m | ETH markers on 1m (per 1,000) | ETH markers on 5m (per 1,000) |
+|---|---|---|---|---|---|---|
+| Product (width ≤ 2×, min 6) | 20 | 7 (0.7) | 4 (2.0) | 20 | 7 (0.7) | 3 (1.5) |
+| Plain frozen range (no width qualifier) | 438 | 234 (23.2) | 55 (27.3) | 454 | 249 (24.7) | 50 (24.8) |
+| Squeeze-qualified variant (the squeeze qualifier on this machine) | 82 | 43 (4.3) | 22 (10.9) | 134 | 71 (7.0) | 31 (15.4) |
+| TTM release (timing and density only) | 16 | 16 (1.6) | 11 (5.5) | 29 | 29 (2.9) | 19 (9.4) |
+| Bollinger crossing (timing and density only) | 573 | 573 (56.8) | 119 (59.0) | 589 | 589 (58.4) | 125 (62.0) |
+
+Over the seven retained days the product recorded 10 breaks (6 marked), 5
+failures and 5 held outside on BTC, and 10 breaks (8 marked), 5
+failures and 5 held outside on ETH. The
+squeeze qualifier on this machine fires six to seven times as often as the
+width qualifier on these bars; whether it catches coils the range misses is a
+question of level validity on labelled data, where the evaluation seeds showed
+none (see the v2 clause in the brief). The REBUILT mutations are closes that
+arrived after a newer forming bar on the polled transport; each one replays the
+retained bars, as in the chart.
 
 ## Deviations from the brief
 
 - The comparator defs share the product's engine through a `qualifier` option
-  (`width`, `always`, `squeeze`): the plain baseline and the squeeze variant
-  therefore have identical establishment, grading and outcome rules by
-  construction, which is what amendment 8 requires of the baseline; the
-  squeeze variant is the round-2 qualifier on this machine, not the round-2
-  machine with its pause and extension rules.
+  (`width`, `always`, `squeeze`), by design (code review ruling 4): the plain
+  baseline isolates the width qualifier under identical machinery, and the
+  independent validator's batch reference covers shared-defect risk. The
+  squeeze-qualified variant is the squeeze qualifier on this machine, not the
+  round-2 state machine with pause and release; nothing here validates that
+  round-2 machine.
 - The engine's rings are plain numeric rings rather than the keyed
   `ObservationRing` of Relative Volume: corrections are by snapshot restore,
   so no keyed update or eviction rollback is needed.

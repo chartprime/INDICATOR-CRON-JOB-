@@ -337,17 +337,46 @@ describe("compressionBreakoutMath -- gaps, invalid tails, corrections and supers
     expect(readings[43].rangeHigh).toBe(60_055);
   });
 
-  it("an invalid-price tail across a gap cannot reset the range; the next valid bar does", () => {
-    const bars = series(45);
+  it("an invalid-price tail across a gap cannot reset the range; the gap stays pending and the next valid-price bar resets, with true range high − low", () => {
+    const bars = series(46);
     bars[43] = bar(46, baseSpec(43), { high: 1 });
-    bars[44] = bar(47, baseSpec(44));
-    const { readings } = run(bars);
+    bars[44] = bar(47, { open: 60_050, high: 60_151, low: 60_050, close: 60_150, volume: 100 }); // an overnight jump of 100
+    bars[45] = bar(48, baseSpec(45));
+    const { readings, committed } = run(bars);
     expect(readings[43].gap).toBe(true);
     expect(readings[43].decision.kind).toBe("invalidPrice");
     expect(readings[43].rangeHigh).toBe(60_055);
-    // Bar 44 follows the invalid bar by one interval: no gap relative to the clock the invalid bar advanced.
-    expect(readings[44].gap).toBe(false);
-    expect(readings[44].rangeHigh).toBe(60_055);
+    expect(readings[44].gap).toBe(true);
+    expect(readings[44].rangeHigh).toBeNull();
+    expect(readings[44].decision.kind).toBe("none");
+    expect(readings[44].trueRange).toBe(101);
+    expect(readings[45].gap).toBe(false);
+    expect(readings[45].trueRange).toBe(Math.max(110, Math.abs(60_055 - 60_150), Math.abs(59_945 - 60_150)));
+    expect(committed.pendingGapReset).toBe(false);
+    // Without the pending reset the stale range would have been broken by bar 44: no event may exist.
+    expect(readings.some((reading) => reading.decision.kind === "break")).toBe(false);
+  });
+
+  it("non-finite intermediates never escape: overflowing volumes make the volume test untestable, overflowing prices make the range test untestable and the window unqualifiable", () => {
+    // The frames are built directly: the fixture helper's rounding would itself overflow these values to Infinity.
+    const hugeVolumes = series(47, (index) => (index === 46 ? BREAK_UP : null)).map((frame, index) => (index >= 26 && index < 46 ? ({ ...frame, volume: 1e308 } as BarFrame) : frame));
+    expect(hugeVolumes[30].volume).toBe(1e308);
+    const v = run(hugeVolumes).readings[46];
+    expect(v.avgVolume).toBeNull();
+    expect(v.decision).toMatchObject({ kind: "break", grade: 1, basis: 1 });
+    const wild = Array.from({ length: 60 }, (_, index) => ({ ...bar(index, baseSpec(index)), open: 0, high: 1e308, low: -1e308, close: 0, volume: 100 }) as BarFrame);
+    expect(wild[0].high).toBe(1e308);
+    const { readings, committed } = run(wild);
+    for (const reading of readings) {
+      expect(reading.trueRange).toBeNull();
+      expect(reading.widthRatio).toBeNull();
+      expect(reading.qualified === null || reading.qualified === false).toBe(true);
+      expect(reading.rangeHigh).toBeNull();
+      for (const value of [reading.avgRange, reading.avgVolume, reading.widthRatio]) expect(value === null || Number.isFinite(value)).toBe(true);
+    }
+    expect(committed.trs).toEqual([]);
+    expect(committed.highs).toHaveLength(20);
+    expect(committed.active).toBeNull();
   });
 
   it("a closed re-dispatch of the tail recomputes C from the untouched P: cancelled break, invalid-to-valid volume, removed failure", () => {

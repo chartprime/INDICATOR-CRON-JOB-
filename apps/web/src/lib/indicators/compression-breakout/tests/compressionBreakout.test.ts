@@ -124,16 +124,19 @@ describe("compressionBreakout -- table strings (UX string table, every string at
 });
 
 describe("compressionBreakout -- outputs, markers and the box pool through the runtime", () => {
-  it("edge lines are null until a range is established and on bars with no range; seams are pulses", () => {
+  it("rangeHigh/rangeLow carry the snapshot edges whenever a range exists, forming included, and null otherwise; seams are pulses", () => {
     const { bars } = compressionBreakoutBars({ seed: 7 });
     const capture = replayCapture(compressionBreakoutIndicator, bars, SETTINGS);
     expect(capture.faulted).toBe(false);
     const readings = readingsOf(bars);
     bars.forEach((_, index) => {
-      const established = readings[index].active !== null && readings[index].active!.age >= SETTINGS.minCompressionBars;
-      if (established) expect(capture.outputs.rangeHigh[index]).toBe(readings[index].rangeHigh);
-      else expect(capture.outputs.rangeHigh[index]).toBeNull();
+      expect(capture.outputs.rangeHigh[index]).toBe(readings[index].rangeHigh);
+      expect(capture.outputs.rangeLow[index]).toBe(readings[index].rangeLow);
     });
+    const firstForming = readings.findIndex((reading) => reading.active !== null && reading.active.age === 0);
+    expect(firstForming).toBeGreaterThanOrEqual(40);
+    expect(capture.outputs.rangeHigh[firstForming]).not.toBeNull();
+    expect(capture.outputs.rangeHigh[firstForming]).toBe(readings[firstForming].active!.hi);
     expect(capture.outputs.rangeHigh[220]).not.toBeNull();
     expect(capture.outputs.rangeHigh[225]).not.toBeNull();
     expect(capture.outputs.rangeHigh[226]).toBeNull();
@@ -174,6 +177,10 @@ describe("compressionBreakout -- outputs, markers and the box pool through the r
       const colors = session.runtime.getLineColors(compressionBreakoutIndicator.id)!;
       expect(colors.rangeHigh[224]).toBe(CB_RANGE_COLOR);
       expect(colors.rangeHigh[225]).toBe(CB_EDGE_JOIN_COLOR);
+      // An abandoned range's last point is painted the join colour too, so a forming range never joins the next one.
+      const readings = readingsOf(bars.slice(0, 226));
+      const abandoned = readings.findIndex((reading) => reading.decision.kind === "abandoned");
+      if (abandoned >= 0) expect(colors.rangeHigh[abandoned]).toBe(CB_EDGE_JOIN_COLOR);
     } finally {
       session.close();
     }

@@ -7,7 +7,7 @@ import { resetDrawRegistryForTests } from "../../../chart/draw/registry";
 import { resampleBars } from "../../../chart/resampleBars";
 import { diffMarkers, diffOutputs, markerBudgetOf, openLiveSession, replayCapture, type Outputs } from "../../../chart/validation";
 import { COMPRESSION_BREAKOUT_DEFAULT_SETTINGS, compressionBreakoutIndicator } from "../compressionBreakout";
-import { plainFrozenRangeBaseline } from "./comparators";
+import { bollingerCrossingComparator, plainFrozenRangeBaseline, squeezeQualifiedVariant, ttmReleaseComparator } from "./comparators";
 import { compressionBreakoutSeamDef } from "./seamDef";
 
 afterEach(() => {
@@ -43,7 +43,7 @@ function eventsOf(outputs: Outputs, bars: readonly BarFrame[]): string[] {
   bars.forEach((bar, index) => {
     const when = new Date(bar.ts_open).toISOString().slice(5, 16).replace("T", " ");
     const dir = outputs.breakDir?.[index] ?? 0;
-    if (dir !== 0) lines.push(`${when} break ${dir > 0 ? "↑" : "↓"} grade ${outputs.breakGrade?.[index]} basis ${outputs.gradeBasis?.[index]}`);
+    if (dir !== 0) lines.push(outputs.breakGrade === undefined ? `${when} event ${dir > 0 ? "↑" : "↓"}` : `${when} break ${dir > 0 ? "↑" : "↓"} grade ${outputs.breakGrade[index]} basis ${outputs.gradeBasis?.[index]}`);
     if ((outputs.failed?.[index] ?? 0) === 1) lines.push(`${when} failed`);
     if ((outputs.heldOutside?.[index] ?? 0) === 1) lines.push(`${when} held outside`);
     if ((outputs.expired?.[index] ?? 0) === 1) lines.push(`${when} expired`);
@@ -108,6 +108,19 @@ describe.skipIf(!available)("compressionBreakout -- live observation on BTC-USDT
       const replay5m = replayCapture(compressionBreakoutIndicator, fiveMinute, COMPRESSION_BREAKOUT_DEFAULT_SETTINGS);
       const budget5m = markerBudgetOf(replay5m.markers.filter((call) => !call.color.startsWith("rgba(")), fiveMinute.length, replay5m.faulted);
       const plain = replayCapture(plainFrozenRangeBaseline, retained, plainFrozenRangeBaseline.defaultSettings);
+      // Ruling 5: every comparator over the same recording, offline.
+      const comparators = [
+        { name: "Plain frozen range (no width qualifier)", capture: plain },
+        { name: "Squeeze-qualified variant (the squeeze qualifier on this machine)", capture: replayCapture(squeezeQualifiedVariant, retained, squeezeQualifiedVariant.defaultSettings) },
+        { name: "TTM release (timing and density only)", capture: replayCapture(ttmReleaseComparator, retained, ttmReleaseComparator.defaultSettings) },
+        { name: "Bollinger crossing (timing and density only)", capture: replayCapture(bollingerCrossingComparator, retained, bollingerCrossingComparator.defaultSettings) },
+      ];
+      const comparators5m = [
+        { name: "Plain frozen range (no width qualifier)", capture: replayCapture(plainFrozenRangeBaseline, fiveMinute, plainFrozenRangeBaseline.defaultSettings) },
+        { name: "Squeeze-qualified variant (the squeeze qualifier on this machine)", capture: replayCapture(squeezeQualifiedVariant, fiveMinute, squeezeQualifiedVariant.defaultSettings) },
+        { name: "TTM release (timing and density only)", capture: replayCapture(ttmReleaseComparator, fiveMinute, ttmReleaseComparator.defaultSettings) },
+        { name: "Bollinger crossing (timing and density only)", capture: replayCapture(bollingerCrossingComparator, fiveMinute, bollingerCrossingComparator.defaultSettings) },
+      ];
       const rangesOpened = replay.outputs.rangeAge.filter((age) => age === 0).length;
       const closes = frames.filter((frame) => frame.closed).length;
       report.push(
@@ -119,15 +132,29 @@ describe.skipIf(!available)("compressionBreakout -- live observation on BTC-USDT
         "",
         `Ranges opened over the retained series: ${rangesOpened}. Markers: ${budget1m.total} on 1m (${budget1m.per1000Bars.toFixed(1)} per 1,000, max ${budget1m.maxPerBar} per bar); ${budget5m.total} on resampled 5m over ${fiveMinute.length} bars (${budget5m.per1000Bars.toFixed(1)} per 1,000).`,
         "",
-        "Events, product (left) and plain frozen-range baseline (right):",
+        "Density of every def on the same bars (confirmed markers; the two timing comparators mark every event):",
         "",
-        "| Product | Plain frozen range |",
-        "|---|---|",
+        "| Def | Events on 1m | Markers on 1m | per 1,000 | Markers on 5m | per 1,000 |",
+        "|---|---|---|---|---|---|",
       );
       const productEvents = eventsOf(replay.outputs, retained);
-      const plainEvents = eventsOf(plain.outputs, retained);
-      for (let index = 0; index < Math.max(productEvents.length, plainEvents.length); index += 1) report.push(`| ${productEvents[index] ?? ""} | ${plainEvents[index] ?? ""} |`);
+      report.push(`| Product (width ≤ 2×, min 6) | ${productEvents.length} | ${budget1m.total} | ${budget1m.per1000Bars.toFixed(1)} | ${budget5m.total} | ${budget5m.per1000Bars.toFixed(1)} |`);
+      const eventLists: { name: string; events: string[] }[] = [{ name: "Product", events: productEvents }];
+      comparators.forEach((comparator, position) => {
+        const events = eventsOf(comparator.capture.outputs, retained);
+        const b1 = markerBudgetOf(comparator.capture.markers, retained.length, comparator.capture.faulted);
+        const b5 = markerBudgetOf(comparators5m[position].capture.markers, fiveMinute.length, comparators5m[position].capture.faulted);
+        expect(comparator.capture.faulted).toBe(false);
+        report.push(`| ${comparator.name} | ${events.length} | ${b1.total} | ${b1.per1000Bars.toFixed(1)} | ${b5.total} | ${b5.per1000Bars.toFixed(1)} |`);
+        eventLists.push({ name: comparator.name, events });
+      });
       report.push("");
+      for (const list of eventLists) {
+        report.push(`### ${recording.symbol}: ${list.name} (${list.events.length} events)`, "");
+        if (list.events.length === 0) report.push("(none)");
+        for (const line of list.events) report.push(`- ${line}`);
+        report.push("");
+      }
       expect(quiet).toBeGreaterThan(-1);
       expect(retained.length - quiet).toBeGreaterThan(0);
       expect(outputDiffs).toEqual([]);

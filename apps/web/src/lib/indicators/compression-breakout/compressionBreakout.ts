@@ -295,7 +295,7 @@ export function edgeLineColor(state: CompressionBreakoutState): string {
   const reading = state.reading;
   if (reading === null) return CB_RANGE_COLOR;
   const kind = reading.decision.kind;
-  if (kind === "failed" || kind === "heldOutside" || kind === "expired") return CB_EDGE_JOIN_COLOR;
+  if (kind === "failed" || kind === "heldOutside" || kind === "expired" || kind === "abandoned") return CB_EDGE_JOIN_COLOR;
   return CB_RANGE_COLOR;
 }
 
@@ -362,13 +362,13 @@ export const compressionBreakoutIndicator: RuntimeIndicatorDef<CompressionBreako
     }
     const d = reading.decision;
     const isBreak = d.kind === "break";
-    // The edge lines show an established range only: a forming range is the faint box, and a line
-    // joining successive short-lived ranges would read as a slope that never existed.
-    const established = reading.active !== null && reading.active.age >= state.engine.settings.minCompressionBars;
+    // The brief's edge keys carry the snapshot whenever a range exists, forming included; `edgeLineColor` paints a
+    // range's last point transparent so successive ranges never join into a slope that never existed.
     return {
-      rangeHigh: established ? reading.rangeHigh : null,
-      rangeLow: established ? reading.rangeLow : null,
-      // The raw snapshot and the held count: the replay policy's "quiet bar" has neither an active nor a held range.
+      rangeHigh: reading.rangeHigh,
+      rangeLow: reading.rangeLow,
+      // The same snapshot under the names the harness tests used, and the held count: the replay policy's "quiet bar"
+      // has neither an active nor a held range.
       activeHigh: reading.rangeHigh,
       activeLow: reading.rangeLow,
       heldCount: reading.held.length,
